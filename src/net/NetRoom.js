@@ -16,8 +16,22 @@ const PREFIX = 'apex-drift-v12-';
 function brokerConfig() {
   const ov = (typeof window !== 'undefined' && window.__PEER_OVERRIDE) || null;
   const env = (typeof import.meta !== 'undefined' && import.meta.env) || {};
-  const host = ov?.host ?? env.VITE_PEER_HOST;
+  let host = ov?.host ?? env.VITE_PEER_HOST;
   if (!host) return {};                       // ictimai broker (köhnə davranış)
+  // VITE_PEER_HOST=self → broker SAYTIN ÖZ ünvanındadır (Caddy /peer-ə
+  // yönləndirir). Belə olanda IP-dən domenə keçəndə və HTTP→HTTPS
+  // dəyişəndə yenidən build lazım gəlmir — hər şey runtime-da həll olunur.
+  if (host === 'self' && typeof window !== 'undefined') {
+    const loc = window.location;
+    const httpsMi = loc.protocol === 'https:';
+    return {
+      host: loc.hostname,
+      port: Number(loc.port || (httpsMi ? 443 : 80)),
+      path: ov?.path ?? env.VITE_PEER_PATH ?? '/peer',
+      key: ov?.key ?? env.VITE_PEER_KEY ?? 'nitroverse',
+      secure: httpsMi,
+    };
+  }
   const secure = ov?.secure ?? (String(env.VITE_PEER_SECURE || '') === '1');
   return {
     host,

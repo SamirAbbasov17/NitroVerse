@@ -3,8 +3,13 @@
 import { getStore } from '@netlify/blobs';
 
 const out = {};
-for (const name of ['users', 'rooms', 'social']) {
-  const store = getStore({ name, consistency: 'strong' });
+// Netlify mühitindən KƏNARDA işləyəndə sayt id-si və token açıq verilməlidir
+const siteID = process.env.NETLIFY_SITE_ID;
+const token = process.env.NETLIFY_AUTH_TOKEN;
+for (const name of ['users', 'rooms', 'social', 'reports']) {
+  const store = getStore(siteID && token
+    ? { name, siteID, token, consistency: 'strong' }
+    : { name, consistency: 'strong' });
   const { blobs } = await store.list();
   out[name] = {};
   for (const b of blobs) {
