@@ -502,6 +502,10 @@ export class FootballScene {
       // Uzaq maşınlar da yerləşdirilir — əks halda ilk paket gələnə qədər
       // meydanın DÜZ ORTASINDA (0,0) görünüb sonra sürüşürdülər
       r.car.reset(pos, heading);
+      // Qol anında havada olan maşın "asılı" qalırdı — sıçrayış sıfırlanır
+      r.car._hopT = 0;
+      r.car.root.position.y = 0;
+      r.car.root.rotation.x = 0;
     }
     if (this.playerCar) {
       this.playerCar.nitroCharges = Math.max(1, this.playerCar.nitroCharges | 0);
@@ -995,7 +999,10 @@ export class FootballScene {
         car._hopT = Math.max(0, car._hopT - dt);
         const ht = 1 - car._hopT / HOP_T;
         // ^0.75 — parabolanın zirvəsi yastılanır: havada asılma hissi
-        car.root.position.y += 2.9 * Math.pow(4 * ht * (1 - ht), 0.75);
+        // XƏTA İDİ: `+=` hər kadr ƏLAVƏ edirdi. Qol fasiləsində maşın
+        // yenilənmədiyi üçün y sıfırlanmır və bot havaya uçurdu
+        // (istifadəçi rəyi). İndi baza hündürlükdən TƏYİN olunur.
+        car.root.position.y = (car.position.y || 0) + 2.9 * Math.pow(4 * ht * (1 - ht), 0.75);
         car.root.rotation.x = -Math.sin(Math.PI * ht) * 0.38;
         // Eniş anı: tüstü + yüngül zərbə səsi — çəkisi hiss olunsun
         if (car._hopT === 0) {

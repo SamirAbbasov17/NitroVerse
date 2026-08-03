@@ -1018,8 +1018,13 @@ export class EndlessScene {
     this.sun.intensity = day.sunI * (1 - this._weather.rain * 0.45);
     // Gecə "günəş" AY olur: soyuq mavi işıq — relyef tam qaraya düşmür
     this.sun.color.set(day.night > 0.5 ? 0x9fb6ff : (day.warm > 0.5 ? 0xffc98a : 0xffffff));
-    // Ay işığı: gecə ambient bir az qalxır ki, torpaq büsbütün qara olmasın
-    this.amb.intensity = 0.32 * (0.5 + day.sky * 0.5) + day.night * 0.26;
+    // Ay işığı: gecə ambient qalxır ki, relyef büsbütün qara olmasın.
+    // ƏVVƏL 0.26 idi — gecə yer qapqara olurdu və düz kölgələnmiş iri
+    // üçbucaqlar sərt tünd ləkələr kimi oxunurdu (istifadəçi skrinşotu).
+    this.amb.intensity = 0.32 * (0.5 + day.sky * 0.5) + day.night * 0.5;
+    // Gecə istiqamətli "ay" işığını zəiflədirik: kontrast azalır, üzlər
+    // arasındakı kəskin sərhəd yumşalır
+    this.sun.intensity *= (1 - day.night * 0.45);
     this.headlight.intensity = day.night * 190;
     this._updateHeadlights(day.night);
 

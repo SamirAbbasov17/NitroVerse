@@ -61,9 +61,18 @@ export class RaceManager {
       const t = r.car.trackT;
       const d = t - r.lastT;
 
+      // YARIM DÖVRƏ NƏZARƏTİ (checkpoint əvəzi):
+      // Dövrə yalnız trekin ORTASINDAN keçdikdən sonra sayılır. Bunsuz
+      // `trackT` sıçrayışı (yaxın maşınla toqquşma, künc kəsmə, yol öz
+      // yanından keçəndə nöqtə axtarışının atlanması) saxta "geri keçid"
+      // yaradırdı və oyunçunun dövrəsi AZALIRDI — rəqibləri bir dövrə
+      // dalayanda mövqe geri düşürdü (istifadəçi rəyi).
+      if (t > 0.35 && t < 0.75) r._half = true;
+
       // SİMMETRİK sayma: geri keçid lap-ı azaldır — xətt üzərində
       // geri-irəli hiyləsi ilə pulsuz dövrə qazanmaq mümkün deyil
-      if (d < -0.5) {
+      if (d < -0.5 && r._half) {
+        r._half = false;
         // İrəli keçid (t 1→0 sıçrayışı)
         r.lap++;
         // Start xəttinin ilk keçidi (grid arxadan gəlir) — dövrə vaxtı buradan başlasın
@@ -82,8 +91,9 @@ export class RaceManager {
             this.onLap?.(r);
           }
         }
-      } else if (d > 0.5) {
+      } else if (d > 0.5 && r._half) {
         // Geri keçid (t 0→1 sıçrayışı) — irəli qayıdanda yenidən sayılacaq
+        r._half = false;
         r.lap--;
       }
       r.lastT = t;

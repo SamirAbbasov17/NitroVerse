@@ -101,26 +101,45 @@ export class ArenaScene {
     const cx = cv.getContext('2d');
     cx.fillStyle = '#3a3244';
     cx.fillRect(0, 0, 512, 512);
-    for (let i = 0; i < 260; i++) {
-      cx.strokeStyle = `rgba(${20 + Math.random() * 40 | 0},${15 + Math.random() * 30 | 0},${30 + Math.random() * 40 | 0},0.5)`;
+    // Cızıq sıxlığı/kontrastı azaldıldı — təkrarlanan teksturada 260 ədəd
+    // "zibil" kimi görünürdü
+    for (let i = 0; i < 130; i++) {
+      cx.strokeStyle = `rgba(${20 + Math.random() * 40 | 0},${15 + Math.random() * 30 | 0},${30 + Math.random() * 40 | 0},0.26)`;
       cx.lineWidth = 1 + Math.random() * 2;
       const x = Math.random() * 512, y = Math.random() * 512, a = Math.random() * 7;
       cx.beginPath(); cx.moveTo(x, y);
       cx.lineTo(x + Math.cos(a) * 30, y + Math.sin(a) * 30); cx.stroke();
     }
-    for (const [r, col] of [[100, '#b44bff'], [180, '#ff6b1a'], [248, '#37b8ff']]) {
-      cx.strokeStyle = col; cx.globalAlpha = 0.3; cx.lineWidth = 4;
-      cx.beginPath(); cx.arc(256, 256, r, 0, 7); cx.stroke();
-    }
     cx.globalAlpha = 1;
+    // XƏTA İDİ: 512 px tekstura 208 m-lik arenaya BİR DƏFƏ yayılırdı —
+    // 1–2 piksellik cızıqlar yerdə 12 metrlik tünd ləkələrə çevrilirdi
+    // (istifadəçi rəyi: "yerdə qəribə ləkələr"). İndi tekstura təkrarlanır,
+    // cızıqlar real beton faktura ölçüsündədir.
     const floorTex = new THREE.CanvasTexture(cv);
     floorTex.colorSpace = THREE.SRGBColorSpace;
+    floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping;
+    floorTex.repeat.set(9, 9);
+    floorTex.anisotropy = 4;
     const floor = new THREE.Mesh(
       new THREE.CircleGeometry(ARENA_R, 48),
       new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.95 })
     );
     floor.rotation.x = -Math.PI / 2;
     this.scene.add(floor);
+
+    // Neon halqalar teksturadan ÇIXARILDI (təkrarlananda 9 dəfə çıxırdı) —
+    // indi ayrıca nazik həndəsədir, ölçüsü arenaya bağlıdır
+    for (const [k, col] of [[0.39, 0xb44bff], [0.70, 0xff6b1a], [0.97, 0x37b8ff]]) {
+      const rr = ARENA_R * k;
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(rr - 0.5, rr + 0.5, 96),
+        new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.32,
+          blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
+      );
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.y = 0.02;
+      this.scene.add(ring);
+    }
     const around = new THREE.Mesh(
       new THREE.PlaneGeometry(760, 760),
       new THREE.MeshStandardMaterial({ color: 0x1a1128, roughness: 1 })

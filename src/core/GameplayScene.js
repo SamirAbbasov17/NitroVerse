@@ -237,7 +237,16 @@ export class GameplayScene {
         });
         this.cars.push(car);
         this.controllers.push(ai);
-        this.racers.push({ car, controller: ai, name: data.name, isPlayer: false, color: data.bodyColor });
+        // BOTLARA DA İMZA GÜCÜ: əvvəl yalnız oyunçuda vardı — botlar öz
+        // maşınlarının xüsusi gücünü heç vaxt işlətmirdi (istifadəçi rəyi).
+        car.carId = data.id;
+        const sig = new SignatureAbility(car, this);
+        const racer = { car, controller: ai, name: data.name, isPlayer: false,
+          color: data.bodyColor, signature: sig,
+          // Çətinlik nə qədər yüksəkdirsə, gücü bir o qədər tez və yerində işlədir
+          _sigWait: (this.config.difficulty === 'hard' ? 6 : this.config.difficulty === 'easy' ? 22 : 12)
+            + Math.random() * 10 };
+        this.racers.push(racer);
         slotIdx++;
       });
 
@@ -668,6 +677,23 @@ export class GameplayScene {
 
     for (const ctrl of this.controllers) ctrl.update(dt, this.track);
     this.signature?.update(dt);
+    // ————— BOTLARIN İMZA GÜCÜ —————
+    // İşə salma şərti: gözləmə bitib, sürət yaxşıdır (düz hissə) və ya
+    // oyunçudan geridədirsə — yəni gücü mənalı anda işlədir, təsadüfən yox.
+    if (this._state === 'run') {
+      for (const r of this.racers) {
+        if (r.isPlayer || !r.signature) continue;
+        r.signature.update(dt);
+        if (!r.signature.ready) continue;
+        r._sigWait -= dt;
+        if (r._sigWait > 0) continue;
+        const sürət = r.car.velocity.length();
+        const düzHissə = sürət > r.car.maxSpeed * 0.72;
+        const geridə = (r.position || 0) > (this.raceManager?.getPlayer()?.position || 0);
+        if (düzHissə || geridə) r.signature.activate();
+        else r._sigWait = 1.5;   // uyğun an deyil — bir az sonra yenidən bax
+      }
+    }
     this._resolveCollisions();
 
     const racingActive = this.isRace ? this.raceManager.state === 'racing' : true;
