@@ -614,7 +614,12 @@ export class EndlessScene {
     const ty = terrainY(car.position.x, car.position.z);
     const rpB = this.road.points[li];
     const onBridge = rpB.y - terrainY(rpB.x, rpB.z) > RAIL_ABOVE;
-    const RAIL = hw + 0.75;
+    // SÜRAHİNİN İÇ ÜZÜ hw + 0.3-dədir (bax EndlessRoad → körpü _ribbon).
+    // Əvvəl klamp hw + 0.75 idi: maşının MƏRKƏZİ sürahinin içinə keçirdi və
+    // gövdə dəmirin içindən çıxırdı. İndi maşının yarım eni də çıxılır —
+    // gövdə sürahiyə söykənib dayanır (tunel divarında olduğu kimi).
+    const CAR_HALF = 0.95;
+    const RAIL = hw + 0.3 - CAR_HALF;
     // Sürahi yalnız KÖRPÜNÜN ÜSTÜNDƏ olan maşına aiddir. Maşın körpünün
     // yanındakı suda/torpaqdadırsa (ora yandan gəlib) sürahi onu tutmamalıdır —
     // əks halda görünməyən qüvvə onu yuxarı, yola atırdı.
@@ -1034,8 +1039,16 @@ export class EndlessScene {
     const gx = Math.round(c.x / gT) * gT, gz = Math.round(c.z / gT) * gT;
     this.ground.position.set(gx, 0, gz);
     this.water.position.set(gx, WATER_LEVEL, gz);
-    if (gx !== this._groundSnap.x || gz !== this._groundSnap.z) {
+    // YOL UCU DA TƏTİKDİR: yer yalnız kafel sürüşəndə (hər ~50 m) yenidən
+    // hesablanırdı, yol isə fasiləsiz qabağa uzanır. Aralıqda yaranan yeni
+    // yol KƏSİLMƏMİŞ torpağın altından keçirdi və asfaltın üstündə yaşıl
+    // torpaq dilimi görünürdü (istifadəçi skrinşotu). İndi yol ucu 48 m
+    // irəlilədikdə də yenidən kəsilir.
+    const yolUcu = this.road.base + this.road.points.length;
+    const ucSürüşdü = Math.abs(yolUcu - (this._cutTip ?? -1e9)) >= 6;
+    if (gx !== this._groundSnap.x || gz !== this._groundSnap.z || ucSürüşdü) {
       this._groundSnap.x = gx; this._groundSnap.z = gz;
+      this._cutTip = yolUcu;
       // Yol nöqtələrini şəbəkə xanalarına yığ (vertex başına sürətli axtarış).
       // Xəritə saxlanılır: maşının hündürlüyü də EYNİ anlıq görüntüdən oxunur
       // (bax _meshGroundY) — maşın ekranda gördüyümüz səthdə oturur.

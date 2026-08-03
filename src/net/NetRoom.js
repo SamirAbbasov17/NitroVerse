@@ -97,9 +97,14 @@ export class NetRoom {
   _emit(evt, data) { this.handlers[evt]?.(data); }
 
   // ————— Otaq yarat (host) —————
-  createRoom(name) {
+  // roomName — otaq siyahısında görünən ad; playerName — oyunçunun lobbidə və
+  // oyunda görünən adı. ƏVVƏL İKİSİ EYNİ İDİ: hesabla girmiş oyunçu otağa
+  // fərqli ad verəndə öz ləqəbi itirdi və otaq adı ilə görünürdü.
+  createRoom(roomName, playerName = null) {
+    const name = playerName || roomName;
     return new Promise((resolve, reject) => {
       this.name = name;
+      this.roomName = roomName;
       this.isHost = true;
       const code = makeCode();
       const peer = new Peer(PREFIX + code, peerOptions());

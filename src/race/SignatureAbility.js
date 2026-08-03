@@ -220,6 +220,74 @@ export class SignatureAbility {
   }
 
   // Yumşaq radial tekstura — bir dəfə qurulur, bütün izlər paylaşır
+  // İZ TEKSTURALARI: hər gücün öz xarakteri var. Əvvəl hamısı EYNİ yumşaq
+  // dairə idi — ona görə "yerdə dairələr" kimi görünürdü (istifadəçi rəyi).
+  //   fire  — qeyri-müntəzəm közərmiş ləkə (yanmış yer)
+  //   cloud — dalğalı duman
+  //   ice   — kristal cizgiləri
+  static _texCache = {};
+  _lookTex(look = 'fire') {
+    const keş = SignatureAbility._texCache;
+    if (keş[look]) return keş[look];
+    const N = 128;
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = N;
+    const cx = cv.getContext('2d');
+    const rnd = (a) => { const x = Math.sin(a * 127.1) * 43758.55; return x - Math.floor(x); };
+
+    if (look === 'ice') {
+      const g = cx.createRadialGradient(N / 2, N / 2, 4, N / 2, N / 2, N / 2 - 2);
+      g.addColorStop(0, 'rgba(255,255,255,0.95)');
+      g.addColorStop(0.6, 'rgba(255,255,255,0.35)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      cx.fillStyle = g; cx.fillRect(0, 0, N, N);
+      // kristal çatlar
+      cx.strokeStyle = 'rgba(255,255,255,0.75)'; cx.lineWidth = 2;
+      for (let i = 0; i < 9; i++) {
+        const a = rnd(i * 3.1) * Math.PI * 2;
+        cx.beginPath(); cx.moveTo(N / 2, N / 2);
+        cx.lineTo(N / 2 + Math.cos(a) * N * 0.44, N / 2 + Math.sin(a) * N * 0.44);
+        cx.stroke();
+      }
+    } else if (look === 'cloud') {
+      // üst-üstə düşən yumşaq ləkələr → dalğalı duman kənarı
+      for (let i = 0; i < 14; i++) {
+        const a = rnd(i * 7.7) * Math.PI * 2, rr = rnd(i * 2.3) * N * 0.3;
+        const x = N / 2 + Math.cos(a) * rr, y = N / 2 + Math.sin(a) * rr;
+        const rad = N * (0.16 + rnd(i * 5.5) * 0.16);
+        const g = cx.createRadialGradient(x, y, 1, x, y, rad);
+        g.addColorStop(0, 'rgba(255,255,255,0.55)');
+        g.addColorStop(1, 'rgba(255,255,255,0)');
+        cx.fillStyle = g; cx.beginPath(); cx.arc(x, y, rad, 0, 7); cx.fill();
+      }
+    } else {
+      // FIRE: isti nüvə + qeyri-müntəzəm kənar + qara köz ləkələri
+      const g = cx.createRadialGradient(N / 2, N / 2, 2, N / 2, N / 2, N / 2 - 2);
+      g.addColorStop(0, 'rgba(255,255,255,1)');
+      g.addColorStop(0.35, 'rgba(255,225,150,0.85)');
+      g.addColorStop(0.72, 'rgba(255,120,30,0.42)');
+      g.addColorStop(1, 'rgba(255,60,0,0)');
+      cx.fillStyle = g; cx.fillRect(0, 0, N, N);
+      cx.globalCompositeOperation = 'destination-out';
+      for (let i = 0; i < 26; i++) {        // kənarı "yeyib" qeyri-müntəzəm et
+        const a = rnd(i * 4.4) * Math.PI * 2;
+        const rr = N * (0.30 + rnd(i * 8.1) * 0.22);
+        const x = N / 2 + Math.cos(a) * rr, y = N / 2 + Math.sin(a) * rr;
+        const rad = N * (0.05 + rnd(i * 1.7) * 0.09);
+        const gg = cx.createRadialGradient(x, y, 0, x, y, rad);
+        gg.addColorStop(0, 'rgba(0,0,0,0.85)');
+        gg.addColorStop(1, 'rgba(0,0,0,0)');
+        cx.fillStyle = gg; cx.beginPath(); cx.arc(x, y, rad, 0, 7); cx.fill();
+      }
+      cx.globalCompositeOperation = 'source-over';
+    }
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.userData = { shared: true };
+    keş[look] = tex;
+    return tex;
+  }
+
   _softTex() {
     if (SignatureAbility._soft) return SignatureAbility._soft;
     const cv = document.createElement('canvas');
@@ -252,9 +320,11 @@ export class SignatureAbility {
     // ƏVVƏL: kəskin kənarlı CircleGeometry — yerə "yumru disklər" düzülürdü,
     // süni görünürdü. İndi yumşaq kənarlı, hərəkət istiqamətində UZANMIŞ
     // ləkədir: təkərin arxasında qalan sürtülmə kimi oxunur.
+    const look = t.look || 'fire';
     const mat = new THREE.MeshBasicMaterial({
-      map: this._softTex(), color: t.color, transparent: true,
-      opacity: t.blind ? 0.42 : 0.30, depthWrite: false,
+      map: this._lookTex(look), color: t.color, transparent: true,
+      // Əvvəl 0.30 idi — gündüz işığında demək olar görünmürdü
+      opacity: t.blind ? 0.5 : look === 'fire' ? 0.62 : 0.42, depthWrite: false,
       blending: t.blind ? THREE.NormalBlending : THREE.AdditiveBlending,
     });
     const m = new THREE.Mesh(SignatureAbility._patchGeo
@@ -266,7 +336,43 @@ export class SignatureAbility {
     m.renderOrder = 1;
     this._group.add(m);
     this._patches.push({ x: px, z: pz, r, life: 3.2, max: 3.2, slip: t.slip, mesh: m,
-      sx: r * 1.7, sy: r * 2.6 });   // baza ölçüsü (uzunsov)
+      sx: r * 1.7, sy: r * 2.6, look, faz: Math.random() * 6.28 });
+
+    // ————— YANAN YER: qaralmış ləkə + qalxan alov dilləri —————
+    // Alov izi yalnız işıqlı ləkə idi; indi altında KÖZ (tünd, normal
+    // qarışdırma) və üstündə qısa ömürlü şaquli alovlar var.
+    if (look === 'fire') {
+      const köz = new THREE.Mesh(SignatureAbility._patchGeo, new THREE.MeshBasicMaterial({
+        map: this._lookTex('fire'), color: 0x2a1206, transparent: true,
+        opacity: 0.55, depthWrite: false,
+      }));
+      köz.rotation.x = -Math.PI / 2; köz.rotation.z = -h;
+      köz.scale.set(r * 1.9, r * 2.9, 1);
+      köz.position.set(px, 0.045, pz);
+      this._group.add(köz);
+      this._patches[this._patches.length - 1].köz = köz;
+
+      this._flames = this._flames || [];
+      for (let i = 0; i < 2; i++) {
+        const fm = new THREE.Mesh(
+          SignatureAbility._flameGeo || (SignatureAbility._flameGeo = new THREE.PlaneGeometry(1, 1)),
+          new THREE.MeshBasicMaterial({
+            map: this._lookTex('fire'), color: i ? 0xffd25a : t.color, transparent: true,
+            opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+          })
+        );
+        const a = Math.random() * Math.PI * 2;
+        fm.position.set(px + Math.cos(a) * r * 0.5, 0.5, pz + Math.sin(a) * r * 0.5);
+        fm.scale.set(r * 0.8, r * 1.3, 1);
+        this._group.add(fm);
+        this._flames.push({ mesh: fm, t: 0, life: 0.55 + Math.random() * 0.35,
+          vy: 2.2 + Math.random() * 1.6, faz: Math.random() * 6.28 });
+      }
+      if (this._flames.length > 26) {
+        const köhnə = this._flames.shift();
+        this._group.remove(köhnə.mesh); köhnə.mesh.material.dispose();
+      }
+    }
 
     // Canlı ləkə tavanı — mobil GPU-da overdraw partlamasın
     if (this._patches.length > 34) {
@@ -325,7 +431,32 @@ export class SignatureAbility {
   }
 
 
+  // ————— ALOV DİLLƏRİ —————
+  _updateFlames(dt) {
+    if (!this._flames?.length) return;
+    const kam = this.scene?.camera;
+    for (let i = this._flames.length - 1; i >= 0; i--) {
+      const f = this._flames[i];
+      f.t += dt;
+      const k = f.t / f.life;
+      if (k >= 1) {
+        this._group.remove(f.mesh); f.mesh.material.dispose();
+        this._flames.splice(i, 1);
+        continue;
+      }
+      f.mesh.position.y += f.vy * dt;
+      // billboard: həmişə kameraya baxsın (alov yandan lövhə kimi görünməsin)
+      if (kam) f.mesh.rotation.y = Math.atan2(kam.position.x - f.mesh.position.x, kam.position.z - f.mesh.position.z);
+      const en = 1 - k * 0.55;
+      f.mesh.scale.set(f.mesh.scale.x, f.mesh.scale.y, 1);
+      f.mesh.material.opacity = 0.85 * (1 - k * k) * (0.75 + Math.sin(this._t * 17 + f.faz) * 0.25);
+      f.mesh.scale.x = Math.max(0.05, f.mesh.scale.x * (1 - dt * 0.5)) * (0.98 + en * 0.02);
+    }
+  }
+
   _updatePatches(dt) {
+    this._t = (this._t || 0) + dt;
+    this._updateFlames(dt);
     for (let i = this._patches.length - 1; i >= 0; i--) {
       const p = this._patches[i];
       p.life -= dt;
@@ -333,12 +464,25 @@ export class SignatureAbility {
       // XƏTA İDİ: setScalar bərabər miqyas verirdi və uzunsov iz KVADRATA
       // çevrilirdi (ölçüldü: 1.1×1.1). İndi baza ölçüsü saxlanılır, yalnız
       // yayılma əmsalı vurulur.
-      p.mesh.material.opacity = k * (this.data?.trail?.blind ? 0.42 : 0.30);
+      // CANLI TİTRƏYİŞ: sabit ləkə "stiker" kimi görünürdü. Alov titrəyir,
+      // duman yavaş dalğalanır, buz sabit qalır.
+      const bazaOp = this.data?.trail?.blind ? 0.5 : p.look === 'fire' ? 0.62 : 0.42;
+      const titrə = p.look === 'fire'
+        ? 0.78 + Math.sin(this._t * 13 + p.faz) * 0.22
+        : p.look === 'cloud' ? 0.9 + Math.sin(this._t * 2.4 + p.faz) * 0.1 : 1;
+      p.mesh.material.opacity = k * bazaOp * titrə;
       const spread = 1 + (1 - k) * 0.35;
-      p.mesh.scale.set(p.sx * spread, p.sy * spread, 1);
+      const nəbz = p.look === 'fire' ? 1 + Math.sin(this._t * 9 + p.faz) * 0.05 : 1;
+      p.mesh.scale.set(p.sx * spread * nəbz, p.sy * spread * nəbz, 1);
+      if (p.köz) {
+        // Köz ləkəsi sönmür, tədricən qaralır — "yanmış yer" hissi
+        p.köz.material.opacity = Math.min(0.55, k * 0.75 + 0.12);
+        p.köz.scale.set(p.sx * 1.12 * spread, p.sy * 1.12 * spread, 1);
+      }
       if (p.life <= 0) {
         this._group.remove(p.mesh);
-        p.mesh.geometry.dispose(); p.mesh.material.dispose();
+        p.mesh.material.dispose();
+        if (p.köz) { this._group.remove(p.köz); p.köz.material.dispose(); }
         this._patches.splice(i, 1);
         continue;
       }
@@ -355,8 +499,13 @@ export class SignatureAbility {
   }
 
   dispose() {
-    for (const p of this._patches) { p.mesh.geometry.dispose(); p.mesh.material.dispose(); }
+    for (const p of this._patches) {
+      p.mesh.material.dispose();
+      if (p.köz) p.köz.material.dispose();
+    }
     this._patches.length = 0;
+    for (const f of this._flames || []) f.mesh.material.dispose();
+    if (this._flames) this._flames.length = 0;
     this._group.parent?.remove(this._group);
   }
 }

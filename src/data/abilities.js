@@ -25,7 +25,7 @@ export const ABILITIES = {
   blaze: {
     name: 'Alov İzi', icon: 'flametrail', color: 0xff6a2b,
     desc: 'Güclü sürət + arxada qalan alov izi təqibçiləri sürüşdürür',
-    mech: 'surge', boost: 1.3, power: 1.07, trail: { life: 4.5, slip: 1.25, color: 0xff6a2b },
+    mech: 'surge', boost: 1.3, power: 1.07, trail: { life: 4.5, slip: 1.25, color: 0xff6a2b, look: 'fire' },
   }, // budget: 60 sürət + 40 maneə
   titan: {
     name: 'Titan İtkisi', icon: 'thrust', color: 0x4a6de5,
@@ -50,17 +50,17 @@ export const ABILITIES = {
   venom: {
     name: 'Zəhər Buludu', icon: 'venom', color: 0x2e9e5b,
     desc: 'Arxada zəhərli bulud qoyur — içinə girən idarəni itirir',
-    mech: 'trail', trail: { life: 7.5, slip: 1.85, color: 0x2e9e5b, wide: 1.5 },
+    mech: 'trail', trail: { life: 7.5, slip: 1.85, color: 0x2e9e5b, wide: 1.5, look: 'cloud' },
   },
   crimson: {
     name: 'Duman Pərdəsi', icon: 'smokewall', color: 0xc21f3a,
     desc: 'Sıx duman divarı — arxadakılar həm görmür, həm sürüşür',
-    mech: 'trail', trail: { life: 7.0, slip: 1.6, color: 0x8a8f99, wide: 1.9, blind: true },
+    mech: 'trail', trail: { life: 7.0, slip: 1.6, color: 0x8a8f99, wide: 1.9, blind: true, look: 'cloud' },
   },
   frost: {
     name: 'Buz Cığırı', icon: 'icetrail', color: 0x7fd4ff,
     desc: 'Buz cığırı qoyur və özü sürüşmədən keçir',
-    mech: 'trail', trail: { life: 7.0, slip: 1.45, color: 0x7fd4ff }, grip: 2.8,
+    mech: 'trail', trail: { life: 7.0, slip: 1.45, color: 0x7fd4ff, look: 'ice' }, grip: 2.8,
   },
 
   // ——— QORUNMA ———

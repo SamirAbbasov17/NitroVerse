@@ -144,12 +144,13 @@ export class Menu {
       this.showModes();
     };
     this.root.querySelector('[data-create]').onclick = async () => {
-      const name = this._onlineName();
+      const name = this._onlineName();                 // OTAĞIN adı (siyahıda görünür)
+      const oyunçuAdı = auth.profile?.nick || name;    // OYUNÇUNUN adı (lobbidə görünür)
       this._stopRoomsPoll();
       this._onlineBusy(t('online.creating'));
       try {
         this.net = new NetRoom();
-        await this.net.createRoom(name);
+        await this.net.createRoom(name, oyunçuAdı);
         this.net.setLobby(this.sel.trackId, this.sel.laps);
         this.showLobby();
       } catch (e) {
@@ -609,7 +610,8 @@ export class Menu {
   async _joinWithCode(codeRaw) {
     const code = String(codeRaw || '').trim().toUpperCase();
     if (code.length !== 4) { this.showOnline(t('online.codeHint')); return; }
-    const name = this._onlineName();
+    // Hesabla girmişsə lobbidə ləqəbi görünsün (yazdığı sərbəst ad yox)
+    const name = auth.profile?.nick || this._onlineName();
     this._stopRoomsPoll();
     this._onlineBusy(t('online.joining'));
     // Şəbəkə xətalarında avtomatik təkrar cəhdlər (bəzi şəbəkələrdə ilk bağlantı büdrəyir)

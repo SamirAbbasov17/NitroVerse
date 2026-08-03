@@ -529,13 +529,24 @@ export class ArenaScene {
 
   _fireMissile(r) {
     const c = r.car;
-    // Hədəf: irəli konusda ən yaxın sağ düşmən
-    let best = null, bestD = 60;
+    // HƏDƏF SEÇİMİ: əvvəl GÖRÜŞ SAHƏSİNDƏKİ (qabaq konus, ±55°) ən yaxın
+    // düşmən; qabaqda heç kim yoxdursa ancaq onda ümumi ən yaxın.
+    // Əvvəl sadəcə ən yaxını seçilirdi — raket arxadakı maşına dönürdü və
+    // oyunçu nişan aldığı hədəfi vura bilmirdi.
+    const KONUS = Math.cos(55 * Math.PI / 180);
+    const fx = Math.sin(c.heading), fz = Math.cos(c.heading);
+    let qabaq = null, qabaqD = 95, hər = null, hərD = 60;
     for (const o of this.racers) {
       if (o === r || !o.car.alive) continue;
-      const d = o.car.position.distanceTo(c.position);
-      if (d < bestD) { best = o; bestD = d; }
+      const dx = o.car.position.x - c.position.x;
+      const dz = o.car.position.z - c.position.z;
+      const d = Math.hypot(dx, dz);
+      if (d < hərD) { hər = o; hərD = d; }
+      if (d < 0.001) continue;
+      const istiqamət = (dx * fx + dz * fz) / d;   // 1 = düz qabaqda
+      if (istiqamət >= KONUS && d < qabaqD) { qabaq = o; qabaqD = d; }
     }
+    const best = qabaq || hər;
     const mesh = new THREE.Mesh(
       new THREE.SphereGeometry(0.55, 8, 6),
       new THREE.MeshStandardMaterial({ color: 0xff6b1a, emissive: 0xff8438, emissiveIntensity: 1.6 })

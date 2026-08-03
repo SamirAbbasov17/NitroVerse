@@ -25,7 +25,9 @@ export function announceRoom(net) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         code: net.code,
-        host: net.players.find((p) => p.isHost)?.name || net.name,
+        // Otaq siyahısında OTAĞIN adı görünür (host öz ləqəbi ilə lobbidə
+        // görünür — ikisi ayrı sahədir)
+        host: net.roomName || net.players.find((p) => p.isHost)?.name || net.name,
         players: net.players.length,
         track: net.lobbyTrack,
         laps: net.lobbyLaps,
