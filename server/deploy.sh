@@ -121,6 +121,9 @@ systemctl enable --now nitroverse nitroverse-peer >/dev/null
 systemctl restart nitroverse nitroverse-peer
 
 say "7/8 · Caddy: HTTPS + marşrutlar"
+# Serverin öz IP-si: domen DNS-də hazır olmasa da oyunu sınamaq üçün
+# http://IP açıq qalır (sertifikat yalnız domen üçün alınır)
+SERVER_IP="$(curl -4 -s --max-time 8 https://api.ipify.org || hostname -I | awk '{print $1}')"
 cat > /etc/caddy/Caddyfile <<EOF
 ${DOMAIN}, www.${DOMAIN} {
     encode zstd gzip
@@ -140,6 +143,18 @@ ${DOMAIN}, www.${DOMAIN} {
     @statik path /music/* /models/* /assets/*
     header @statik Cache-Control "public, max-age=31536000, immutable"
     header /*.html Cache-Control "no-cache"
+}
+
+# DNS hazır olmadan sınaq üçün (domen işləyəndən sonra silinə bilər)
+http://${SERVER_IP} {
+    encode zstd gzip
+    handle /peer/* {
+        uri strip_prefix /peer
+        reverse_proxy localhost:${PEER_PORT}
+    }
+    handle {
+        reverse_proxy localhost:${PORT}
+    }
 }
 EOF
 caddy validate --config /etc/caddy/Caddyfile >/dev/null && systemctl restart caddy
