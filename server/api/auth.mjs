@@ -1,6 +1,7 @@
 // Hesab sistemi: qeydiyyat / giriş / profil / qızıl / maşın alışı.
 // Saxlama: Netlify Blobs ('users'), şifrə: scrypt + duz, sessiya: HMAC token.
 import { scryptSync, randomBytes, timingSafeEqual, createHmac } from 'node:crypto';
+import { göndər, kart, kodBloku } from './mailer.mjs';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -14,8 +15,9 @@ const json = (obj, status = 200) =>
   });
 
 // ——— Server tərəfi iqtisadiyyat cədvəlləri (client ilə sinxron saxla!) ———
-const STARTER_CARS = ['blaze', 'taxi', 'cruiser', 'ranger', 'venom'];
+const STARTER_CARS = ['blaze', 'taxi', 'cruiser', 'ranger'];
 const CAR_PRICES = {
+  venom: 300,     // client cədvəli ilə sinxron (src/data/economy.js)
   titan: 400, cargo: 450, inferno: 550, goldrush: 650, interceptor: 850,
   lagoon: 350, sunburst: 380, flamingo: 420, sequoia: 480,
   crimson: 500, midnight: 600, violetta: 700, frost: 900,
@@ -107,6 +109,9 @@ function hashPass(pass, saltHex = null) {
 
 const pubProfile = (u) => ({
   nick: u.nick, gold: u.gold, cars: u.cars, created: u.created,
+  // E-poçtun ÖZÜ qaytarılmır (sızma riski) — yalnız var/yox bilgisi:
+  // parolu bərpa etmək mümkündürmü, UI bunu göstərir
+  hasEmail: !!u.email,
   stats: u.stats || {},
   cosmetics: u.cosmetics || [],
   equip: u.equip || {},
@@ -116,7 +121,7 @@ const pubProfile = (u) => ({
 // UTC gün nömrəsi — günlük mükafatın açarı
 const dayNum = (ts) => Math.floor(ts / 86400000);
 
-export function makeAuth(getStore) {
+export function makeAuth(getStore, env = process.env) {
   return async (req) => {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
     if (req.method !== 'POST') return json({ error: 'method' }, 405);
@@ -138,9 +143,16 @@ export function makeAuth(getStore) {
       const key = nick.toLowerCase();
       const exists = await store.get(key);
       if (exists) return json({ error: 'nick-taken' }, 409);
+      const email = String(b.email || '').trim().toLowerCase();
+      if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)) {
+        return json({ error: 'email-invalid' }, 400);
+      }
       const { salt, hash } = hashPass(pass);
       const user = {
         nick, salt, hash,
+        // E-poçt İSTƏYƏ BAĞLIDIR, amma parolu unudanda bərpa yalnız onunla
+        // mümkündür (başqa təsdiq kanalımız yoxdur)
+        email: email || null,
         gold: 0, cars: [], created: Date.now(),
         awards: [], stats: {},
       };
@@ -177,6 +189,62 @@ export function makeAuth(getStore) {
       return json({ token, profile: pubProfile(user) });
     }
 
+    // ————— PAROL BƏRPASI: kod göndər —————
+    // Cavab HƏMİŞƏ eynidir — hansı nikin mövcud olduğu sızmasın.
+    if (action === 'forgot') {
+      const key = String(b.nick || '').trim().toLowerCase();
+      const cavab = json({ ok: true });
+      if (!key) return cavab;
+      const user = await store.get(key, { type: 'json' }).catch(() => null);
+      if (!user?.email) return cavab;
+      const rk = `pr/${key}`;
+      const əvvəlki = await store.get(rk, { type: 'json' }).catch(() => null);
+      // Spam qapısı: 60 saniyədə bir kod
+      if (əvvəlki && Date.now() - əvvəlki.t < 60000) return cavab;
+      const kod = String(Math.floor(100000 + Math.random() * 900000));
+      const { salt, hash } = hashPass(kod);
+      await store.setJSON(rk, { salt, hash, t: Date.now(), n: 0 });
+      const html = kart({
+        nişan: '🔑 PAROL BƏRPASI',
+        başlıq: 'Parolu sıfırlamaq üçün kod',
+        gövdə: kodBloku(kod) + '<div style="font:400 13px/1.6 Helvetica,Arial,sans-serif;color:#8c94a6;padding-top:14px">Kodu oyundakı bərpa ekranına yaz və yeni parol təyin et. Kod <b style="color:#e8ecf3">15 dəqiqə</b> etibarlıdır.</div>',
+        alt: `Bu istəyi sən göndərməmisənsə, məktubu nəzərə alma — hesabın <b>${key}</b> toxunulmaz qalır.`,
+      });
+      await göndər(env, {
+        to: user.email, subject: '🔑 NitroVerse — parol bərpası kodu', html,
+        text: `NitroVerse parol bərpası kodu: ${kod}\nKod 15 dəqiqə etibarlıdır.`,
+      });
+      return cavab;
+    }
+
+    // ————— PAROL BƏRPASI: kodla yeni parol —————
+    if (action === 'reset') {
+      const key = String(b.nick || '').trim().toLowerCase();
+      const kod = String(b.code || '').trim();
+      const yeni = String(b.pass || '');
+      if (yeni.length < 4 || yeni.length > 64) return json({ error: 'pass-short' }, 400);
+      const rk = `pr/${key}`;
+      const rec = await store.get(rk, { type: 'json' }).catch(() => null);
+      if (!rec) return json({ error: 'code-bad' }, 400);
+      if (Date.now() - rec.t > 15 * 60000) { await store.delete(rk); return json({ error: 'code-expired' }, 400); }
+      if (rec.n >= 6) { await store.delete(rk); return json({ error: 'code-bad' }, 400); }
+      const { hash } = hashPass(kod, rec.salt);
+      const a = Buffer.from(hash, 'hex'), c = Buffer.from(rec.hash, 'hex');
+      if (a.length !== c.length || !timingSafeEqual(a, c)) {
+        await store.setJSON(rk, { ...rec, n: (rec.n || 0) + 1 });
+        return json({ error: 'code-bad' }, 400);
+      }
+      const user = await store.get(key, { type: 'json' });
+      if (!user) return json({ error: 'no-user' }, 404);
+      const nh = hashPass(yeni);
+      user.salt = nh.salt; user.hash = nh.hash;
+      await store.setJSON(key, user);
+      await store.delete(rk);
+      await store.delete(`rl/${key}`).catch(() => {});   // giriş kilidi açılsın
+      const token = sign({ nick: key, exp: Date.now() + 30 * 24 * 3600 * 1000 });
+      return json({ token, profile: pubProfile(user) });
+    }
+
     // ————— Token tələb edən əməliyyatlar —————
     const session = verify(String(b.token || ''));
     if (!session) return json({ error: 'auth' }, 401);
@@ -184,6 +252,28 @@ export function makeAuth(getStore) {
     if (!user) return json({ error: 'no-user' }, 404);
 
     if (action === 'me') return json({ profile: pubProfile(user) });
+
+    // Parolu dəyiş (köhnə parol tələb olunur)
+    if (action === 'changePass') {
+      const yeni = String(b.pass || '');
+      if (yeni.length < 4 || yeni.length > 64) return json({ error: 'pass-short' }, 400);
+      const { hash } = hashPass(String(b.old || ''), user.salt);
+      const a = Buffer.from(hash, 'hex'), c = Buffer.from(user.hash, 'hex');
+      if (a.length !== c.length || !timingSafeEqual(a, c)) return json({ error: 'wrong-pass' }, 401);
+      const nh = hashPass(yeni);
+      user.salt = nh.salt; user.hash = nh.hash;
+      await store.setJSON(session.nick, user);
+      return json({ ok: true, profile: pubProfile(user) });
+    }
+
+    // E-poçtu təyin et / dəyiş (parol bərpası üçün lazımdır)
+    if (action === 'setEmail') {
+      const email = String(b.email || '').trim().toLowerCase();
+      if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)) return json({ error: 'email-invalid' }, 400);
+      user.email = email || null;
+      await store.setJSON(session.nick, user);
+      return json({ ok: true, profile: pubProfile(user) });
+    }
 
     // Qızıl mükafatı — tavan + pəncərə limiti (sadə fırıldaq qoruması)
     if (action === 'award') {

@@ -54,8 +54,8 @@ class AuthManager {
     }
   }
 
-  async register(nick, pass) {
-    const { token, profile } = await this._call({ action: 'register', nick, pass });
+  async register(nick, pass, email = '') {
+    const { token, profile } = await this._call({ action: 'register', nick, pass, email });
     this.token = token;
     localStorage.setItem('apexToken', token);
     this.profile = profile;
@@ -69,6 +69,33 @@ class AuthManager {
     localStorage.setItem('apexToken', token);
     this.profile = profile;
     this._emit();
+    return profile;
+  }
+
+  // ————— Parol bərpası —————
+  // Server həmişə {ok:true} qaytarır (hansı nikin mövcudluğu sızmasın)
+  async forgot(nick) {
+    return this._call({ action: 'forgot', nick });
+  }
+
+  async reset(nick, code, pass) {
+    const { token, profile } = await this._call({ action: 'reset', nick, code, pass });
+    this.token = token;
+    localStorage.setItem('apexToken', token);
+    this.profile = profile;
+    this._emit();
+    return profile;
+  }
+
+  async changePass(oldPass, pass) {
+    const { profile } = await this._call({ action: 'changePass', token: this.token, old: oldPass, pass });
+    if (profile) { this.profile = profile; this._emit(); }
+    return profile;
+  }
+
+  async setEmail(email) {
+    const { profile } = await this._call({ action: 'setEmail', token: this.token, email });
+    if (profile) { this.profile = profile; this._emit(); }
     return profile;
   }
 

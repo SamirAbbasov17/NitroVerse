@@ -437,7 +437,6 @@ export class Menu {
           <div class="field" style="margin-top:10px"><label>${t('bug.email')}</label>
             <input class="field__input" id="bug-email" type="email" maxlength="120" autocomplete="off" placeholder="${t('bug.emailPh')}" /></div>
           <div class="auth-msg" data-bug-note hidden></div>
-          <div class="menu-sub" style="margin-top:12px">${t('bug.coffeeNote')}</div>
         </div>`,
       nav: `<button class="btn btn--ghost" data-back>${t('ui.back')}</button>
             <button class="btn btn--primary" data-bug-send>${t('bug.send')}</button>`,
@@ -456,7 +455,7 @@ export class Menu {
       const subject = this.root.querySelector('#bug-subject').value.trim();
       const msg = this.root.querySelector('#bug-msg').value.trim();
       const email = this.root.querySelector('#bug-email').value.trim();
-      if (msg.length < 5) { say(t('bug.need')); return; }
+      if (msg.length < 3) { say(t('bug.need')); return; }
       btn.disabled = true;
       say(t('bug.sending'), true);
       try {
@@ -1331,11 +1330,15 @@ export class Menu {
       <button class="btn" data-top style="margin-top:8px">${t('auth.leaders')}</button>
       <div class="menu-sub" style="margin-top:14px">${t('auth.earnHint')}</div>` : `
       <div class="field"><label>${t('auth.nickLabel')}</label>
-        <input class="field__input" id="auth-nick" maxlength="16" autocomplete="off" placeholder="məs: SuretliShahin" value="${esc(localStorage.getItem('apexLastNick') || '')}" /></div>
+        <input class="field__input" id="auth-nick" maxlength="16" autocomplete="username" placeholder="məs: SuretliShahin" value="${esc(localStorage.getItem('apexLastNick') || '')}" /></div>
       <div class="field" style="margin-top:10px"><label>${t('auth.passLabel')}</label>
-        <input class="field__input" id="auth-pass" type="password" maxlength="64" placeholder="••••" /></div>
+        <input class="field__input" id="auth-pass" type="password" maxlength="64" autocomplete="current-password" placeholder="••••" /></div>
       ${msg ? `<div class="auth-msg">${msg}</div>` : ''}
-      <div class="menu-sub" style="margin-top:14px">${t('auth.guestHint', { a: STARTER_CARS.length })}</div>`;
+      <button class="linkbtn" data-forgot>${t('auth.forgot')}</button>
+      <div class="auth-switch">${t('auth.noAccount')}
+        <button class="linkbtn linkbtn--accent" data-to-signup>${t('auth.toSignup')}</button>
+      </div>
+      <div class="menu-sub" style="margin-top:12px">${t('auth.signinHint', { a: STARTER_CARS.length })}</div>`;
 
     // Çıxış iki addımlıdır — təsadüfi klikdən qorunma
     const loggedNav = confirmLogout
@@ -1345,14 +1348,13 @@ export class Menu {
       : `<button class="btn btn--danger btn--ghostred" data-logout>${t('auth.logout')}</button>
          <button class="btn btn--primary" data-back-home>${t('ui.back')}</button>`;
     this._panel({
-      step: '••', stepLabel: t('auth.step'),
-      title: p ? t('auth.titleProfile') : t('auth.titleLogin'),
+      step: '••', stepLabel: p ? t('auth.step') : t('auth.stepSignin'),
+      title: p ? t('auth.titleProfile') : t('auth.titleSignin'),
       // Alçaq ekranda (telefon landşaftı) məzmun paneli aşırdı — sürüşən qab
       body: `<div class="auth-body">${body}</div>`,
       nav: p
         ? loggedNav
         : `<button class="btn btn--ghost" data-back-home>${t('auth.guestBtn')}</button>
-           <button class="btn" data-register>${t('auth.registerBtn')}</button>
            <button class="btn btn--primary" data-login>${t('auth.loginBtn')}</button>`,
     });
 
@@ -1401,10 +1403,110 @@ export class Menu {
         this.showAuth(errs[e.message] || t('auth.errNet'));
       }
     };
-    const rb = this.root.querySelector('[data-register]');
-    if (rb) rb.onclick = () => doAuth('register');
     const lb = this.root.querySelector('[data-login]');
     if (lb) lb.onclick = () => doAuth('login');
+    const su = this.root.querySelector('[data-to-signup]');
+    if (su) su.onclick = () => this.showSignup();
+    const fg = this.root.querySelector('[data-forgot]');
+    if (fg) fg.onclick = () => this.showReset();
+    // Enter ilə göndərmə (klaviaturada rahat olsun)
+    for (const id of ['#auth-nick', '#auth-pass']) {
+      const el = this.root.querySelector(id);
+      if (el) el.onkeydown = (e) => { if (e.key === 'Enter') doAuth('login'); };
+    }
+  }
+
+  // ————— QEYDİYYAT (ayrıca ekran) —————
+  showSignup(msg = '') {
+    this._here = 'signup';
+    this._preview();
+    this._panel({
+      step: '••', stepLabel: t('auth.stepSignup'), title: t('auth.titleSignup'),
+      body: `<div class="auth-body">
+        <div class="field"><label>${t('auth.nickLabel')}</label>
+          <input class="field__input" id="su-nick" maxlength="16" autocomplete="username" placeholder="məs: SuretliShahin" /></div>
+        <div class="field" style="margin-top:10px"><label>${t('auth.passLabel')}</label>
+          <input class="field__input" id="su-pass" type="password" maxlength="64" autocomplete="new-password" placeholder="••••" /></div>
+        <div class="field" style="margin-top:10px"><label>${t('auth.emailLabel')}</label>
+          <input class="field__input" id="su-email" type="email" maxlength="120" autocomplete="email" placeholder="ad@mail.com" /></div>
+        <div class="menu-sub" style="margin-top:8px">${t('auth.emailHint')}</div>
+        ${msg ? `<div class="auth-msg">${msg}</div>` : ''}
+        <div class="auth-switch">${t('auth.haveAccount')}
+          <button class="linkbtn linkbtn--accent" data-to-signin>${t('auth.toSignin')}</button>
+        </div>
+      </div>`,
+      nav: `<button class="btn btn--ghost" data-back-home>${t('ui.back')}</button>
+            <button class="btn btn--primary" data-do-signup>${t('auth.registerBtn')}</button>`,
+    });
+    this.root.querySelector('[data-back-home]').onclick = () => this.showAuth();
+    this.root.querySelector('[data-to-signin]').onclick = () => this.showAuth();
+    const go = async () => {
+      const nick = this.root.querySelector('#su-nick').value.trim();
+      const pass = this.root.querySelector('#su-pass').value;
+      const email = this.root.querySelector('#su-email').value.trim();
+      if (!nick || !pass) { this.showSignup(t('auth.fillBoth')); return; }
+      this.root.innerHTML = `<div class="loading"><div class="spinner"></div><div>${t('auth.checking')}</div></div>`;
+      try {
+        await auth.register(nick, pass, email);
+        localStorage.setItem('apexLastNick', nick);
+        this._returnFromAuth();
+      } catch (e) {
+        const errs = {
+          'nick-taken': t('auth.errTaken'), 'nick-invalid': t('auth.errNick'),
+          'pass-short': t('auth.errShort'), 'email-invalid': t('auth.emailLabel'),
+        };
+        this.showSignup(errs[e.message] || t('auth.errNet'));
+      }
+    };
+    this.root.querySelector('[data-do-signup]').onclick = go;
+    for (const id of ['#su-nick', '#su-pass', '#su-email']) {
+      const el = this.root.querySelector(id);
+      if (el) el.onkeydown = (e) => { if (e.key === 'Enter') go(); };
+    }
+  }
+
+  // ————— ŞİFRƏ BƏRPASI (2 addım: kod → yeni şifrə) —————
+  showReset(mərhələ = 1, nick = '', msg = '') {
+    this._here = 'reset';
+    this._preview();
+    const addım1 = `
+      <div class="menu-sub">${t('auth.resetStep1')}</div>
+      <div class="field" style="margin-top:12px"><label>${t('auth.nickLabel')}</label>
+        <input class="field__input" id="rs-nick" maxlength="16" autocomplete="username" value="${esc(nick || localStorage.getItem('apexLastNick') || '')}" /></div>`;
+    const addım2 = `
+      <div class="menu-sub">${t('auth.resetStep2')}</div>
+      <div class="field" style="margin-top:12px"><label>${t('auth.codeLabel')}</label>
+        <input class="field__input field__input--code" id="rs-code" maxlength="6" inputmode="numeric" placeholder="000000" /></div>
+      <div class="field" style="margin-top:10px"><label>${t('auth.newPassLabel')}</label>
+        <input class="field__input" id="rs-pass" type="password" maxlength="64" autocomplete="new-password" placeholder="••••" /></div>`;
+    this._panel({
+      step: '••', stepLabel: t('auth.stepReset'), title: t('auth.titleReset'),
+      body: `<div class="auth-body">
+        ${mərhələ === 1 ? addım1 : addım2}
+        ${msg ? `<div class="auth-msg${mərhələ === 2 ? ' auth-msg--ok' : ''}">${msg}</div>` : ''}
+      </div>`,
+      nav: `<button class="btn btn--ghost" data-back-signin>${t('ui.back')}</button>
+            <button class="btn btn--primary" data-go>${mərhələ === 1 ? t('auth.sendCode') : t('auth.resetBtn')}</button>`,
+    });
+    this.root.querySelector('[data-back-signin]').onclick = () => this.showAuth();
+    this.root.querySelector('[data-go]').onclick = async () => {
+      if (mərhələ === 1) {
+        const n = this.root.querySelector('#rs-nick').value.trim();
+        if (!n) return;
+        await auth.forgot(n).catch(() => {});
+        this.showReset(2, n, t('auth.codeSent'));
+        return;
+      }
+      const code = this.root.querySelector('#rs-code').value.trim();
+      const pass = this.root.querySelector('#rs-pass').value;
+      if (!code || !pass) return;
+      try {
+        await auth.reset(nick, code, pass);
+        this._returnFromAuth();
+      } catch (e) {
+        this.showReset(2, nick, e.message === 'pass-short' ? t('auth.errShort') : t('auth.codeBad'));
+      }
+    };
   }
 
   // Auth ekranından gəldiyin yerə qayıt

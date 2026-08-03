@@ -37,6 +37,12 @@ muteBtn.textContent = audio.muted ? '🔇' : '🔊';
 muteBtn.onclick = () => { muteBtn.textContent = audio.toggleMute() ? '🔇' : '🔊'; };
 document.body.appendChild(muteBtn);
 
+// SƏS KİLİDİ: brauzerlər istifadəçi jesti olmadan səsə icazə vermir.
+// Ona görə mümkün olan BÜTÜN ilk jestlərə qulaq asırıq — hansı gəlsə,
+// musiqi həmin an başlayır (bax AudioManager.resume → playMusic bərpası).
+for (const ev of ['touchstart', 'click']) {
+  window.addEventListener(ev, () => audio.resume(), { passive: true });
+}
 window.addEventListener('pointerdown', () => {
   audio.resume();
   // Telefonda ilk toxunuşdan etibarən (menyuda da) tam ekran + landşaft

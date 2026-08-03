@@ -17,6 +17,8 @@ const json = (obj, status = 200) =>
     headers: { 'Content-Type': 'application/json', ...CORS },
   });
 
+import { göndər } from './mailer.mjs';
+
 const MAX_MSG = 1500;
 const MAX_SUBJ = 120;
 const KEEP = 300;          // anbarda saxlanan son bildiriş sayı
@@ -98,29 +100,15 @@ function emailText({ subject, message, email, meta }) {
   ].join('\n');
 }
 
-// ————— GÖNDƏRMƏ —————
+// ————— GÖNDƏRMƏ ————— (ortaq mailer, bax api/mailer.mjs)
 async function sendEmail(env, payload) {
-  const key = env.RESEND_API_KEY;
-  if (!key) return { sent: false, reason: 'no-key' };
-  const to = env.REPORT_TO || 'abbasovsamir718@gmail.com';
-  const from = env.REPORT_FROM || 'NitroVerse <onboarding@resend.dev>';
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from, to: [to],
-      subject: `🐞 ${payload.subject}`,
-      html: emailHtml(payload),
-      text: emailText(payload),
-      ...(payload.email ? { reply_to: payload.email } : {}),
-    }),
+  return göndər(env, {
+    to: env.REPORT_TO || 'abbasovsamir718@gmail.com',
+    subject: `🐞 ${payload.subject}`,
+    html: emailHtml(payload),
+    text: emailText(payload),
+    replyTo: payload.email || null,
   });
-  if (!res.ok) {
-    // Səbəbi saxla: yanlış açar / təsdiqlənməmiş domen halında loqda görünsün
-    const detail = await res.text().catch(() => '');
-    return { sent: false, reason: `resend-${res.status}`, detail: detail.slice(0, 200) };
-  }
-  return { sent: true, reason: 'resend' };
 }
 
 // Ehtiyat yol: açar yoxdursa köhnə Netlify Forms kanalına ötür (e-poçt sadə
@@ -154,7 +142,7 @@ export function makeReport(getStore, env = process.env) {
     if (b.hp) return json({ ok: true });   // bot tələsi — sükutla udulur
 
     const message = clean(b.message, MAX_MSG);
-    if (message.length < 5) return json({ error: 'short' }, 400);
+    if (message.length < 3) return json({ error: 'short' }, 400);
     const m = b.meta || {};
     const payload = {
       subject: clean(b.subject, MAX_SUBJ) || message.slice(0, 60),

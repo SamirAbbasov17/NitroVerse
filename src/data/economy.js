@@ -3,10 +3,14 @@
 // bu fayl UI göstərişi üçündür; iki siyahı sinxron saxlanılmalıdır.
 
 // Qonaq + yeni hesab üçün açıq olan 5 başlanğıc maşın (siniflər üzrə balanslı)
-export const STARTER_CARS = ['blaze', 'taxi', 'cruiser', 'ranger', 'venom'];
+// YALNIZ 4 maşın hamıya açıqdır (istifadəçi qərarı) — qalanı qızılla alınır
+// və alış üçün hesab tələb olunur. Server siyahısı ilə SİNXRON saxla
+// (server/api/auth.mjs → STARTER_CARS).
+export const STARTER_CARS = ['blaze', 'taxi', 'cruiser', 'ranger'];
 
 // Kilidli maşınların qiymətləri (qızıl)
 export const CAR_PRICES = {
+  venom: 300,     // əvvəl başlanğıc maşını idi — indi ən ucuz alınan
   lagoon: 350,
   sunburst: 380,
   flamingo: 420,
