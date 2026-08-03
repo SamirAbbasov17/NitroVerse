@@ -40,7 +40,11 @@ export function roadYAt(x, z) {
 // Maşının oturduğu hündürlük eyni funksiyadan oxunmalıdır — yoxsa maşın ya
 // təpənin içinə girir, ya da havada qalır. EndlessScene həm mesh vertexləri,
 // həm də maşın üçün bunu çağırır.
-export const CUT_IN = 11, CUT_OUT = 24;   // kəsiyin tam / bitmə radiusu (m)
+// TAM KƏSİK RADİUSU yol yarım eni (8) + yer torunun xanası (10 m) cəmindən
+// BÖYÜK olmalıdır. Əvvəl 11 idi: kəsilməmiş qonşu vertex öz üçbucağı ilə
+// torpağı yolun kənarına 0.4–0.75 m qaldırırdı (şüa testi ilə ölçüldü) —
+// oyunçu yolun üstündə torpaq/daş görürdü.
+export const CUT_IN = 20, CUT_OUT = 34;   // kəsiyin tam / bitmə radiusu (m)
 export function groundYAt(x, z, roadY = null, dist = Infinity) {
   const y = terrainY(x, z);
   if (roadY == null || roadY >= y || dist >= CUT_OUT) return y;
@@ -836,6 +840,11 @@ export class EndlessRoad {
             if (terrainY(lx, lz) < WATER_LEVEL + 0.4) continue;   // suda fənər yox
             lp.position.set(lx, groundYAt(lx, lz, pts[i].y, hw + 2.2), lz);
             g.add(lp);
+            // Dirəyin kollideri: əvvəl yoxdu və küçə lampasının İÇİNDƏN
+            // keçmək olurdu
+            const ob = { x: lx, z: lz, r: 0.35, kind: 'lamp' };
+            chunkObstacles.push(ob);
+            this.obstacles.push(ob);
           }
         }
       }
@@ -1136,17 +1145,34 @@ export class EndlessRoad {
           // Enli oturacaq + mötədil hündürlük — dik şiş yox, dağ kütləsi
           const h = pk === 0 ? h0 : 45 + Math.random() * 70;
           const coneR = pk === 0 ? r0 : Math.min(120, h * (0.7 + Math.random() * 0.35));
-          // Zirvə gəzişməsi yola yaxınlaşıbsa — bu zirvəni burax
-          let clear = Infinity;
-          for (let q = 0; q < pts.length; q += 3) {
-            const dq = Math.hypot(px3 - pts[q].x, pz3 - pts[q].z);
-            if (dq < clear) clear = dq;
+          // ƏSL ƏTƏK RADİUSU konusun radiusundan böyükdür: silsilə deformasiyası
+          // (ridgeAt) oturacağı 1.37 dəfəyə qədər genişləndirir. Əvvəl bu nəzərə
+          // alınmırdı və dağ yolun üstünə düşürdü (şüa testi ilə tutuldu).
+          const RE = coneR * 1.37;
+          // Yola yaxındırsa uzağa itələ və YENİDƏN yoxla; hələ də yaxındırsa
+          // zirvə ÜMUMİYYƏTLƏ qurulmur. Əvvəl bir dəfə itələnib buraxılırdı,
+          // üstəlik belə zirvə yayınma xəritəsinə yazılmırdı — sonrakı yol
+          // düz onun içindən keçirdi.
+          const məsafə = () => {
+            let c = Infinity;
+            for (let q = 0; q < this.points.length; q += 2) {
+              const dq = Math.hypot(px3 - this.points[q].x, pz3 - this.points[q].z);
+              if (dq < c) c = dq;
+            }
+            for (let q = 0; q < pts.length; q += 2) {
+              const dq = Math.hypot(px3 - pts[q].x, pz3 - pts[q].z);
+              if (dq < c) c = dq;
+            }
+            return c;
+          };
+          const TƏHLÜKƏSİZ = RE + this.halfWidth + 60;
+          let clear = məsafə();
+          for (let cəhd = 0; cəhd < 3 && clear < TƏHLÜKƏSİZ; cəhd++) {
+            px3 += nrms[i].x * side * coneR * 0.9;
+            pz3 += nrms[i].z * side * coneR * 0.9;
+            clear = məsafə();
           }
-          if (clear < coneR * 1.35 + 85) {
-            // yoldan uzağa doğru geri it
-            px3 += nrms[i].x * side * coneR;
-            pz3 += nrms[i].z * side * coneR;
-          }
+          if (clear < TƏHLÜKƏSİZ) continue;   // yer tapılmadı — bu zirvə qurulmur
           const geo2 = new THREE.ConeGeometry(coneR, h, 10, 3);
           const pa = geo2.attributes.position;
           const ph1 = Math.random() * Math.PI * 2;
@@ -1169,12 +1195,13 @@ export class EndlessRoad {
           // içindən keçir. KRİTİK İNVARİANT: yalnız mövcud yoldan yayınma
           // limitindən uzaqdırsa qeyd olunur, yoxsa generator kilidlənə bilər.
           {
-            const need = coneR + this.halfWidth + 10;
+            const need = RE + this.halfWidth + 10;
             let ok = true;
             for (let q = 0; q < this.points.length; q++) {
               if (Math.hypot(px3 - this.points[q].x, pz3 - this.points[q].z) < need) { ok = false; break; }
             }
-            if (ok) chunkSpots.push({ x: px3, z: pz3, r: coneR });
+            // r = ƏSL ətək radiusu — yoxsa yol siluetin kənarından keçir
+            if (ok) chunkSpots.push({ x: px3, z: pz3, r: RE });
           }
           // Hündür zirvələrə örtük papağı — siluet dərhal "dağ" oxunur
           if (h > 78) {

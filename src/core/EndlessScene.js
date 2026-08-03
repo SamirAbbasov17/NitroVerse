@@ -424,7 +424,21 @@ export class EndlessScene {
         <div class="ehud__speed"><b id="ehud-speed">0</b><span>km/s</span></div>
         <div class="ehud__toast" id="ehud-toast"></div>
         <div id="ehud-overlay"></div>
+      </div>
+      <!-- AÇILIŞ: səhnə birdən partlayıb görünürdü. İndi qara ekrandan
+           yumşaq açılır və rejimin adı bir anlıq görünür (yarışdakı geri
+           sayımın zen qarşılığı — sürməyə mane olmur, oyunçu dərhal gedir) -->
+      <div class="ezen-intro" id="ezen-intro">
+        <div class="ezen-intro__title">${t('mode.free')}</div>
+        <div class="ezen-intro__sub">${t('mode.free.d')}</div>
       </div>`;
+    // Açılış pərdəsini növbəti kadrda söndür: səhnənin ilk kadrı hazır
+    // olmamış başlasa, keçid "atlanmış" görünür
+    const intro = this.uiRoot.querySelector('#ezen-intro');
+    if (intro) {
+      requestAnimationFrame(() => requestAnimationFrame(() => intro.classList.add('is-off')));
+      setTimeout(() => intro.remove(), 2600);
+    }
     this._el = {
       score: this.uiRoot.querySelector('#ehud-score'),
       dist: this.uiRoot.querySelector('#ehud-dist'),
