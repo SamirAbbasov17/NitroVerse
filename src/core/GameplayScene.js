@@ -1257,6 +1257,18 @@ export class GameplayScene {
     const items = playerRacer?.items || [];
     const itemIdx = playerRacer?.itemIdx || 0;
     const boosting = this.playerCar.boostTimer > 0;
+    // ————— SÜRƏT QATI (oyun hissi) —————
+    // Yüksək sürətdə kənarlarda zolaqlar + nitroda xromatik kənar.
+    // Hamısı CSS overlay-dır: render pipeline-a və FPS-ə toxunmur.
+    {
+      const app = this._appEl || (this._appEl = document.getElementById('app'));
+      if (app) {
+        const t = Math.min(1, this.playerCar.velocity.length() / (this.playerCar.maxSpeed || 1));
+        const sürətli = t > 0.82;
+        if (sürətli !== this._fastOn) { this._fastOn = sürətli; app.classList.toggle('fast', sürətli); }
+        if (boosting !== this._boostOn) { this._boostOn = boosting; app.classList.toggle('boosting', boosting); }
+      }
+    }
     // Mobil item düymələrinin ikonları
     this.touchControls?.setItems(
       items[itemIdx] || null,

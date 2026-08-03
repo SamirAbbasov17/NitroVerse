@@ -100,9 +100,41 @@ export class Environment {
     // Yer — incə noise toxuması ilə (düz rəngin "plastik" görkəmi itir)
     const groundTex = this._noiseTexture();
     groundTex.repeat.set(30, 30);
+    // ƏVVƏL: tək CircleGeometry (mərkəzdən 64 üçbucaq) — tamamilə düz və
+    // tək rəngli səth. Uzaqdan "plastik masa" kimi görünürdü.
+    // İNDİ: şəbəkəli halqa + VERTEX RƏNGİ (iri miqyaslı ləkələr, təkrarsız)
+    // + trekdən uzaqda yüngül relyef dalğası. Draw call artmır (tək mesh),
+    // yalnız vertex sayı 65 → ~3 600 (yüklənmə vaxtı ~10 ms).
+    const gGeo = new THREE.RingGeometry(0.4, 720, 128, 26);
+    {
+      const pos = gGeo.attributes.position;
+      const col = new THREE.BufferAttribute(new Float32Array(pos.count * 3), 3);
+      const tmp = new THREE.Vector3();
+      const baza = new THREE.Color(p.ground);
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i), y = pos.getY(i);   // düzlük XY-dədir
+        const wx = x, wz = -y;                     // döndərmədən sonra dünya
+        // Trekə yaxın hissə TAM DÜZ qalır (maşın kəsişməsin)
+        tmp.set(wx, 0, wz);
+        const yan = Math.abs(this.track.getNearest(tmp).lateral);
+        const uzaq = Math.max(0, Math.min(1, (yan - 34) / 90));
+        const dalğa = Math.sin(wx * 0.011 + 1.3) * Math.cos(wz * 0.009 - 0.7)
+          + Math.sin((wx + wz) * 0.021 + 2.1) * 0.5;
+        pos.setZ(i, dalğa * 1.7 * uzaq);           // ±1.7 m, yalnız uzaqda
+        // Rəng: üç oktava alçaq tezlik → təkrarlanmayan ləkələr
+        const n1 = Math.sin(wx * 0.006 + 0.4) * Math.cos(wz * 0.0052 - 1.1);
+        const n2 = Math.sin((wx * 0.7 + wz) * 0.013 + 2.4);
+        const n3 = Math.sin(wx * 0.026 - wz * 0.019 + 4.1);
+        const k = 0.955 + (n1 * 0.5 + n2 * 0.3 + n3 * 0.2) * 0.075;
+        col.setXYZ(i, baza.r * k, baza.g * k, baza.b * k * (1 + n2 * 0.02));
+      }
+      gGeo.setAttribute('color', col);
+      gGeo.computeVertexNormals();
+    }
     const ground = new THREE.Mesh(
-      new THREE.CircleGeometry(720, 64),
-      new THREE.MeshStandardMaterial({ color: p.ground, map: groundTex, roughness: 1, metalness: 0 })
+      gGeo,
+      new THREE.MeshStandardMaterial({ map: groundTex, roughness: 1, metalness: 0,
+        vertexColors: true, flatShading: true })
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.02;
@@ -132,6 +164,7 @@ export class Environment {
     this._tracksideProps(); // şin qüllələri + bariyerlər — peşəkar trek görkəmi
     if (this.data.river) this._river(this.data.river);
     this._scatterDecor();
+    this._nearDetail();     // yaxın plan: ot dəstələri, çınqıl, kol — dərinlik
     this._trackside();      // tribuna, projektor, marşal, sponsor, bayraq
     this._autoObstacles();   // təhlükəsizlik toru — bax aşağı
     // Gecə trekində yol küçə lampaları ilə işıqlanır
@@ -912,6 +945,50 @@ export class Environment {
     return added;
   }
 
+  // ————— YAXIN PLAN DETALI —————
+  // Yol kənarı çılpaq idi: dekor 30 m-dən uzaqda başlayırdı və sürətdə
+  // "boş masa" hissi verirdi. Dərinlik məhz yaxın plandakı xırda
+  // detaldan gəlir. Hamısı TƏK mesh-ə birləşir — draw call artmır.
+  _nearDetail() {
+    const g = new THREE.Group();
+    const N = this.track.N;
+    const half = this.track.halfWidth;
+    const p = this.data.palette;
+    // Biomun öz palitrası: quru xəritələrdə çınqıl/kol, yaşılda ot dəstəsi
+    const quru = ['desert', 'canyon', 'riviera', 'zavod'].includes(this.data.id);
+    const otMat = new THREE.MeshStandardMaterial({
+      color: quru ? (p.grassDry ?? 0x9c7b4a) : (p.grass ?? 0x3f8f4e),
+      roughness: 1, flatShading: true,
+    });
+    const daşMat = new THREE.MeshStandardMaterial({
+      color: p.rock ?? 0x8b8b93, roughness: 1, flatShading: true,
+    });
+    const otGeo = new THREE.ConeGeometry(0.22, 0.75, 4);
+    const daşGeo = new THREE.DodecahedronGeometry(0.32, 0);
+    const say = 420;
+    for (let k = 0; k < say; k++) {
+      const i = Math.floor(Math.random() * N);
+      const c = this.track.points[i], n = this.track.normals[i];
+      const side = Math.random() < 0.5 ? -1 : 1;
+      // 4–26 m: asfaltın kənarından başlayır, dekor zonasına qədər
+      const off = half + 3.2 + Math.random() * 22;
+      const x = c.x + n.x * off * side + (Math.random() - 0.5) * 4;
+      const z = c.z + n.z * off * side + (Math.random() - 0.5) * 4;
+      // Maneələrin içində bitməsin
+      if (this.obstacles.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + 0.8)) continue;
+      const daş = Math.random() < (quru ? 0.45 : 0.22);
+      const m = new THREE.Mesh(daş ? daşGeo : otGeo, daş ? daşMat : otMat);
+      m.position.set(x, daş ? 0.1 : 0.32, z);
+      m.rotation.y = Math.random() * Math.PI * 2;
+      const sc = 0.6 + Math.random() * 0.9;
+      m.scale.set(sc, sc * (daş ? 0.7 : 1.3), sc);
+      g.add(m);
+    }
+    const merged = mergeStaticGroup(g);
+    this.scene.add(merged);
+    this._track(merged);
+  }
+
   _scatterDecor() {
     const decorGroup = new THREE.Group();
     const half = this.track.halfWidth;
@@ -995,6 +1072,13 @@ export class Environment {
         // Zona meyli: 65% öz sektorunda
         if (sectorOf(pos) !== homeSector && Math.random() > 0.35) continue;
 
+        // İri obyektlər üçün yer tutma yoxlaması (kiçik ot/daş klasteri
+        // təbii yaxınlıqdır — yalnız r≥3 yoxlanır)
+        {
+          box.setFromObject(obj); box.getSize(size);
+          const rr = Math.max(size.x, size.z) * 0.42;
+          if (rr >= 3 && !this._free(pos.x, pos.z, rr, 0.5)) continue;
+        }
         obj.position.copy(pos);
         obj.rotation.y = Math.random() * Math.PI * 2;
         decorGroup.add(obj);

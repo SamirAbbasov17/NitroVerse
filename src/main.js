@@ -37,6 +37,11 @@ muteBtn.textContent = audio.muted ? '🔇' : '🔊';
 muteBtn.onclick = () => { muteBtn.textContent = audio.toggleMute() ? '🔇' : '🔊'; };
 document.body.appendChild(muteBtn);
 
+// Sürət/nitro qatı üçün overlay (boşdursa görünmür — GameplayScene sinif verir)
+const speedFx = document.createElement('div');
+speedFx.className = 'speedfx';
+document.getElementById('app')?.appendChild(speedFx);
+
 // SƏS KİLİDİ: brauzerlər istifadəçi jesti olmadan səsə icazə vermir.
 // Ona görə mümkün olan BÜTÜN ilk jestlərə qulaq asırıq — hansı gəlsə,
 // musiqi həmin an başlayır (bax AudioManager.resume → playMusic bərpası).

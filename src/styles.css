@@ -2213,3 +2213,29 @@ body.retro-on #retro-lines {
   animation: impactFlash 0.26s ease-out forwards;
 }
 @keyframes impactFlash { from { opacity: 1; } to { opacity: 0; } }
+
+/* ============ Sürət qatı: zolaqlar + nitro xromatikası ============ */
+/* Postprocessing YOXDUR — hər ikisi CSS overlay-dır (GPU kompozisiyası ucuz,
+   3D render dövrünə toxunmur). Mobildə də işləyir, FPS ölçüldü: dəyişmir. */
+#app .speedfx {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  opacity: 0; transition: opacity 0.25s ease;
+  background:
+    radial-gradient(ellipse 62% 52% at 50% 50%, transparent 58%, rgba(255,255,255,0.10) 100%),
+    repeating-conic-gradient(from 0deg at 50% 50%,
+      rgba(255,255,255,0.055) 0deg 1.1deg, transparent 1.1deg 5deg);
+  -webkit-mask-image: radial-gradient(ellipse 58% 48% at 50% 50%, transparent 52%, #000 100%);
+  mask-image: radial-gradient(ellipse 58% 48% at 50% 50%, transparent 52%, #000 100%);
+}
+#app.fast .speedfx { opacity: 0.55; }
+#app.boosting .speedfx { opacity: 0.9; }
+/* Nitroda kənarda isti/soyuq ayrılma — "sürət yandırır" hissi */
+#app.boosting::before {
+  content: '';
+  position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background:
+    radial-gradient(ellipse 120% 90% at 8% 50%, rgba(255,90,20,0.16), transparent 42%),
+    radial-gradient(ellipse 120% 90% at 92% 50%, rgba(60,160,255,0.16), transparent 42%);
+  animation: boostPulse 0.9s ease-in-out infinite alternate;
+}
+@keyframes boostPulse { from { opacity: 0.65; } to { opacity: 1; } }

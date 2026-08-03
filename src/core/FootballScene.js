@@ -155,9 +155,18 @@ export class FootballScene {
     const cv = document.createElement('canvas');
     cv.width = 256; cv.height = 512;
     const cx = cv.getContext('2d');
-    for (let i = 0; i < 8; i++) {
-      cx.fillStyle = i % 2 ? '#2c7a3f' : '#31894a';
-      cx.fillRect(0, i * 64, 256, 64);
+    // BİÇİM ZOLAQLARI: əvvəl 8 zolaq vardı, amma fərq ~5% idi və ekranda
+    // görünmürdü — meydança tək düz yaşıl kimi oxunurdu. İndi 12 zolaq,
+    // aydın kontrast + incə ot faktura ləkələri.
+    for (let i = 0; i < 12; i++) {
+      cx.fillStyle = i % 2 ? '#2a7439' : '#379752';
+      cx.fillRect(0, i * (512 / 12), 256, 512 / 12);
+    }
+    // Ot ləkələri — düz rəngin plastik görkəmini qırır
+    for (let i = 0; i < 900; i++) {
+      cx.fillStyle = `rgba(255,255,255,${0.02 + Math.random() * 0.035})`;
+      const x = Math.random() * 256, y = Math.random() * 512;
+      cx.fillRect(x, y, 1 + Math.random() * 3, 1 + Math.random() * 2);
     }
     cx.strokeStyle = 'rgba(255,255,255,0.85)';
     cx.lineWidth = 4;
