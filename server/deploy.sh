@@ -128,9 +128,16 @@ cat > /etc/caddy/Caddyfile <<EOF
 ${DOMAIN}, www.${DOMAIN} {
     encode zstd gzip
 
-    # Onlayn rejim: PeerJS brokeri (WebSocket)
-    handle /peer/* {
+    # Onlayn rejim: PeerJS brokeri (WebSocket).
+    # DİQQƏT: prefiks KƏSİLMİR — broker express-də məhz /peer altında
+    # qurulub (peerserver/server.js → app.use(PATH, peerServer)).
+    # Kəsdikdə klient ws://host/peer/peerjs-ə çıxır, broker isə /peerjs
+    # görüb 404 verirdi (onlayn rejim işləmirdi).
+    handle /peer/health {
         uri strip_prefix /peer
+        reverse_proxy localhost:${PEER_PORT}
+    }
+    handle /peer/* {
         reverse_proxy localhost:${PEER_PORT}
     }
 
@@ -148,8 +155,11 @@ ${DOMAIN}, www.${DOMAIN} {
 # DNS hazır olmadan sınaq üçün (domen işləyəndən sonra silinə bilər)
 http://${SERVER_IP} {
     encode zstd gzip
-    handle /peer/* {
+    handle /peer/health {
         uri strip_prefix /peer
+        reverse_proxy localhost:${PEER_PORT}
+    }
+    handle /peer/* {
         reverse_proxy localhost:${PEER_PORT}
     }
     handle {
