@@ -115,8 +115,12 @@ async function sendEmail(env, payload) {
       ...(payload.email ? { reply_to: payload.email } : {}),
     }),
   });
-  if (!res.ok) return { sent: false, reason: `resend-${res.status}` };
-  return { sent: true };
+  if (!res.ok) {
+    // Səbəbi saxla: yanlış açar / təsdiqlənməmiş domen halında loqda görünsün
+    const detail = await res.text().catch(() => '');
+    return { sent: false, reason: `resend-${res.status}`, detail: detail.slice(0, 200) };
+  }
+  return { sent: true, reason: 'resend' };
 }
 
 // Ehtiyat yol: açar yoxdursa köhnə Netlify Forms kanalına ötür (e-poçt sadə
@@ -183,8 +187,14 @@ export function makeReport(getStore, env = process.env) {
       } catch { /* anbar xətası bildirişi bloklamamalıdır */ }
     }
 
+    // Resend işləməsə (açar yoxdur / açar səhvdir / xidmət cavab vermir)
+    // bildiriş İTMƏMƏLİDİR — köhnə Netlify Forms kanalına düşürük.
     let out = await sendEmail(env, payload);
-    if (!out.sent && out.reason === 'no-key') out = await forwardToNetlifyForm(env, payload);
-    return json({ ok: true, id: payload.id, mail: out.sent, via: out.reason || 'resend' });
+    if (!out.sent) {
+      if (out.detail) console.error('report: resend xətası', out.reason, out.detail);
+      const fb = await forwardToNetlifyForm(env, payload);
+      out = { sent: fb.sent, reason: `${out.reason}→${fb.reason}` };
+    }
+    return json({ ok: true, id: payload.id, mail: out.sent, via: out.reason });
   };
 }
