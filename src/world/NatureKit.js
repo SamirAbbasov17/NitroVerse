@@ -63,7 +63,9 @@ export function sharedNature() {
 // Trek biomu → uyğun Kenney modelləri (yarış xəritələri üçün)
 export const NATURE_BY_TRACK = {
   desert:  ['cactus_tall', 'rock_largeA', 'rock_largeC', 'rock_smallFlatA'],
-  neon:    ['tree_thin', 'tree_cone', 'rock_smallFlatA', 'plant_bushLarge'],
+  // Neon ŞƏHƏR trekidir — ağac məntiqsizdir (istifadəçi rəyi).
+  // Şəhər kontekstində yalnız kol/xırda bitki qalır, qalanı CityKit verir.
+  neon:    ['plant_bushLarge'],
   alpine:  ['tree_pineDefaultA', 'tree_pineDefaultB', 'tree_detailed', 'tree_cone',
     'log_stack', 'mushroom_redGroup', 'rock_largeA'],
   canyon:  ['rock_largeE', 'rock_largeA', 'tree_default_fall', 'tree_thin', 'rock_smallFlatA'],

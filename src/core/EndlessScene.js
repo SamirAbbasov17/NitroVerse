@@ -260,14 +260,17 @@ export class EndlessScene {
     this.scene.add(this._halo);
 
     // 2) Axan ulduz — gecə arabir səmada sürüşən zolaq
+    // AXAN ULDUZ SİLİNDİ: gündüz və alaqaranlıqda göydə/mənzərədə ağ
+    // cizgilər kimi oxunurdu və səhnəni korlayırdı (istifadəçi rəyi).
+    this._shootStarOff = true;
     this._starMat = new THREE.MeshBasicMaterial({
       color: 0xeef4ff, transparent: true, opacity: 0, fog: false,
       blending: THREE.AdditiveBlending, depthWrite: false,
     });
     this._shootStar = new THREE.Mesh(new THREE.PlaneGeometry(26, 0.5), this._starMat);
     this._shootStar.frustumCulled = false;
-    this.scene.add(this._shootStar);
-    this._starT = 6 + Math.random() * 10;
+    this._shootStar.visible = false;      // artıq işlədilmir
+    this._starT = 1e9;
     this._starLife = 0;
 
     // 3) Quş dəstəsi — gündüz arabir üfüqdə süzür
@@ -1463,7 +1466,15 @@ export class EndlessScene {
         car.position.x = o.x + nx * min;
         car.position.z = o.z + nz * min;
         const vn = car.velocity.x * nx + car.velocity.z * nz;
-        if (vn < 0) { car.velocity.x -= vn * nx * 1.4; car.velocity.z -= vn * nz * 1.4; }
+        if (vn < 0) {
+          // ƏVVƏL 1.4 idi — bu, ƏKS SIÇRAYIŞ deməkdir: maşın divardan
+          // güllə kimi geri atılırdı (istifadəçi rəyi). İndi yalnız divara
+          // doğru olan komponent silinir (1.0) və divar boyu sürüşmə
+          // yüngül sürtünmə ilə yavaşıyır — real "söykənib sürüşmə" hissi.
+          car.velocity.x -= vn * nx;
+          car.velocity.z -= vn * nz;
+          car.velocity.multiplyScalar(0.94);
+        }
       }
     }
 

@@ -837,7 +837,13 @@ export class EndlessRoad {
               b.position.set(bx, groundYAt(bx, bz, pts[i].y, off), bz);
               b.rotation.y = Math.atan2(-nrms[i].x * side, -nrms[i].z * side); // üzü küçəyə
               g.add(b);
-              const ob = { x: b.position.x, z: b.position.z, r: 3.2 * sc, kind: 'city' };
+              // XƏTA İDİ: radius sabit 3.2 idi. KayKit binaları 8–14 m
+              // enindədir → maşın binanın İÇİNƏ girib içini görürdü.
+              // İndi radius əsl həndəsədən (bbox) hesablanır.
+              const bb = new THREE.Box3().setFromObject(b);
+              const bs = bb.getSize(new THREE.Vector3());
+              const br = Math.max(2.4, Math.max(bs.x, bs.z) * 0.46);
+              const ob = { x: b.position.x, z: b.position.z, r: br, kind: 'city' };
               chunkObstacles.push(ob);
               this.obstacles.push(ob);
             }
@@ -920,7 +926,9 @@ export class EndlessRoad {
           h.position.set(hx, terrainY(hx, hz) - 0.12, hz);   // yüngül maylda boşluq görünməsin
           h.rotation.y = Math.atan2(cx - hx, cz - hz);   // üzü kənd meydanına
           g.add(h);
-          const ob = { x: hx, z: hz, r: 3.2 * sc, kind: 'village' };
+          const hb = new THREE.Box3().setFromObject(h);
+          const hs = hb.getSize(new THREE.Vector3());
+          const ob = { x: hx, z: hz, r: Math.max(2.4, Math.max(hs.x, hs.z) * 0.46), kind: 'village' };
           chunkObstacles.push(ob);
           this.obstacles.push(ob);
         }
