@@ -1,0 +1,36 @@
+# Netlify konfiqurasiyası
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+# HTML keşlənməsin — istifadəçilər həmişə ən son versiyanı alsın
+# (JS/CSS asset-ləri hash-lidir, onlar üçün keş problemi yoxdur)
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+# ————— KEŞ SİYASƏTİ (minlərlə oyunçu üçün trafik qənaəti) —————
+# Musiqi və modellər DƏYİŞMİR: bir dəfə endirilsin, sonra brauzer keşindən
+# oxunsun. Əvvəl hər çalınmada yenidən doğrulama sorğusu gedirdi.
+[[headers]]
+  for = "/music/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/models/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Vite asset-ləri hash-lidir — əbədi keşlənə bilər
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

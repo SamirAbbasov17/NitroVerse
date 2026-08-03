@@ -1,0 +1,17 @@
+{
+  "name": "nitroverse-peerserver",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "NitroVerse onlayn rejimi üçün öz PeerJS broker serveri",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "PORT=9000 node server.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "peer": "^1.0.2",
+    "express": "^4.19.2"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "low-poly-racer",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Low-poly stilistik masın yarış oyunu — Three.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "serve": "node server/index.mjs",
+    "serve:dev": "AUTH_SECRET=dev-secret DB_FILE=./data/dev.db node server/index.mjs"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^10.7.10",
+    "peerjs": "^1.5.5",
+    "three": "^0.160.1"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}

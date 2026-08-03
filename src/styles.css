@@ -1,0 +1,2168 @@
+:root {
+  --bg: #0b0d12;
+  --panel: rgba(10, 12, 18, 0.86);
+  --stroke: rgba(255, 255, 255, 0.09);
+  --accent: #ff6b1a;
+  --accent-dim: rgba(255, 107, 26, 0.14);
+  --text: #f2f4f8;
+  --muted: #98a0b3;
+  --good: #46d47e;
+  --font: 'Rajdhani', 'Segoe UI', system-ui, sans-serif;
+  --font-display: 'Russo One', 'Arial Black', sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-weight: 500;
+  user-select: none;
+}
+
+#app { position: fixed; inset: 0; }
+
+#game-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#ui-root { position: absolute; inset: 0; pointer-events: none; }
+#ui-root > * { pointer-events: auto; }
+
+button { font-family: var(--font); color: inherit; }
+
+/* ============ MENYU (sol panel + 3D fon) ============ */
+.menu {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  pointer-events: none;
+  animation: fade 0.3s ease;
+}
+
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+.menu-panel {
+  pointer-events: auto;
+  width: min(440px, 94vw);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 34px 34px 26px;
+  background: linear-gradient(100deg, rgba(8, 10, 15, 0.93) 70%, rgba(8, 10, 15, 0.72));
+  border-right: 1px solid var(--stroke);
+  backdrop-filter: blur(10px);
+}
+/* Qısa ekranda flex uşaqları SIXILMASIN — panel scroll etsin
+   (yoxsa siyahı daşıb nav düymələrinin altına girir) */
+.menu-panel > * { flex-shrink: 0; }
+.menu-panel > .menu-list--scroll { flex-shrink: 1; }
+
+.menu-brandrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 34px;
+}
+.menu-brandrow .menu-brand { margin-bottom: 0; }
+.menu-sound {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--stroke);
+  font-size: 17px;
+  cursor: pointer;
+}
+.menu-sound:hover { border-color: var(--accent); }
+
+.menu-brand {
+  font-family: var(--font-display);
+  font-size: 26px;
+  letter-spacing: 1px;
+  color: var(--text);
+  margin-bottom: 34px;
+}
+.menu-brand span {
+  color: var(--accent);
+  /* NitroVerse tək sözdür — köhnə iki sözlü addakı boşluq qalmasın */
+}
+
+.menu-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.menu-step b {
+  color: var(--accent);
+  font-size: 15px;
+}
+.menu-step i {
+  width: 26px;
+  height: 2px;
+  background: var(--accent);
+}
+
+.menu-title {
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 400;
+  line-height: 1.15;
+  margin-bottom: 6px;
+}
+
+.menu-sub {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+/* Siyahı sətirləri */
+.menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+  min-height: 0;
+}
+/* Hesab ekranının məzmunu — alçaq ekranda daxildən sürüşür (panel daşmasın) */
+.auth-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
+}
+
+.menu-list--scroll {
+  overflow-y: auto;
+  flex: 1;
+  /* flex elementinin standart min-height:auto dəyəri siyahının məzmundan kiçilməsinə
+     imkan vermir → panel aşağıdan daşırdı (dostlar/mesajlar ekranında 18px) */
+  min-height: 0;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
+}
+
+.mrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 14px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--stroke);
+  border-left: 3px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.mrow:hover {
+  background: rgba(255, 255, 255, 0.07);
+  transform: translateX(3px);
+}
+.mrow.is-selected {
+  background: var(--accent-dim);
+  border-color: rgba(255, 107, 26, 0.35);
+  border-left-color: var(--accent);
+}
+
+.mrow__icon { font-size: 26px; flex: none; width: 40px; text-align: center; }
+.mrow__arrow { color: var(--muted); font-weight: 700; }
+.mrow:hover .mrow__arrow { color: var(--accent); }
+
+.mrow__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.mrow__title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.mrow__desc { font-size: 13px; font-weight: 600; color: var(--muted); }
+.mrow__class {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  border: 1px solid rgba(255, 107, 26, 0.4);
+  border-radius: 4px;
+  padding: 1px 6px;
+  flex: none;
+}
+
+.mrow__swatch {
+  width: 64px;
+  height: 42px;
+  border-radius: 8px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.mrow--car { padding: 8px 14px 8px 8px; }
+.mrow__thumb {
+  width: 82px;
+  height: 52px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: radial-gradient(80% 70% at 50% 62%, rgba(255, 255, 255, 0.07), transparent 75%);
+  overflow: hidden;
+}
+.mrow__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: scale(1.35);
+}
+
+.mrow__bars { display: flex; gap: 5px; }
+.mrow__bars i {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+.mrow__bars i::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: var(--v);
+  background: var(--accent);
+  border-radius: 3px;
+}
+
+/* Dövrə seqmentləri */
+.menu-seg { display: flex; gap: 10px; margin-top: 18px; }
+.seg {
+  flex: 1;
+  padding: 18px 8px 14px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.seg:hover { background: rgba(255, 255, 255, 0.07); }
+.seg.is-selected { background: var(--accent-dim); border-color: var(--accent); }
+.seg__num { display: block; font-family: var(--font-display); font-size: 30px; }
+.seg.is-selected .seg__num { color: var(--accent); }
+.seg__label {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Naviqasiya */
+.menu-nav { display: flex; gap: 10px; margin-top: auto; padding-top: 22px; }
+
+.btn {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 13px 26px;
+  border-radius: 8px;
+  border: 1px solid var(--stroke);
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+.btn:hover { border-color: rgba(255, 255, 255, 0.3); }
+.btn:active { transform: scale(0.98); }
+.btn--primary {
+  flex: 1;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a0d00;
+  box-shadow: 0 8px 24px -8px var(--accent);
+}
+.btn--primary:hover { background: #ff7d35; border-color: #ff7d35; }
+.btn--ghost { background: transparent; }
+
+.menu-hint {
+  margin-top: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  line-height: 2;
+}
+kbd {
+  display: inline-block;
+  padding: 1px 7px;
+  margin: 0 2px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--stroke);
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* ============ Onlayn / Lobby ============ */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field__label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.field__input {
+  font-family: var(--font);
+  font-size: 17px;
+  font-weight: 600;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--stroke);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.field__input:focus { border-color: var(--accent); }
+.field__input--code {
+  font-family: var(--font-display);
+  font-size: 24px;
+  letter-spacing: 10px;
+  text-transform: uppercase;
+  text-align: center;
+}
+.online-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin: 4px 0;
+}
+.online-divider i { flex: 1; height: 1px; background: var(--stroke); }
+.online-err {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(227, 50, 37, 0.15);
+  border: 1px solid rgba(227, 50, 37, 0.5);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.join-row {
+  display: flex;
+  gap: 10px;
+}
+.join-row .field__input--code { flex: 1; min-width: 0; }
+.join-row .btn { flex: none; }
+
+/* Aktiv otaqlar siyahısı */
+.rooms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 52px;
+}
+.rooms-note {
+  padding: 14px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  border: 1px dashed var(--stroke);
+  border-radius: 10px;
+}
+.room-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  font-family: var(--font);
+  color: var(--text);
+}
+.room-row:hover { background: var(--accent-dim); border-color: var(--accent); }
+.room-row--busy { cursor: default; opacity: 0.55; }
+.room-row--busy:hover { background: rgba(255, 255, 255, 0.04); border-color: var(--stroke); }
+.room-row__icon { font-size: 22px; flex: none; }
+.room-row__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.room-row__name { font-size: 15px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.room-row__meta { font-size: 12px; font-weight: 600; color: var(--muted); }
+.room-row__join {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+}
+
+.lobby-code {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(255, 107, 26, 0.4);
+}
+.lobby-code span { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--muted); }
+.lobby-code b {
+  font-family: var(--font-display);
+  font-size: 30px;
+  letter-spacing: 8px;
+  color: var(--accent);
+}
+.lobby-copy {
+  margin-left: auto;
+  font-size: 18px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--stroke);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  cursor: pointer;
+}
+.lobby-copy:hover { border-color: var(--accent); }
+
+.lobby-players { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.lobby-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--stroke);
+  font-size: 14px;
+  font-weight: 700;
+}
+.lobby-player__dot { width: 13px; height: 13px; border-radius: 4px; flex: none; }
+.lobby-player__name small { color: var(--muted); font-weight: 600; }
+.lobby-player__host {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--accent);
+  border: 1px solid rgba(255, 107, 26, 0.5);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+.lobby-player__car { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--muted); }
+
+.lobby-cars {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 7px;
+  margin-top: 6px;
+}
+.lobby-car {
+  height: 46px;
+  border-radius: 9px;
+  border: 2px solid var(--stroke);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  overflow: hidden;
+  padding: 2px;
+  transition: border-color 0.12s ease;
+}
+.lobby-car:hover { border-color: rgba(255, 255, 255, 0.3); }
+.lobby-car.is-selected { border-color: var(--accent); background: var(--accent-dim); }
+.lobby-car img { width: 100%; height: 100%; object-fit: contain; transform: scale(1.4); }
+
+.lobby-stats {
+  margin-top: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--stroke);
+}
+.lobby-stats__name {
+  font-size: 15px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+/* Stat çubuqları (lobby-də maşın xüsusiyyətləri) */
+.stat {
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.stat__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.stat__bar {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.09);
+  overflow: hidden;
+}
+.stat__fill {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--accent);
+}
+
+/* ============ Mobil toxunma idarəsi ============ */
+/* DİQQƏT: `#ui-root > *` qaydası ID spesifikliyi ilə bunu üstələyirdi və
+   toxunma qatı bütün HUD düymələrini bloklayırdı — ona görə eyni spesifiklik. */
+#ui-root > .touch, .touch {
+  position: absolute;
+  inset: 0;
+  pointer-events: none !important;
+  z-index: 30;
+}
+.tbtn {
+  pointer-events: auto;
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(18, 22, 36, 0.30);
+  border: 2px solid rgba(255, 255, 255, 0.34);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 24px;
+  font-family: var(--font);
+  opacity: 0.82;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tbtn.is-on { opacity: 1; background: var(--accent-dim); border-color: var(--accent); }
+.tbtn img { width: 68%; height: 68%; object-fit: contain; pointer-events: none; }
+
+/* Sol: sükan */
+.tbtn[data-t="left"] { left: 14px; bottom: 78px; width: 70px; height: 70px; }
+.tbtn[data-t="right"] { left: 96px; bottom: 78px; width: 70px; height: 70px; }
+/* Sağ sütun: QAZ ÜSTDƏ, GERİ ALTDA */
+.tbtn[data-t="gas"] { right: 14px; bottom: 152px; width: 78px; height: 78px; font-size: 27px; }
+.tbtn[data-t="brake"] { right: 19px; bottom: 72px; width: 68px; height: 68px; }
+/* Yanında: ITEM (üstdə) / DRIFT (altda) */
+.tbtn[data-t="use"] { right: 104px; bottom: 158px; width: 66px; height: 66px; font-size: 22px; border-style: dashed; }
+.tbtn[data-t="use"].has-item { border-style: solid; border-color: var(--accent); box-shadow: 0 0 14px -4px var(--accent); opacity: 1; }
+.tbtn[data-t="drift"] { right: 108px; bottom: 82px; width: 58px; height: 58px; font-size: 10px; font-weight: 800; letter-spacing: 1px; }
+/* Kənarda: ⇆ keçid (üstdə) / ✕ atma (altda) — yalnız lazımda görünür */
+.tbtn[data-t="swap"] { right: 184px; bottom: 164px; width: 46px; height: 46px; font-size: 16px; }
+.tbtn[data-t="swap"].has-item { border-color: rgba(55, 184, 255, 0.6); }
+.tbtn[data-t="x"] { right: 186px; bottom: 88px; width: 46px; height: 46px; font-size: 15px; color: #ff6d6d; }
+/* ↩ aktiv itemi arxaya at — item olanda görünür */
+.tbtn[data-t="back"] { right: 240px; bottom: 164px; width: 46px; height: 46px; font-size: 18px; color: #ffd28a; }
+/* 👁 Arxaya baxış və 🚩 yola qayıt — sükan düymələrinin üstündə */
+/* ————— Maşın kartında imza gücü ————— */
+.mrow__sig {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 5px 8px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--sig) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sig) 42%, transparent);
+}
+.mrow__sig img { width: 26px; height: 26px; flex: none; }
+.mrow__sig-txt { display: flex; flex-direction: column; min-width: 0; }
+.mrow__sig-txt b {
+  font-size: 12px;
+  color: var(--sig);
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+.mrow__sig-txt i {
+  font-style: normal;
+  font-size: 11px;
+  line-height: 1.32;
+  color: var(--muted);
+  /* ƏVVƏL: nowrap + ellipsis → izah yarımçıq kəsilirdi və gücün nə etdiyini
+     oxumaq olmurdu. İndi iki sətrə qədər açılır (dizayn pozulmur, sətir
+     hündürlüyü sıxdır). Alçaq ekranlarda yenə tək sətir. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+@media (max-height: 560px) {
+  .mrow__sig { margin-top: 4px; padding: 3px 6px; gap: 6px; }
+  .mrow__sig img { width: 20px; height: 20px; }
+  .mrow__sig-txt b { font-size: 11px; }
+  .mrow__sig-txt i { -webkit-line-clamp: 1; }
+  .mrow__sig-txt i { display: none; }
+}
+
+/* ————— HUD: imza gücü nişanı ————— */
+.hud__sig {
+  position: absolute;
+  /* minimap: bottom 22 + 164 hündürlük → nişan onun ÜSTÜNDƏ dayanır */
+  left: 22px;
+  bottom: 196px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 6px;
+  border-radius: 14px;
+  background: rgba(10, 12, 18, 0.62);
+  border: 1px solid var(--sig, var(--accent));
+  box-shadow: 0 0 18px -6px var(--sig, var(--accent));
+  pointer-events: none;
+  transition: opacity 0.25s, filter 0.25s;
+}
+.hud__sig-icon { width: 42px; height: 42px; }
+.hud__sig-icon img { width: 100%; height: 100%; display: block; }
+.hud__sig-name {
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.4px;
+  color: var(--sig, var(--accent));
+  white-space: nowrap;
+}
+.hud__sig-key {
+  font-size: 11px;
+  font-weight: 800;
+  color: #cdd4e0;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  padding: 1px 6px;
+}
+.hud__sig.is-used { opacity: 0.32; filter: grayscale(1); box-shadow: none; }
+/* Toxunma rejimində HUD nişanı mobil düymə ilə üst-üstə düşməsin */
+.hud.touch-mode .hud__sig { display: none !important; }
+
+/* İmza gücü — SOLDA, nitro ölçüsündə; işlədiləndən sonra sönür */
+.tbtn[data-t="sig"] {
+  left: 26px;
+  bottom: 158px;
+  width: 66px;
+  height: 66px;
+  border-color: var(--sig, var(--accent));
+  box-shadow: 0 0 16px -4px var(--sig, var(--accent));
+  opacity: 1;
+}
+.tbtn[data-t="sig"] img { width: 100%; height: 100%; }
+.tbtn[data-t="sig"].is-used { opacity: 0.3; box-shadow: none; filter: grayscale(1); }
+.tbtn[data-t="sig"]::after { inset: -12px; }
+
+/* Sol sütun (aşağıdan 158px): ✦imza 26 · 🚩qayıt 100 · 👁baxış 162 · 🎥kamera 224 */
+.tbtn[data-t="look"] { left: 162px; bottom: 158px; width: 54px; height: 54px; font-size: 20px; }
+
+/* ——— Futbol: tullanma (💥) əsas hərəkətdir → SOLDA və nitro ilə eyni ölçüdə ——— */
+.touch--football .tbtn[data-t="back"] {
+  left: 26px;
+  right: auto;
+  bottom: 158px;
+  width: 66px;
+  height: 66px;
+  font-size: 26px;
+  border-color: rgba(255, 210, 138, 0.55);
+}
+.touch--football .tbtn[data-t="back"]::after { inset: -14px; }
+.touch--football .tbtn[data-t="look"] { left: 108px; }
+.tbtn[data-t="fpv"] { left: 224px; bottom: 158px; width: 54px; height: 54px; font-size: 19px; top: auto; }
+.tbtn[data-t="rescue"] { left: 100px; bottom: 158px; width: 54px; height: 54px; font-size: 19px; }
+.tbtn[data-t="rescue"]:disabled { opacity: 0.22; }
+.tbtn[data-t="rescue"].is-ready {
+  opacity: 1;
+  border-color: var(--accent);
+  animation: rescuePulse 1.1s ease-in-out infinite;
+}
+/* Mobildə rescue xəbərdarlığındakı "F" klaviatura işarəsi gizlənir */
+.touch-mode .hud__rescue kbd { display: none; }
+.touch__pause {
+  /* Yuxarı-sağ künc: mərkəz xal/hesab panelləri ilə örtüşməsin */
+  right: 12px;
+  top: 10px;
+  left: auto;
+  transform: none;
+  width: 44px;
+  height: 44px;
+  font-size: 17px;
+  border-radius: 12px !important;
+}
+
+/* Mobil rejimdə HUD düzülüşü */
+.touch-mode #minimap {
+  left: 12px;
+  top: 62px;
+  bottom: auto;
+  transform: none;
+  width: 86px;
+  height: 86px;
+  opacity: 0.9;
+}
+.touch-mode .hud__topleft { top: 10px; left: 12px; gap: 6px; }
+.touch-mode .hud-chip { padding: 5px 9px; min-width: 50px; border-radius: 8px; }
+.touch-mode .hud-chip__label { font-size: 8px; letter-spacing: 1.2px; }
+.touch-mode .hud-chip__value { font-size: 14px; }
+.touch-mode .hud__speed {
+  right: auto;
+  left: 16px;
+  bottom: 14px;
+  text-align: left;
+}
+.touch-mode .hud__speed-num { font-size: 34px; }
+.touch-mode .hud__speed-unit { font-size: 10px; letter-spacing: 2px; }
+.touch-mode .hud__gear { display: none; }
+.touch-mode .hud__rescue { bottom: 22px; }
+/* Telefonda desktop item slotları (E/Q/X çərçivələri) gizlənir — touch düymələri var */
+.touch-mode .hud__item,
+.touch-mode .hud__item2 { display: none; }
+/* Telefonda raket xəbərdarlığı kiçik və yuxarıda (düymələrə mane olmasın) */
+.touch-mode .hud__missile-warn {
+  top: 15%;
+  font-size: 14px;
+  letter-spacing: 1.2px;
+  padding: 5px 12px;
+  border-width: 1.5px;
+  border-radius: 9px;
+}
+/* Telefonda üzən səs düyməsi yoxdur — menyudan idarə olunur */
+@media (pointer: coarse) {
+  #mute-btn { display: none; }
+}
+
+/* ============ "Telefonu yana çevir" ekranı ============ */
+#rotate-hint {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: #0b0d12;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+}
+.rotate-hint__phone {
+  font-size: 64px;
+  animation: rotatePhone 1.6s ease-in-out infinite;
+}
+@keyframes rotatePhone {
+  0%, 25% { transform: rotate(0deg); }
+  60%, 100% { transform: rotate(90deg); }
+}
+.rotate-hint__text {
+  font-family: var(--font-display);
+  font-size: 24px;
+  color: var(--text);
+}
+.rotate-hint__sub {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+/* Yalnız toxunma cihazında + portret vəziyyətdə görünür */
+@media (pointer: coarse) and (orientation: portrait) {
+  #rotate-hint { display: flex; }
+}
+
+/* Alçaq (landşaft telefon) ekran: menyu kompaktlaşır — böyük görünsün */
+@media (max-height: 520px) {
+  #mute-btn {
+    top: 12px;
+    right: auto;
+    left: calc(50% + 36px);
+    width: 42px;
+    height: 42px;
+    font-size: 16px;
+  }
+  .menu-panel { padding: 12px 18px 10px; }
+  .menu-brandrow { margin-bottom: 8px; }
+  .menu-sound { width: 36px; height: 36px; font-size: 14px; }
+  .menu-brand { font-size: 19px; margin-bottom: 8px; }
+  .menu-step { margin-bottom: 4px; font-size: 11px; }
+  .menu-title { font-size: 19px; margin-bottom: 3px; }
+  .menu-list { gap: 7px; margin-top: 8px; }
+  .mrow { padding: 8px 10px; }
+  .mrow__icon { font-size: 20px; width: 30px; }
+  .mrow__title { font-size: 15px; }
+  .mrow__desc { font-size: 11px; }
+  .menu-nav { padding-top: 10px; }
+  .btn { padding: 10px 18px; font-size: 13px; }
+  .menu-hint { display: none; }
+  .lobby-code b { font-size: 22px; letter-spacing: 5px; }
+  .lobby-cars { grid-template-columns: repeat(10, 1fr); }
+  .lobby-car { height: 38px; }
+  .lobby-chat { max-height: 76px; min-height: 42px; }
+  .brand__title { font-size: 34px; }
+}
+
+/* Səs düyməsi (həmişə görünür) */
+#mute-btn {
+  position: fixed;
+  top: 178px;
+  right: 25px;
+  z-index: 60;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 1px solid var(--stroke);
+  font-size: 19px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: border-color 0.15s ease, transform 0.1s ease;
+}
+#mute-btn:hover { border-color: var(--accent); }
+#mute-btn:active { transform: scale(0.92); }
+
+/* Lobby çatı */
+.lobby-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 58px;
+  max-height: 124px;
+  overflow-y: auto;
+  padding: 8px 10px;
+  margin-top: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  scrollbar-width: thin;
+}
+.chat-msg {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  word-break: break-word;
+}
+.chat-msg b { color: var(--accent); font-weight: 800; }
+.chat-msg--other b { color: #37b8ff; }
+.chat-empty {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: center;
+  padding: 8px 0;
+}
+.chat-row { display: flex; gap: 8px; margin-top: 8px; }
+.chat-row .field__input { flex: 1; min-width: 0; padding: 9px 12px; font-size: 14px; }
+.chat-row .btn { flex: none; padding: 9px 16px; }
+
+.seg--sm { padding: 10px 4px 8px; }
+.seg:disabled { cursor: default; opacity: 0.55; }
+.lobby-wait {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+
+/* ============ HUD ============ */
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud__topleft {
+  position: absolute;
+  top: 20px;
+  left: 22px;
+  display: flex;
+  gap: 12px;
+}
+.hud-chip {
+  background: var(--panel);
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  padding: 9px 16px;
+  backdrop-filter: blur(6px);
+  min-width: 78px;
+}
+.hud-chip__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.hud-chip__value { font-family: var(--font-display); font-size: 21px; line-height: 1.2; }
+.hud-chip__value small { font-size: 12px; color: var(--muted); }
+
+.hud__speed {
+  position: absolute;
+  bottom: 24px;
+  right: 28px;
+  text-align: right;
+}
+.hud__speed-num {
+  font-family: var(--font-display);
+  font-size: 64px;
+  line-height: 0.95;
+  color: var(--text);
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+.hud__speed-num.is-boosting {
+  color: var(--accent);
+  text-shadow: 0 0 26px var(--accent);
+}
+.hud__speed-unit {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: var(--muted);
+}
+
+.hud__gear {
+  position: absolute;
+  bottom: 28px;
+  right: 210px;
+  font-family: var(--font-display);
+  font-size: 38px;
+  color: var(--accent);
+  opacity: 0.9;
+}
+
+/* Item slotu */
+.hud__item {
+  position: absolute;
+  top: 20px;
+  right: 22px;
+  width: 74px;
+  height: 74px;
+  border-radius: 14px;
+  background: var(--panel);
+  border: 2px dashed rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.hud__item.has-item {
+  border-style: solid;
+  border-color: var(--accent);
+  box-shadow: 0 0 22px -4px var(--accent);
+  animation: itemPop 0.3s ease;
+}
+@keyframes itemPop {
+  from { transform: scale(0.8); }
+  to { transform: scale(1); }
+}
+.hud__item-icon { font-size: 34px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+.hud__item-icon img { width: 54px; height: 54px; object-fit: contain; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5)); }
+.hud__item-key {
+  position: absolute;
+  bottom: -8px;
+  right: -8px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #1a1d26;
+  border: 1px solid var(--stroke);
+  color: var(--muted);
+}
+.hud__item.has-item .hud__item-key { color: var(--accent); border-color: var(--accent); }
+.hud__item-x {
+  position: absolute;
+  bottom: -8px;
+  left: -8px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #1a1d26;
+  border: 1px solid var(--stroke);
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.hud__item.has-item .hud__item-x { opacity: 1; color: #ff5d5d; border-color: rgba(255, 93, 93, 0.5); }
+
+/* İkinci (ehtiyat) ability slotu */
+.hud__item2 {
+  position: absolute;
+  top: 108px;
+  right: 33px;
+  width: 52px;
+  height: 52px;
+  border-radius: 11px;
+  background: var(--panel);
+  border: 2px dashed rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.75;
+  transition: border-color 0.2s ease;
+}
+.hud__item2.has-item {
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+.hud__item2-icon { display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.hud__item2-icon img { width: 38px; height: 38px; object-fit: contain; }
+.hud__item2-key {
+  position: absolute;
+  bottom: -7px;
+  right: -7px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: #1a1d26;
+  border: 1px solid var(--stroke);
+  color: var(--muted);
+}
+.hud__item2.has-item .hud__item2-key { color: #37b8ff; border-color: rgba(55, 184, 255, 0.5); }
+
+/* Çox yüklü ability sayğacı (üçlü atəşin qalan gülləsi) */
+.hud__item-icon, .hud__item2-icon { position: relative; }
+.slot-count {
+  position: absolute;
+  right: 1px;
+  bottom: 0;
+  font-family: var(--font-display);
+  font-style: normal;
+  font-size: 13px;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+}
+.tbtn .slot-count { right: 6px; bottom: 5px; font-size: 12px; }
+
+/* Gələn raket xəbərdarlığı */
+.hud__missile-warn {
+  position: absolute;
+  top: 24%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: 22px;
+  letter-spacing: 2px;
+  color: #ff5040;
+  text-shadow: 0 0 18px rgba(255, 80, 64, 0.8);
+  padding: 8px 20px;
+  border: 2px solid rgba(255, 80, 64, 0.7);
+  border-radius: 12px;
+  background: rgba(30, 8, 8, 0.55);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  animation: warnFlash 0.45s ease-in-out infinite;
+}
+.hud__missile-warn.is-visible { opacity: 1; visibility: visible; }
+@keyframes warnFlash {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  50% { transform: translateX(-50%) scale(1.07); }
+}
+
+/* "Yola qayıt" düyməsi */
+.hud__rescue {
+  position: absolute;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 13px 24px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 2px solid var(--accent);
+  color: var(--text);
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: 0;
+  visibility: hidden;
+  backdrop-filter: blur(6px);
+  transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
+  animation: rescuePulse 1.1s ease-in-out infinite;
+}
+.hud__rescue.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+.hud__rescue:hover { background: var(--accent-dim); }
+.hud__rescue:active { transform: translateX(-50%) scale(0.96); }
+.hud__rescue-warn { font-size: 19px; }
+.hud__rescue kbd {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a0d00;
+  font-size: 13px;
+  padding: 2px 9px;
+}
+@keyframes rescuePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 26, 0.55); }
+  55% { box-shadow: 0 0 0 12px rgba(255, 107, 26, 0); }
+}
+
+#minimap {
+  position: absolute;
+  bottom: 22px;
+  left: 22px;
+  border-radius: 12px;
+  border: 1px solid var(--stroke);
+  background: rgba(8, 10, 16, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+/* Geri sayım */
+.countdown {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.countdown__num {
+  font-family: var(--font-display);
+  font-size: clamp(90px, 19vw, 200px);
+  color: var(--text);
+  text-shadow: 0 0 60px var(--accent);
+  animation: pop 0.9s ease;
+}
+.countdown__num.go { color: var(--good); text-shadow: 0 0 60px var(--good); }
+@keyframes pop {
+  0% { transform: scale(2.2); opacity: 0; }
+  25% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.72); opacity: 0; }
+}
+
+/* Toast */
+.toast {
+  position: absolute;
+  top: 16%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: 24px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-shadow: 0 4px 22px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  animation: toast 1.8s ease forwards;
+}
+@keyframes toast {
+  0% { opacity: 0; transform: translate(-50%, 12px); }
+  15% { opacity: 1; transform: translate(-50%, 0); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -14px); }
+}
+
+/* Pauza */
+.pause {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 8, 13, 0.74);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  backdrop-filter: blur(5px);
+}
+.pause .menu-title { font-size: 34px; margin-bottom: 16px; }
+.pause .btn { min-width: 190px; }
+.pause .btn + .btn { margin-top: 8px; }
+.pause .btn-row .btn + .btn { margin-top: 0; } /* sətir daxilində şaquli sürüşmə olmasın */
+.pause { background: rgba(6, 8, 13, 0.84); }   /* arxadakı HUD daha az görünsün */
+.pause .screen__heading { text-align: center; }
+
+/* Alçaq telefon ekranı: pauza sıx və tam sığır */
+@media (max-height: 430px) {
+  .pause .menu-title, .pause .screen__heading { font-size: 24px; margin-bottom: 8px; }
+  .pause .btn { min-width: 150px; padding: 10px 16px; font-size: 14px; }
+  .btn-row { margin-top: 12px; gap: 9px; }
+}
+
+/* ============ Nəticələr ============ */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4vh 4vw;
+  background: rgba(6, 8, 13, 0.78);
+  backdrop-filter: blur(8px);
+  animation: fade 0.35s ease;
+}
+.screen__scroll {
+  width: 100%;
+  max-width: 680px;
+  max-height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.screen__heading {
+  font-family: var(--font-display);
+  font-size: clamp(24px, 4vw, 38px);
+  text-align: center;
+  margin-bottom: 3vh;
+}
+.screen__heading small {
+  display: block;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+.results {
+  width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--stroke);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.results__row {
+  display: grid;
+  grid-template-columns: 50px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.results__row:last-child { border-bottom: none; }
+.results__row.is-player { background: var(--accent-dim); }
+.results__pos { font-family: var(--font-display); font-size: 20px; color: var(--muted); }
+.results__pos.gold { color: #ffd257; }
+.results__pos.silver { color: #cfd8ea; }
+.results__pos.bronze { color: #e39b64; }
+.results__name {
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.results__time { font-size: 15px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mini-chip { width: 20px; height: 13px; border-radius: 4px; flex: none; }
+.results__car {
+  width: 54px;
+  height: 34px;
+  object-fit: contain;
+  flex: none;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.5));
+}
+
+.btn-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 3vh;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: stretch; /* düymələr eyni hündürlükdə — pilləli görünməsin */
+}
+.btn-row .btn { display: inline-flex; align-items: center; justify-content: center; }
+
+/* Yüklənmə */
+.loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 18px;
+  background: var(--bg);
+  color: var(--muted);
+  letter-spacing: 3px;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.spinner {
+  width: 42px;
+  height: 42px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+::-webkit-scrollbar { width: 7px; }
+::-webkit-scrollbar-thumb { background: rgba(255, 107, 26, 0.5); border-radius: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ============ Dəymə xalları ============ */
+#hud-score.score-bump { animation: scoreBump 0.35s ease; color: var(--accent); }
+@keyframes scoreBump {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+.score-pop {
+  position: absolute;
+  top: 34%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: 30px;
+  color: #ffd257;
+  text-shadow: 0 0 14px rgba(255, 180, 40, 0.75), 0 2px 4px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  animation: scorePop 1.05s ease-out forwards;
+}
+@keyframes scorePop {
+  0% { opacity: 0; transform: translate(-50%, 10px) scale(0.7); }
+  18% { opacity: 1; transform: translate(-50%, 0) scale(1.12); }
+  100% { opacity: 0; transform: translate(-50%, -46px) scale(0.95); }
+}
+.touch-mode .score-pop { font-size: 20px; top: 30%; }
+
+/* ============ Otaq/lobby statusları ============ */
+.room-row__status {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #ffb02e;
+  border: 1px solid rgba(255, 176, 46, 0.4);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-left: 6px;
+}
+.room-row__status--lobby { color: var(--good); border-color: rgba(70, 212, 126, 0.4); }
+.lobby-player__racing,
+.lobby-player__waiting {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: 1px 6px;
+  flex: none;
+}
+.lobby-player__racing { color: #ffb02e; border: 1px solid rgba(255, 176, 46, 0.4); }
+.lobby-player__waiting { color: var(--muted); border: 1px solid var(--stroke); }
+
+/* Səhv istiqamət banneri — qırmızı ton */
+.hud__rescue.is-wrongway {
+  color: #ff6d6d;
+  border-color: rgba(255, 90, 90, 0.75);
+  box-shadow: 0 0 20px -6px rgba(255, 90, 90, 0.8);
+}
+
+/* ============ Vignette (render cilası — GPU-suz) ============ */
+#app::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background:
+    linear-gradient(to bottom, rgba(8, 6, 24, 0.14), transparent 26%),
+    radial-gradient(ellipse 120% 95% at 50% 42%, transparent 56%, rgba(6, 4, 12, 0.34) 100%);
+}
+#ui-root { z-index: 10; }
+
+/* ============ Kamera filtri — kinematik qradasiya ============ */
+/* Desktop: yüngül saturasiya + kontrast (GPU kompozisiyası ucuzdur).
+   Mobildə tətbiq olunmur — kompozisiya xərcindən qaçınmaq üçün. */
+@media (pointer: fine) {
+  #game-canvas { filter: saturate(1.08) contrast(1.045); }
+}
+
+/* ============ HUD mövqe dəyişmə vurğusu ============ */
+#hud-pos.pos-up { animation: posFlash 0.7s ease; color: var(--good); }
+#hud-pos.pos-down { animation: posFlash 0.7s ease; color: #ff6d6d; }
+@keyframes posFlash {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+/* ============ Menyu ekran keçidi ============ */
+.menu-panel { animation: panelIn 0.26s ease; }
+@keyframes panelIn {
+  from { opacity: 0; transform: translateX(-14px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ============ Genişlənmiş toxunuş sahələri ============ */
+/* Görünməz halo: düymə sərhədindən bir az kənar toxunuşlar da tutulur */
+.tbtn::after {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+}
+/* Əsas idarə düymələri (sükan/qaz/əyləc/drift) — daha geniş pay */
+.tbtn[data-t="left"]::after,
+.tbtn[data-t="right"]::after,
+.tbtn[data-t="gas"]::after,
+.tbtn[data-t="brake"]::after,
+.tbtn[data-t="drift"]::after { inset: -16px; }
+/* Kiçik düymələr (✕ atma riskli olduğu üçün dar pay) */
+.tbtn--small::after { inset: -6px; }
+
+/* ============ Hesab / Qızıl sistemi ============ */
+.menu-brandrow__right { display: flex; gap: 8px; align-items: center; }
+.menu-profile {
+  height: 42px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--stroke);
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.menu-profile:hover { border-color: var(--accent); }
+.menu-gold { color: #ffd257; margin-left: 6px; font-style: normal; }
+.auth-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  padding: 18px;
+  margin-top: 12px;
+}
+.auth-nick { font-family: var(--font-display); font-size: 22px; }
+.auth-gold { color: #ffd257; font-size: 18px; font-weight: 700; margin-top: 6px; }
+.auth-msg {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 107, 26, 0.12);
+  border: 1px solid rgba(255, 107, 26, 0.35);
+  font-size: 14px;
+  font-weight: 600;
+}
+.field label { font-size: 12px; font-weight: 700; letter-spacing: 1px; color: var(--muted); display: block; margin-bottom: 5px; }
+/* Kilidli maşınlar */
+.mrow--car.is-locked { opacity: 0.62; }
+.mrow--car.is-locked .mrow__thumb img { filter: grayscale(0.85) brightness(0.8); }
+.mrow__lock {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 800;
+  color: #ffd257;
+  border: 1px solid rgba(255, 210, 87, 0.45);
+  border-radius: 4px;
+  padding: 1px 7px;
+  margin-left: auto;
+  flex: none;
+}
+.mrow--car.is-buying { animation: buyPulse 0.6s ease infinite; }
+@keyframes buyPulse { 50% { opacity: 0.5; } }
+.lobby-car.is-locked { opacity: 0.45; pointer-events: auto; position: relative; }
+.lobby-car.is-locked img { filter: grayscale(0.9) brightness(0.75); }
+.lobby-car__lock { position: absolute; right: 3px; bottom: 2px; font-size: 12px; }
+.gold-earn { color: #ffd257; font-style: normal; }
+.gold-nudge {
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffd257;
+  opacity: 0.9;
+}
+
+/* ============ Sonsuz Sürüş (zen) HUD ============ */
+.ehud { position: absolute; inset: 0; pointer-events: none; }
+.ehud > * { pointer-events: auto; }
+.ehud__score {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+}
+.ehud__score b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 42px;
+  color: #fff;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
+}
+.ehud__score span { font-size: 13px; font-weight: 700; letter-spacing: 2px; color: rgba(255,255,255,0.75); }
+.ehud__btns { position: absolute; top: 16px; right: 16px; display: flex; gap: 8px; z-index: 36; }
+.ehud__btn {
+  width: 46px; height: 46px;
+  border-radius: 12px;
+  background: rgba(12, 14, 22, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  font-size: 19px;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+.ehud__btn:hover { border-color: var(--accent); }
+.ehud__speed { position: absolute; right: 20px; bottom: 16px; text-align: right; pointer-events: none; }
+.ehud__speed b { font-family: var(--font-display); font-size: 40px; color: #fff; }
+.ehud__speed span { display: block; font-size: 10px; letter-spacing: 2px; color: rgba(255,255,255,0.7); }
+.ehud__toast {
+  position: absolute;
+  top: 92px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 18px;
+  border-radius: 10px;
+  background: rgba(10, 12, 20, 0.72);
+  border: 1px solid var(--stroke);
+  font-weight: 700;
+  font-size: 15px;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+.ehud__toast.is-on { opacity: 1; }
+/* Mobil: toxunma düymələri ilə üst-üstə düşməsin */
+@media (pointer: coarse) {
+  .ehud__score b { font-size: 30px; }
+  .ehud__btns { top: 10px; right: 64px; }
+  .ehud__btn { width: 40px; height: 40px; font-size: 16px; }
+  .ehud__speed { display: none; }
+}
+
+/* ============ Retro filtr ============ */
+#retro-lines { display: none; }
+body.retro-on #retro-lines {
+  display: block;
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0px, rgba(0, 0, 0, 0) 2px,
+    rgba(0, 0, 0, 0.14) 3px, rgba(0, 0, 0, 0) 4px
+  );
+  mix-blend-mode: multiply;
+}
+@media (pointer: fine) {
+  body.retro-on #game-canvas {
+    filter: sepia(0.28) saturate(1.18) contrast(1.09) brightness(1.02);
+  }
+}
+@media (pointer: coarse) {
+  body.retro-on #game-canvas { filter: sepia(0.2) contrast(1.05); }
+}
+
+/* ============ Can zolağı (Zavod) ============ */
+.hud__hp {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 18px;
+  width: 220px;
+  height: 14px;
+  border-radius: 8px;
+  background: rgba(10, 12, 20, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+}
+.hud__hp i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: #46d47e;
+  border-radius: 7px;
+  transition: width 0.25s ease, background 0.25s ease;
+}
+.hud__hp.hp-flash { animation: hpFlash 0.4s ease; }
+@keyframes hpFlash { 30% { box-shadow: 0 0 18px rgba(255, 80, 64, 0.9); } }
+.touch-mode .hud__hp { bottom: 8px; width: 160px; height: 11px; }
+
+/* ⚽ Futbol HUD */
+.fhud { position: absolute; inset: 0; pointer-events: none; }
+.fhud__score {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 14px;
+  background: rgba(10, 14, 28, 0.72); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px; padding: 8px 18px;
+  font-family: 'Chakra Petch', sans-serif; backdrop-filter: blur(6px);
+}
+.fhud__score b { font-size: 30px; line-height: 1; min-width: 34px; text-align: center; }
+.fhud__blue { color: #4fc3ff; text-shadow: 0 0 14px rgba(55,184,255,0.6); }
+.fhud__red { color: #ff6058; text-shadow: 0 0 14px rgba(255,69,68,0.6); }
+.fhud__score span { font-size: 17px; color: #cfd8ee; letter-spacing: 1px; min-width: 52px; text-align: center; }
+.fhud__boost {
+  position: absolute; left: 16px; bottom: 16px;
+  display: flex; flex-direction: column; gap: 6px;
+  background: rgba(10, 14, 28, 0.66); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px; padding: 10px 14px;
+  font-family: 'Chakra Petch', sans-serif;
+}
+.fhud__charges { font-size: 22px; letter-spacing: 3px; color: #ffd34d; min-height: 26px; }
+.fhud__lunge { font-size: 14px; color: #ff9d66; transition: opacity 0.2s; }
+.fhud__toast {
+  position: absolute; top: 26%; left: 50%; transform: translateX(-50%) scale(0.8);
+  font-family: 'Chakra Petch', sans-serif; font-weight: 700; font-size: 44px;
+  color: #fff; text-shadow: 0 3px 18px rgba(0,0,0,0.65), 0 0 28px rgba(120,180,255,0.4);
+  opacity: 0; transition: opacity 0.22s, transform 0.22s; white-space: nowrap;
+}
+.fhud__toast.is-on { opacity: 1; transform: translateX(-50%) scale(1); }
+#fh-overlay { pointer-events: auto; }
+#fh-overlay:empty { pointer-events: none; }
+.lobby-player__team { font-size: 13px; margin-right: 2px; }
+.seg--blue.is-selected { border-color: #37b8ff; box-shadow: 0 0 12px rgba(55,184,255,0.35); }
+.seg--red.is-selected { border-color: #ff4544; box-shadow: 0 0 12px rgba(255,69,68,0.35); }
+@media (max-width: 760px), (pointer: coarse) {
+  .fhud__score { top: 6px; padding: 5px 12px; gap: 10px; }
+  .fhud__score b { font-size: 22px; min-width: 26px; }
+  .fhud__score span { font-size: 13px; min-width: 42px; }
+  .fhud__boost { left: 10px; bottom: auto; top: 54px; padding: 6px 10px; }
+  .fhud__charges { font-size: 17px; min-height: 20px; }
+  .fhud__lunge { font-size: 11px; }
+  .fhud__toast { font-size: 30px; }
+}
+
+/* ⚔️ Arena HUD */
+.ahud { position: absolute; inset: 0; pointer-events: none; }
+.ahud__top {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 16px;
+  background: rgba(16, 10, 30, 0.72); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px; padding: 8px 16px;
+  font-family: 'Chakra Petch', sans-serif; font-size: 15px; color: #e8ddff;
+  backdrop-filter: blur(6px); white-space: nowrap;
+}
+.ahud__zone { color: #ff8a94; }
+.ahud__hp {
+  position: absolute; left: 50%; transform: translateX(-50%); bottom: 18px;
+  width: min(320px, 42vw); height: 12px; border-radius: 7px;
+  background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.2); overflow: hidden;
+}
+.ahud__hp i { display: block; height: 100%; width: 100%; background: #43d17c; border-radius: 6px; transition: width 0.25s, background 0.3s; }
+.ahud__item {
+  position: absolute; left: 16px; bottom: 16px;
+  background: rgba(16, 10, 30, 0.66); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px; padding: 10px 14px;
+  font-family: 'Chakra Petch', sans-serif; font-size: 14px; color: #d0b8ff;
+}
+.arena-standings { margin: 10px 0 4px; display: flex; flex-direction: column; gap: 4px; max-height: 40vh; overflow-y: auto; }
+.arena-row {
+  background: rgba(255,255,255,0.07); border-radius: 8px; padding: 6px 12px;
+  font-family: 'Chakra Petch', sans-serif; font-size: 14px; color: #e8e2f5; text-align: left;
+}
+.arena-row.is-me { background: rgba(255,107,26,0.25); border: 1px solid rgba(255,107,26,0.5); }
+.arena-row b { margin-right: 8px; color: #ffd34d; }
+@media (max-width: 760px), (pointer: coarse) {
+  .ahud__top { top: 6px; padding: 5px 10px; gap: 10px; font-size: 12px; }
+  .ahud__hp { bottom: auto; top: 46px; width: min(240px, 36vw); height: 9px; }
+  .ahud__item { left: 10px; bottom: auto; top: 64px; padding: 6px 10px; font-size: 11px; }
+}
+
+/* 🎁 Günlük mükafat + 🏆 liderlər */
+.daily-btn { width: 100%; margin-top: 12px; }
+.daily-btn[disabled] { opacity: 0.55; cursor: default; }
+.daily-streak { color: #ffd34d; margin-left: 6px; }
+.auth-msg--ok { color: #7dff8a; background: rgba(67, 209, 124, 0.12); border-color: rgba(67, 209, 124, 0.4); }
+.top-row {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(255,255,255,0.06); border-radius: 10px; padding: 9px 13px;
+  font-family: 'Chakra Petch', sans-serif; font-size: 14px; color: #e8e2f5;
+}
+.top-row.is-me { background: rgba(255,107,26,0.22); border: 1px solid rgba(255,107,26,0.5); }
+.top-row__rank { min-width: 34px; }
+.top-row__nick { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top-row__cars { color: #9fb4d8; font-size: 12px; }
+.top-row__gold { color: #ffd34d; font-weight: 700; }
+
+/* 🟢 Qlobal onlayn sayı + söhbət */
+.online-now {
+  font-family: 'Chakra Petch', sans-serif; font-size: 13px; color: #9fe8b0;
+  padding: 2px 2px 6px;
+}
+.online-now b { color: #7dff8a; font-size: 15px; }
+.gchat { max-height: 180px; min-height: 90px; }
+
+.fhud__key {
+  margin-left: 6px; padding: 1px 6px; border-radius: 5px;
+  border: 1px solid rgba(255,255,255,0.3); color: #cfd8ee; font-size: 11px; vertical-align: 3px;
+}
+@media (pointer: coarse) { .fhud__key { display: none; } }
+.ahud__danger {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  box-shadow: inset 0 0 90px 30px rgba(255, 40, 55, 0.45);
+  transition: opacity 0.35s;
+}
+.ahud__danger.is-on { opacity: 1; animation: danger-pulse 1.1s ease-in-out infinite; }
+@keyframes danger-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* 👁 Arena tamaşa paneli */
+.ahud__spec { position: absolute; left: 50%; transform: translateX(-50%); bottom: 46px; pointer-events: auto; }
+.ahud__spec:empty { pointer-events: none; }
+.spec-bar {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: rgba(16, 10, 30, 0.82); border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 14px; padding: 10px 16px; backdrop-filter: blur(6px);
+}
+.spec-title { font-family: 'Chakra Petch', sans-serif; font-size: 14px; color: #d0b8ff; }
+.spec-title b { color: #fff; }
+.spec-btns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.spec-btns .btn { padding: 7px 14px; font-size: 13px; }
+@media (max-width: 760px), (pointer: coarse) {
+  .ahud__spec { bottom: 8px; }
+  .spec-bar { padding: 7px 10px; gap: 6px; }
+  .spec-btns .btn { padding: 6px 10px; font-size: 12px; }
+}
+.logout-ask {
+  font-family: 'Chakra Petch', sans-serif; font-size: 14px; color: #ffb3ad;
+  align-self: center; margin-right: 4px;
+}
+.loading-cancel { margin-top: 18px; }
+
+/* Kinematik vinyet — kənarlar zərif tündləşir; UI (z-index 10) üstündə qalır */
+#app::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  background: radial-gradient(ellipse 120% 100% at 50% 45%, transparent 62%, rgba(4, 6, 11, 0.34) 100%);
+}
+
+/* ————— Qlobal bildirişlər (dəvət / DM / dostluq) ————— */
+.notices {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  pointer-events: none;
+  width: min(94vw, 440px);
+}
+.notice {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(14, 16, 24, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  animation: notice-in 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  font-family: 'Rajdhani', sans-serif;
+}
+@keyframes notice-in {
+  from { transform: translateY(-16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.notice--out { transition: opacity 0.22s, transform 0.22s; opacity: 0; transform: translateY(-10px); }
+.notice__icon { font-size: 20px; flex: none; }
+.notice__text { flex: 1; font-size: 15px; font-weight: 600; color: #eef2f8; line-height: 1.25; }
+.notice__btns { display: flex; gap: 6px; flex: none; }
+.notice__btn {
+  padding: 6px 12px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: #dfe6f2;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+.notice__btn--pri { background: var(--accent, #ff6b1a); border-color: transparent; color: #fff; }
+.notice__btn:active { transform: scale(0.96); }
+
+/* ————— Onlayn oyunçu siyahısı ————— */
+.who-list { display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto; }
+.who-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 10px;
+}
+.who-row__dot { width: 8px; height: 8px; border-radius: 50%; background: #47e08a; flex: none; }
+.who-row__name { flex: 1; font-weight: 700; font-size: 14px; color: #e8edf6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who-row__tag { font-size: 11px; color: #9aa7bd; font-weight: 600; }
+.who-row__acts { display: flex; gap: 4px; flex: none; }
+.who-act {
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 15px;
+  cursor: pointer;
+  color: #fff;
+}
+.who-act:active { transform: scale(0.94); }
+.who-note { font-size: 13px; color: #8a96ab; padding: 6px 2px; }
+
+/* DM yazma sətri (oyunçu sırasının altında açılır) */
+.dm-compose { display: flex; gap: 6px; margin: 2px 0 4px; }
+.dm-compose input { flex: 1; }
+
+/* ————— Mesajlar bölməsi ————— */
+.convo-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 10px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font-family: inherit;
+}
+.convo-row__name { font-weight: 700; font-size: 15px; color: #eef2f8; }
+.convo-row__last { flex: 1; font-size: 13px; color: #9aa7bd; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.convo-row__time { font-size: 11px; color: #6f7c92; flex: none; }
+.dm-thread { display: flex; flex-direction: column; gap: 6px; max-height: 46vh; overflow-y: auto; padding: 4px 2px; }
+.dm-msg { max-width: 78%; padding: 7px 11px; border-radius: 12px; font-size: 14px; line-height: 1.3; }
+.dm-msg--me { align-self: flex-end; background: rgba(255, 107, 26, 0.24); border: 1px solid rgba(255, 107, 26, 0.35); }
+.dm-msg--them { align-self: flex-start; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.1); }
+
+/* Mobil: bildiriş düymələri barmaq üçün */
+@media (max-width: 700px) {
+  .notice__text { font-size: 13.5px; }
+  .notice__btn { padding: 8px 12px; }
+}
+
+.who-row--off { opacity: 0.62; }
+
+/* Dil seçimi popover-i */
+.lang-pop {
+  position: absolute;
+  top: 46px;
+  right: 8px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  background: rgba(14, 16, 24, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+.lang-pop__opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #dfe6f2;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+.lang-pop__opt b { width: 26px; color: var(--accent, #ff6b1a); }
+.lang-pop__opt:hover { background: rgba(255, 255, 255, 0.08); }
+.lang-pop__opt.is-selected { background: rgba(255, 107, 26, 0.18); }
+.menu-brandrow { position: relative; }
+
+/* ————— Menyu sığışması: heç bir ölçüdə aşağıdan scroll olmasın ————— */
+/* Təsvirlər tək sətir — panel hündürlüyü sabit qalır */
+.mrow__desc {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Brandrow: brend sıxılır, düymələr sıra ilə — üst-üstə düşmə olmur */
+.menu-brandrow {
+  gap: 8px;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+.menu-brandrow .menu-brand {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: clamp(17px, 2.6vh + 8px, 26px);
+}
+.menu-brandrow__right { flex: none; display: flex; gap: 5px; align-items: center; }
+.menu-profile {
+  max-width: 132px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Orta hündürlük (noutbuk / balaca pəncərə): sıx düzülüş, hint gizli */
+@media (max-height: 760px) {
+  .menu-panel { padding: 18px 26px 16px; }
+  .menu-title { font-size: 22px; }
+  .menu-step { margin-top: 4px; }
+  .menu-list { gap: 7px; margin-top: 10px; }
+  .mrow { padding: 8px 12px; gap: 10px; }
+  .mrow__icon { font-size: 21px; width: 30px; }
+  .mrow__title { font-size: 15px; }
+  .mrow__desc { font-size: 11.5px; }
+  .menu-hint { display: none; }
+  .menu-nav { margin-top: 10px; }
+  .menu-sound { width: 32px; height: 32px; font-size: 14px; }
+}
+
+/* Telefon landşaftı: ultra-sıx — yalnız başlıqlar, addım sətri gizli */
+@media (max-height: 560px) {
+  .menu-panel { padding: 10px 16px 10px; }
+  .menu-step { display: none; }
+  .menu-title { font-size: 18px; margin-top: 2px; }
+  .menu-sub { font-size: 11px; }
+  .menu-list { gap: 5px; margin-top: 8px; }
+  .mrow { padding: 6px 10px; border-radius: 8px; }
+  .mrow__icon { font-size: 17px; width: 24px; }
+  .mrow__title { font-size: 13.5px; }
+  .mrow__desc { display: none; }
+  .menu-nav { margin-top: 8px; }
+  .menu-nav .btn, .menu-nav .btn--primary { padding: 8px 14px; font-size: 13px; }
+  .menu-sound { width: 29px; height: 29px; font-size: 13px; border-radius: 8px; }
+  .menu-profile { max-width: 104px; padding: 5px 8px; font-size: 12px; }
+  .menu-brandrow .menu-brand { font-size: 16px; }
+}
+
+/* Ad (NitroVerse) və qızıl HƏMİŞƏ görünür */
+.menu-brandrow .menu-brand {
+  flex: 0 0 auto; /* brend sıxılıb yox olmasın */
+  font-size: clamp(16px, 2.2vh + 6px, 24px);
+}
+.menu-brandrow__right { flex: 1 1 auto; min-width: 0; justify-content: flex-end; }
+
+/* Dar paneldə brend + nick + qızıl + 4 düymə bir sətrə sığmır və nick sıxılıb yox
+   olurdu. Hündürlük imkan verəndə düymələr aşağı sətrə keçir → nick tam görünür.
+   Alçaq ekranlarda (telefon landşaftı) sarma ƏLAVƏ hündürlük yaradardı, ona görə
+   yalnız 700px+ hündürlükdə işə düşür. */
+@media (min-height: 700px) {
+  .menu-brandrow { flex-wrap: wrap; }
+  .menu-brandrow__right { min-width: 292px; }
+  /* Aşağı sətir tam enə yayılsın — solda boşluq qalsa "yarımçıq" görünür */
+  .menu-brandrow__right .menu-profile { flex: 1 1 auto; justify-content: flex-start; }
+}
+.menu-profile {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: none; /* qızıl kəsilməsin */
+}
+.menu-profile__nick {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 84px; /* uzun ləqəb qısalır, qızıl qalır */
+}
+.menu-gold { flex: none; }
+@media (max-height: 560px) {
+  .menu-profile__nick { max-width: 56px; }
+}
+
+/* Təhlükəli əməliyyat düyməsi (hesabdan çıxış) */
+.btn--danger {
+  background: #d33b3b;
+  border-color: #d33b3b;
+  color: #fff;
+}
+.btn--danger:hover { background: #e04a4a; border-color: #e04a4a; }
+.btn--ghostred {
+  background: rgba(211, 59, 59, 0.14);
+  border: 1px solid rgba(211, 59, 59, 0.55);
+  color: #ff8a8a;
+}
+.btn--ghostred:hover { background: rgba(211, 59, 59, 0.24); color: #fff; }
+.logout-ask { color: #ff9a9a; font-weight: 700; align-self: center; margin-right: auto; }
+
+/* ————— Qaraj: kosmetika ————— */
+.menu-seg--wrap { flex-wrap: wrap; gap: 6px; }
+.menu-seg--wrap .seg { flex: 0 1 auto; min-width: 78px; padding: 7px 9px; }
+.mrow--cos { padding: 9px 12px; }
+.cos__dot {
+  width: 34px; height: 34px; flex: none;
+  border-radius: 9px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 -6px 12px rgba(0, 0, 0, 0.35);
+}
+.cos__on {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.6px;
+  color: #47e08a; margin-left: 8px;
+}
+@media (max-height: 560px) {
+  .menu-seg--wrap .seg { min-width: 64px; padding: 5px 7px; }
+  .cos__dot { width: 26px; height: 26px; }
+}
+
+/* Əfsanəvi kosmetika — parlaq haşiyə + nəbz */
+.mrow--cos.is-legend { border-color: rgba(255, 200, 90, 0.4); }
+.cos__dot--legend {
+  border-color: rgba(255, 220, 140, 0.75);
+  box-shadow: 0 0 12px -2px currentColor, inset 0 -6px 12px rgba(0, 0, 0, 0.35);
+  animation: legend-pulse 2.4s ease-in-out infinite;
+}
+@keyframes legend-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.35); }
+}
+.mrow--cos .mrow__desc { font-size: 11.5px; margin-top: 2px; }
+
+/* ————— OYUN SONU BİLDİRİŞİ —————
+   Futbol/arena bitəndə nəticə menyusu DƏRHAL açılırdı — qalibi görməyə
+   macal olmurdu. İndi əvvəl iri bildiriş çıxır, 2 s sonra menyu. */
+.winbanner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  pointer-events: none;
+  text-align: center;
+  padding: 16px;
+}
+.winbanner__title {
+  font-family: var(--font-display);
+  font-size: clamp(38px, 9vw, 96px);
+  line-height: 1.02;
+  letter-spacing: 0.5px;
+  color: var(--text);
+  text-shadow: 0 0 46px var(--accent), 0 6px 26px rgba(0, 0, 0, 0.6);
+  animation: winpop 0.62s cubic-bezier(0.16, 1.1, 0.3, 1) both;
+}
+.winbanner__sub {
+  font-size: clamp(15px, 3.4vw, 26px);
+  font-weight: 800;
+  color: var(--muted);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7);
+  animation: winpop 0.62s 0.14s cubic-bezier(0.16, 1.1, 0.3, 1) both;
+}
+.winbanner--win .winbanner__title { color: var(--good); text-shadow: 0 0 52px var(--good), 0 6px 26px rgba(0,0,0,.6); }
+.winbanner--loss .winbanner__title { color: #ff7a6b; text-shadow: 0 0 46px #ff5a4a, 0 6px 26px rgba(0,0,0,.6); }
+@keyframes winpop {
+  0% { transform: scale(0.55) translateY(18px); opacity: 0; }
+  60% { transform: scale(1.06) translateY(0); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* Lobbi bildirişi: raund hazır olmayan oyunçusuz başlayanda səbəbi izah edir */
+.lobby-note {
+  margin-top: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: rgba(255, 176, 46, 0.12);
+  border: 1px solid rgba(255, 176, 46, 0.35);
+  color: #ffce7a;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+/* ————— Menyu altlığı: ☕ dəstək + 🐞 xəta bildir ————— */
+.menu-foot {
+  display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;
+}
+.menu-foot__btn {
+  flex: 1 1 auto; min-width: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 8px 10px; border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 700;
+  letter-spacing: 0.4px; text-decoration: none; cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.menu-foot__btn:hover {
+  background: rgba(255, 255, 255, 0.09); color: #fff;
+  border-color: rgba(255, 255, 255, 0.24);
+}
+.bug-text { resize: vertical; min-height: 84px; line-height: 1.45; font-family: inherit; }
+/* Alçaq ekranlarda panel sürüşməsin — altlıq sıxılır */
+@media (max-height: 760px) { .menu-foot { margin-top: 7px; } .menu-foot__btn { padding: 6px 9px; font-size: 12px; } }
+@media (max-height: 560px) {
+  .menu-foot { margin-top: 5px; }
+  .menu-foot__btn { padding: 5px 8px; font-size: 11.5px; }
+  .bug-text { min-height: 56px; }
+}

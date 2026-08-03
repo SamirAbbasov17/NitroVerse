@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="az">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>NitroVerse — Low Poly Racing</title>
+    <meta name="description" content="NitroVerse — brauzerdə low-poly yarış oyunu: 6 trek, 18 maşın, onlayn multiplayer, futbol 3v3, arena battle royale və sonsuz zen sürüşü." />
+    <meta property="og:title" content="NitroVerse — Low Poly Racing" />
+    <meta property="og:description" content="Brauzerdə pulsuz low-poly yarış: onlayn multiplayer, futbol 3v3, arena və zen rejimi." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://apex-drift-racing.netlify.app/" />
+    <!-- PWA: iPhone-da "Ana ekrana əlavə et" → tam ekran açılır -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#0b0d12" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='14'%3E%F0%9F%8F%8E%EF%B8%8F%3C/text%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game-canvas"></canvas>
+      <div id="ui-root"></div>
+    </div>
+    <div id="rotate-hint">
+      <div class="rotate-hint__phone">📱</div>
+      <div class="rotate-hint__text">Telefonu yana çevir</div>
+      <div class="rotate-hint__sub">Oyun landşaft rejimində oynanılır</div>
+    </div>
+    <!-- XƏTA BİLDİRİŞİ (Netlify Forms).
+         Netlify formaları DEPLOY olunmuş HTML-dən aşkarlayır — oyun SPA olduğu
+         üçün forma burada gizli saxlanılır, göndərmə isə JS-dən POST ilə gedir
+         (bax src/ui/Menu.js → showBugReport). Gələn bildirişlər e-poçta yönlənir. -->
+    <form name="bug-report" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input type="text" name="subject" />
+      <textarea name="message"></textarea>
+      <input type="email" name="email" />
+      <input type="text" name="context" />
+      <input type="text" name="bot-field" />
+    </form>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

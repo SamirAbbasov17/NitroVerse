@@ -1,0 +1,13 @@
+# Local Netlify folder
+.netlify
+
+node_modules
+peerserver/node_modules
+dist
+.env
+.env.local
+
+# Yerli alətlər / OS
+.DS_Store
+.claude
+*.log
