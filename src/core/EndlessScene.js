@@ -1037,7 +1037,10 @@ export class EndlessScene {
     // relyef hündürlükləri dünya funksiyasından yenidən hesablanır
     const gT = GROUND_SIZE / GROUND_REPEAT;
     const gx = Math.round(c.x / gT) * gT, gz = Math.round(c.z / gT) * gT;
-    this.ground.position.set(gx, 0, gz);
+    // XƏTA İDİ: mesh DƏRHAL yeni kafelə sıçrayırdı, hündürlüklər isə kadrlara
+    // bölünmüş hesablama bitəndən sonra gəlirdi → bütün xəritə hər ~50 m-də
+    // "yanıb-sönürdü" (istifadəçi rəyi). İndi mesh yalnız hesablama BİTƏNDƏ
+    // yeni yerinə keçir. Su düz səthdir — onu dərhal sürüşdürmək təhlükəsizdir.
     this.water.position.set(gx, WATER_LEVEL, gz);
     // YOL UCU DA TƏTİKDİR: yer yalnız kafel sürüşəndə (hər ~50 m) yenidən
     // hesablanırdı, yol isə fasiləsiz qabağa uzanır. Aralıqda yaranan yeni
@@ -1061,11 +1064,11 @@ export class EndlessScene {
         if (!arr) { arr = []; cells.set(k, arr); }
         arr.push(rp[i]);
       }
-      this._roadCells = cells;
+      // DİQQƏT: _roadCells / _gridAx / _gridAz maşının hündürlüyünü verir
+      // (_meshGroundY). Onları İŞ BİTƏNDƏ dəyişirik — yoxsa maşın hələ
+      // yenilənməmiş mesh üzərində yeni məlumatla oturur və titrəyir.
       this._cellSize = CELL;
       this._gridStep = GROUND_SIZE / GROUND_SEGS;
-      this._gridAx = gx - GROUND_SIZE / 2;
-      this._gridAz = gz - GROUND_SIZE / 2;
       const pos = this.ground.geometry.attributes.position;
       // Vertex rəngi atributu (bir dəfə yaradılır)
       let vcol = this.ground.geometry.attributes.color;
@@ -1079,7 +1082,13 @@ export class EndlessScene {
       // kadr vaxtı 16 ms-dən 40 ms-ə sıçrayırdı — 60 FPS göstərsə də
       // "lag" hiss olunurdu (ölçüldü: p99 = 25 ms, spike 41 ms).
       // İndi iş növbəyə düşür və bir neçə kadra yayılır.
-      this._cutJob = { i: 0, gx, gz, cells, CELL };
+      this._cutJob = {
+        i: 0, gx, gz, cells, CELL,
+        h: this._cutBufH && this._cutBufH.length === pos.count
+          ? this._cutBufH : (this._cutBufH = new Float32Array(pos.count)),
+        c: this._cutBufC && this._cutBufC.length === pos.count * 3
+          ? this._cutBufC : (this._cutBufC = new Float32Array(pos.count * 3)),
+      };
     }
     // ————— Növbədəki yer hesablaması (kadr başına bir dilim) —————
     if (this._cutJob) {
@@ -1110,8 +1119,9 @@ export class EndlessScene {
             }
           }
         }
-        // Maşının hündürlüyü ilə EYNİ funksiya (bax _groundYFor)
-        pos.setZ(i, groundYAt(wx, wz, bd < CUT_OUT * CUT_OUT ? by : null, Math.sqrt(bd)));
+        // Maşının hündürlüyü ilə EYNİ funksiya (bax _groundYFor).
+        // Nəticə KÖLGƏ buferinə yazılır — mesh yarımçıq görünmür.
+        job.h[i] = groundYAt(wx, wz, bd < CUT_OUT * CUT_OUT ? by : null, Math.sqrt(bd));
         // İRİ MİQYASLI LƏKƏLƏR: tekstura 50 m-də təkrarlanır və yer düz bir
         // rəng kimi görünürdü. Vertex rəngi dünya koordinatından alçaq tezlikli
         // funksiya ilə hesablanır → ləkələr TƏKRARLANMIR, dərinlik yaranır.
@@ -1126,14 +1136,21 @@ export class EndlessScene {
           const n3 = Math.sin(wx * 0.118 - wz * 0.093 + 4.1);
           const k = 0.972 + (n1 * 0.5 + n2 * 0.3 + n3 * 0.2) * 0.052;   // 0.92 … 1.02
           const warm = 1 + n2 * 0.014;
-          vcol.setXYZ(i, k * warm, k, k * (2 - warm));
+          job.c[i * 3] = k * warm; job.c[i * 3 + 1] = k; job.c[i * 3 + 2] = k * (2 - warm);
         }
       }
       job.i = son;
       if (job.i >= pos.count) {
+        // Hamısı hazırdır — İNDİ birdəfəlik tətbiq olunur (görüntü sıçramır)
+        const pa = pos.array;
+        for (let i = 0; i < pos.count; i++) pa[i * 3 + 2] = job.h[i];
         pos.needsUpdate = true;
-        if (vcol) vcol.needsUpdate = true;
+        if (vcol) { vcol.array.set(job.c); vcol.needsUpdate = true; }
         this.ground.geometry.computeVertexNormals();
+        this.ground.position.set(job.gx, 0, job.gz);
+        this._roadCells = job.cells;
+        this._gridAx = job.gx - GROUND_SIZE / 2;
+        this._gridAz = job.gz - GROUND_SIZE / 2;
         this._cutJob = null;
       }
     }
