@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { makeDecor, makeLamp, flatMat, makeTireStack, makeBarrier,
   makeGrandstand, makeFloodlight, makeMarshalPost, makeSponsorBoard, makeBunting } from '../core/AssetFactory.js';
 import { mergeStaticGroup } from '../core/MergeUtils.js';
-import { sharedNature, NATURE_BY_TRACK } from './NatureKit.js';
 
 // Səhnə mühiti: göy, fog, IBL env-map, işıqlar, yer, uzaq relyef və dekor.
 export class Environment {
@@ -168,8 +167,6 @@ export class Environment {
     this._tracksideProps(); // şin qüllələri + bariyerlər — peşəkar trek görkəmi
     if (this.data.river) this._river(this.data.river);
     this._scatterDecor();
-    this._nearDetail();     // yaxın plan: ot dəstələri, çınqıl, kol — dərinlik
-    this._natureLayer();    // Kenney modelləri (asinxron — hazır olanda əlavə olunur)
     this._trackside();      // tribuna, projektor, marşal, sponsor, bayraq
     this._autoObstacles();   // təhlükəsizlik toru — bax aşağı
     // Gecə trekində yol küçə lampaları ilə işıqlanır
@@ -954,90 +951,6 @@ export class Environment {
   // Yol kənarı çılpaq idi: dekor 30 m-dən uzaqda başlayırdı və sürətdə
   // "boş masa" hissi verirdi. Dərinlik məhz yaxın plandakı xırda
   // detaldan gəlir. Hamısı TƏK mesh-ə birləşir — draw call artmır.
-  // ————— KENNEY TƏBİƏT QATI —————
-  // Trek biomuna uyğun modellər (alp: şam, riviera: palma, kanyon: quru
-  // ağac və qaya…). Tək paylaşılan material → draw call artmır.
-  _natureLayer() {
-    const adlar = NATURE_BY_TRACK[this.data.id];
-    if (!adlar?.length) return;
-    const kit = sharedNature();
-    const qur = () => {
-      if (!kit.ready) return;
-      const g = new THREE.Group();
-      const N = this.track.N;
-      const box = new THREE.Box3(), size = new THREE.Vector3();
-      for (let k = 0; k < 260; k++) {
-        const obj = kit.get(adlar[(Math.random() * adlar.length) | 0]);
-        if (!obj) continue;
-        const i = Math.floor(Math.random() * N);
-        const c = this.track.points[i], n = this.track.normals[i];
-        const side = Math.random() < 0.5 ? -1 : 1;
-        const off = this.track.halfWidth + 12 + Math.random() * 120;
-        const x = c.x + n.x * off * side + (Math.random() - 0.5) * 18;
-        const z = c.z + n.z * off * side + (Math.random() - 0.5) * 18;
-        obj.scale.setScalar(0.75 + Math.random() * 0.7);
-        obj.position.set(x, 0, z);
-        obj.rotation.y = Math.random() * Math.PI * 2;
-        box.setFromObject(obj); box.getSize(size);
-        const r = Math.max(size.x, size.z) * 0.42;
-        const yan = Math.abs(this.track.getNearest(obj.position).lateral);
-        if (yan < this.track.halfWidth + r + 4) continue;   // yola girməsin
-        if (!this._free(x, z, r * 1.25, 2.5)) continue;      // üst-üstə düşməsin
-        g.add(obj);
-        this.obstacles.push({ x, z, r });
-      }
-      if (!g.children.length) return;
-      const merged = mergeStaticGroup(g);
-      this.scene.add(merged);
-      this._track(merged);
-    };
-    if (kit.ready) qur(); else kit._loading?.then(qur);
-  }
-
-  _nearDetail() {
-    // ƏVVƏL: prosedural konus (ot) və dodekaedr (daş) qoyulurdu — yaxın
-    // planda "nə olduğu bilinməyən yaşıl daşlar" kimi görünürdü
-    // (istifadəçi rəyi). İNDİ yalnız Kenney modelləri işlədilir; dəst
-    // hazır deyilsə heç nə qoyulmur.
-    const kit = sharedNature();
-    const KİÇİK = {
-      desert:  ['rock_smallFlatA', 'grass_leafsLarge'],
-      neon:    ['rock_smallFlatA'],
-      alpine:  ['grass_leafsLarge', 'flower_yellowB', 'mushroom_redGroup', 'rock_smallFlatA'],
-      canyon:  ['rock_smallFlatA', 'grass_leafsLarge'],
-      riviera: ['grass_leafsLarge', 'flower_yellowB', 'rock_smallFlatA'],
-      zavod:   ['rock_smallFlatA', 'grass_leafsLarge'],
-    };
-    const adlar = KİÇİK[this.data.id];
-    if (!adlar?.length) return;
-    const qur = () => {
-      if (!kit.ready) return;
-      const g = new THREE.Group();
-      const N = this.track.N;
-      const half = this.track.halfWidth;
-      for (let k = 0; k < 320; k++) {
-        const obj = kit.get(adlar[(Math.random() * adlar.length) | 0]);
-        if (!obj) continue;
-        const i = Math.floor(Math.random() * N);
-        const c = this.track.points[i], n = this.track.normals[i];
-        const side = Math.random() < 0.5 ? -1 : 1;
-        const off = half + 3.5 + Math.random() * 20;
-        const x = c.x + n.x * off * side + (Math.random() - 0.5) * 4;
-        const z = c.z + n.z * off * side + (Math.random() - 0.5) * 4;
-        if (this.obstacles.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + 1)) continue;
-        obj.position.set(x, 0, z);
-        obj.rotation.y = Math.random() * Math.PI * 2;
-        obj.scale.setScalar(0.5 + Math.random() * 0.5);
-        g.add(obj);
-      }
-      if (!g.children.length) return;
-      const merged = mergeStaticGroup(g);
-      this.scene.add(merged);
-      this._track(merged);
-    };
-    if (kit.ready) qur(); else kit._loading?.then(qur);
-  }
-
   _scatterDecor() {
     const decorGroup = new THREE.Group();
     const half = this.track.halfWidth;
