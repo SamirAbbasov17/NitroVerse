@@ -1,6 +1,7 @@
 // Hesab meneceri: qeydiyyat/giriş/profil/qızıl/alış + qonaq rejimi.
 // Token localStorage-da saxlanılır; profil keşlənir və dəyişəndə 'change' hadisəsi atılır.
 import { apiBase } from './apiBase.js';
+import { STARTER_CARS } from '../data/economy.js';
 
 function apiUrl() {
   // Test/draft mühitində override (yalnız dev build-də nəzərə alınır)
@@ -103,6 +104,12 @@ class AuthManager {
     this.token = null;
     this.profile = null;
     localStorage.removeItem('apexToken');
+    // XƏTA İDİ: hesabla alınmış maşın çıxışdan sonra da SEÇİLİ qalırdı
+    // (localStorage 'apexCar'). Qonaq yalnız başlanğıc maşınları sürə bilər.
+    try {
+      const saved = localStorage.getItem('apexCar');
+      if (saved && !STARTER_CARS.includes(saved)) localStorage.setItem('apexCar', STARTER_CARS[0]);
+    } catch { /* localStorage bağlıdırsa əhəmiyyətsizdir */ }
     this._emit();
   }
 

@@ -274,7 +274,7 @@ function awardRaceGold(standings, config) {
   if (config?.mode !== 'race') return;
   const me = standings.find((r) => r.isPlayer);
   if (!me?.position) return;
-  const amount = raceGold(me.position, config.laps ?? 1);
+  const amount = raceGold(me.position, config.laps ?? 1, config.difficulty || 'normal');
   if (amount <= 0) return;
   if (auth.isLoggedIn) {
     me.goldEarned = amount;

@@ -29,7 +29,9 @@ export const TUNING = {
     // Yüksək sürətdə sükan həssaslığının azalması (0..1)
     highSpeedSteerDamp: 0.45,
     // Sükan ramp sürətləri
-    steerRampIn: 5.5,
+    // 5.5 idi (~180 ms gecikmə): oyunçu 60 FPS-də belə "lag" hiss edirdi.
+    // 8 → ~125 ms: cavab cəld, amma yumşaqlıq qalır (ani/kəskin deyil).
+    steerRampIn: 8,
     steerRampOut: 11,
     // Spidometr: göstərilən km/s = sürət × bu əmsal
     kmhFactor: 5.5,

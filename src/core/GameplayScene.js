@@ -29,7 +29,15 @@ const RACE_CARS = 6;      // yarışda ümumi maşın sayı
 const HIT_SCORE = { missile: 100, mine: 80, bolt: 60, trishot: 25 };
 const CAR_RADIUS = 1.5;   // toqquşma üçün
 // Bot çətinliyi → AI bacarıq aralığı [baza, yayılma]
-const DIFF_SKILL = { easy: [0.62, 0.10], normal: [0.82, 0.13], hard: [0.92, 0.07] };
+// [bacarıq bazası, yayılma, sürət əmsalı, döngə cəsarəti]
+// ÇƏTİN əvvəl 0.92 qaz idi — praktikada asan idi. İndi botlar daha
+// sürətli maşın sürür (×1.08), döngəyə daha cəsarətlə girir və qazı
+// demək olar buraxmır. ASAN isə əvvəlkindən də yumşaqdır.
+const DIFF_SKILL = {
+  easy:   [0.58, 0.10, 0.90, 0.75],
+  normal: [0.82, 0.13, 1.00, 1.00],
+  hard:   [1.00, 0.02, 1.12, 1.40],
+};
 const LANE_OFFSETS = [-0.42, 0.42, -0.24, 0.24, 0];
 
 // 3D gameplay orkestratoru — Game-in "active scene" interfeysini həyata keçirir.
@@ -216,8 +224,14 @@ export class GameplayScene {
         const car = new Car(data, this.library, { isPlayer: false });
         this._place(car, slots[slotIdx]);
         this.scene.add(car.root);
-        const [dBase, dSpread] = DIFF_SKILL[this.config.difficulty] || DIFF_SKILL.normal;
+        const [dBase, dSpread, dSpeed, dBrave] = DIFF_SKILL[this.config.difficulty] || DIFF_SKILL.normal;
+        // Maşının öz gücü çətinliyə görə miqyaslanır (oyunçunun maşını
+        // toxunulmazdır — yalnız botlar)
+        // DİQQƏT: sahə adı `engineForce`-dur (`accel` yoxdur — NaN verərdi)
+        car.maxSpeed *= dSpeed;
+        car.engineForce *= dSpeed;
         const ai = new AIController(car, {
+          brave: dBrave,
           skill: dBase + Math.random() * dSpread,
           laneOffset: LANE_OFFSETS[i % LANE_OFFSETS.length] * this.track.halfWidth,
         });

@@ -29,9 +29,13 @@ export const CAR_PRICES = {
 // Yarış mükafatı (mövqeyə görə) × dövrə sayı
 export const RACE_REWARDS = [60, 40, 30, 20, 15, 10];
 
-export function raceGold(position, laps) {
+// ÇƏTİNLİK ƏMSALI: asanda az, çətində çox qızıl — risk/mükafat balansı
+export const DIFF_GOLD = { easy: 0.6, normal: 1, hard: 1.6 };
+
+export function raceGold(position, laps, difficulty = 'normal') {
   const base = RACE_REWARDS[Math.min(position, RACE_REWARDS.length) - 1] ?? 0;
-  return base * Math.max(1, Math.min(5, laps));
+  const k = DIFF_GOLD[difficulty] ?? 1;
+  return Math.round(base * Math.max(1, Math.min(5, laps)) * k);
 }
 
 export function isCarUnlocked(carId, profile) {

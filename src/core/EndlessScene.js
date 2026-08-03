@@ -1075,7 +1075,22 @@ export class EndlessScene {
         this._groundMat.vertexColors = true;
         this._groundMat.needsUpdate = true;
       }
-      for (let i = 0; i < pos.count; i++) {
+      // KADRA BÖLÜNMÜŞ HESABLAMA: 17 161 vertex bir kadrda hesablananda
+      // kadr vaxtı 16 ms-dən 40 ms-ə sıçrayırdı — 60 FPS göstərsə də
+      // "lag" hiss olunurdu (ölçüldü: p99 = 25 ms, spike 41 ms).
+      // İndi iş növbəyə düşür və bir neçə kadra yayılır.
+      this._cutJob = { i: 0, gx, gz, cells, CELL };
+    }
+    // ————— Növbədəki yer hesablaması (kadr başına bir dilim) —————
+    if (this._cutJob) {
+      const job = this._cutJob;
+      const { gx: jgx, gz: jgz, cells, CELL } = job;
+      const pos = this.ground.geometry.attributes.position;
+      const vcol = this.ground.geometry.attributes.color;
+      const SLICE = 4600;                    // ~4 kadra bölünür
+      const son = Math.min(pos.count, job.i + SLICE);
+      for (let i = job.i; i < son; i++) {
+        const gx = jgx, gz = jgz;
         // Plane XY müstəvisindədir (sonra X oxu ətrafında döndərilib):
         // yerli x → dünya x, yerli y → dünya -z
         const wx = gx + pos.getX(i);
@@ -1114,9 +1129,13 @@ export class EndlessScene {
           vcol.setXYZ(i, k * warm, k, k * (2 - warm));
         }
       }
-      pos.needsUpdate = true;
-      if (vcol) vcol.needsUpdate = true;
-      this.ground.geometry.computeVertexNormals();
+      job.i = son;
+      if (job.i >= pos.count) {
+        pos.needsUpdate = true;
+        if (vcol) vcol.needsUpdate = true;
+        this.ground.geometry.computeVertexNormals();
+        this._cutJob = null;
+      }
     }
     const elevY = 80 + day.elev * 320;
     this.sunDisc.position.set(c.x + 500, elevY, c.z + 330);
@@ -1521,9 +1540,10 @@ export class EndlessScene {
       return;
     }
     const back = 6.6 + speedT * 0.9;
+    // Sürət qabaqlaması 0.11 → 0.075: driftdə kamera yana yellənirdi
     const desired = new THREE.Vector3(
-      car.position.x - fx * back + car.velocity.x * 0.11, 3.2 + car.position.y,
-      car.position.z - fz * back + car.velocity.z * 0.11
+      car.position.x - fx * back + car.velocity.x * 0.075, 3.2 + car.position.y,
+      car.position.z - fz * back + car.velocity.z * 0.075
     );
     const look = new THREE.Vector3(car.position.x + fx * 7, 1.1 + car.position.y, car.position.z + fz * 7);
     // İLK KADR: kamera (0,0,0)-dan lerp edirdi, relyef isə ~25 m hündürdədir
@@ -1533,8 +1553,10 @@ export class EndlessScene {
       this.camera.position.copy(desired);
       this._camTarget.copy(look);
     } else {
-      this.camera.position.lerp(desired, 1 - Math.exp(-dt * 8));
-      this._camTarget.lerp(look, 1 - Math.exp(-dt * 8));
+      // İzləmə sürəti 8 → 11, baxış nöqtəsi 8 → 15: dönüşdə kamera maşının
+      // arxasınca gecikmir (əvvəl ~125 ms geri qalırdı = "lag" hissi)
+      this.camera.position.lerp(desired, 1 - Math.exp(-dt * 11));
+      this._camTarget.lerp(look, 1 - Math.exp(-dt * 15));
     }
     this.camera.lookAt(this._camTarget);
     this.camera.rotateZ(-(car._steerSmooth || 0) * 0.018 * lookBack);

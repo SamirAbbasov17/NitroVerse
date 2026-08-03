@@ -1079,9 +1079,13 @@ export class Menu {
         : legendary
           ? `background:linear-gradient(135deg, ${hex(it.hex)}, ${hex(it.glow || it.hex)})`
           : `background:${hex(dot)}`;
+      // Hesabsız oyunçuda maşınlarda olduğu kimi KİLİD nişanı görünsün
+      // (əvvəl yalnız qiymət yazılırdı və alına biləcəyi təəssüratı yaranırdı)
       const tag = owned
         ? (on ? `<span class="cos__on">✓ ${isSkinTab ? t('cos.tapOff') : t('cos.on')}</span>` : '')
-        : `<span class="mrow__lock">🪙${it.price}</span>`;
+        : (auth.isLoggedIn
+          ? `<span class="mrow__lock">🪙${it.price}</span>`
+          : `<span class="mrow__lock">${t('cars.lockAcc')}</span>`);
       const stockDesc = it.stock
         ? `${car?.name || 'Maşın'} — ${grp.key === 'rim' ? 'öz zavod diskləri' : 'öz orijinal rəngi'}`
         : '';
@@ -1367,6 +1371,12 @@ export class Menu {
     const ly = this.root.querySelector('[data-logout-yes]');
     if (ly) ly.onclick = () => {
       auth.logout();
+      // Seçili maşın kilidləndisə başlanğıc maşına qayıt (önizləmə də yenilənir)
+      if (!isCarUnlocked(this.sel.carId, null)) {
+        this.sel.carId = STARTER_CARS[0];
+        localStorage.setItem('apexCar', this.sel.carId);
+        this._preview();
+      }
       this.showAuth(t('auth.loggedOut'));
     };
     const ln = this.root.querySelector('[data-logout-no]');

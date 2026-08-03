@@ -16,7 +16,10 @@ const json = (obj, status = 200) =>
   });
 
 const BUCKET_MS = 35000;
-const CHAT_KEEP = 120;   // saxlanan son mesaj sayı
+const CHAT_KEEP = 120;      // saxlanan son mesaj sayı
+// MESAJ ÖMRÜ: qlobal çat arxivi əbədi qalmamalıdır (istifadəçi qərarı).
+// 12 saatdan köhnə mesajlar silinir — söhbət canlı qalır, tarixçə yığılmır.
+const CHAT_TTL = 12 * 3600 * 1000;
 const FEED_MAX = 30;     // bir sorğuda qaytarılan maksimum
 const WHO_MAX = 40;      // siyahıda göstərilən maksimum oyunçu
 const DM_KEEP = 80;      // söhbət başına saxlanan mesaj
@@ -216,11 +219,16 @@ export function makeSocial(getStore) {
         if (!text) return json({ error: 'empty' }, 400);
         const key = `c/${String(now).padStart(13, '0')}-${Math.random().toString(36).slice(2, 6)}`;
         await store.setJSON(key, { nick, text, t: now });
-        // Seyrək təmizlik: yalnız son CHAT_KEEP mesaj qalsın
-        if (Math.random() < 0.1) {
+        // Seyrək təmizlik: həm SAY, həm YAŞ limiti
+        if (Math.random() < 0.12) {
           const { blobs } = await store.list({ prefix: 'c/' });
-          const old = blobs.map((x) => x.key).sort().slice(0, -CHAT_KEEP);
-          for (const k of old) store.delete(k).catch(() => {});
+          const açarlar = blobs.map((x) => x.key).sort();
+          const silinəcək = new Set(açarlar.slice(0, -CHAT_KEEP));
+          for (const k of açarlar) {
+            const ts = Number(k.slice(2, 15));      // c/<13 rəqəm>-<rand>
+            if (Number.isFinite(ts) && now - ts > CHAT_TTL) silinəcək.add(k);
+          }
+          for (const k of silinəcək) store.delete(k).catch(() => {});
         }
         return json({ ok: 1, t: now });
       }
