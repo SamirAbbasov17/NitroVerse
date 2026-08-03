@@ -99,7 +99,15 @@ export class PowerUpManager {
     return this._seededType(boxIndex, roll, 0);
   }
 
+  // Nişan teksturaları canvas-da çəkilir; ilk dəfə istifadə anında hazırlanır
+  // və həmin kadrda BOŞ render oluna bilir ("işıq var, şəkil yox" halı).
+  // Ona görə hamısı səhnə qurulanda əvvəlcədən isidilir.
+  _warmBadges() {
+    for (const t of POWERUP_TYPES) abilityBadgeTexture(t.id);
+  }
+
   _buildBoxes() {
+    this._warmBadges();
     const rows = 4; // hər dövrədə 4 cərgə
     const lanes = [-0.5, 0, 0.5];
     for (let ri = 0; ri < rows; ri++) {
@@ -143,6 +151,11 @@ export class PowerUpManager {
 
     // Qutular: fırlanma + üzmə + respawn (pop animasiyası ilə)
     for (const b of this.boxes) {
+      // İNVARİANT: aktivdirsə hər ikisi görünür, deyilsə hər ikisi gizli.
+      // Hansı yoldan gəlirsə gəlsin (şəbəkə, respawn, götürmə) desinxron
+      // qalmır — "ikon var, işıq yox / işıq var, ikon yox" halları bitir.
+      if (b.mesh.visible !== b.active) b.mesh.visible = b.active;
+      if (b.badge && b.badge.visible !== b.active) b.badge.visible = b.active;
       if (b.active) {
         // İşıq nüvəsi: yumşaq nəbz + üzmə (fırlanan qutu yoxdur)
         b.mesh.position.y = b.baseY + Math.sin(this._t * 2.6 + b.phase) * 0.18;
@@ -152,10 +165,15 @@ export class PowerUpManager {
         const halo = b.mesh.getObjectByName('glowhalo');
         if (halo) halo.material.opacity = 0.42 + Math.sin(this._t * 3.4 + b.phase) * 0.12;
         if (b.badge) b.badge.position.y = b.mesh.position.y + 1.55;
-        // Yenidən doğulanda böyüyərək peyda olur
+        // Yenidən doğulanda böyüyərək peyda olur — NİŞAN da eyni sürətlə
+        // böyüyür. Əvvəl nişan dərhal tam ölçüdə çıxırdı və "ikon var, işıq
+        // yoxdur" görünüşü yaranırdı (istifadəçi rəyi).
         if (b.mesh.scale.x < 1) {
           const s = Math.min(1, b.mesh.scale.x + dt * 4);
           b.mesh.scale.setScalar(s);
+          if (b.badge) b.badge.scale.set(2.4 * s, 2.4 * s, 1);
+        } else if (b.badge && b.badge.scale.x !== 2.4) {
+          b.badge.scale.set(2.4, 2.4, 1);
         }
       } else {
         b.timer -= dt;

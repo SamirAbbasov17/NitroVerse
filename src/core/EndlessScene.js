@@ -5,7 +5,8 @@ import { getCarById } from '../data/cars.js';
 import { Car } from '../entities/Car.js';
 import { PlayerController } from '../entities/PlayerController.js';
 import { EndlessRoad, waterMaterial, terrainY, groundYAt, RAIL_ABOVE, CUT_IN, CUT_OUT, WATER_LEVEL } from '../world/EndlessRoad.js';
-import { NatureKit, NATURE_BY_BIOME, SMALL_BY_BIOME } from '../world/NatureKit.js';
+import { sharedNature, NATURE_BY_BIOME, SMALL_BY_BIOME } from '../world/NatureKit.js';
+import { sharedCity } from '../world/CityKit.js';
 import { disposeObject3D } from './MergeUtils.js';
 import { SkidMarks } from './SkidMarks.js';
 import { Effects } from './Effects.js';
@@ -166,9 +167,14 @@ export class EndlessScene {
     // ——— Yol + maşın ———
     this.road = new EndlessRoad(this.scene);
     // Kenney Nature Kit (CC0) — arxa planda yüklənir, hazır olanda dekora qarışır
-    this._nature = new NatureKit();
+    this._nature = sharedNature();     // paylaşılan nüsxə (yarış da işlədir)
+    // KayKit şəhər modelləri — rayonlarda prosedural qutuları əvəz edir
+    this._city = sharedCity();
+    if (this._city.ready) this.road.cityFactory = (n) => this._city.get(n);
+    else this._city._loading.then(() => { this.road.cityFactory = (n) => this._city.get(n); });
     this.road.natureFactory = (name) => this._nature.get(name);
-    this._nature.load().then(() => { this._natureReady = true; });
+    if (this._nature.ready) this._natureReady = true;
+    else this._nature._loading.then(() => { this._natureReady = true; });
     const data = playerCarData(config.carId);
     this.playerCar = new Car(data, library, { isPlayer: true });
     const spot = this.road.nearestSpot(new THREE.Vector3(0, 0, 20));
@@ -1053,7 +1059,10 @@ export class EndlessScene {
     // torpaq dilimi görünürdü (istifadəçi skrinşotu). İndi yol ucu 48 m
     // irəlilədikdə də yenidən kəsilir.
     const yolUcu = this.road.base + this.road.points.length;
-    const ucSürüşdü = Math.abs(yolUcu - (this._cutTip ?? -1e9)) >= 6;
+    // 6 nöqtə (48 m) idi: yeni yaranan yol növbəti kəsimə qədər torpağın
+    // altında qala bilirdi və uzaqdan asfaltın üstündə torpaq görünürdü.
+    // İndi 2 nöqtə (16 m) — kəsim yolun ucundan geri qalmır.
+    const ucSürüşdü = Math.abs(yolUcu - (this._cutTip ?? -1e9)) >= 2;
     if (gx !== this._groundSnap.x || gz !== this._groundSnap.z || ucSürüşdü) {
       this._groundSnap.x = gx; this._groundSnap.z = gz;
       this._cutTip = yolUcu;
@@ -1101,7 +1110,7 @@ export class EndlessScene {
       const { gx: jgx, gz: jgz, cells, CELL } = job;
       const pos = this.ground.geometry.attributes.position;
       const vcol = this.ground.geometry.attributes.color;
-      const SLICE = 4600;                    // ~4 kadra bölünür
+      const SLICE = 8800;                    // ~2 kadra bölünür (tətik tez-tez)
       const son = Math.min(pos.count, job.i + SLICE);
       for (let i = job.i; i < son; i++) {
         const gx = jgx, gz = jgz;

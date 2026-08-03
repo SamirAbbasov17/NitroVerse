@@ -2,9 +2,13 @@ import * as THREE from 'three';
 import { makeDecor, makeLamp, flatMat, makeTireStack, makeBarrier,
   makeGrandstand, makeFloodlight, makeMarshalPost, makeSponsorBoard, makeBunting } from '../core/AssetFactory.js';
 import { mergeStaticGroup } from '../core/MergeUtils.js';
+import { sharedNature, NATURE_BY_TRACK } from './NatureKit.js';
 
 // Səhnə mühiti: göy, fog, IBL env-map, işıqlar, yer, uzaq relyef və dekor.
 export class Environment {
+  // Kenney modelləri (CC0) — prosedural konus/dodekaedrdən qat-qat keyfiyyətli.
+  // Yüklənmə asinxrondur: hazır olmayanda prosedural dekor işləyir, hazır
+  // olan kimi TƏBİƏT qatı əlavə olunur (yenidən qurulma yoxdur).
   constructor(scene, trackData, track, renderer = null) {
     this.scene = scene;
     this.data = trackData;
@@ -165,6 +169,7 @@ export class Environment {
     if (this.data.river) this._river(this.data.river);
     this._scatterDecor();
     this._nearDetail();     // yaxın plan: ot dəstələri, çınqıl, kol — dərinlik
+    this._natureLayer();    // Kenney modelləri (asinxron — hazır olanda əlavə olunur)
     this._trackside();      // tribuna, projektor, marşal, sponsor, bayraq
     this._autoObstacles();   // təhlükəsizlik toru — bax aşağı
     // Gecə trekində yol küçə lampaları ilə işıqlanır
@@ -987,6 +992,49 @@ export class Environment {
     const merged = mergeStaticGroup(g);
     this.scene.add(merged);
     this._track(merged);
+  }
+
+  // ————— KENNEY TƏBİƏT QATI —————
+  _natureLayer() {
+    const adlar = NATURE_BY_TRACK[this.data.id];
+    if (!adlar?.length) return;
+    const kit = sharedNature();
+    const qur = () => {
+      if (!kit.ready) return;
+      const g = new THREE.Group();
+      const N = this.track.N;
+      const box = new THREE.Box3(), size = new THREE.Vector3();
+      let qoyulan = 0;
+      for (let k = 0; k < 260; k++) {
+        const obj = kit.get(adlar[(Math.random() * adlar.length) | 0]);
+        if (!obj) continue;
+        const i = Math.floor(Math.random() * N);
+        const c = this.track.points[i], n = this.track.normals[i];
+        const side = Math.random() < 0.5 ? -1 : 1;
+        const off = this.track.halfWidth + 12 + Math.random() * 120;
+        const x = c.x + n.x * off * side + (Math.random() - 0.5) * 18;
+        const z = c.z + n.z * off * side + (Math.random() - 0.5) * 18;
+        const sc = 0.75 + Math.random() * 0.7;
+        obj.scale.setScalar(sc);
+        obj.position.set(x, 0, z);
+        obj.rotation.y = Math.random() * Math.PI * 2;
+        box.setFromObject(obj); box.getSize(size);
+        const r = Math.max(size.x, size.z) * 0.42;
+        // Yolun üstünə və başqa obyektin içinə düşməsin
+        const yan = Math.abs(this.track.getNearest(obj.position).lateral);
+        if (yan < this.track.halfWidth + r + 4) continue;
+        if (!this._free(x, z, r * 1.25, 2.5)) continue;
+        g.add(obj);
+        this.obstacles.push({ x, z, r });
+        qoyulan++;
+      }
+      if (!qoyulan) return;
+      const merged = mergeStaticGroup(g);
+      this.scene.add(merged);
+      this._track(merged);
+    };
+    if (kit.ready) qur();
+    else kit._loading?.then(qur);
   }
 
   _scatterDecor() {

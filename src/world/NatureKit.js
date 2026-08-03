@@ -51,6 +51,26 @@ export const SMALL_BY_BIOME = {
   snow: ['nk:rock_smallFlatA', 'nk:log_stack', 'nk:grass_leafsLarge'],
 };
 
+// ————— PAYLAŞILAN NÜSXƏ —————
+// Eyni modelləri həm zen, həm yarış trekləri işlədir. İki dəfə yükləmək
+// yaddaşı və şəbəkəni iki dəfə yeyirdi; indi tək nüsxə paylaşılır.
+let _ortaq = null;
+export function sharedNature() {
+  if (!_ortaq) { _ortaq = new NatureKit(); _ortaq._loading = _ortaq.load(); }
+  return _ortaq;
+}
+
+// Trek biomu → uyğun Kenney modelləri (yarış xəritələri üçün)
+export const NATURE_BY_TRACK = {
+  desert:  ['cactus_tall', 'rock_largeA', 'rock_largeC', 'rock_smallFlatA'],
+  neon:    ['tree_thin', 'tree_cone', 'rock_smallFlatA', 'plant_bushLarge'],
+  alpine:  ['tree_pineDefaultA', 'tree_pineDefaultB', 'tree_detailed', 'tree_cone',
+    'log_stack', 'mushroom_redGroup', 'rock_largeA'],
+  canyon:  ['rock_largeE', 'rock_largeA', 'tree_default_fall', 'tree_thin', 'rock_smallFlatA'],
+  riviera: ['tree_palmTall', 'tree_palmDetailedShort', 'plant_bushLarge', 'tree_oak', 'flower_yellowB'],
+  zavod:   ['tree_thin', 'grass_leafsLarge', 'rock_smallFlatA', 'log_stack'],
+};
+
 export class NatureKit {
   constructor() {
     this.templates = new Map();

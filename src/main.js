@@ -37,6 +37,12 @@ muteBtn.textContent = audio.muted ? '🔇' : '🔊';
 muteBtn.onclick = () => { muteBtn.textContent = audio.toggleMute() ? '🔇' : '🔊'; };
 document.body.appendChild(muteBtn);
 
+// MODEL DƏSTLƏRİNİ ƏVVƏLCƏDƏN YÜKLƏ: səhnə qurulanda hazır olsunlar.
+// Əvvəl səhnə ilə birlikdə yüklənirdi və İLK chunk-lar prosedural
+// (keyfiyyətsiz) modellərlə qurulurdu.
+import('./world/NatureKit.js').then((m) => m.sharedNature());
+import('./world/CityKit.js').then((m) => m.sharedCity());
+
 // Sürət/nitro qatı üçün overlay (boşdursa görünmür — GameplayScene sinif verir)
 const speedFx = document.createElement('div');
 speedFx.className = 'speedfx';

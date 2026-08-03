@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { makeDecor, makeFence, makeSignpost, makeUtilityPole } from '../core/AssetFactory.js';
 import { mergeStaticGroup } from '../core/MergeUtils.js';
+import { CITY_ROWS } from './CityKit.js';
 
 // Sonsuz prosedural yol: qabaqda chunk-lar yaranır, arxadakılar silinir.
 // Car.update üçün TrackBuilder-uyğun interfeys verir (getNearest, halfWidth, maxRadius).
@@ -564,9 +565,13 @@ export class EndlessRoad {
     const g = new THREE.Group();
     const hw = this.halfWidth;
     const s = this.style;
-    g.add(this._ribbon(pts, nrms, -hw, hw, s.road, 0.02, { map: this._roadTex, absStart }));
-    g.add(this._ribbon(pts, nrms, hw, hw + 0.65, s.curb, 0.045, { emissive: s.curb, emissiveIntensity: 0.3, absStart }));
-    g.add(this._ribbon(pts, nrms, -hw - 0.65, -hw, s.curb, 0.045, { emissive: s.curb, emissiveIntensity: 0.3, absStart }));
+    // ZƏMANƏT: asfalt torpaqdan bir neçə sm YUXARIDA çəkilir (0.02 → 0.08).
+    // Prosedural relyefdə yer bəzən yolun səviyyəsinə çox yaxın düşür və
+    // kənarlarda kəsişmə/z-döyüşü görünürdü. Kənar zolaq və ayırıcı xətt
+    // də uyğun qaldırılıb (sıra pozulmasın). Fizika toxunulmazdır.
+    g.add(this._ribbon(pts, nrms, -hw, hw, s.road, 0.08, { map: this._roadTex, absStart }));
+    g.add(this._ribbon(pts, nrms, hw, hw + 0.65, s.curb, 0.105, { emissive: s.curb, emissiveIntensity: 0.3, absStart }));
+    g.add(this._ribbon(pts, nrms, -hw - 0.65, -hw, s.curb, 0.105, { emissive: s.curb, emissiveIntensity: 0.3, absStart }));
     // ÇİYİN: səkidən torpağa maili keçid. Olmayanda yol qara qalın plita kimi
     // görünürdü və yandan çıxanda kənarda uçurum vardı.
     for (const sd of [1, -1]) g.add(this._verge(pts, nrms, sd * (hw + 0.65), sd * (hw + 4.2), s.ground ?? 0x6b5a3e));
@@ -574,7 +579,7 @@ export class EndlessRoad {
     for (let i = 2; i < pts.length - 2; i += 5) {
       const seg = pts.slice(i, i + 2);
       const nseg = nrms.slice(i, i + 2);
-      g.add(this._ribbon(seg, nseg, -0.2, 0.2, 0xe8e6da, 0.035, { absStart: absStart + i }));
+      g.add(this._ribbon(seg, nseg, -0.2, 0.2, 0xe8e6da, 0.095, { absStart: absStart + i }));
     }
     const chunkObstacles = [];
     const chunkSpots = []; // yol generatorunun yayınma xəritəsi
@@ -795,12 +800,18 @@ export class EndlessRoad {
               // Mərkəz + arxa sıralar = BİNA, kənar/ön sıra = alçaq ev.
               // Ev modeli bərabər miqyaslanır — "uzunsov ev" problemi yoxdur.
               const tower = core > 0.35 || row > 0;
+              // KayKit şəhər modeli varsa ONDAN istifadə et (prosedural
+              // qutudan qat-qat keyfiyyətli); hazır deyilsə köhnə yola düş
+              const kitAd = this.cityFactory
+                ? CITY_ROWS[Math.min(row, 2)][(Math.floor(rnd01(abs * 23 + row + side) * 9)) % CITY_ROWS[Math.min(row, 2)].length]
+                : null;
+              const kitObj = tower && kitAd ? this.cityFactory(kitAd) : null;
               // Hündürlük SIRAYA görə: ön sıra alçaq mağaza/ofis, arxa
               // sıralar göydələn — yaxın planda "karton divar" olmur
               const hRange = [[9, 17], [15, 26], [21, 34]][row];
-              const b = tower
+              const b = kitObj || (tower
                 ? makeDecor('building', { hMin: hRange[0], hMax: hRange[1] })
-                : makeDecor('house');
+                : makeDecor('house'));
               // HÜNDÜRLÜK ARXA SIRALARDA: yola ən yaxın sıra alçaqdır, göydələn
               // arxada dayanır — belə siluet dərinlik verir, yol kənarında isə
               // nəhəng lövhə divarı yaratmır (yaxından "karton" görünürdü)
@@ -809,7 +820,7 @@ export class EndlessRoad {
               const sc = tower
                 ? 0.9 + core * 0.25 + rnd01(abs * 5 + row + side) * 0.3
                 : 0.95 + rnd01(abs * 5 + side) * 0.4;
-              b.scale.setScalar(sc);
+              if (!kitObj) b.scale.setScalar(sc);   // kit modeli öz ölçüsündədir
               const bx = pts[i].x + nrms[i].x * off * side;
               const bz = pts[i].z + nrms[i].z * off * side;
               // SUYUN İÇİNDƏ tikili olmamalıdır — həm nöqtənin özü, həm də
