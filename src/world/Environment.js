@@ -14,6 +14,13 @@ export class Environment {
     this._build();
   }
 
+  // YER BOŞDURMU: yeni obyekt mövcud heç bir maneə ilə kəsişməməlidir.
+  // Bunsuz iri obyektlər (bina, mesa, təpə, tribuna) bir-birinin İÇİNDƏN
+  // çıxırdı (istifadəçi rəyi: şəhər trekində tribunalar üst-üstə düşür).
+  _free(x, z, r, pad = 1.2) {
+    return !this.obstacles.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + r + pad);
+  }
+
   _build() {
     const p = this.data.palette;
     this.obstacles = []; // { x, z, r } — bütün bərk obyektlər (toqquşma üçün)
@@ -168,8 +175,10 @@ export class Environment {
         const r = base + Math.random() * 150;
         const h = 30 + Math.random() * 110;
         const w = 12 + Math.random() * 22;
+        const bx = Math.cos(a) * r, bz = Math.sin(a) * r;
+        if (!this._free(bx, bz, w * 0.72)) continue;
         const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), flatMat(0x0a0f22, { roughness: 0.9 }));
-        b.position.set(Math.cos(a) * r, h / 2 - 8, Math.sin(a) * r);
+        b.position.set(bx, h / 2 - 8, bz);
         g.add(b);
         this.obstacles.push({ x: b.position.x, z: b.position.z, r: w * 0.72 });
         // bəzi binalarda neon zolaq
@@ -381,6 +390,7 @@ export class Environment {
         mesa.scale.set(sx, sy, sx * 0.8);
         mesa.position.set(c.x + n.x * off * side, sy * 0.35, c.z + n.z * off * side);
         mesa.rotation.y = Math.random() * 6;
+        if (!this._free(mesa.position.x, mesa.position.z, sx * 0.85)) continue;
         g.add(mesa);
         this.obstacles.push({ x: mesa.position.x, z: mesa.position.z, r: sx * 0.85 });
       }
@@ -397,7 +407,9 @@ export class Environment {
         c.z + n.z * (this.track.halfWidth + 3.2) * side
       );
       g.add(pillar);
-      this.obstacles.push({ x: pillar.position.x, z: pillar.position.z, r: 2.8 });
+      if (this._free(pillar.position.x, pillar.position.z, 2.8, 0.5)) {
+        this.obstacles.push({ x: pillar.position.x, z: pillar.position.z, r: 2.8 });
+      }
     }
     const lintel = new THREE.Mesh(rockGeo, wallMats[1]);
     lintel.scale.set(this.track.halfWidth + 6.5, 2.6, 4.2);
@@ -437,6 +449,7 @@ export class Environment {
       hill.scale.y = 0.32;
       hill.position.set(pos.x, -r * 0.06, pos.z);
       hill.rotation.y = Math.random() * 6;
+      if (!this._free(pos.x, pos.z, r * 0.8)) continue;
       g.add(hill);
       this.obstacles.push({ x: pos.x, z: pos.z, r: r * 0.8 });
       placed++;
@@ -467,6 +480,7 @@ export class Environment {
       const ox = c.x + n.x * off * side, oz = c.z + n.z * off * side;
       obj.position.set(ox, 0, oz);
       obj.rotation.y = Math.atan2(t0.x, t0.z);
+      if (!this._free(ox, oz, tyre ? 1.35 : 1.7, 0.6)) continue;
       g.add(obj);
       // Trek kənarı maneələri toqquşma siyahısına DÜŞMÜRDÜ — təkər yığınının
       // və baryerin içindən keçmək olurdu (fiziki testlə təsdiqləndi)
@@ -536,7 +550,7 @@ export class Environment {
         this.scene.add(leg);
         this._track(leg);
       }
-      this.obstacles.push({ x: px, z: pz, r: 2.2 });
+      if (this._free(px, pz, 2.2, 0.8)) this.obstacles.push({ x: px, z: pz, r: 2.2 });
     }
   }
 
@@ -786,13 +800,25 @@ export class Environment {
     const hw = this.track.halfWidth;
     const accent = this.data.palette?.accent ?? 0xff7a2f;
     const night = !!this.data.palette?.night;
-    const put = (obj, i, off, side, faceRoad = true) => {
+    // YER TUTMA XƏRİTƏSİ: əvvəl hər dekor müstəqil qoyulurdu və obyektlər
+    // bir-birinin İÇİNDƏN çıxırdı (istifadəçi: şəhər trekində tribunalar
+    // üst-üstə düşür). İndi yer tutulubsa obyekt qoyulmur.
+    const tutulan = [];
+    // ƏVVƏLKİ dekor da yoxlanılır (şin qüllələri, bilbordlar, ağaclar…) —
+    // yoxsa tribuna başqa obyektin içinə düşürdü
+    const boşdur = (x, z, r) => !tutulan.some((o) =>
+      Math.hypot(o.x - x, o.z - z) < o.r + r + 2)
+      && !this.obstacles.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + r + 1.5);
+    const put = (obj, i, off, side, faceRoad = true, r = 2.5) => {
       const c = this.track.points[i], n = this.track.normals[i], t = this.track.tangents[i];
-      obj.position.set(c.x + n.x * off * side, 0, c.z + n.z * off * side);
+      const x = c.x + n.x * off * side, z = c.z + n.z * off * side;
+      if (!boşdur(x, z, r)) { obj.traverse?.((o) => o.geometry?.dispose?.()); return null; }
+      obj.position.set(x, 0, z);
       obj.rotation.y = faceRoad
         ? Math.atan2(-n.x * side, -n.z * side)
         : Math.atan2(t.x, t.z);
       g.add(obj);
+      tutulan.push({ x, z, r });
       return obj.position;
     };
     // 1) Tribunalar — düz hissələrdə, 2-4 ədəd
@@ -804,8 +830,8 @@ export class Environment {
         if (Math.abs(t0.x * t1.z - t0.z * t1.x) > 0.08) continue;   // düz olsun
         const side = Math.random() < 0.5 ? -1 : 1;
         const len = 14 + Math.random() * 8;
-        const pos = put(makeGrandstand(len, accent), i, hw + 9 + Math.random() * 3, side);
-        this.obstacles.push({ x: pos.x, z: pos.z, r: len * 0.42 });
+        const pos = put(makeGrandstand(len, accent), i, hw + 9 + Math.random() * 3, side, true, len * 0.42);
+        if (pos) this.obstacles.push({ x: pos.x, z: pos.z, r: len * 0.42 });
       }
     }
     // 2) Projektor qüllələri — trek boyu bərabər
@@ -814,8 +840,8 @@ export class Environment {
       for (let k = 0; k < want; k++) {
         const i = Math.floor((k / want) * N + 6) % N;
         const side = k % 2 ? 1 : -1;
-        const pos = put(makeFloodlight(13 + Math.random() * 4, night || Math.random() < 0.4), i, hw + 7.5, side, false);
-        this.obstacles.push({ x: pos.x, z: pos.z, r: 0.9 });
+        const pos = put(makeFloodlight(13 + Math.random() * 4, night || Math.random() < 0.4), i, hw + 7.5, side, false, 1.6);
+        if (pos) this.obstacles.push({ x: pos.x, z: pos.z, r: 0.9 });
       }
     }
     // 3) Marşal məntəqələri — döngə çıxışlarında
@@ -826,8 +852,8 @@ export class Environment {
         if (Math.abs(cross) < 0.12) continue;                 // yalnız döngə
         if (Math.random() > 0.45) continue;
         const side = cross > 0 ? -1 : 1;                      // döngənin bayırı
-        const pos = put(makeMarshalPost(accent), i, hw + 5.5, side);
-        this.obstacles.push({ x: pos.x, z: pos.z, r: 1.6 });
+        const pos = put(makeMarshalPost(accent), i, hw + 5.5, side, true, 2.2);
+        if (pos) this.obstacles.push({ x: pos.x, z: pos.z, r: 1.6 });
       }
     }
     // 4) Sponsor lövhələri — düz hissələrdə sıra ilə
@@ -839,14 +865,14 @@ export class Environment {
         const side = Math.random() < 0.5 ? -1 : 1;
         const w = 5 + Math.random() * 3;
         const cols = [0x1f6feb, 0xe0342c, 0x22a06b, 0x8a3df0, 0xff7a2f];
-        const pos = put(makeSponsorBoard(w, cols[(Math.random() * cols.length) | 0]), i, hw + 3.4, side);
-        this.obstacles.push({ x: pos.x, z: pos.z, r: w * 0.4 });
+        const pos = put(makeSponsorBoard(w, cols[(Math.random() * cols.length) | 0]), i, hw + 3.4, side, true, w * 0.4);
+        if (pos) this.obstacles.push({ x: pos.x, z: pos.z, r: w * 0.4 });
       }
     }
     // 5) Bayraq sıraları — start-finiş yaxınlığı
     for (const idx of [4, N - 10]) {
       const i = ((idx % N) + N) % N;
-      put(makeBunting(11 + Math.random() * 4), i, hw + 6.5, Math.random() < 0.5 ? -1 : 1, false);
+      put(makeBunting(11 + Math.random() * 4), i, hw + 6.5, Math.random() < 0.5 ? -1 : 1, false, 5);
     }
     const merged = mergeStaticGroup(g);
     g.traverse((o) => o.geometry?.dispose?.());

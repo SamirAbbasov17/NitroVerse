@@ -147,7 +147,7 @@ export class GameplayScene {
       this.powerups = new PowerUpManager(this.scene, this.track, this.racers, {
         effects: this.effects,
         onHit: (racer) => {
-          if (racer.isPlayer) this._shake = 0.8;
+          if (racer.isPlayer) { this._shake = 0.8; this._hitStop(1); }
           if (!racer.isRemote) this._damage(racer.car, this.hz.hitDamage);
         },
         onRemoteHit: (racer) => this._net?.sendEvent({ kind: 'hit', target: racer.netId }),
@@ -421,6 +421,7 @@ export class GameplayScene {
         } else {
           this.playerCar.hitTimer = TUNING.items.hitStun * (this.playerCar.stunMul || 1);
           this._shake = 0.8;
+          this._hitStop(1);
           this._damage(this.playerCar, this.hz.hitDamage, true);
         }
       }
@@ -666,7 +667,23 @@ export class GameplayScene {
   }
 
   // ————— Loop —————
+  // ————— HIT-STOP (zərbə anında mikro-donma) —————
+  // Oyun hissinin ən güclü ucuz aləti: güclü zərbədə vaxt 60 ms ərzində
+  // yavaşıyır — zərbənin "çəkisi" hiss olunur. Postprocessing tələb etmir.
+  _hitStop(güc = 1) {
+    this._stopT = Math.max(this._stopT || 0, 0.055 * güc);
+    // Ekranın kənarında qısa flaş — zərbə vizual olaraq da oxunur
+    document.getElementById('app')?.classList.remove('impact');
+    void document.getElementById('app')?.offsetWidth;   // reflow: animasiya təzələnsin
+    document.getElementById('app')?.classList.add('impact');
+  }
+
   update(dt) {
+    // Donma müddətində vaxt yavaşıyır (fizika sabit qalır — dt kiçilir)
+    if ((this._stopT || 0) > 0) {
+      this._stopT = Math.max(0, this._stopT - dt);
+      dt *= 0.22;
+    }
     if (this._state === 'paused') return;
     this._time += dt;
 
