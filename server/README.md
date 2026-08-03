@@ -1,8 +1,19 @@
 # NitroVerse — öz serverində qurulum
 
-Tək prosesli server: statik faylları verir **və** `/api/{auth,rooms,social}`
+Tək prosesli server: statik faylları verir **və** `/api/{auth,rooms,social,report}`
 endpointlərini işlədir. Anbar — SQLite faylı. Xarici kitabxana yoxdur
 (Node 22+ daxili SQLite modulu işlədilir).
+
+## ƏN SÜRƏTLİ YOL — bir əmr
+
+Təmiz Ubuntu VPS-də (Node, Caddy+HTTPS, systemd, firewall, yedəkləmə,
+PeerJS brokeri — hamısı avtomatik):
+
+```bash
+sudo DOMAIN=nitroverse.az RESEND_API_KEY=re_xxx bash server/deploy.sh
+```
+
+Aşağıdakı bölmələr həmin addımların əl ilə variantıdır.
 
 ## Tələblər
 - Node.js 22 və ya daha yeni
@@ -42,7 +53,7 @@ WorkingDirectory=/opt/karbon
 Environment=PORT=8080
 Environment=STATIC_DIR=/opt/karbon/dist
 Environment=DB_FILE=/var/lib/karbon/karbon.db
-EnvironmentFile=/etc/karbon.env      # AUTH_SECRET=...
+EnvironmentFile=/etc/karbon.env      # AUTH_SECRET=... , RESEND_API_KEY=... , REPORT_TO=...
 ExecStart=/usr/bin/node server/index.mjs
 Restart=always
 RestartSec=3
@@ -67,6 +78,17 @@ karbon.az {
 ```
 
 Caddy sertifikatı avtomatik alır və yeniləyir.
+
+## E-poçt bildirişləri
+
+Xəta bildirişləri `/api/report` endpointinə gəlir və Resend API ilə
+sahibin poçtuna göndərilir. Env dəyişənləri:
+
+| Dəyişən | Təyinat |
+|---|---|
+| `RESEND_API_KEY` | resend.com açarı (olmasa bildiriş yalnız bazada qalır) |
+| `REPORT_TO` | bildirişin gedəcəyi ünvan |
+| `REPORT_FROM` | göndərən (domen Resend-də təsdiqlənməlidir) |
 
 ## Yedəkləmə
 
