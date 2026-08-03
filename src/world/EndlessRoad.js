@@ -248,6 +248,32 @@ export class EndlessRoad {
         this._sinceTurn = -14; // bir müddət bu qərar qüvvədə qalsın
       }
     }
+
+    // ————— SƏRT ZƏMANƏT: yol nöqtəsi dekorun İÇİNƏ girə bilməz —————
+    // Yuxarıdakı yayınma YUMŞAQ sükandır: iri dağ (ətək radiusu 160 m-ə
+    // qədər) qarşısında gec qalır və yol dağın içindən keçirdi (şüa testi
+    // ilə tapıldı: biom keçidində 93 pozuntu). İndi nöqtə zonaya girirsə
+    // MƏCBURİ kənara itələnir. İtələmə addımı 1.8 m ilə məhdudlaşır —
+    // yol IIR hamarlaması ilə birlikdə bu, gözə görünmür.
+    for (let cəhd = 0; cəhd < 3; cəhd++) {
+      let ən = null, ənDərin = 0;
+      for (const sp of this.decorSpots) {
+        // İri obyektlər (dağ) üçün ehtiyat daha genişdir: onların ətəyi
+        // silsilə deformasiyası ilə genişlənir və yumşaq sükan gec qalır
+        const lim = sp.r + this.halfWidth + (sp.r > 40 ? 14 : 6);
+        const dx = this._pos.x - sp.x, dz = this._pos.z - sp.z;
+        const d = Math.hypot(dx, dz);
+        const dərin = lim - d;
+        if (dərin > ənDərin) { ənDərin = dərin; ən = { sp, dx, dz, d }; }
+      }
+      if (!ən) break;
+      const { sp, dx, dz, d } = ən;
+      const nx = d > 0.001 ? dx / d : 1, nz = d > 0.001 ? dz / d : 0;
+      const addım = Math.min(1.8, ənDərin);
+      this._pos.x += nx * addım;
+      this._pos.z += nz * addım;
+      if (ənDərin <= 1.8) break;
+    }
     this._curv += (this._curvTarget - this._curv) * 0.16;
     this._heading += this._curv;
     this._pos.x += Math.sin(this._heading) * SEG;
@@ -809,9 +835,13 @@ export class EndlessRoad {
               // Hündürlük SIRAYA görə: ön sıra alçaq mağaza/ofis, arxa
               // sıralar göydələn — yaxın planda "karton divar" olmur
               const hRange = [[9, 17], [15, 26], [21, 34]][row];
-              const b = kitObj || (tower
-                ? makeDecor('building', { hMin: hRange[0], hMax: hRange[1] })
-                : makeDecor('house'));
+              // KÖHNƏ PROSEDURAL BİNALAR SİLİNDİ (istifadəçi qərarı):
+              // qara qutu siluetləri KayKit modellərinin yanında ucuz
+              // görünürdü. Kit hazır deyilsə bina QOYULMUR — yarımçıq
+              // görüntüdənsə boşluq yaxşıdır (dəst proqram açılanda
+              // əvvəlcədən yüklənir, ona görə praktikada həmişə hazırdır).
+              if (tower && !kitObj) continue;
+              const b = kitObj || makeDecor('house');
               // HÜNDÜRLÜK ARXA SIRALARDA: yola ən yaxın sıra alçaqdır, göydələn
               // arxada dayanır — belə siluet dərinlik verir, yol kənarında isə
               // nəhəng lövhə divarı yaratmır (yaxından "karton" görünürdü)

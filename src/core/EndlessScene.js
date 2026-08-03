@@ -167,6 +167,15 @@ export class EndlessScene {
     // ——— Yol + maşın ———
     this.road = new EndlessRoad(this.scene);
     // Kenney Nature Kit (CC0) — arxa planda yüklənir, hazır olanda dekora qarışır
+    // RELYEF İŞÇİSİ: yer torunun hesablanması ayrı mövzuya keçir — kadr
+    // vaxtı sıçrayışları tamamilə yox olur. Dəstəklənmirsə (köhnə brauzer)
+    // avtomatik kadra bölünmüş əsas-mövzu yoluna düşürük.
+    try {
+      this._tw = new Worker(new URL('../world/terrainWorker.js', import.meta.url), { type: 'module' });
+      this._tw.onmessage = (e) => this._applyTerrain(e.data);
+      this._twBusy = false;
+    } catch { this._tw = null; }
+
     this._nature = sharedNature();     // paylaşılan nüsxə (yarış da işlədir)
     // KayKit şəhər modelləri — rayonlarda prosedural qutuları əvəz edir
     this._city = sharedCity();
@@ -737,9 +746,37 @@ export class EndlessScene {
     const spot = this.road.nearestSpot(c.position);
     for (let i = 0; i < 4; i++) this.effects.spawnSmoke(c.position);
     c.reset(spot.point, spot.heading);
+    this._rescueMark = (this._rescueMark || 0) + 1;   // testlər ayırd etsin
     this._onDeck = false;   // yola qayıtdı — körpü vəziyyəti yenidən qiymətləndirilsin
     this._latSm = 0;
     audio.sfx('rescue');
+  }
+
+  // ————— İŞÇİDƏN GƏLƏN RELYEFİN TƏTBİQİ —————
+  // Buferlər hazırdır: hamısı BİR ANDA tətbiq olunur (yarımçıq görüntü yox).
+  _applyTerrain({ gx, gz, h, col }) {
+    this._twBusy = false;
+    const geo = this.ground?.geometry;
+    if (!geo) return;
+    const pos = geo.attributes.position;
+    if (h.length !== pos.count) return;   // tor ölçüsü dəyişib — nəticə köhnədir
+    let vcol = geo.attributes.color;
+    if (!vcol) {
+      vcol = new THREE.BufferAttribute(new Float32Array(pos.count * 3), 3);
+      geo.setAttribute('color', vcol);
+      this._groundMat.vertexColors = true;
+      this._groundMat.needsUpdate = true;
+    }
+    const pa = pos.array;
+    for (let i = 0; i < pos.count; i++) pa[i * 3 + 2] = h[i];
+    pos.needsUpdate = true;
+    vcol.array.set(col);
+    vcol.needsUpdate = true;
+    geo.computeVertexNormals();
+    this.ground.position.set(gx, 0, gz);
+    if (this._twCells) this._roadCells = this._twCells;
+    this._gridAx = gx - GROUND_SIZE / 2;
+    this._gridAz = gz - GROUND_SIZE / 2;
   }
 
   // ————— Biom / hava / gün —————
@@ -1061,6 +1098,8 @@ export class EndlessScene {
     // yol KƏSİLMƏMİŞ torpağın altından keçirdi və asfaltın üstündə yaşıl
     // torpaq dilimi görünürdü (istifadəçi skrinşotu). İndi yol ucu 48 m
     // irəlilədikdə də yenidən kəsilir.
+    // Maşının kadrlar arası yerdəyişməsi (teleport aşkarı üçün)
+    this._lastCarPos = this._lastCarPos || { x: c.x, z: c.z };
     const yolUcu = this.road.base + this.road.points.length;
     // 6 nöqtə (48 m) idi: yeni yaranan yol növbəti kəsimə qədər torpağın
     // altında qala bilirdi və uzaqdan asfaltın üstündə torpaq görünürdü.
@@ -1079,7 +1118,9 @@ export class EndlessScene {
         const k = Math.floor(rp[i].x / CELL) + '|' + Math.floor(rp[i].z / CELL);
         let arr = cells.get(k);
         if (!arr) { arr = []; cells.set(k, arr); }
-        arr.push(rp[i]);
+        // İNDEKS də saxlanılır: kəsim hündürlüyü qonşu seqmentə proyeksiya
+        // ilə hesablanır (yalnız ən yaxın NÖQTƏ ilə yox)
+        arr.push({ x: rp[i].x, y: rp[i].y, z: rp[i].z, i });
       }
       // DİQQƏT: _roadCells / _gridAx / _gridAz maşının hündürlüyünü verir
       // (_meshGroundY). Onları İŞ BİTƏNDƏ dəyişirik — yoxsa maşın hələ
@@ -1099,6 +1140,26 @@ export class EndlessScene {
       // kadr vaxtı 16 ms-dən 40 ms-ə sıçrayırdı — 60 FPS göstərsə də
       // "lag" hiss olunurdu (ölçüldü: p99 = 25 ms, spike 41 ms).
       // İndi iş növbəyə düşür və bir neçə kadra yayılır.
+      // İŞÇİ VARSA: hesablama ora göndərilir (əsas mövzu boş qalır)
+      if (this._tw && !this._twBusy) {
+        const pos0 = this.ground.geometry.attributes.position;
+        if (!this._twLocal || this._twLocal.x.length !== pos0.count) {
+          const lx = new Float32Array(pos0.count), ly = new Float32Array(pos0.count);
+          for (let i = 0; i < pos0.count; i++) { lx[i] = pos0.getX(i); ly[i] = pos0.getY(i); }
+          this._twLocal = { x: lx, y: ly };
+        }
+        const rp2 = this.road.points;
+        const pxA = new Float32Array(rp2.length), pyA = new Float32Array(rp2.length), pzA = new Float32Array(rp2.length);
+        for (let i = 0; i < rp2.length; i++) { pxA[i] = rp2[i].x; pyA[i] = rp2[i].y; pzA[i] = rp2[i].z; }
+        this._twBusy = true;
+        this._twCells = cells;
+        this._tw.postMessage({
+          id: (this._twId = (this._twId || 0) + 1), gx, gz,
+          px: pxA, py: pyA, pz: pzA,
+          localX: this._twLocal.x, localY: this._twLocal.y, CELL,
+        });
+        this._cutJob = null;   // əsas mövzuda iş yoxdur — nəticə mesajla gələcək
+      } else {
       this._cutJob = {
         i: 0, gx, gz, cells, CELL,
         h: this._cutBufH && this._cutBufH.length === pos.count
@@ -1106,6 +1167,7 @@ export class EndlessScene {
         c: this._cutBufC && this._cutBufC.length === pos.count * 3
           ? this._cutBufC : (this._cutBufC = new Float32Array(pos.count * 3)),
       };
+      }
     }
     // ————— Növbədəki yer hesablaması (kadr başına bir dilim) —————
     if (this._cutJob) {
@@ -1113,7 +1175,12 @@ export class EndlessScene {
       const { gx: jgx, gz: jgz, cells, CELL } = job;
       const pos = this.ground.geometry.attributes.position;
       const vcol = this.ground.geometry.attributes.color;
-      const SLICE = 8800;                    // ~2 kadra bölünür (tətik tez-tez)
+      // Böyük sıçrayışda (teleport / F ilə yola qayıtma / biom keçidi)
+      // relyefi kadrlara bölmək köhnə torpağı ekranda saxlayır — bir kadrlıq
+      // yavaşlama buna dəyər. Adi sürüşdə isə bölünür (lag olmasın).
+      const sıçrayış = this._lastCarPos
+        ? Math.hypot(c.x - this._lastCarPos.x, c.z - this._lastCarPos.z) > 60 : true;
+      const SLICE = sıçrayış ? 1e9 : 8800;
       const son = Math.min(pos.count, job.i + SLICE);
       for (let i = job.i; i < son; i++) {
         const gx = jgx, gz = jgz;
@@ -1123,7 +1190,7 @@ export class EndlessScene {
         const wz = gz - pos.getY(i);
         // YOL KƏSİYİ: yol torpaqdan aşağıdırsa (tunel/qazma) torpaq kəsilir —
         // yoxsa relyef yolun üstünü örtür və maşın "torpağın içində" qalır
-        let bd = Infinity, by = 0;
+        let bd = Infinity, by = 0, bi = -1;
         const cx = Math.floor(wx / CELL), cz = Math.floor(wz / CELL);
         for (let a = -1; a <= 1; a++) {
           for (let b = -1; b <= 1; b++) {
@@ -1132,8 +1199,28 @@ export class EndlessScene {
             for (let q = 0; q < arr.length; q++) {
               const dx = wx - arr[q].x, dz = wz - arr[q].z;
               const d2 = dx * dx + dz * dz;
-              if (d2 < bd) { bd = d2; by = arr[q].y; }
+              if (d2 < bd) { bd = d2; by = arr[q].y; bi = arr[q].i; }
             }
+          }
+        }
+        // XƏTA İDİ: kəsim ƏN YAXIN NÖQTƏNİN hündürlüyünü işlədirdi. Yol
+        // nöqtələri 8 m aralıdır və mailli hissədə qonşu vertex UZAQ, DAHA
+        // HÜNDÜR nöqtəni tuturdu → yer səthi asfaltın kənarında 5–25 sm
+        // yuxarı qalxırdı (şüa testi). İndi qonşu seqmentə PROYEKSİYA ilə
+        // yolun həqiqi hündürlüyü tapılır.
+        if (bi >= 0) {
+          const rpAll = this.road.points;
+          for (const j of [bi - 1, bi]) {
+            const a0 = rpAll[j], a1 = rpAll[j + 1];
+            if (!a0 || !a1) continue;
+            const ex = a1.x - a0.x, ez = a1.z - a0.z;
+            const L2 = ex * ex + ez * ez;
+            if (L2 < 1e-6) continue;
+            let t = ((wx - a0.x) * ex + (wz - a0.z) * ez) / L2;
+            t = Math.max(0, Math.min(1, t));
+            const px = a0.x + ex * t, pz = a0.z + ez * t;
+            const d2 = (wx - px) * (wx - px) + (wz - pz) * (wz - pz);
+            if (d2 < bd) { bd = d2; by = a0.y + (a1.y - a0.y) * t; }
           }
         }
         // Maşının hündürlüyü ilə EYNİ funksiya (bax _groundYFor).
@@ -1171,6 +1258,7 @@ export class EndlessScene {
         this._cutJob = null;
       }
     }
+    this._lastCarPos.x = c.x; this._lastCarPos.z = c.z;
     const elevY = 80 + day.elev * 320;
     this.sunDisc.position.set(c.x + 500, elevY, c.z + 330);
     this.sunDisc.lookAt(c.x, 0, c.z);
@@ -1610,6 +1698,8 @@ export class EndlessScene {
   }
 
   dispose() {
+    this._tw?.terminate?.();
+    this._tw = null;
     this.input.enabled = true;
     this.input.binds.clear();
     this.touchControls?.dispose();
