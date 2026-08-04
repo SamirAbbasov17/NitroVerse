@@ -3,9 +3,13 @@ import * as THREE from 'three';
 // Drift təkər izləri — TƏK mesh, ring-buffer quad hovuzu (1 draw call).
 // Hər seqment yaşlandıqca şəffaflaşır və hovuz dolanda ən köhnəsi yenidən istifadə olunur.
 export class SkidMarks {
-  constructor(scene, max = 600) {
+  // TUTUM HESABI (buq: izlər BİRDƏN yox olurdu): 6 maşın drift edəndə
+  // saniyədə ~700 kvadrat yaranır; 600-lük hovuz 1 saniyəyə dolub ən
+  // TƏZƏ izləri də üzərinə yazırdı — ekranda iz zolağı qəfil silinirdi.
+  // İndi hovuz ömür × real sürətdən böyükdür (4200 ≈ 6.5 s × 650/s).
+  constructor(scene, max = 4200) {
     this.max = max;
-    this.life = 11;         // saniyə — iz nə qədər qalır
+    this.life = 6.5;        // saniyə — iz nə qədər qalır
     this._baseAlpha = 0.66; // əvvəl 0.42 idi: oyunda demək olar görünmürdü
 
     this._positions = new Float32Array(max * 4 * 3);
@@ -38,6 +42,12 @@ export class SkidMarks {
 
   // a → b seqmenti üzərinə en (width) ilə quad yaz
   add(ax, az, bx, bz, width = 0.44) {
+    // Hovuz dolub təzə izin üstünə yazılırsa, ən azı ANİ pop olmasın:
+    // üzərinə yazılan slot 1 s-dən gəncdirsə növbəti slota keçirik
+    // (patoloji halda belə iz zolağı bütöv qalır).
+    for (let s = 0; s < 3 && this._ages[this._head] < 1; s++) {
+      this._head = (this._head + 1) % this.max;
+    }
     const dx = bx - ax, dz = bz - az;
     const len = Math.hypot(dx, dz) || 1;
     const nx = (dz / len) * width * 0.5;

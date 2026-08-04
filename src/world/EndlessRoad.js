@@ -202,6 +202,31 @@ export class EndlessRoad {
     return this._tunnelT(near.index) * this._tunnelW(near.index);
   }
 
+  // ÇİYİN ZOLAĞININ DƏQİQ HÜNDÜRLÜYÜ — `_verge` həndəsəsi ilə HƏRFƏN eyni:
+  // daxili kənar (hw+0.65) yol səviyyəsində, xarici kənar (hw+4.2) torpaqda,
+  // arada XƏTTİ rampa. Əvvəl fizika smoothstep işlədirdi və maşın zolağın
+  // ortasında 30–37 sm səthin ALTINA düşürdü (istifadəçi rəyi: yerə girir).
+  // Qaytarır: {y, k} — k=1 xarici kənardan kənarda (torpaq hökmranlığı).
+  vergeYAt(position, hint = null) {
+    const near = this.getNearest(position, hint);
+    const li = Math.max(0, Math.min(this.points.length - 1, near.index - this.base));
+    const c = this.points[li], n = this.normals[li];
+    if (!c || !n) return null;
+    const hw = this.halfWidth;
+    const lat = near.lateral;
+    const off = Math.abs(lat) - (hw + 0.65);
+    if (off <= 0) return { y: this.heightAtPos(position, hint), k: 0 };
+    const sd = Math.sign(lat) || 1;
+    const roadY = this.heightAtPos(position, hint);
+    const içY = roadY + 0.04;
+    // xarici kənar nöqtəsi (hw+4.2) — terrainY orada oxunur
+    const ox = c.x + n.x * sd * (hw + 4.2);
+    const oz = c.z + n.z * sd * (hw + 4.2);
+    const çölY = Math.min(içY, Math.max(terrainY(ox, oz), WATER_LEVEL - 0.5));
+    const t = Math.min(1, off / 3.55);
+    return { y: içY + (çölY - içY) * t, k: t };
+  }
+
   heightAtPos(position, hint = null) {
     const near = this.getNearest(position, hint);
     const li = Math.max(0, Math.min(this.points.length - 2, near.index - this.base));
@@ -492,7 +517,12 @@ export class EndlessRoad {
         const f = opts.tans[i], sN = nrms[i];
         // n = f × s  (yuxarı baxan səth normalı)
         let nx = f.y * sN.z, ny = f.z * sN.x - f.x * sN.z, nz = -f.y * sN.x;
-        if (ny < 0) { nx = -nx; ny = -ny; nz = -nz; }
+        // İSTİQAMƏT ÜÇBUCAQ SARĞISINA UYĞUN OLMALIDIR (kritik buq idi):
+        // lent indeksləri səthi AŞAĞI baxan kimi qurur; three.js DoubleSide-da
+        // arxa üzün normalını çevirir. Yuxarı (+Y) versək çevrilmə onu aşağı
+        // salırdı və asfalt gündüz QAPQARA render olunurdu — gecə isə fara
+        // konusunun kənarı "kəsik kölgə" kimi görünürdü.
+        if (ny > 0) { nx = -nx; ny = -ny; nz = -nz; }
         const L = Math.hypot(nx, ny, nz) || 1;
         nx /= L; ny /= L; nz /= L;
         nor[i * 6] = nx; nor[i * 6 + 1] = ny; nor[i * 6 + 2] = nz;

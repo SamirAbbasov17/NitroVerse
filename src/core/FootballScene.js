@@ -1271,7 +1271,11 @@ export class FootballScene {
     }
     // Dinamik məsafə/hündürlük: sürətdə və top uzaqlaşanda kamera geri açılır —
     // top da, maşın da HƏMİŞƏ kadrda qalır
-    const dist = Math.min(15, 10.8 + speed * 0.06 + Math.min(3, d * 0.03));
+    // MƏSAFƏ AYRILMA İLƏ BÖYÜYÜR: əvvəl tavan 15 m idi və top uzaqlaşanda
+    // (məs. rəqib qapısına uçanda) kadrda YALNIZ maşın qalırdı — oyunçu topu
+    // itirirdi, kamera "pozulmuş" görünürdü (istifadəçi rəyi). İndi kamera
+    // ayrılma böyüdükcə geri açılır və hər ikisi kadra sığır.
+    const dist = Math.min(27, 10.8 + speed * 0.06 + d * 0.34);
     const desired = new THREE.Vector3(
       car.position.x + this._camDir.x * dist, 5.1 + dist * 0.16 + Math.min(2.5, d * 0.025),
       car.position.z + this._camDir.z * dist
@@ -1295,8 +1299,13 @@ export class FootballScene {
     this._camPrev.copy(this.camera.position);
     // BAXIŞ: tam topa yönəl (yumşaq lerp) — qarant SONRA tətbiq olunur
     const cp = this.camera.position;
-    const aBall = Math.atan2(bp.x - cp.x, bp.z - cp.z);
-    const lookD = Math.max(14, Math.hypot(bp.x - cp.x, bp.z - cp.z));
+    // BAXIŞ NÖQTƏSİ: sırf top yox, top↔maşın arasındakı nöqtə (topa meylli).
+    // Ayrılma böyük olanda bu, hər ikisini kadrın içində saxlayır.
+    const bias = d > 6 ? 0.66 : 1;
+    const lookX = car.position.x + (bp.x - car.position.x) * bias;
+    const lookZ = car.position.z + (bp.z - car.position.z) * bias;
+    const aBall = Math.atan2(lookX - cp.x, lookZ - cp.z);
+    const lookD = Math.max(14, Math.hypot(lookX - cp.x, lookZ - cp.z));
     this._lookTmp = this._lookTmp || new THREE.Vector3();
     this._lookTmp.set(cp.x + Math.sin(aBall) * lookD, 1.5, cp.z + Math.cos(aBall) * lookD);
     this._camTarget.lerp(this._lookTmp, 1 - Math.exp(-dt * 9));
