@@ -25,6 +25,18 @@ export class SignatureAbility {
 
   get ready() { return !!this.data && !this.used; }
 
+  // Effekt teksturaları ilk istifadə anında çəkilir və GPU-ya yüklənir —
+  // yarış ortasında bu, mobil cihazda hiss olunan bir kadr donması verirdi.
+  // Səhnə qurulanda (geri sayım vaxtı) hamısı əvvəlcədən isidilir.
+  static warm(renderer = null) {
+    const proto = Object.create(SignatureAbility.prototype);
+    for (const look of ['fire', 'cloud', 'ice']) {
+      const tex = proto._lookTex(look);
+      renderer?.initTexture?.(tex);
+    }
+    renderer?.initTexture?.(proto._softTex());
+  }
+
   // ————— İŞƏ SALMA —————
   activate() {
     if (!this.ready) return false;

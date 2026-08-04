@@ -203,6 +203,7 @@ export class GameplayScene {
     this.playerCar = playerCar;
     // İmza gücü — hər maşının yarışda bir dəfə işlədə biləcəyi öz gücü
     this.signature = new SignatureAbility(playerCar, this);
+    SignatureAbility.warm(this.renderer);
 
     if (this.isRace) {
       // Oyunçu orta slotda (qabaqlama üçün maraqlı)
