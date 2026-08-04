@@ -808,7 +808,10 @@ export class EndlessScene {
       // id KƏND KLASTERİ üçün lazımdır (yalnız yaşıl biomlarda kənd olur)
       id: b.id,
       road: b.road, curb: b.curb, curvMul: b.curvMul,
-      small: this._natureReady ? (SMALL_BY_BIOME[b.id] || []) : [],
+      // YAXIN PLAN SƏPİNİ SİLİNDİ (istifadəçi rəyi: "yerdəki yaşıl daşlar"
+      // səhnəyə uyğun gəlmirdi). Dərinlik indi relyef, şəhər/kənd və
+      // biom dekoru ilə qurulur.
+      small: [],
       decor: this._natureReady
         ? [...b.decor, ...(NATURE_BY_BIOME[b.id] || [])]
         : b.decor,
@@ -1516,6 +1519,7 @@ export class EndlessScene {
       }
     }
     const tex = new THREE.CanvasTexture(cv);
+    tex.anisotropy = 8;
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.repeat.set(GROUND_REPEAT, GROUND_REPEAT);
@@ -1535,6 +1539,7 @@ export class EndlessScene {
       ctx.fillRect(Math.random() * 128, Math.random() * 128, 2, 2);
     }
     const tex = new THREE.CanvasTexture(cv);
+    tex.anisotropy = 8;
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;

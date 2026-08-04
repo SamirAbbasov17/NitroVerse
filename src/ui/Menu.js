@@ -473,9 +473,10 @@ export class Menu {
       body: `
         <div class="menu-list menu-list--scroll">
           <div class="field"><label>${t('bug.subject')}</label>
-            <input class="field__input" id="bug-subject" maxlength="80" autocomplete="off" placeholder="${t('bug.subjectPh')}" /></div>
+            <input class="field__input" id="bug-subject" minlength="3" maxlength="80" autocomplete="off" placeholder="${t('bug.subjectPh')}" /></div>
           <div class="field" style="margin-top:10px"><label>${t('bug.msg')}</label>
-            <textarea class="field__input bug-text" id="bug-msg" maxlength="1200" rows="5" placeholder="${t('bug.msgPh')}"></textarea></div>
+            <textarea class="field__input bug-text" id="bug-msg" minlength="10" maxlength="1200" rows="5" placeholder="${t('bug.msgPh')}"></textarea>
+          <div class="menu-sub" style="margin-top:4px;font-size:11.5px" data-bug-count>0 / 1200</div></div>
           <div class="field" style="margin-top:10px"><label>${t('bug.email')}</label>
             <input class="field__input" id="bug-email" type="email" maxlength="120" autocomplete="off" placeholder="${t('bug.emailPh')}" /></div>
           <div class="auth-msg" data-bug-note hidden></div>
@@ -484,6 +485,15 @@ export class Menu {
             <button class="btn btn--primary" data-bug-send>${t('bug.send')}</button>`,
     });
     this.root.querySelector('[data-back]').onclick = () => this.showModes();
+    // Canlı simvol sayğacı — limitə çatanda oyunçu bilsin
+    {
+      const ta = this.root.querySelector('#bug-msg');
+      const cnt = this.root.querySelector('[data-bug-count]');
+      if (ta && cnt) ta.oninput = () => {
+        cnt.textContent = `${ta.value.length} / 1200`;
+        cnt.style.color = ta.value.length < 10 ? 'var(--muted)' : 'var(--good)';
+      };
+    }
     const note = this.root.querySelector('[data-bug-note]');
     const say = (msg, ok = false) => {
       note.hidden = false;
@@ -497,7 +507,11 @@ export class Menu {
       const subject = this.root.querySelector('#bug-subject').value.trim();
       const msg = this.root.querySelector('#bug-msg').value.trim();
       const email = this.root.querySelector('#bug-email').value.trim();
-      if (msg.length < 3) { say(t('bug.need')); return; }
+      // VALİDASİYA: başlıq və mətn üçün min/maks, e-poçt üçün format
+      if (subject && (subject.length < 3 || subject.length > 80)) { say(t('bug.subjLen')); return; }
+      if (msg.length < 10) { say(t('bug.msgShort')); return; }
+      if (msg.length > 1200) { say(t('bug.msgLong')); return; }
+      if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)) { say(t('bug.mailBad')); return; }
       btn.disabled = true;
       say(t('bug.sending'), true);
       try {

@@ -174,7 +174,12 @@ export function makeReport(getStore, env = process.env) {
     if (b.hp) return json({ ok: true });   // bot tələsi — sükutla udulur
 
     const message = clean(b.message, MAX_MSG);
-    if (message.length < 3) return json({ error: 'short' }, 400);
+    // Client validasiyası ilə EYNİ limitlər (client keçilə bilər)
+    if (message.length < 10) return json({ error: 'short' }, 400);
+    const subj0 = clean(b.subject, MAX_SUBJ);
+    if (subj0 && subj0.length < 3) return json({ error: 'subject' }, 400);
+    const mail0 = clean(b.email, 120);
+    if (mail0 && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(mail0)) return json({ error: 'email' }, 400);
     const m = b.meta || {};
     const payload = {
       subject: clean(b.subject, MAX_SUBJ) || message.slice(0, 60),

@@ -17,6 +17,12 @@ export class Game {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = !touch;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Anizotrop filtrin cihaz maksimumu — yol teksturaları bunu işlədir
+    // (bunsuz səth kiçik bucaqda düz cizgilərə parçalanır)
+    try {
+      const maks = this.renderer.capabilities.getMaxAnisotropy();
+      import('../world/TrackBuilder.js').then((m) => { m.TrackBuilder._maxAniso = maks; });
+    } catch { /* köhnə brauzer — standart qiymət qalır */ }
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.15;

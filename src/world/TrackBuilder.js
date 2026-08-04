@@ -6,6 +6,7 @@ const UP = new THREE.Vector3(0, 1, 0);
 
 // Trek datasından yol mesh-i, kənar zolaqlar, start tağı və proqres üçün nöqtələr qurur.
 export class TrackBuilder {
+  static _maxAniso = 8;   // renderer hazır olanda yenilənir (bax Game.js)
   constructor(trackData, segments = 600) {
     this.data = trackData;
     this.halfWidth = trackData.roadWidth;
@@ -387,6 +388,9 @@ export class TrackBuilder {
     const tex = new THREE.CanvasTexture(c);
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
     tex.colorSpace = THREE.SRGBColorSpace;
+    // ANİZOTROP FİLTR: bunsuz tekstura kiçik bucaqda (uzaqda, yol səthində)
+    // düz CIZGILƏRƏ parçalanırdı — ekranda "xətlər" məhz bu idi.
+    tex.anisotropy = TrackBuilder._maxAniso || 8;
     return tex;
   }
 

@@ -518,6 +518,18 @@ export class EndlessRoad {
   // Dəhlizə girən obyektləri silir. `keep` payı: yol yarımeni + obyekt radiusu
   // + 1.5 m ehtiyat. Yol lentinin ÖZ hissələri (asfalt, kənar, sürahi, tunel)
   // toxunulmazdır — onları ada görə ayırırıq.
+  // Yer boşdurmu — yeni obyekt mövcud maneə ilə kəsişməməlidir.
+  // Zen-də dekor müstəqil qoyulurdu və daş binanın İÇİNDƏ qala bilirdi
+  // (istifadəçi rəyi).
+  _spotFree(x, z, r, pad = 0.8) {
+    const ob = this.obstacles;
+    for (let i = ob.length - 1; i >= 0 && i > ob.length - 400; i--) {
+      const o = ob[i];
+      if (Math.hypot(o.x - x, o.z - z) < o.r + r + pad) return false;
+    }
+    return true;
+  }
+
   _clearRoadCorridor(group, pts) {
     const box = new THREE.Box3(), size = new THREE.Vector3();
     const kill = [];
@@ -876,6 +888,9 @@ export class EndlessRoad {
               const bb = new THREE.Box3().setFromObject(b);
               const bs = bb.getSize(new THREE.Vector3());
               const br = Math.max(2.4, Math.max(bs.x, bs.z) * 0.46);
+              // KayKit modellərinin eni fərqlidir (8–15 m): sabit şəbəkə
+              // addımı ilə qonşu binalar bir-birinin içinə girirdi
+              if (!this._spotFree(b.position.x, b.position.z, br, 1.5)) { g.remove(b); continue; }
               const ob = { x: b.position.x, z: b.position.z, r: br, kind: 'city' };
               chunkObstacles.push(ob);
               this.obstacles.push(ob);
@@ -961,7 +976,9 @@ export class EndlessRoad {
           g.add(h);
           const hb = new THREE.Box3().setFromObject(h);
           const hs = hb.getSize(new THREE.Vector3());
-          const ob = { x: hx, z: hz, r: Math.max(2.4, Math.max(hs.x, hs.z) * 0.46), kind: 'village' };
+          const hr = Math.max(2.4, Math.max(hs.x, hs.z) * 0.46);
+          if (!this._spotFree(hx, hz, hr, 1.2)) { g.remove(h); continue; }
+          const ob = { x: hx, z: hz, r: hr, kind: 'village' };
           chunkObstacles.push(ob);
           this.obstacles.push(ob);
         }
@@ -1008,6 +1025,8 @@ export class EndlessRoad {
         }
         if (!clear) continue; // yerləşməz — bu dekoru burax
       }
+      // Mövcud tikili/dekorun içinə düşməsin
+      if (!this._spotFree(px, pz, rr2, 1.0)) continue;
       g.add(obj);
       // TOPLU YERLƏŞDİRMƏ: təbiətdə ağac/daş tək-tək durmur. Böyük obyektin
       // yanına 1–3 kiçik yoldaş qoyulur — mənzərə "səpələnmiş" yox, "yaşayan"
@@ -1026,6 +1045,7 @@ export class EndlessRoad {
           const by = groundYAt(bx, bz, pts[i].y, bDist);
           if (by < WATER_LEVEL + 0.4) continue;
           bo.scale.setScalar(sc * (0.45 + Math.random() * 0.4));
+          if (!this._spotFree(bx, bz, 1.2, 0.6)) continue;
           bo.position.set(bx, by, bz);
           bo.rotation.y = Math.random() * Math.PI * 2;
           g.add(bo);
@@ -1422,6 +1442,7 @@ export class EndlessRoad {
     const tex = new THREE.CanvasTexture(c);
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
     tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;   // kiçik bucaqda cizgilənmə olmasın
     return tex;
   }
 
