@@ -1,8 +1,9 @@
 // API ünvanının tək mənbəyi.
-// Qayda: sayt hansı domendədirsə, API də ORADADIR (/api/...). Beləliklə
-// oyunu istənilən hostinqə köçürəndə kodda heç nə dəyişmir.
-// Dev serveri (vite) API vermir → orada uzaq bazaya düşürük.
-const REMOTE = 'https://apex-drift-racing.netlify.app';
+// Qayda: sayt BİZİM domenlərdədirsə API da ORADADIR (/api/...). Yad mənşədə
+// (itch.io embed və s.) rəsmi serverə düşürük — bütün endpoint-lərdə CORS açıqdır.
+// Dev serveri (vite) API vermir → orada da uzaq bazaya düşürük.
+const REMOTE = 'https://nitroverse.az';
+const ÖZ_HOSTLAR = ['nitroverse.az', 'www.nitroverse.az', '167.235.51.78'];
 
 export function apiBase(name) {
   if (typeof window !== 'undefined') {
@@ -11,7 +12,10 @@ export function apiBase(name) {
     if (ov) return ov.replace(/\/$/, '') + '/api/' + name;
     const host = window.location.hostname;
     const isDev = import.meta.env.DEV && (host === 'localhost' || host === '127.0.0.1');
-    if (!isDev) return window.location.origin + '/api/' + name;
+    if (!isDev) {
+      const öz = ÖZ_HOSTLAR.includes(host) || host.endsWith('.netlify.app');
+      return (öz ? window.location.origin : REMOTE) + '/api/' + name;
+    }
   }
   return REMOTE + '/api/' + name;
 }

@@ -23,6 +23,18 @@ function brokerConfig() {
   // dəyişəndə yenidən build lazım gəlmir — hər şey runtime-da həll olunur.
   if (host === 'self' && typeof window !== 'undefined') {
     const loc = window.location;
+    // YAD MƏNŞƏ (itch.io və s. embed): saytın öz ünvanı broker deyil —
+    // rəsmi serverə düşürük. Öz domenlərimizdə davranış dəyişmir.
+    const özününkü = ['nitroverse.az', 'www.nitroverse.az', 'localhost', '127.0.0.1']
+      .includes(loc.hostname) || loc.hostname === '167.235.51.78'
+      || loc.hostname.endsWith('.netlify.app');
+    if (!özününkü) {
+      return {
+        host: 'nitroverse.az', port: 443, secure: true,
+        path: ov?.path ?? env.VITE_PEER_PATH ?? '/peer',
+        key: ov?.key ?? env.VITE_PEER_KEY ?? 'nitroverse',
+      };
+    }
     const httpsMi = loc.protocol === 'https:';
     return {
       host: loc.hostname,
