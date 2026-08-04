@@ -25,21 +25,21 @@ export class HUD {
   _build() {
     const raceChips = this.mode === 'race'
       ? `
-        <div class="hud-chip"><div class="hud-chip__label">Dövrə</div><div class="hud-chip__value" id="hud-lap">1<small>/${this.totalLaps}</small></div></div>
-        <div class="hud-chip"><div class="hud-chip__label">Mövqe</div><div class="hud-chip__value" id="hud-pos">–</div></div>
-        <div class="hud-chip"><div class="hud-chip__label">Xal</div><div class="hud-chip__value" id="hud-score">0</div></div>`
+        <div class="hud-chip"><div class="hud-chip__label">${t('hud.lap')}</div><div class="hud-chip__value" id="hud-lap">1<small>/${this.totalLaps}</small></div></div>
+        <div class="hud-chip"><div class="hud-chip__label">${t('hud.pos')}</div><div class="hud-chip__value" id="hud-pos">–</div></div>
+        <div class="hud-chip"><div class="hud-chip__label">${t('hud.score')}</div><div class="hud-chip__value" id="hud-score">0</div></div>`
       : '';
     this.root.innerHTML = `
       <div class="hud">
         <div class="hud__topleft">
           ${raceChips}
-          <div class="hud-chip"><div class="hud-chip__label">Vaxt</div><div class="hud-chip__value" id="hud-time">0:00.00</div></div>
+          <div class="hud-chip"><div class="hud-chip__label">${t('hud.time')}</div><div class="hud-chip__value" id="hud-time">0:00.00</div></div>
         </div>
         <canvas id="minimap" width="164" height="164"></canvas>
         <div class="hud__item" id="hud-item">
           <div class="hud__item-icon" id="hud-item-icon"></div>
           <div class="hud__item-key">E</div>
-          <div class="hud__item-x" title="Ability-ni at">X</div>
+          <div class="hud__item-x" title="${t('hud.dropAb')}">X</div>
         </div>
         <div class="hud__item2" id="hud-item2" title="R — slotlar arası keçid">
           <div class="hud__item2-icon" id="hud-item2-icon"></div>
@@ -55,10 +55,10 @@ export class HUD {
           <div class="hud__speed-num" id="hud-speed">0</div>
           <div class="hud__speed-unit">km/s</div>
         </div>
-        <div class="hud__missile-warn" id="hud-missile-warn">🚀 RAKET GƏLİR!</div>
+        <div class="hud__missile-warn" id="hud-missile-warn">${t('hud.missile')}</div>
         <div class="hud__hp" id="hud-hp" style="display:none"><i id="hud-hp-fill"></i></div>
         <button class="hud__rescue" id="hud-rescue">
-          <span class="hud__rescue-warn">⚠</span> Yoldan çıxdın — yola qayıt <kbd>F</kbd>
+          <span class="hud__rescue-warn">⚠</span> ${t('hud.offroad')} <kbd>F</kbd>
         </button>
         <div id="hud-overlay"></div>
       </div>`;
@@ -152,7 +152,7 @@ export class HUD {
   }
 
   // Gələn raket xəbərdarlığı
-  setMissileWarning(visible, text = '🚀 RAKET GƏLİR!') {
+  setMissileWarning(visible, text = t('hud.missile')) {
     const el = this.root.querySelector('#hud-missile-warn');
     if (!el) return;
     if (visible && el.textContent !== text) el.textContent = text;
@@ -166,8 +166,8 @@ export class HUD {
     this._rescueReason = reason;
     if (visible) {
       this.el.rescue.innerHTML = reason === 'wrongway'
-        ? '<span class="hud__rescue-warn">⛔</span> Səhv istiqamətdə gedirsən — yola qayıt <kbd>F</kbd>'
-        : '<span class="hud__rescue-warn">⚠</span> Yoldan çıxdın — yola qayıt <kbd>F</kbd>';
+        ? `<span class="hud__rescue-warn">⛔</span> ${t('hud.wrongway')} <kbd>F</kbd>`
+        : `<span class="hud__rescue-warn">⚠</span> ${t('hud.offroad')} <kbd>F</kbd>`;
     }
     this.el.rescue.classList.toggle('is-visible', visible);
     this.el.rescue.classList.toggle('is-wrongway', visible && reason === 'wrongway');
