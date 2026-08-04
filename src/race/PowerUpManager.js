@@ -204,6 +204,16 @@ export class PowerUpManager {
           const dx = car.position.x - b.mesh.position.x;
           const dz = car.position.z - b.mesh.position.z;
           if (dx * dx + dz * dz < PICKUP_R * PICKUP_R) {
+            // Hər iki slot doludursa qutu TOXUNULMAZ qalır. Əvvəl qutu heç
+            // nə vermədən yox olurdu — oyunçuya "götürmə xarab oldu" kimi
+            // görünürdü (istifadəçi rəyi). Qalan qutunu başqası götürə bilər.
+            if (r.items.length >= 2) {
+              if (r.isPlayer && (r._fullT ?? 0) <= this._t - 1.2) {
+                r._fullT = this._t;
+                audio.sfx('click'); // "yerin yoxdur" işarəsi
+              }
+              continue; // bu qutunu yox, bəlkə yanındakını da yoxlayaq? — xeyr, doluyuq
+            }
             const wasActive = b.active;
             b.active = false;
             b.timer = BOX_RESPAWN;
@@ -213,19 +223,14 @@ export class PowerUpManager {
             this.pickupCount++;
             this.effects?.spawnSparkle(b.mesh.position); // götürmə effekti
             if (wasActive) this.onBoxTaken?.(this.boxes.indexOf(b)); // onlayn: hamıda itsin
-            if (r.items.length < 2) {
-              // Boş slot var — qutunun ÜZÜNDƏKİ item verilir
-              // KLON: yük sayğacı (uses) ortaq tip obyektini korlamasın
-              const it = { ...b.type };
-              if (it.id === 'trishot') it.uses = 3;
-              r.items.push(it);
-              if (r.isPlayer) {
-                audio.sfx('pickup');
-                this.onPlayerPickup?.(it);
-              }
-            } else if (r.isPlayer) {
-              // Hər iki slot doludur — qutu itir, ability GƏLMİR (X ilə yer aç)
-              audio.sfx('click');
+            // Boş slot var — qutunun ÜZÜNDƏKİ item verilir
+            // KLON: yük sayğacı (uses) ortaq tip obyektini korlamasın
+            const it = { ...b.type };
+            if (it.id === 'trishot') it.uses = 3;
+            r.items.push(it);
+            if (r.isPlayer) {
+              audio.sfx('pickup');
+              this.onPlayerPickup?.(it);
             }
             break; // bir qutu bəsdir
           }

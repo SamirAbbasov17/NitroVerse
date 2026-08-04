@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { playerCarData } from '../data/playerCar.js';
 import { t } from './i18n.js';
-import { getCarById } from '../data/cars.js';
+import { getCarById, CARS } from '../data/cars.js';
 import { Car } from '../entities/Car.js';
 import { PlayerController } from '../entities/PlayerController.js';
 import { EndlessRoad, waterMaterial, terrainY, groundYAt, RAIL_ABOVE, CUT_IN, CUT_OUT, WATER_LEVEL } from '../world/EndlessRoad.js';
@@ -208,11 +208,31 @@ export class EndlessScene {
     if (this._nature.ready) this._natureReady = true;
     else this._nature._loading.then(() => { this._natureReady = true; });
     const data = playerCarData(config.carId);
+    this.library = library;
     this.playerCar = new Car(data, library, { isPlayer: true });
     const spot = this.road.nearestSpot(new THREE.Vector3(0, 0, 20));
     this.playerCar.reset(spot.point, spot.heading);
     this.playerCar.wpHint = 0;
     this.scene.add(this.playerCar.root);
+
+    // ————— AMBİENT TRAFİK ————— hərdən yolda başqa maşınlar görünür:
+    // sağ zolaqda, oyunçudan yavaş — ötmək xoş olsun (istifadəçi istəyi).
+    // HOVUZ səhnə qurulanda hazırlanır: sürüş zamanı instantiate kadr
+    // sıçrayışı verirdi (ölçülüb — 90 s-də 8 spike, hovuzla 0).
+    this._traffic = [];
+    this._trafPool = [];
+    for (let i = 0; i < 3; i++) {
+      const seç = CARS[Math.floor(Math.random() * CARS.length)];
+      try {
+        const inst = library.instantiate(seç.model, seç.bodyColor, null, null);
+        const root = inst.root || inst;
+        root.traverse?.((o) => { o.castShadow = false; });
+        root.visible = false;
+        this.scene.add(root);
+        this._trafPool.push({ root, wheels: inst.wheels || [], boş: true });
+      } catch { /* model hazır deyilsə hovuz kiçik qalır */ }
+    }
+    this._trafNextT = 9 + Math.random() * 8;   // ilk maşına qədər
     this.controller = new PlayerController(this.playerCar, input);
     this.cars = [this.playerCar];
     this.racers = [{ car: this.playerCar, isPlayer: true, items: [], itemIdx: 0 }];
@@ -513,6 +533,9 @@ export class EndlessScene {
       this.touchControls.setItems(null, null);
       // Zen-in öz ⏸ düyməsi var (sağ sıra) — touch pauzası dublikat olmasın
       this.uiRoot.querySelector('.touch [data-t="pause"], [data-t="pause"]')?.remove();
+      // Zendə item slotu YOXDUR — boş qırıq-xətli dairə qalırdı (istifadəçi
+      // rəyi). Sinif slotu gizlədir, DRIFT onun yerinə sürüşür (bax styles.css)
+      this.touchControls.el.classList.add('touch--zen');
     }
   }
 
@@ -521,6 +544,84 @@ export class EndlessScene {
     this._el.toast.classList.add('is-on');
     clearTimeout(this._toastT);
     this._toastT = setTimeout(() => this._el.toast.classList.remove('is-on'), 1800);
+  }
+
+  // ————— AMBİENT TRAFİK ————— sağ zolaqda yavaş gedən maşınlar.
+  // Yüngüldür: fizikasız, yol nöqtələri üzrə sürüşür; işıq/kölgə əlavə etmir.
+  _spawnTraffic(playerAbs) {
+    const road = this.road;
+    const abs = playerAbs + 19 + Math.floor(Math.random() * 8); // 150–210 m irəlidə
+    const li = abs - road.base;
+    if (li < 2 || li >= road.points.length - 6) return;
+    for (const t of this._traffic) if (Math.abs(t.abs - abs) < 8) return;
+    const slot = this._trafPool.find((s) => s.boş);
+    if (!slot) return;
+    slot.boş = false;
+    slot.root.visible = true;
+    this._traffic.push({ root: slot.root, wheels: slot.wheels, slot, abs, spd: 13 + Math.random() * 6 });
+  }
+
+  _updateTraffic(dt) {
+    if (this._state !== 'run' || !this._traffic) return;
+    const road = this.road, SEGm = 8;
+    const pAbs = road.getNearest(this.playerCar.position, this.playerCar.wpHint).index;
+    this._trafNextT -= dt;
+    if (this._trafNextT <= 0 && this._traffic.length < 2) {
+      this._spawnTraffic(pAbs);
+      this._trafNextT = 14 + Math.random() * 18;   // "hərdən" hissi — həmişə dolu olmasın
+    }
+    const hw = road.halfWidth;
+    for (let i = this._traffic.length - 1; i >= 0; i--) {
+      const t = this._traffic[i];
+      // öndəki trafikə çatanda arxasınca getsin (bir-birinin içindən keçməsin)
+      for (const o of this._traffic) {
+        if (o !== t && o.abs > t.abs && o.abs - t.abs < 5) t.spd = Math.min(t.spd, o.spd);
+      }
+      t.abs += (t.spd * dt) / SEGm;
+      const li = Math.floor(t.abs) - road.base;
+      if (t.abs < pAbs - 14 || li < 1 || li >= road.points.length - 3) {
+        t.root.visible = false;
+        if (t.slot) t.slot.boş = true;
+        this._traffic.splice(i, 1);
+        continue;
+      }
+      const f = t.abs - Math.floor(t.abs);
+      const p0 = road.points[li], p1 = road.points[li + 1];
+      const n0 = road.normals[li];
+      const tx = p1.x - p0.x, tz = p1.z - p0.z;
+      const L = Math.hypot(tx, tz) || 1;
+      // sağ zolaq: lateralın "sağa" baxan işarəsi (normal hansı tərəfdədirsə)
+      const rSign = Math.sign(n0.z * (tx / L) - n0.x * (tz / L)) || 1;
+      const lat = rSign * hw * 0.45;
+      const x = p0.x + (p1.x - p0.x) * f + n0.x * lat;
+      const z = p0.z + (p1.z - p0.z) * f + n0.z * lat;
+      const y = p0.y + (p1.y - p0.y) * f;
+      t.root.position.set(x, y + 0.08, z);
+      t.root.rotation.y = Math.atan2(tx, tz);
+      for (const w of t.wheels) w.rotation.x += t.spd * dt;
+      // Oyunçu ilə toqquşma — hərəkətli maneə kimi (bax yuxarıdakı maneə bloku)
+      const car = this.playerCar;
+      const dx = car.position.x - x, dz = car.position.z - z;
+      const min = 3.2;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < min * min) {
+        const d = Math.sqrt(d2) || 0.001;
+        const nx = dx / d, nz = dz / d;
+        car.position.x = x + nx * min;
+        car.position.z = z + nz * min;
+        const vn = car.velocity.x * nx + car.velocity.z * nz;
+        if (vn < 0) {
+          if (-vn > 9 && (this._scrapeT || 0) <= 0) {
+            this._scrapeT = 0.25;
+            this.effects.spawnSmoke({ x: car.position.x - nx, y: 0.4, z: car.position.z - nz });
+            audio.sfx('tick');
+          }
+          car.velocity.x -= vn * nx;
+          car.velocity.z -= vn * nz;
+          car.velocity.multiplyScalar(0.94);
+        }
+      }
+    }
   }
 
   _toggleCamMode() {
@@ -1634,6 +1735,7 @@ export class EndlessScene {
       }
     }
 
+    this._updateTraffic(dt);
     this._updateWorld(dt);
     this.effects.update(dt);
     this.skids.update(dt);
@@ -1766,6 +1868,9 @@ export class EndlessScene {
   }
 
   dispose() {
+    for (const s of this._trafPool || []) this.scene.remove(s.root);
+    this._trafPool = [];
+    this._traffic = [];
     this._tw?.terminate?.();
     this._tw = null;
     this.input.enabled = true;

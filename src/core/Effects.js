@@ -33,13 +33,44 @@ export class Effects {
     this.list.push({ mesh: l, kind: 'plight', t: 0, life, peak: intensity });
   }
 
+  // MESH/MATERİAL HOVUZU: əvvəl hər spawn yeni material yaradırdı — three
+  // hər yaradılışda uniform-ları klonlayır (profildə №1 ayırıcı idi) və
+  // yarış boyu davamlı GC zibili yığılırdı. Ölən effekt hovuza qayıdır.
+  _take(geo, std, params) {
+    const key = (std ? 's' : 'b') + geo.uuid;
+    if (!this._mpool) this._mpool = new Map();
+    const arr = this._mpool.get(key);
+    let m = arr && arr.pop();
+    if (m) {
+      m.material.setValues(params);
+      m.material.opacity = params.opacity ?? 1;
+      m.visible = true;
+      m.scale.setScalar(1);
+      m.rotation.set(0, 0, 0);
+    } else {
+      m = new THREE.Mesh(geo, std
+        ? new THREE.MeshStandardMaterial(params)
+        : new THREE.MeshBasicMaterial(params));
+      m.userData.poolKey = key;
+    }
+    return m;
+  }
+
+  _release(mesh) {
+    const key = mesh.userData?.poolKey;
+    if (!key || !this._mpool) return false;
+    mesh.visible = false;
+    let arr = this._mpool.get(key);
+    if (!arr) { arr = []; this._mpool.set(key, arr); }
+    if (arr.length < 48) arr.push(mesh);
+    return true;
+  }
+
   // Raket partlayışı
   spawnExplosion(pos) {
     // İşıq partlaması
-    const flash = new THREE.Mesh(
-      this._flashGeo,
-      new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.95 })
-    );
+    const flash = this._take(this._flashGeo, false,
+      { color: 0xffd27a, transparent: true, opacity: 0.95 });
     flash.position.copy(pos);
     this.group.add(flash);
     this.list.push({ mesh: flash, kind: 'flash', t: 0, life: 0.25 });
@@ -49,16 +80,14 @@ export class Effects {
     // Qəlpələr
     const colors = [0xff6b1a, 0xffd257, 0x3a3d46, 0xe33225];
     for (let i = 0; i < 14; i++) {
-      const m = new THREE.Mesh(
-        this._shardGeo,
-        new THREE.MeshStandardMaterial({
-          color: colors[i % colors.length],
-          emissive: colors[i % colors.length],
-          emissiveIntensity: 0.6,
-          flatShading: true,
-          transparent: true,
-        })
-      );
+      const m = this._take(this._shardGeo, true, {
+        color: colors[i % colors.length],
+        emissive: colors[i % colors.length],
+        emissiveIntensity: 0.6,
+        flatShading: true,
+        transparent: true,
+        opacity: 1,
+      });
       m.position.copy(pos);
       const a = Math.random() * Math.PI * 2;
       const up = 3 + Math.random() * 8;
@@ -74,13 +103,11 @@ export class Effects {
 
   // Şimşək xəbərdarlığı — hədəfin üstündə fırlanan bənövşəyi halqa (1s)
   spawnWarnMark(car, life = 1.0) {
-    const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(1.1, 0.12, 6, 18),
-      new THREE.MeshStandardMaterial({
-        color: 0xb44bff, emissive: 0xb44bff, emissiveIntensity: 1.8,
-        transparent: true, opacity: 0.9,
-      })
-    );
+    if (!this._warnGeo) this._warnGeo = new THREE.TorusGeometry(1.1, 0.12, 6, 18);
+    const ring = this._take(this._warnGeo, true, {
+      color: 0xb44bff, emissive: 0xb44bff, emissiveIntensity: 1.8,
+      transparent: true, opacity: 0.9,
+    });
     ring.rotation.x = Math.PI / 2;
     this.group.add(ring);
     this.list.push({ mesh: ring, kind: 'warnmark', t: 0, life, car });
@@ -105,13 +132,10 @@ export class Effects {
   // Item qutusu götürüləndə qığılcımlar (rəng seçilə bilər)
   spawnSparkle(pos, color = 0xffc94d) {
     for (let i = 0; i < 9; i++) {
-      const m = new THREE.Mesh(
-        this._sparkGeo,
-        new THREE.MeshStandardMaterial({
-          color, emissive: color, emissiveIntensity: 1.6,
-          flatShading: true, transparent: true,
-        })
-      );
+      const m = this._take(this._sparkGeo, true, {
+        color, emissive: color, emissiveIntensity: 1.6,
+        flatShading: true, transparent: true, opacity: 1,
+      });
       m.position.copy(pos);
       const a = (i / 9) * Math.PI * 2;
       this.group.add(m);
@@ -161,23 +185,18 @@ export class Effects {
     this.list.push({ mesh: g, kind: 'lightning', t: 0, life: 0.55, mats: [mat, coreMat] });
 
     // Zərbə nöqtəsində parlama + işıq + qığılcım
-    const flash = new THREE.Mesh(
-      this._flashGeo,
-      new THREE.MeshBasicMaterial({ color: 0xcfeaff, transparent: true, opacity: 0.9 })
-    );
+    const flash = this._take(this._flashGeo, false,
+      { color: 0xcfeaff, transparent: true, opacity: 0.9 });
     flash.position.set(pos.x, 1.0, pos.z);
     this.group.add(flash);
     this.list.push({ mesh: flash, kind: 'flash', t: 0, life: 0.3 });
     this._flashLight(0xbfe4ff, 300, { x: pos.x, y: 4, z: pos.z }, 0.35);
     // Elektrik qığılcımları
     for (let i = 0; i < 7; i++) {
-      const m = new THREE.Mesh(
-        this._sparkGeo,
-        new THREE.MeshStandardMaterial({
-          color: 0xbfe4ff, emissive: 0x8fd0ff, emissiveIntensity: 2,
-          flatShading: true, transparent: true,
-        })
-      );
+      const m = this._take(this._sparkGeo, true, {
+        color: 0xbfe4ff, emissive: 0x8fd0ff, emissiveIntensity: 2,
+        flatShading: true, transparent: true, opacity: 1,
+      });
       m.position.set(pos.x, 1, pos.z);
       const a = Math.random() * Math.PI * 2;
       this.group.add(m);
@@ -196,9 +215,9 @@ export class Effects {
     const geo = this._confettiGeo ?? (this._confettiGeo = new THREE.PlaneGeometry(0.3, 0.2));
     for (let i = 0; i < n; i++) {
       const col = colors[i % colors.length];
-      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
-        color: col, side: THREE.DoubleSide, transparent: true,
-      }));
+      const m = this._take(geo, false, {
+        color: col, side: THREE.DoubleSide, transparent: true, opacity: 1,
+      });
       m.position.set(pos.x, 1.2, pos.z);
       const a = Math.random() * Math.PI * 2;
       const sp = 3 + Math.random() * 6;
@@ -226,12 +245,9 @@ export class Effects {
       col = c;
       opacity = 0.58;
     }
-    const m = new THREE.Mesh(
-      this._puffGeo,
-      new THREE.MeshStandardMaterial({
-        color: col, transparent: true, opacity, flatShading: true,
-      })
-    );
+    const m = this._take(this._puffGeo, true, {
+      color: col, transparent: true, opacity, flatShading: true,
+    });
     if (scale !== 1) m.scale.setScalar(scale);
     m.position.set(pos.x + (Math.random() - 0.5), pos.y + 0.4, pos.z + (Math.random() - 0.5));
     m.rotation.set(Math.random() * 3, Math.random() * 3, 0);
@@ -251,8 +267,11 @@ export class Effects {
           e.mesh.userData.busy = false;
         } else {
           this.group.remove(e.mesh);
-          if (e.kind === 'rangering') e.mesh.geometry.dispose();
-          if (e.mesh.material) e.mesh.material.dispose?.();
+          // Hovuzdan gələn mesh geri qayıdır; qalanlar köhnə qayda ilə silinir
+          if (!this._release(e.mesh)) {
+            if (e.kind === 'rangering') e.mesh.geometry.dispose();
+            if (e.mesh.material) e.mesh.material.dispose?.();
+          }
         }
         this.list.splice(i, 1);
         continue;
@@ -320,6 +339,11 @@ export class Effects {
     }
     this.list = [];
     this.scene.remove(this.group);
+    for (const arr of this._mpool?.values() || []) {
+      for (const m of arr) m.material?.dispose?.();
+    }
+    this._mpool = null;
+    this._warnGeo?.dispose();
     this._shardGeo.dispose();
     this._confettiGeo?.dispose();
     this._sparkGeo.dispose();

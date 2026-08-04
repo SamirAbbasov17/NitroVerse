@@ -23,6 +23,11 @@ export class RaceManager {
       // Grid start xəttinin ARXASINDADIR (t≈0.98) — ilk xətt keçidi dövrə
       // sayılmasın deyə -1-dən başlayır; xətti keçəndə 0 olur.
       r.lap = (r.car.trackT ?? 0) > 0.5 ? -1 : 0;
+      // Qriddən gələnin İLK keçidi qanunidir — yarım-dövrə qapısı açıq
+      // başlamalıdır. Əks halda ilk keçid sayılmır, progress bir dövrə
+      // aşağı düşür və startdan saniyələr sonra sıralama qarışırdı
+      // (P1→P6 "sıçrayışı" — istifadəçi rəyi).
+      r._half = r.lap === -1;
       r.maxLap = 0;
       r.lastT = r.car.trackT ?? 0;
       r.progress = 0;

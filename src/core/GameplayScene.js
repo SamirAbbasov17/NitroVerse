@@ -143,6 +143,7 @@ export class GameplayScene {
       this.raceManager = new RaceManager(this.racers, this.config.laps);
       this._wireRace();
       this.effects = new Effects(this.scene);
+      this._warmFx();
       this._shake = 0;
       this.powerups = new PowerUpManager(this.scene, this.track, this.racers, {
         effects: this.effects,
@@ -265,6 +266,7 @@ export class GameplayScene {
 
     // VFX + Power-up sistemi (hər iki rejimdə)
     this.effects = new Effects(this.scene);
+    this._warmFx();
     this._shake = 0;
     this.powerups = new PowerUpManager(this.scene, this.track, this.racers, {
       effects: this.effects,
@@ -656,6 +658,18 @@ export class GameplayScene {
     if (r?.items?.length > 1 && this._state === 'run') {
       this.powerups.use(r, { slot: 1 - (r.itemIdx || 0) });
     }
+  }
+
+  // Effekt shader-ları geri sayım vaxtı kompilyasiya olunur — əvvəl İLK
+  // partlayış/tüstü anında olurdu və kadr donması verirdi. Nümunə effektlər
+  // yerin altında yaranır, compile() bütün materialları indi hazırlayır.
+  _warmFx() {
+    if (!this.renderer || !this.effects) return;
+    const uzaq = new THREE.Vector3(0, -140, 0);
+    this.effects.spawnExplosion(uzaq);
+    this.effects.spawnSmoke({ x: 0, y: -140, z: 0 });
+    this.effects.spawnSparkle(uzaq);
+    try { this.renderer.compile(this.scene, this.camera); } catch { /* boş */ }
   }
 
   _place(car, slot) {

@@ -232,9 +232,17 @@ export class HUD {
     if (this.el.gear) this.el.gear.textContent = Math.min(6, 1 + Math.floor(data.speedKmh / 42));
     if (this.el.time) this.el.time.textContent = formatTime(data.time);
     if (this.mode === 'race') {
-      if (this.el.lap) this.el.lap.innerHTML = `${Math.min(data.lap, this.totalLaps)}<small>/${this.totalLaps}</small>`;
+      // innerHTML yalnız dəyər dəyişəndə yazılır — hər kadr parse etməsin
+      const lapV = Math.min(data.lap, this.totalLaps);
+      if (this.el.lap && this._lastLapV !== lapV) {
+        this._lastLapV = lapV;
+        this.el.lap.innerHTML = `${lapV}<small>/${this.totalLaps}</small>`;
+      }
       if (this.el.pos) {
-        this.el.pos.innerHTML = `${data.position}<small>/${data.totalCars}</small>`;
+        if (this._lastPosV !== data.position) {
+          this._lastPosV = data.position;
+          this.el.pos.innerHTML = `${data.position}<small>/${data.totalCars}</small>`;
+        }
         // Mövqe dəyişəndə vurğu: yüksəliş yaşıl, eniş qırmızı
         if (this._lastPos !== undefined && data.position !== this._lastPos) {
           const cls = data.position < this._lastPos ? 'pos-up' : 'pos-down';

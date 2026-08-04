@@ -720,6 +720,9 @@ kbd {
 .touch--football .tbtn[data-t="back"]::after { inset: -14px; }
 .touch--football .tbtn[data-t="look"] { left: 108px; }
 .tbtn[data-t="fpv"] { left: 224px; bottom: 158px; width: 54px; height: 54px; font-size: 19px; top: auto; }
+/* Zen: item slotu yoxdur — boş qalan yerə DRIFT sürüşür (yuxarı, qazın yanına) */
+.touch--zen .tbtn[data-t="use"] { display: none; }
+.touch--zen .tbtn[data-t="drift"] { right: 104px; bottom: 152px; width: 66px; height: 66px; }
 .tbtn[data-t="rescue"] { left: 100px; bottom: 158px; width: 54px; height: 54px; font-size: 19px; }
 .tbtn[data-t="rescue"]:disabled { opacity: 0.22; }
 .tbtn[data-t="rescue"].is-ready {

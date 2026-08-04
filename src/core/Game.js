@@ -40,6 +40,8 @@ export class Game {
   setActive(sceneObj) {
     if (this.active && this.active.dispose) this.active.dispose();
     this.active = sceneObj;
+    // Yeni səhnənin yüklənmə sıçrayışları adaptiv ölçüyə düşməsin
+    if (this._ad) { this._ad.isti = 0; this._ad.t = 0; this._ad.n = 0; this._ad.yavaş = 0; }
     if (import.meta.env.DEV) window.__active = sceneObj; // avtomatik testlər üçün
     if (sceneObj && sceneObj.camera) this.resize();
   }
@@ -53,7 +55,8 @@ export class Game {
 
   _loop() {
     // dt-ni məhdudlaşdır (tab arxa plana keçəndə sıçrayış olmasın)
-    const dt = Math.min(this.clock.getDelta(), 0.05);
+    const rawDt = this.clock.getDelta();
+    const dt = Math.min(rawDt, 0.05);
     if (this.active) {
       if (this.active.update) this.active.update(dt);
       if (this.active.scene && this.active.camera) {
@@ -61,6 +64,31 @@ export class Game {
       } else {
         this.renderer.setClearColor(0x070a14, 1);
         this.renderer.clear();
+      }
+      this._adapt(rawDt);
+    }
+  }
+
+  // ADAPTİV KEYFİYYƏT QORUMASI: cihaz davamlı 60-a çatmırsa pixel ratio
+  // BİR pillə endirilir (2 → 1.5 → 1.25). Yalnız aşağı enir (osilasiya
+  // yoxdur), yalnız görünən tabda və səhnənin ilk 6 saniyəsindən sonra —
+  // yüklənmə sıçrayışları ölçüyə düşmür. Güclü cihaza heç vaxt toxunmur.
+  _adapt(rawDt) {
+    if (document.visibilityState !== 'visible' || rawDt > 0.1) { return; }
+    const A = (this._ad ||= { t: 0, n: 0, yavaş: 0, isti: 0 });
+    A.isti += rawDt;
+    if (A.isti < 6) return;                 // səhnə istiləşsin
+    A.t += rawDt; A.n++;
+    if (rawDt > 0.023) A.yavaş++;           // 43 fps-dən pis kadr
+    if (A.t < 4) return;                    // 4 saniyəlik pəncərə
+    const pay = A.yavaş / Math.max(1, A.n);
+    A.t = 0; A.n = 0; A.yavaş = 0;
+    if (pay > 0.5) {                        // pəncərənin yarıdan çoxu yavaşdır
+      const indiki = this.renderer.getPixelRatio();
+      const hədəf = indiki > 1.5 ? 1.5 : indiki > 1.25 ? 1.25 : null;
+      if (hədəf) {
+        this.renderer.setPixelRatio(hədəf);
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
       }
     }
   }

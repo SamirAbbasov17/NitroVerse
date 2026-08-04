@@ -477,7 +477,27 @@ export class EndlessRoad {
     geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
     geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     geo.setIndex(idx);
-    geo.computeVertexNormals();
+    if (opts.tans) {
+      // ANALİTİK NORMALLAR: üçbucaq ortalaması hər parçada (chunk) ayrı
+      // hesablanır və TİKİŞDƏ normallar uyğun gəlmirdi — gecə fara işığında
+      // yolun eninə sərt qaranlıq xətt kimi görünürdü ("görünməz obyektin
+      // kölgəsi" — istifadəçi rəyi). Qlobal hamar tangensdən hesablananda
+      // tikişdəki nöqtə hər iki parçada EYNİ normalı alır.
+      const nor = new Float32Array(pts.length * 6);
+      for (let i = 0; i < pts.length; i++) {
+        const f = opts.tans[i], sN = nrms[i];
+        // n = f × s  (yuxarı baxan səth normalı)
+        let nx = f.y * sN.z, ny = f.z * sN.x - f.x * sN.z, nz = -f.y * sN.x;
+        if (ny < 0) { nx = -nx; ny = -ny; nz = -nz; }
+        const L = Math.hypot(nx, ny, nz) || 1;
+        nx /= L; ny /= L; nz /= L;
+        nor[i * 6] = nx; nor[i * 6 + 1] = ny; nor[i * 6 + 2] = nz;
+        nor[i * 6 + 3] = nx; nor[i * 6 + 4] = ny; nor[i * 6 + 5] = nz;
+      }
+      geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+    } else {
+      geo.computeVertexNormals();
+    }
     const rb = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
       color, map: opts.map ?? null, roughness: opts.roughness ?? 0.95, metalness: 0,
       emissive: opts.emissive ?? 0x000000, emissiveIntensity: opts.emissiveIntensity ?? 1,
@@ -493,9 +513,10 @@ export class EndlessRoad {
     const i0 = Math.max(0, n - this._pending - 1); // 1 nöqtə üst-üstə — tikişsiz
     const pts = this.points.slice(i0);
     const nrms = this.normals.slice(i0);
+    const tans = this.tangents.slice(i0);
     const absStart = this.base + i0;
     this._pending = 0;
-    const { merged, obstacles, spots } = this._makeChunkMesh(pts, nrms, absStart);
+    const { merged, obstacles, spots } = this._makeChunkMesh(pts, nrms, absStart, tans);
     this._group.add(merged);
     this.decorSpots.push(...spots);
     this.chunks.push({ startAbs: absStart, endAbs: this.base + n - 1, group: merged, obstacles, spots });
@@ -507,9 +528,10 @@ export class EndlessRoad {
     const cnt = Math.min(this._pendingBack + 1, this.points.length); // 1 nöqtə üst-üstə
     const pts = this.points.slice(0, cnt);
     const nrms = this.normals.slice(0, cnt);
+    const tans = this.tangents.slice(0, cnt);
     const absStart = this.base;
     this._pendingBack = 0;
-    const { merged, obstacles, spots } = this._makeChunkMesh(pts, nrms, absStart);
+    const { merged, obstacles, spots } = this._makeChunkMesh(pts, nrms, absStart, tans);
     this._group.add(merged);
     this.decorSpots.push(...spots);
     this.chunks.unshift({ startAbs: absStart, endAbs: absStart + cnt - 1, group: merged, obstacles, spots });
@@ -599,7 +621,7 @@ export class EndlessRoad {
     return hit;
   }
 
-  _makeChunkMesh(pts, nrms, absStart) {
+  _makeChunkMesh(pts, nrms, absStart, tans = null) {
     const g = new THREE.Group();
     const hw = this.halfWidth;
     const s = this.style;
@@ -610,9 +632,9 @@ export class EndlessRoad {
     // Asfalt tonu yarış trekləri ilə eyni qaydada açılır (bax
     // TrackBuilder: qapqara səth "ucuz" görünürdü)
     const roadCol = new THREE.Color(s.road).lerp(new THREE.Color(0xffffff), 0.16).getHex();
-    g.add(this._ribbon(pts, nrms, -hw, hw, roadCol, 0.08, { map: this._roadTex, absStart }));
-    g.add(this._ribbon(pts, nrms, hw, hw + 0.65, s.curb, 0.105, { emissive: s.curb, emissiveIntensity: 0.3, absStart }));
-    g.add(this._ribbon(pts, nrms, -hw - 0.65, -hw, s.curb, 0.105, { emissive: s.curb, emissiveIntensity: 0.3, absStart }));
+    g.add(this._ribbon(pts, nrms, -hw, hw, roadCol, 0.08, { map: this._roadTex, absStart, tans }));
+    g.add(this._ribbon(pts, nrms, hw, hw + 0.65, s.curb, 0.105, { emissive: s.curb, emissiveIntensity: 0.3, absStart, tans }));
+    g.add(this._ribbon(pts, nrms, -hw - 0.65, -hw, s.curb, 0.105, { emissive: s.curb, emissiveIntensity: 0.3, absStart, tans }));
     // ÇİYİN: səkidən torpağa maili keçid. Olmayanda yol qara qalın plita kimi
     // görünürdü və yandan çıxanda kənarda uçurum vardı.
     for (const sd of [1, -1]) g.add(this._verge(pts, nrms, sd * (hw + 0.65), sd * (hw + 4.2), s.ground ?? 0x6b5a3e));
@@ -620,7 +642,8 @@ export class EndlessRoad {
     for (let i = 2; i < pts.length - 2; i += 5) {
       const seg = pts.slice(i, i + 2);
       const nseg = nrms.slice(i, i + 2);
-      g.add(this._ribbon(seg, nseg, -0.2, 0.2, 0xe8e6da, 0.095, { absStart: absStart + i }));
+      const tseg = tans ? tans.slice(i, i + 2) : null;
+      g.add(this._ribbon(seg, nseg, -0.2, 0.2, 0xe8e6da, 0.095, { absStart: absStart + i, tans: tseg }));
     }
     const chunkObstacles = [];
     const chunkSpots = []; // yol generatorunun yayınma xəritəsi
