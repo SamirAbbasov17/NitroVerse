@@ -890,7 +890,7 @@ export class EndlessRoad {
               const br = Math.max(2.4, Math.max(bs.x, bs.z) * 0.46);
               // KayKit modellərinin eni fərqlidir (8–15 m): sabit şəbəkə
               // addımı ilə qonşu binalar bir-birinin içinə girirdi
-              if (!this._spotFree(b.position.x, b.position.z, br, 1.5)) { g.remove(b); continue; }
+              if (!this._spotFree(b.position.x, b.position.z, br, 2.5)) { g.remove(b); continue; }
               const ob = { x: b.position.x, z: b.position.z, r: br, kind: 'city' };
               chunkObstacles.push(ob);
               this.obstacles.push(ob);
@@ -1039,21 +1039,27 @@ export class EndlessRoad {
           const bo = bt.startsWith('nk:') ? this.natureFactory?.(bt.slice(3)) : makeDecor(bt);
           if (!bo) continue;
           const ba = Math.random() * Math.PI * 2;
-          const bd = 3.5 + Math.random() * 7;
+          // YOLDAŞ ƏSAS OBYEKTİN NÜVƏSİNƏ GİRMƏSİN: böyük obyektdə (təpə,
+          // iri qaya) məsafə onun öz radiusundan başlayır — daş təpənin
+          // ƏTƏYİNDƏ durur, içində yox
+          const bd = (rr2 > 4 ? rr2 * 0.8 : 3.5) + Math.random() * 6;
           const bx = px + Math.cos(ba) * bd, bz = pz + Math.sin(ba) * bd;
           const bDist = Math.hypot(bx - pts[i].x, bz - pts[i].z);
           const by = groundYAt(bx, bz, pts[i].y, bDist);
           if (by < WATER_LEVEL + 0.4) continue;
           bo.scale.setScalar(sc * (0.45 + Math.random() * 0.4));
-          if (!this._spotFree(bx, bz, 1.2, 0.6)) continue;
+          // Yoxlama YOLDAŞIN ÖZ ölçüsü ilə (əvvəl sabit 1.2 idi — iri yoldaş
+          // qonşu obyektin içinə girirdi)
+          box.setFromObject(bo);
+          box.getSize(size);
+          const brÖn = Math.max(1.0, Math.max(size.x, size.z) * 0.42);
+          if (!this._spotFree(bx, bz, brÖn, 0.5)) continue;
           bo.position.set(bx, by, bz);
           bo.rotation.y = Math.random() * Math.PI * 2;
           g.add(bo);
           // Yoldaşların da toqquşması olmalıdır — əvvəl ağac/daşın içindən
           // keçmək olurdu (istifadəçi rəyi)
-          box.setFromObject(bo);
-          box.getSize(size);
-          const br = Math.max(size.x, size.z) * 0.42;
+          const br = brÖn;
           if (br >= 0.9 && bDist < 60) {
             const bob = { x: bx, z: bz, r: br };
             chunkObstacles.push(bob);
@@ -1139,6 +1145,9 @@ export class EndlessRoad {
           const pz = pts[i].z + nrms[i].z * off * side;
           const gy = groundYAt(px, pz, pts[i].y, off);
           if (gy < WATER_LEVEL + 0.3) continue;
+          // DEDUPE: hasar qaçışları kəsişəndə eyni nöqtəyə iki seqment
+          // düşürdü (üst-üstə model + z-döyüşü). Yaxında hasar varsa keç.
+          if (!this._spotFree(px, pz, 1.2, 0)) continue;
           const fe = makeFence(8.4);
           { const ob = { x: px, z: pz, r: 3.4 }; chunkObstacles.push(ob); this.obstacles.push(ob); }
           fe.position.set(px, gy, pz);

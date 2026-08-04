@@ -683,6 +683,7 @@ export class EndlessScene {
           car.velocity.x -= nr.x * sgn * outward;
           car.velocity.z -= nr.z * sgn * outward;
         }
+        this._wallScrape(car, nr.x, nr.z, sgn);   // qığılcım + cırıltı
       }
       this._roamAway = 0;
       return;
@@ -712,6 +713,7 @@ export class EndlessScene {
           car.velocity.x -= nr.x * sgn * outward;
           car.velocity.z -= nr.z * sgn * outward;
         }
+        this._wallScrape(car, nr.x, nr.z, sgn);   // tunel divarı da qığılcım verir
       }
       this._roamAway = 0;
       return;                       // tuneldə su/dəhliz məntiqi işləmir
@@ -761,6 +763,23 @@ export class EndlessScene {
   _softReturn(icon) {
     this._rescue(true);
     this._toast(icon + ' ' + t('zen.backOnRoad'));
+  }
+
+  // Divara söykənib sürüşmə əks-əlaqəsi: qığılcım + xəfif cırıltı.
+  // Cooldown ilə — hər kadr yox, hiss olunan tezlikdə.
+  _wallScrape(car, nx, nz, sgn) {
+    const sürət = car.velocity.length();
+    if (sürət < 8) return;
+    this._scrapeT = (this._scrapeT || 0) - (1 / 60);
+    if (this._scrapeT > 0) return;
+    this._scrapeT = 0.14;
+    // Qığılcım kontakt tərəfdə, təkər hündürlüyündə
+    this.effects.spawnSparkle({
+      x: car.position.x + nx * sgn * 0.95,
+      y: (car.position.y || 0) + 0.45,
+      z: car.position.z + nz * sgn * 0.95,
+    }, 0xffc46a);
+    audio.sfx('tick');
   }
 
   _rescue(force = false) {
@@ -1602,6 +1621,12 @@ export class EndlessScene {
           // güllə kimi geri atılırdı (istifadəçi rəyi). İndi yalnız divara
           // doğru olan komponent silinir (1.0) və divar boyu sürüşmə
           // yüngül sürtünmə ilə yavaşıyır — real "söykənib sürüşmə" hissi.
+          // GÜCLÜ zərbədə əks-əlaqə: toz + xəfif səs (cooldown _scrapeT ilə)
+          if (-vn > 9 && (this._scrapeT || 0) <= 0) {
+            this._scrapeT = 0.25;
+            this.effects.spawnSmoke({ x: car.position.x - nx, y: 0.4, z: car.position.z - nz });
+            audio.sfx('tick');
+          }
           car.velocity.x -= vn * nx;
           car.velocity.z -= vn * nz;
           car.velocity.multiplyScalar(0.94);

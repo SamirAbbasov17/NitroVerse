@@ -1098,10 +1098,19 @@ export class GameplayScene {
           if (vn < 0) {
             car.velocity.x -= nx * vn * 1.5; // 0.5 elastik geri sıçrayış
             car.velocity.z -= nz * vn * 1.5;
+            // Oyunçu üçün əks-əlaqə: bərk zərbədə toz + səs + yüngül silkələnmə.
+            // Əvvəl maneəyə çırpılma SƏSSİZ idi və hiss olunmurdu.
+            if (car === this.playerCar && -vn > 10 && (this._obsHitT || 0) <= 0) {
+              this._obsHitT = 0.3;
+              this.effects.spawnSmoke({ x: car.position.x - nx, y: 0.4, z: car.position.z - nz });
+              audio.sfx('tick');
+              this._shake = Math.max(this._shake || 0, 0.35);
+            }
           }
         }
       }
     }
+    if ((this._obsHitT || 0) > 0) this._obsHitT -= 1 / 60;
   }
 
   // ————— TOQQUŞMA TƏHLÜKƏSİZLİK TORU (səhnə səviyyəsində) —————
