@@ -121,6 +121,26 @@ export class NatureKit {
   }
 
   // Klon qaytarır (yoxdursa null — çağıran prosedurala düşür)
+  // ——— BİOM TİNTİ ———
+  // Kenney modelləri öz palitrası ilə gəlir: səhrada nanə-yaşıl kaktus,
+  // qırmızı-göbələk və s. Bunlar isti səhra palitrasında "yad blob" kimi
+  // oxunurdu (istifadəçi rəyi ×3). Material biom rənginə vurulur: forma
+  // qalır, rəng səhnəyə oturur. Klonlar keşlənir — draw call artmır.
+  matFor(tintHex) {
+    if (!this._shared) return null;
+    if (!tintHex || tintHex === 0xffffff) return this._shared;
+    this._tints ||= new Map();
+    let m = this._tints.get(tintHex);
+    if (!m) {
+      m = this._shared.clone();
+      m.color = new THREE.Color(0xffffff).multiply(new THREE.Color(tintHex));
+      m.map = this._shared.map;          // atlas paylaşılır
+      m.userData = { ...(this._shared.userData || {}), shared: true };
+      this._tints.set(tintHex, m);
+    }
+    return m;
+  }
+
   get(name) {
     const t = this.templates.get(name);
     return t ? t.clone(true) : null;

@@ -21,31 +21,31 @@ const BIOMES = [
   {
     id: 'desert', sky: 0xf7b26a, skyB: 0xffd9a0, ground: 0xd99b57, fog: 0xf2b47a,
     road: 0x45464f, curb: 0xff7a2f, mountain: 0xbc7c42,
-    decor: ['cactus', 'rock', 'dune'], curvMul: 0.8,
+    decor: ['cactus', 'rock', 'dune'], curvMul: 0.8, natureTint: 0xd8a86a,
     weather: { clear: 0.75, fog: 0.1, rain: 0.15 }, flake: 0,
   },
   {
     id: 'alpine', sky: 0x8fd4ff, skyB: 0xd8f1ff, ground: 0x3f8f4e, fog: 0xbfe6ff,
     road: 0x4c4e58, curb: 0xe8ecf2, mountain: 0x556878,
-    decor: ['pine', 'rock', 'pine'], curvMul: 1.15,
+    decor: ['pine', 'rock', 'pine'], curvMul: 1.15, natureTint: 0xe8f0e4,
     weather: { clear: 0.5, fog: 0.2, rain: 0.3 }, flake: 1, // yağış = qar
   },
   {
     id: 'coast', sky: 0x5a4a9e, skyB: 0xff9a6a, ground: 0xe0bd86, fog: 0xe8a37e,
     road: 0x494750, curb: 0x27e6c8, mountain: 0x8a5f86,
-    decor: ['pine', 'lamp', 'rock'], curvMul: 0.9,
+    decor: ['pine', 'lamp', 'rock'], curvMul: 0.9, natureTint: 0xffd9a8,
     weather: { clear: 0.8, fog: 0.15, rain: 0.05 }, flake: 0,
   },
   {
     id: 'canyon', sky: 0x86385e, skyB: 0xf29a5c, ground: 0xa85a3e, fog: 0xc76d52,
     road: 0x45434d, curb: 0xffb02e, mountain: 0x6b3550,
-    decor: ['rock', 'cactus', 'windmill'], curvMul: 1.35,
+    decor: ['rock', 'cactus', 'windmill'], curvMul: 1.35, natureTint: 0xd68a5c,
     weather: { clear: 0.7, fog: 0.25, rain: 0.05 }, flake: 0,
   },
   {
     id: 'snow', sky: 0xa8c8e2, skyB: 0xe8f3fc, ground: 0xe8eff6, fog: 0xd6e5f0,
     road: 0x4f5461, curb: 0x3e6fd8, mountain: 0x9fb6c8,
-    decor: ['pine', 'rock', 'pine'], curvMul: 1.05,
+    decor: ['pine', 'rock', 'pine'], curvMul: 1.05, natureTint: 0xdce8f2,
     weather: { clear: 0.2, fog: 0.15, rain: 0.65 }, flake: 1, // demək olar həmişə qar
   },
 ];
@@ -249,7 +249,16 @@ export class EndlessScene {
     this._city = sharedCity();
     if (this._city.ready) this.road.cityFactory = (n) => this._city.get(n);
     else this._city._loading.then(() => { this.road.cityFactory = (n) => this._city.get(n); });
-    this.road.natureFactory = (name) => this._nature.get(name);
+    // Təbiət modelinə BİOM TİNTİ tətbiq olunur (səhrada nanə-yaşıl kaktus
+    // problemi — bax NatureKit.matFor). Forma qalır, rəng palitraya oturur.
+    this.road.natureFactory = (name) => {
+      const o = this._nature.get(name);
+      if (!o) return o;
+      const tint = this.road.style?.natureTint;
+      const m = this._nature.matFor?.(tint);
+      if (m) o.traverse?.((c) => { if (c.isMesh) c.material = m; });
+      return o;
+    };
     if (this._nature.ready) this._natureReady = true;
     else this._nature._loading.then(() => { this._natureReady = true; });
     const data = playerCarData(config.carId);
@@ -1025,7 +1034,7 @@ export class EndlessScene {
       decor: this._natureReady
         ? [...b.decor, ...(NATURE_BY_BIOME[b.id] || [])]
         : b.decor,
-      mountainColor: b.mountain, fog: b.fog,
+      mountainColor: b.mountain, fog: b.fog, natureTint: b.natureTint ?? 0xffffff,
     });
     // Biom-spesifik yer toxuması (yalnız dəyişəndə — hər kadr yox)
     if (this._groundTexId !== b.id) {

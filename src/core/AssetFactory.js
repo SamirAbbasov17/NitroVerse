@@ -41,9 +41,11 @@ export function makePine() {
 }
 
 // ————— Kaktus —————
-export function makeCactus() {
+export function makeCactus(tint = 0x6f8f52) {
   const g = new THREE.Group();
-  const mat = flatMat(0x3f8f4e);
+  // Doymuş çəmən yaşılı (0x3f8f4e) isti səhra palitrasında yad görünürdü —
+  // sage/zeytun tonu səhnəyə oturur (bax docs/DESIGN.md palitra qaydası)
+  const mat = flatMat(tint);
   const h = rand(2.2, 3.6);
   const body = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, h, 7), mat);
   body.position.y = h / 2;
