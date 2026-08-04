@@ -2239,3 +2239,34 @@ body.retro-on #retro-lines {
   animation: boostPulse 0.9s ease-in-out infinite alternate;
 }
 @keyframes boostPulse { from { opacity: 0.65; } to { opacity: 1; } }
+
+/* ============ Menyu dərinliyi (yekun poliş) ============ */
+/* Panel düz tünd lövhə idi — yuxarıdan aşağı incə qradiyent və kənarda
+   nazik vurğu xətti dərinlik verir. Yalnız kompozisiya, GPU xərci yoxdur. */
+.menu-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 22%),
+    linear-gradient(100deg, rgba(8, 10, 15, 0.94) 70%, rgba(8, 10, 15, 0.74));
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.05), 12px 0 40px -18px rgba(0, 0, 0, 0.9);
+}
+/* Kartlar: yüngül üst işıq + alt kölgə → "kağız" deyil, həcmli düymə */
+.mrow {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 6px 14px -10px rgba(0, 0, 0, 0.9);
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.12s ease;
+}
+.mrow:hover { transform: translateX(2px); }
+.mrow.is-selected {
+  background: linear-gradient(180deg, rgba(255, 122, 47, 0.16), rgba(255, 122, 47, 0.05));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 8px 20px -12px rgba(255, 122, 47, 0.6);
+}
+/* Əsas düymə: incə parıltı zolağı — "canlı" düymə hissi */
+.btn--primary { position: relative; overflow: hidden; }
+.btn--primary::after {
+  content: '';
+  position: absolute; top: 0; left: -40%; width: 40%; height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  transform: skewX(-18deg);
+  animation: btnSheen 3.6s ease-in-out infinite;
+}
+@keyframes btnSheen { 0%, 62% { left: -45%; } 88%, 100% { left: 115%; } }
