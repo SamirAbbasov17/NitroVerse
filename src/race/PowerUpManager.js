@@ -211,6 +211,7 @@ export class PowerUpManager {
               if (r.isPlayer && (r._fullT ?? 0) <= this._t - 1.2) {
                 r._fullT = this._t;
                 audio.sfx('click'); // "yerin yoxdur" işarəsi
+                this.onSlotsFull?.(); // HUD-da aydın izah (buq təəssüratı qalmasın)
               }
               continue; // bu qutunu yox, bəlkə yanındakını da yoxlayaq? — xeyr, doluyuq
             }

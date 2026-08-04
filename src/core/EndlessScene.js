@@ -108,8 +108,9 @@ export class EndlessScene {
       for (let py = 0; py < 256; py++) {
         // EMPİRİK: plane-in maşına yaxın ucu canvas ÜSTÜDÜR (py=0)
         const v = py / 255;
-        // boyuna profil: qabaqda parlaq, uzaqda yumşaq sönmə
-        const boy = Math.pow(1 - v, 1.35) * (0.25 + 0.75 * Math.min(1, v * 6));
+        // boyuna profil: buferdən parlaq başlayır, uzağa doğru yumşaq sönür —
+        // aralıqda qaranlıq zolaq qalmasın (bufer önü boş görünürdü)
+        const boy = Math.pow(1 - v, 1.45) * (0.55 + 0.45 * Math.min(1, v * 5));
         // konus: yaxında dar, uzaqda enli
         const yayıl = 0.16 + v * 0.42;
         for (let px = 0; px < 128; px++) {
@@ -125,7 +126,7 @@ export class EndlessScene {
       const tex = new THREE.CanvasTexture(cv);
       tex.colorSpace = THREE.SRGBColorSpace;
       this._beamPool = new THREE.Mesh(
-        new THREE.PlaneGeometry(8.5, 22),
+        new THREE.PlaneGeometry(8.5, 30),
         new THREE.MeshBasicMaterial({
           map: tex, blending: THREE.AdditiveBlending, transparent: true,
           depthWrite: false, opacity: 0,
@@ -563,6 +564,13 @@ export class EndlessScene {
       rl.id = 'retro-lines';
       document.body.appendChild(rl);
     }
+    if (!document.getElementById('filter-fx')) {
+      const fx = document.createElement('div');
+      fx.id = 'filter-fx';
+      document.body.appendChild(fx);
+    }
+    // Yadda saxlanan filtr bərpa olunur (səssiz — toast olmadan)
+    this._applyFilter(parseInt(localStorage.getItem('apexZenFilter') || '0', 10) || 0, true);
 
     if (isTouchDevice()) {
       this.touchControls = new TouchControls(this.uiRoot, this.input, {
@@ -736,10 +744,28 @@ export class EndlessScene {
       : '🌍 ' + names[BIOMES[this._biomeOverride].id]);
   }
 
-  _toggleRetro() {
-    const on = document.body.classList.toggle('retro-on');
-    this._toast(on ? '📺 Retro: AÇIQ' : '📺 Retro: bağlı');
+  // 📺 Filtr dövrü: yox → retro → kino → noir → sepiya. Hamısı CSS-dir —
+  // render dövrünə toxunmur (bax DESIGN.md: postprocessing qadağandır).
+  static FILTERS = [
+    { id: null, ad: 'bağlı' },
+    { id: 'flt-retro', ad: 'Retro' },
+    { id: 'flt-kino', ad: 'Kino' },
+    { id: 'flt-noir', ad: 'Noir' },
+    { id: 'flt-sepia', ad: 'Sepiya' },
+  ];
+
+  _applyFilter(idx, sakit = false) {
+    const F = EndlessScene.FILTERS;
+    this._fltIdx = ((idx % F.length) + F.length) % F.length;
+    for (const f of F) if (f.id) document.body.classList.remove(f.id);
+    document.body.classList.remove('retro-on'); // köhnə ad — uyğunluq
+    const f = F[this._fltIdx];
+    if (f.id) document.body.classList.add(f.id);
+    localStorage.setItem('apexZenFilter', String(this._fltIdx));
+    if (!sakit) this._toast(`📺 Filtr: ${f.ad}`);
   }
+
+  _toggleRetro() { this._applyFilter((this._fltIdx ?? 0) + 1); }
 
   _bindKeys() {
     this.input.bind('Escape', () => this._togglePause());
@@ -767,7 +793,7 @@ export class EndlessScene {
     this._el.overlay.innerHTML = `
       <div class="pause">
         <div class="screen__heading">Pauza</div>
-        <div class="menu-sub" style="text-align:center">🎵 N — trek · 📺 T — retro filtr</div>
+        <div class="menu-sub" style="text-align:center">🎵 N — trek · 📺 T — filtr (retro/kino/noir/sepiya)</div>
         <div class="btn-row">
           <button class="btn btn--primary" data-resume>${t('pause.resume')}</button>
           <button class="btn btn--ghost" data-quit>Menyu</button>
@@ -1475,11 +1501,11 @@ export class EndlessScene {
         const bp = this._beamPool;
         const fx2 = Math.sin(hh), fz2 = Math.cos(hh);
         const uzaqY = this.road.heightAtPos(
-          { x: c.x + fx2 * 23, y: 0, z: c.z + fz2 * 23 }, this.playerCar.wpHint);
-        bp.position.set(c.x + fx2 * 12, hy + 0.1, c.z + fz2 * 12);
+          { x: c.x + fx2 * 28, y: 0, z: c.z + fz2 * 28 }, this.playerCar.wpHint);
+        bp.position.set(c.x + fx2 * 13, hy + 0.1, c.z + fz2 * 13);
         bp.rotation.order = 'YXZ';
         bp.rotation.y = hh;
-        bp.rotation.x = -Math.PI / 2 + Math.atan2(uzaqY - hy, 22);
+        bp.rotation.x = -Math.PI / 2 + Math.atan2(uzaqY - hy, 30);
         bp.visible = true;
       } else if (this._beamPool) {
         this._beamPool.visible = false;
@@ -1948,7 +1974,9 @@ export class EndlessScene {
     this._shootStar?.geometry.dispose();
     this._starMat?.dispose();
     document.body.classList.remove('retro-on');
+    for (const f of EndlessScene.FILTERS) if (f.id) document.body.classList.remove(f.id);
     document.getElementById('retro-lines')?.remove();
+    document.getElementById('filter-fx')?.remove();
     // SIRA: qraf əvvəl (car.dispose övladları qrafdan çıxarır)
     disposeObject3D(this.scene);
     this.playerCar.dispose();

@@ -1470,7 +1470,9 @@ export class EndlessRoad {
     for (const u of [0.3, 0.7]) {
       const g = ctx.createLinearGradient((u - 0.1) * 256, 0, (u + 0.1) * 256, 0);
       g.addColorStop(0, 'rgba(30,30,34,0)');
-      g.addColorStop(0.5, 'rgba(30,30,34,0.28)');
+      // 0.28 → 0.13: gecə fara işığında tünd zolaqlar "görünməz obyektin
+      // kölgəsi" kimi oxunurdu (istifadəçi rəyi)
+      g.addColorStop(0.5, 'rgba(30,30,34,0.13)');
       g.addColorStop(1, 'rgba(30,30,34,0)');
       ctx.fillStyle = g;
       ctx.fillRect((u - 0.1) * 256, 0, 51, 256);

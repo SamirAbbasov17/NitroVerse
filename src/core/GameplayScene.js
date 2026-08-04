@@ -76,6 +76,17 @@ export class GameplayScene {
     this._buildWorld();
     this.skids = new SkidMarks(this.scene); // drift təkər izləri (1 draw call)
     this._buildCars();
+    // KAMERA İLK KADRDAN maşının arxasındadır. Əvvəl dünya mərkəzindən
+    // (0,8,-14) süzülüb gəlirdi — trekdən asılı olaraq yandan "uçub gələn"
+    // qəribə giriş görünürdü (istifadəçi rəyi). Giriş ofseti (bir az yuxarı,
+    // bir az uzaq) geri sayım ərzində yumşaq enir — bax _updateCamera.
+    if (this.playerCar) {
+      const c0 = this.playerCar, h0 = c0.heading;
+      const bx = Math.sin(h0), bz = Math.cos(h0);
+      this.camera.position.set(c0.position.x - bx * 13.1, 6.2, c0.position.z - bz * 13.1);
+      this._camTarget.set(c0.position.x + bx * 7, 1.1, c0.position.z + bz * 7);
+      this.camera.lookAt(this._camTarget);
+    }
     // Can hər xəritədə: yerli maşınlara HP ver
     for (const car of this.cars) {
       if (!car.isRemote) { car.hp = this.hz.hp; car._dmgCd = 0; car._invuln = 0; }
@@ -154,7 +165,14 @@ export class GameplayScene {
         onRemoteHit: (racer) => this._net?.sendEvent({ kind: 'hit', target: racer.netId }),
         seed: this.online.seed ?? null, // host seed-i — qutu tipləri hamıda eyni
       });
-      this.powerups.onScore = (shooter, kind, target) => {
+      // Hər iki slot dolu → qutu götürülmür: bunu AÇIQ de, yoxsa buq kimi görünür
+    this.powerups.onSlotsFull = () => {
+      if ((this._fullToastT ?? -9) > this._time - 5) return;
+      this._fullToastT = this._time;
+      this.hud?.showToast(isTouchDevice() ? '🎒 Slotların doludur — ✕ ilə birini at'
+        : '🎒 Slotların doludur — X: aktivi at');
+    };
+    this.powerups.onScore = (shooter, kind, target) => {
         // Hədəfin qalxanı udubsa — xal YOX
         if (target?.car && target.car.shieldTimer > 0) return;
         if (shooter?.isPlayer) this._addScore(HIT_SCORE[kind] || 0);
@@ -275,6 +293,13 @@ export class GameplayScene {
         this._damage(racer.car, this.hz.hitDamage);
       },
     });
+    // Hər iki slot dolu → qutu götürülmür: bunu AÇIQ de, yoxsa buq kimi görünür
+    this.powerups.onSlotsFull = () => {
+      if ((this._fullToastT ?? -9) > this._time - 5) return;
+      this._fullToastT = this._time;
+      this.hud?.showToast(isTouchDevice() ? '🎒 Slotların doludur — ✕ ilə birini at'
+        : '🎒 Slotların doludur — X: aktivi at');
+    };
     this.powerups.onScore = (shooter, kind, target) => {
       // Hədəfin qalxanı udubsa — xal YOX
       if (target?.car && target.car.shieldTimer > 0) return;
@@ -1182,8 +1207,15 @@ export class GameplayScene {
     const lookBack = (this.input.isDown('KeyC') || this.input.touch.lookBack) ? -1 : 1;
     const fx = Math.sin(h) * lookBack, fz = Math.cos(h) * lookBack;
     const speedT = Math.min(car.velocity.length() / car.maxSpeed, 1);
-    const back = 6.6 + speedT * 0.8;
-    const height = 3.2;
+    let back = 6.6 + speedT * 0.8;
+    let height = 3.2;
+    // Start girişi: geri sayımda kamera azca yuxarıdan/uzaqdan zərif enib oturur
+    if (this.raceManager?.state === 'countdown') {
+      const k = Math.max(0, Math.min(1, this.raceManager.countdown / 3));
+      const e = k * k;
+      back += 6.5 * e;
+      height += 3.0 * e;
+    }
 
     // Günəş (kölgə kamerası) oyunçunu izləyir
     const sun = this.environment.sun;

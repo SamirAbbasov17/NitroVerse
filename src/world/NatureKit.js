@@ -32,9 +32,10 @@ const MODELS = {
 export const NATURE_BY_BIOME = {
   desert: ['nk:rock_largeA', 'nk:rock_largeC', 'nk:cactus_tall', 'nk:rock_smallFlatA'],
   alpine: ['nk:tree_pineDefaultA', 'nk:tree_pineDefaultB', 'nk:tree_detailed',
-    'nk:log_stack', 'nk:mushroom_redGroup', 'nk:grass_leafsLarge', 'nk:tree_cone'],
-  coast: ['nk:tree_palmDetailedShort', 'nk:tree_palmTall', 'nk:plant_bushLarge',
-    'nk:flower_yellowB', 'nk:tree_oak'],
+    'nk:log_stack', 'nk:tree_cone'],
+  // QEYD: yumru kol/çiçək blobları çıxarıldı — gecə indiqo işığında "yaşıl
+  // daş" kimi oxunurdu və səhnəyə uyğun gəlmirdi (istifadəçi rəyi ×2)
+  coast: ['nk:tree_palmDetailedShort', 'nk:tree_palmTall', 'nk:tree_oak'],
   canyon: ['nk:rock_largeE', 'nk:tree_default_fall', 'nk:tree_thin', 'nk:rock_largeA'],
   snow: ['nk:tree_pineDefaultA', 'nk:tree_pineDefaultB', 'nk:tree_cone', 'nk:rock_largeA', 'nk:log_stack'],
 };
