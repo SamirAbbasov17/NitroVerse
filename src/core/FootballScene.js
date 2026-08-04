@@ -982,7 +982,7 @@ export class FootballScene {
       this._waitT += dt;
       if ((this._waitT * 2 | 0) !== this._waitShown) {
         this._waitShown = this._waitT * 2 | 0;
-        this._toast('Oyunçular hazırlanır…');
+        this._toast(t('tst.waiting'));
       }
       if (this.online?.net.isHost && this._waitT > 6 && !this._cstartSent) {
         this._cstartSent = true;
@@ -1006,7 +1006,7 @@ export class FootballScene {
       this._cd -= dt;
       const n = Math.ceil(this._cd);
       if (n !== this._cdShown && n > 0) { this._cdShown = n; this._toast(String(n)); audio.sfx('count'); }
-      if (this._cd <= 0) { this._state = 'play'; this._toast('BAŞLA!'); audio.sfx('go'); }
+      if (this._cd <= 0) { this._state = 'play'; this._toast(t('tst.go')); audio.sfx('go'); }
     }
     if (this._state === 'goal') {
       this._goalT -= dt;
@@ -1172,7 +1172,7 @@ export class FootballScene {
     if (pc._nitroT >= NITRO_REGEN_T && (pc.nitroCharges | 0) < 2) {
       pc._nitroT = 0;
       pc.nitroCharges = (pc.nitroCharges | 0) + 1;
-      this._toast('⚡ Nitro hazırdır');
+      this._toast(t('tst.nitroReady'));
     }
     pc._lungeCd = Math.max(0, (pc._lungeCd ?? 0) - dt);
     this._el.charges.textContent = '⚡'.repeat(Math.max(0, pc.nitroCharges | 0)) || '·';

@@ -1049,7 +1049,7 @@ export class ArenaScene {
       this._waitT += dt;
       if ((this._waitT * 2 | 0) !== this._waitShown) {
         this._waitShown = this._waitT * 2 | 0;
-        this._toast('Oyunçular hazırlanır…');
+        this._toast(t('tst.waiting'));
       }
       if (this.online?.net.isHost && this._waitT > 6 && !this._cstartSent) {
         this._cstartSent = true;
@@ -1072,7 +1072,7 @@ export class ArenaScene {
       if (n !== this._cdShown && n > 0) { this._cdShown = n; this._toast(String(n)); audio.sfx('count'); }
       if (this._cd <= 0) {
         this._state = 'play';
-        this._toast('DÖYÜŞ!');
+        this._toast(t('tst.fight'));
         audio.sfx('go');
         // İlkin dalğa: BÜTÜN padlər dolu başlayır (host/offline)
         if (this._simBots) {
@@ -1324,7 +1324,7 @@ export class ArenaScene {
     if (this._dangerShown !== inDanger) {
       this._dangerShown = inDanger;
       this._el.danger.classList.toggle('is-on', inDanger);
-      if (inDanger) this._toast('⚠️ Zonadan kənardasan!');
+      if (inDanger) this._toast(t('tst.zoneOut'));
     }
 
     // HUD: sağ qalanlar

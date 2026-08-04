@@ -1,3 +1,4 @@
+import { assetBase } from '../net/apiBase.js';
 // Prosedural audio sistemi — Web Audio API, heç bir xarici fayl yoxdur.
 // Musiqi: chiptune/synthwave sekvenser. SFX: sintez olunmuş effektlər.
 // Mühərrik: sürətə bağlı osilatorlar. Mute vəziyyəti localStorage-da qalır.
@@ -346,7 +347,7 @@ class AudioManagerImpl {
     this._lofiSynth = false; // fayl oxunmasa köhnə sintez versiyaya düşür
     const trk = AudioManagerImpl.LOFI_FILES[(this._lofiVar ?? 0) % AudioManagerImpl.LOFI_FILES.length];
     try {
-      const el = new Audio(trk.src);
+      const el = new Audio(assetBase() + trk.src);
       el.preload = 'auto';
       this._lofiEl = el;
       this._lofiNode = this.ctx.createMediaElementSource(el);

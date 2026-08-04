@@ -18,7 +18,11 @@ import { apiBase } from '../net/apiBase.js';
 // null → düymə ÜMUMİYYƏTLƏ göstərilmir. Hazırda kofe.al-da CibPay ödənişləri
 // dayandırılıb, yəni link açılsa da pul keçmir — işləməyən ödəniş yolunu
 // canlı saxlamaqdansa düyməni gizlədirik. Ödəniş üsulu seçiləndə bura URL yaz.
-const SUPPORT_URL = null;
+// Dəstək düyməsi itch.io səhifəsinə aparır — orada "Support this game"
+// bağışı açılır (itch ödənişi özü idarə edir, bizdə ödəniş kodu yoxdur).
+// Oyun itch-in İÇİNDƏ açılıbsa düymə gizlənir (səhifə onsuz da altındadır).
+const SUPPORT_URL = (typeof window !== 'undefined' && /itch\.(io|zone)$/.test(window.location.hostname))
+  ? null : 'https://samirabbasov.itch.io/nitroverse';
 
 const hex = (n) => '#' + n.toString(16).padStart(6, '0');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>

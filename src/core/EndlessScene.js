@@ -1843,7 +1843,7 @@ export class EndlessScene {
     if (auth.isLoggedIn && this.score - this._goldMark >= 4000) {
       this._goldMark += 4000;
       auth.award(20, 'zen');
-      this._toast('🪙 +20 qızıl (zen mərhələsi)');
+      this._toast(t('tst.zenGold'));
     }
 
     // Mühərrik + sürət xətləri

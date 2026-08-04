@@ -5,6 +5,18 @@
 const REMOTE = 'https://nitroverse.az';
 const ÖZ_HOSTLAR = ['nitroverse.az', 'www.nitroverse.az', '167.235.51.78'];
 
+// Statik resurslar (musiqi) üçün baza: yad mənşədə (itch.io embed) fayllar
+// paketə salınmır — rəsmi serverdən axıdılır (Audio elementi CORS istəmir)
+export function assetBase() {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    const öz = ÖZ_HOSTLAR.includes(host) || host.endsWith('.netlify.app')
+      || host === 'localhost' || host === '127.0.0.1';
+    if (!öz) return REMOTE + '/';
+  }
+  return '';
+}
+
 export function apiBase(name) {
   if (typeof window !== 'undefined') {
     // Testlər üçün açıq override

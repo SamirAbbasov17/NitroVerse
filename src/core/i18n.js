@@ -54,6 +54,7 @@ const D = {
     'lobby.notReady': '⚠️ Raund hazır olanlarla başladı — növbətisi üçün «Hazıram» düyməsini bas',
     'msgs.title': 'Mesajlar', 'msgs.step': 'Şəxsi', 'msgs.empty': 'Hələ şəxsi mesajın yoxdur — onlayn siyahıdan birinə yaz.',
     'sup.coffee': '☕ Dəstək ol', 'sup.bug': '🐞 Xəta bildir',
+    'tst.waiting': 'Oyunçular hazırlanır…', 'tst.fight': 'DÖYÜŞ!', 'tst.zoneOut': '⚠️ Zonadan kənardasan!', 'tst.go': 'BAŞLA!', 'tst.nitroReady': '⚡ Nitro hazırdır', 'tst.zenGold': '🪙 +20 qızıl (zen mərhələsi)', 'tst.finish': 'FİNİŞ!', 'tst.abilityUsed': 'Ability atıldı', 'tst.respawn': '💥 Partladın — yenidən doğuldun!',
     'bug.step': 'Bildiriş', 'bug.title': 'Xəta bildir',
     'bug.sub': 'Nə baş verdi? Nə qədər ətraflı yazsan, bir o qədər tez düzəldərəm.',
     'bug.subject': 'Başlıq', 'bug.subjectPh': 'Qısa: hansı problem?',
@@ -168,6 +169,7 @@ const D = {
     'lobby.notReady': '⚠️ Round started without you — press «I\'m ready» to join the next one',
     'msgs.title': 'Messages', 'msgs.step': 'Private', 'msgs.empty': 'No messages yet — DM someone from the online list.',
     'sup.coffee': '☕ Support', 'sup.bug': '🐞 Report a bug',
+    'tst.waiting': 'Waiting for players…', 'tst.fight': 'FIGHT!', 'tst.zoneOut': '⚠️ Outside the zone!', 'tst.go': 'GO!', 'tst.nitroReady': '⚡ Nitro ready', 'tst.zenGold': '🪙 +20 gold (zen milestone)', 'tst.finish': 'FINISH!', 'tst.abilityUsed': 'Ability fired', 'tst.respawn': '💥 You blew up — respawned!',
     'bug.step': 'Report', 'bug.title': 'Report a bug',
     'bug.sub': 'What happened? The more detail you give, the faster I can fix it.',
     'bug.subject': 'Subject', 'bug.subjectPh': 'Short: what is wrong?',
@@ -282,6 +284,7 @@ const D = {
     'lobby.notReady': '⚠️ Раунд начался без вас — нажмите «Я готов» для следующего',
     'msgs.title': 'Сообщения', 'msgs.step': 'Личные', 'msgs.empty': 'Сообщений пока нет — напиши кому-нибудь из списка онлайн.',
     'sup.coffee': '☕ Поддержать', 'sup.bug': '🐞 Сообщить об ошибке',
+    'tst.waiting': 'Ожидание игроков…', 'tst.fight': 'БОЙ!', 'tst.zoneOut': '⚠️ Ты вне зоны!', 'tst.go': 'СТАРТ!', 'tst.nitroReady': '⚡ Нитро готово', 'tst.zenGold': '🪙 +20 золота (зен-этап)', 'tst.finish': 'ФИНИШ!', 'tst.abilityUsed': 'Способность применена', 'tst.respawn': '💥 Ты взорвался — возрождение!',
     'bug.step': 'Сообщение', 'bug.title': 'Сообщить об ошибке',
     'bug.sub': 'Что случилось? Чем подробнее опишешь, тем быстрее я исправлю.',
     'bug.subject': 'Тема', 'bug.subjectPh': 'Коротко: в чём проблема?',
@@ -396,6 +399,7 @@ const D = {
     'lobby.notReady': '⚠️ Tur sensiz başladı — sonraki için «Hazırım»a bas',
     'msgs.title': 'Mesajlar', 'msgs.step': 'Özel', 'msgs.empty': 'Henüz mesajın yok — online listeden birine yaz.',
     'sup.coffee': '☕ Destek ol', 'sup.bug': '🐞 Hata bildir',
+    'tst.waiting': 'Oyuncular bekleniyor…', 'tst.fight': 'DÖVÜŞ!', 'tst.zoneOut': '⚠️ Bölge dışındasın!', 'tst.go': 'BAŞLA!', 'tst.nitroReady': '⚡ Nitro hazır', 'tst.zenGold': '🪙 +20 altın (zen aşaması)', 'tst.finish': 'FİNİŞ!', 'tst.abilityUsed': 'Yetenek kullanıldı', 'tst.respawn': '💥 Patladın — yeniden doğdun!',
     'bug.step': 'Bildirim', 'bug.title': 'Hata bildir',
     'bug.sub': 'Ne oldu? Ne kadar ayrıntı verirsen o kadar hızlı düzeltirim.',
     'bug.subject': 'Başlık', 'bug.subjectPh': 'Kısaca: sorun ne?',
@@ -464,7 +468,12 @@ const D = {
 };
 
 let cur = localStorage.getItem('apexLang');
-if (!LANGS.includes(cur)) cur = 'az';
+if (!LANGS.includes(cur)) {
+  // İLK GİRİŞ: brauzerin dilinə uyğunlaş. itch.io/qlobal auditoriya oyunu
+  // azərbaycanca açırdı; yerli oyunçu üçün nəticə dəyişmir (az → az).
+  const b = (navigator.languages?.[0] || navigator.language || 'en').slice(0, 2).toLowerCase();
+  cur = LANGS.includes(b) ? b : 'en';
+}
 
 export function getLang() { return cur; }
 

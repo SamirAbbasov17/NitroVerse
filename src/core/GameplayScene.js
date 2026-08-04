@@ -338,7 +338,7 @@ export class GameplayScene {
     rm.onPlayerFinish = () => {
       this._playerDone = true;
       this._finishTimer = 2.6;
-      this.hud.showToast('FİNİŞ!');
+      this.hud.showToast(t('tst.finish'));
       audio.sfx('finish');
       // Konfeti — qalibiyyətdə ikiqat
       const pr = this.racers.find((r) => r.isPlayer);
@@ -668,7 +668,7 @@ export class GameplayScene {
     const r = this.racers?.find((x) => x.isPlayer);
     if (r?.items?.length && this._state === 'run') {
       this.powerups.discard(r);
-      this.hud.showToast('Ability atıldı');
+      this.hud.showToast(t('tst.abilityUsed'));
     }
   }
 
@@ -921,7 +921,7 @@ export class GameplayScene {
     car._invuln = TUNING.items.respawnInvuln;
     if (car.isPlayer) {
       this.hud.setHP(hz.hp, hz.hp);
-      this.hud.showToast('💥 Partladın — yenidən doğuldun!');
+      this.hud.showToast(t('tst.respawn'));
       this._shake = 1.0;
     }
   }
@@ -1380,7 +1380,7 @@ export class GameplayScene {
     if (!this.online || this.raceManager.state !== 'wait') return;
     if (!this._waitToastShown) {
       this._waitToastShown = true;
-      this.hud?.showToast('Oyunçular hazırlanır…');
+      this.hud?.showToast(t('tst.waiting'));
     }
     this._waitT += dt;
     if (this._net.isHost && this._waitT > 6 && !this._cstartSent) {
