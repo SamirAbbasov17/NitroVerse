@@ -50,6 +50,16 @@ import('./world/CityKit.js').then((m) => m.sharedCity());
 for (const ev of ['touchstart', 'click']) {
   window.addEventListener(ev, () => audio.resume(), { passive: true });
 }
+// TƏHLÜKƏSİZLİK TORU: bəzi brauzerlər konteksti jestsiz sonradan açır
+// (media-nişan icazəsi) — statechange hadisəsi ötürülsə belə ilk 8 saniyə
+// yoxlayıb musiqini qururuq. Jest tələb edən brauzerlərdə zərərsizdir.
+{
+  let cəhd = 0;
+  const t = setInterval(() => {
+    if (audio.ctx && audio.ctx.state === 'running' && audio._stalled) audio.resume(true);
+    if (++cəhd >= 16 || (audio.ctx && audio.ctx.state === 'running' && !audio._stalled)) clearInterval(t);
+  }, 500);
+}
 window.addEventListener('pointerdown', () => {
   audio.resume();
   // Telefonda ilk toxunuşdan etibarən (menyuda da) tam ekran + landşaft

@@ -6,7 +6,11 @@ import { CITY_ROWS } from './CityKit.js';
 // Sonsuz prosedural yol: qabaqda chunk-lar yaranır, arxadakılar silinir.
 // Car.update üçün TrackBuilder-uyğun interfeys verir (getNearest, halfWidth, maxRadius).
 const SEG = 8;         // nöqtələr arası (m)
-const CHUNK = 36;      // chunk başına seqment (≈288 m)
+// Chunk qurulması ƏSAS AXINDA işləyir — 36 seqmentlik parça kadrı 11-21 ms
+// yeyirdi və hər ~7 saniyədə bir 36-40 ms-lik kadr donması verirdi (ölçülüb:
+// spike vaxtları chunk vaxtları ilə üst-üstə düşür). Yarıya bölünəndə hər
+// qurulma ~6-11 ms olur və kadr büdcəsinə sığır; draw-call artımı cüzidir.
+const CHUNK = 12;      // chunk başına seqment (≈96 m)
 const AHEAD = 760;     // hərəkət istiqamətində hazır yol (m)
 const BACK_AHEAD = 520; // arxaya dönəndə də hazır yol (m)
 const TRIM_FAR = 1050; // bu məsafədən uzaq chunk-lar silinir

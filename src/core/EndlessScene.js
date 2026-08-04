@@ -96,6 +96,45 @@ export class EndlessScene {
     this.headlight.castShadow = false;   // mobil üçün: kölgəsiz
     this.scene.add(this.headlight);
     this.scene.add(this.headlight.target);
+    // FARA GÖLMƏÇƏSİ — kök həll: spot işığın asfaltda görünməsi səth
+    // normalından/bucaqdan asılıdır və sürüşdə zəif, ləkəli görünürdü
+    // (istifadəçi rəyi ×2). Additiv boyalı lövhə normala baxmır — şüa
+    // HƏMİŞƏ yolun üstündə aydın oxunur. Spot dekor/işarələr üçün qalır.
+    {
+      const cv = document.createElement('canvas');
+      cv.width = 128; cv.height = 256;
+      const cx2 = cv.getContext('2d');
+      const im = cx2.createImageData(128, 256);
+      for (let py = 0; py < 256; py++) {
+        // canvas üstü (py=0) plane-in UZAQ ucudur — v ona görə çevrilir
+        const v = 1 - py / 255;
+        // boyuna profil: qabaqda parlaq, uzaqda yumşaq sönmə
+        const boy = Math.pow(1 - v, 1.35) * (0.25 + 0.75 * Math.min(1, v * 6));
+        // konus: yaxında dar, uzaqda enli
+        const yayıl = 0.16 + v * 0.42;
+        for (let px = 0; px < 128; px++) {
+          const u = (px - 64) / 64;
+          const en = Math.exp(-(u * u) / (2 * yayıl * yayıl));
+          const a = Math.min(1, boy * en);
+          const o = (py * 128 + px) * 4;
+          im.data[o] = 255 * a; im.data[o + 1] = 226 * a; im.data[o + 2] = 176 * a;
+          im.data[o + 3] = 255;
+        }
+      }
+      cx2.putImageData(im, 0, 0);
+      const tex = new THREE.CanvasTexture(cv);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      this._beamPool = new THREE.Mesh(
+        new THREE.PlaneGeometry(8.5, 22),
+        new THREE.MeshBasicMaterial({
+          map: tex, blending: THREE.AdditiveBlending, transparent: true,
+          depthWrite: false, opacity: 0,
+        })
+      );
+      this._beamPool.rotation.x = -Math.PI / 2;
+      this._beamPool.renderOrder = 2;      // asfaltdan sonra çəkilsin
+      this.scene.add(this._beamPool);
+    }
 
     // ——— Səma + günəş diski + yer ———
     this._skyMat = new THREE.MeshBasicMaterial({ side: THREE.BackSide, fog: false, depthWrite: false });
@@ -221,8 +260,9 @@ export class EndlessScene {
     // sıçrayışı verirdi (ölçülüb — 90 s-də 8 spike, hovuzla 0).
     this._traffic = [];
     this._trafPool = [];
-    for (let i = 0; i < 3; i++) {
-      const seç = CARS[Math.floor(Math.random() * CARS.length)];
+    // FƏRQLİ-FƏRQLİ maşınlar: siyahı qarışdırılır, 4 müxtəlif model seçilir
+    const çeşid = [...CARS].sort(() => Math.random() - 0.5).slice(0, 4);
+    for (const seç of çeşid) {
       try {
         const inst = library.instantiate(seç.model, seç.bodyColor, null, null);
         const root = inst.root || inst;
@@ -550,15 +590,19 @@ export class EndlessScene {
   // Yüngüldür: fizikasız, yol nöqtələri üzrə sürüşür; işıq/kölgə əlavə etmir.
   _spawnTraffic(playerAbs) {
     const road = this.road;
-    const abs = playerAbs + 19 + Math.floor(Math.random() * 8); // 150–210 m irəlidə
+    // ~40% qarşı zolaqdan gələn maşın — yol hər iki tərəfdə yaşasın
+    const dir = Math.random() < 0.4 ? -1 : 1;
+    const abs = playerAbs + (dir === 1 ? 19 : 24) + Math.floor(Math.random() * 8);
     const li = abs - road.base;
     if (li < 2 || li >= road.points.length - 6) return;
     for (const t of this._traffic) if (Math.abs(t.abs - abs) < 8) return;
-    const slot = this._trafPool.find((s) => s.boş);
-    if (!slot) return;
+    const boşlar = this._trafPool.filter((s) => s.boş);
+    if (!boşlar.length) return;
+    const slot = boşlar[Math.floor(Math.random() * boşlar.length)];
     slot.boş = false;
     slot.root.visible = true;
-    this._traffic.push({ root: slot.root, wheels: slot.wheels, slot, abs, spd: 13 + Math.random() * 6 });
+    this._traffic.push({ root: slot.root, wheels: slot.wheels, slot, abs, dir,
+      spd: 13 + Math.random() * 6 });
   }
 
   _updateTraffic(dt) {
@@ -573,13 +617,14 @@ export class EndlessScene {
     const hw = road.halfWidth;
     for (let i = this._traffic.length - 1; i >= 0; i--) {
       const t = this._traffic[i];
-      // öndəki trafikə çatanda arxasınca getsin (bir-birinin içindən keçməsin)
+      // öndəki EYNİ istiqamətli trafikə çatanda arxasınca getsin
       for (const o of this._traffic) {
-        if (o !== t && o.abs > t.abs && o.abs - t.abs < 5) t.spd = Math.min(t.spd, o.spd);
+        if (o !== t && o.dir === t.dir && (o.abs - t.abs) * t.dir > 0 &&
+            Math.abs(o.abs - t.abs) < 5) t.spd = Math.min(t.spd, o.spd);
       }
-      t.abs += (t.spd * dt) / SEGm;
+      t.abs += (t.dir * t.spd * dt) / SEGm;
       const li = Math.floor(t.abs) - road.base;
-      if (t.abs < pAbs - 14 || li < 1 || li >= road.points.length - 3) {
+      if (t.abs < pAbs - 14 || t.abs > pAbs + 42 || li < 1 || li >= road.points.length - 3) {
         t.root.visible = false;
         if (t.slot) t.slot.boş = true;
         this._traffic.splice(i, 1);
@@ -590,14 +635,14 @@ export class EndlessScene {
       const n0 = road.normals[li];
       const tx = p1.x - p0.x, tz = p1.z - p0.z;
       const L = Math.hypot(tx, tz) || 1;
-      // sağ zolaq: lateralın "sağa" baxan işarəsi (normal hansı tərəfdədirsə)
-      const rSign = Math.sign(n0.z * (tx / L) - n0.x * (tz / L)) || 1;
+      // öz istiqamətinə görə SAĞ zolaq: qarşıdan gələn o biri tərəfdə olur
+      const rSign = (Math.sign(n0.z * (tx / L) - n0.x * (tz / L)) || 1) * t.dir;
       const lat = rSign * hw * 0.45;
       const x = p0.x + (p1.x - p0.x) * f + n0.x * lat;
       const z = p0.z + (p1.z - p0.z) * f + n0.z * lat;
       const y = p0.y + (p1.y - p0.y) * f;
       t.root.position.set(x, y + 0.08, z);
-      t.root.rotation.y = Math.atan2(tx, tz);
+      t.root.rotation.y = Math.atan2(tx * t.dir, tz * t.dir);
       for (const w of t.wheels) w.rotation.x += t.spd * dt;
       // Oyunçu ilə toqquşma — hərəkətli maneə kimi (bax yuxarıdakı maneə bloku)
       const car = this.playerCar;
@@ -1222,6 +1267,7 @@ export class EndlessScene {
     // arasındakı kəskin sərhəd yumşalır
     this.sun.intensity *= (1 - day.night * 0.45);
     this.headlight.intensity = day.night * 190;
+    if (this._beamPool) this._beamPool.material.opacity = day.night * 0.72;
     this._updateHeadlights(day.night);
 
     // Günəş mövqeyi (maşını izləyir)
@@ -1424,6 +1470,20 @@ export class EndlessScene {
       // Hədəf 24 m qabaqda, yol səviyyəsində — konus asfaltı yalayır
       this.headlight.target.position.set(c.x + Math.sin(hh) * 24, hy - 0.6, c.z + Math.cos(hh) * 24);
       this.headlight.target.updateMatrixWorld();
+      // Gölməçə: maşının 16 m qabağında, yolun mailinə uyğun əyilmiş
+      if (this._beamPool && this._beamPool.material.opacity > 0.01) {
+        const bp = this._beamPool;
+        const fx2 = Math.sin(hh), fz2 = Math.cos(hh);
+        const uzaqY = this.road.heightAtPos(
+          { x: c.x + fx2 * 23, y: 0, z: c.z + fz2 * 23 }, this.playerCar.wpHint);
+        bp.position.set(c.x + fx2 * 12, hy + 0.1, c.z + fz2 * 12);
+        bp.rotation.order = 'YXZ';
+        bp.rotation.y = hh;
+        bp.rotation.x = -Math.PI / 2 + Math.atan2(uzaqY - hy, 22);
+        bp.visible = true;
+      } else if (this._beamPool) {
+        this._beamPool.visible = false;
+      }
     }
 
     // Hava dəyişimi

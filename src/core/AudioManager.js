@@ -33,6 +33,15 @@ class AudioManagerImpl {
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     }
     if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+    // Kontekst SONRADAN öz-özünə oyansa (Chrome media-nişan icazəsi, tam
+    // ekran keçidi və s.) musiqi jestsiz də dərhal qurulsun — əvvəl yalnız
+    // istifadəçi jestindəki resume() bunu edirdi.
+    if (!this._stateHook) {
+      this._stateHook = true;
+      this.ctx.addEventListener?.('statechange', () => {
+        if (this.ctx.state === 'running' && this._stalled) this.resume(true);
+      });
+    }
     return true;
   }
 
@@ -41,12 +50,13 @@ class AudioManagerImpl {
   // köhnə vaxtda qalırdı və jestdən sonra da səs gəlmirdi ("menyuda musiqi
   // yoxdur, nəyəsə klikləyəndə işləyir"). İndi kontekst oyananda cari
   // musiqi rejimi TƏMİZ yenidən qurulur.
-  resume() {
+  resume(force = false) {
     const wasSuspended = !this.ctx || this.ctx.state === 'suspended';
     this._ensure();
-    if (wasSuspended && this._musicMode) {
+    if ((wasSuspended || force) && this._musicMode) {
       const mode = this._musicMode;
       this._musicMode = null;          // eyni rejimin yenidən qurulmasına icazə
+      this._stalled = false;
       this.playMusic(mode);
     }
   }
@@ -281,6 +291,8 @@ class AudioManagerImpl {
     if (this._musicMode === mode) return;
     this.stopMusic();
     this._musicMode = mode;
+    // Kontekst hələ kilidlidirsə qeyd et — oyananda (statechange) təmiz qurulacaq
+    this._stalled = this.ctx.state !== 'running';
     this._step = 0;
     this._nextT = this.ctx.currentTime + 0.15;
     this._musicTimer = setInterval(() => this._scheduleMusic(), 90);
