@@ -299,15 +299,52 @@ export class FootballScene {
       );
       glow.position.set(0, 0.25, sz * (FIELD_H / 2 + 0.7));
       this.scene.add(glow);
-      const net = new THREE.Mesh(
-        new THREE.BoxGeometry(GOAL_W, 4.4, 5),
-        new THREE.MeshStandardMaterial({
-          color: TEAM_COLORS[team], transparent: true, opacity: 0.16,
-        })
-      );
+      // TOR: əvvəl rəngli yarımşəffaf QUTU idi — duman kimi görünürdü, tor
+      // oxunmurdu. İndi əsl tor teksturası (canvas şəbəkə, şəffaf fon).
+      if (!FootballScene._netTex) {
+        const nc = document.createElement('canvas');
+        nc.width = nc.height = 64;
+        const nx = nc.getContext('2d');
+        nx.strokeStyle = 'rgba(255,255,255,0.75)';
+        nx.lineWidth = 1.6;
+        for (let i = 0; i <= 8; i++) {
+          const t = (i / 8) * 64;
+          nx.beginPath(); nx.moveTo(t, 0); nx.lineTo(t, 64); nx.stroke();
+          nx.beginPath(); nx.moveTo(0, t); nx.lineTo(64, t); nx.stroke();
+        }
+        const tx = new THREE.CanvasTexture(nc);
+        tx.wrapS = tx.wrapT = THREE.RepeatWrapping;
+        tx.repeat.set(GOAL_W / 2.2, 2.4);
+        FootballScene._netTex = tx;
+      }
+      const netMat = new THREE.MeshStandardMaterial({
+        map: FootballScene._netTex, color: TEAM_COLORS[team],
+        transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide,
+      });
+      const net = new THREE.Mesh(new THREE.BoxGeometry(GOAL_W, 4.4, 5), netMat);
       net.position.set(0, 2.2, sz * (FIELD_H / 2 + 3.2));
       this.scene.add(net);
     }
+    // KÜNC BAYRAQLARI — stadion dilinin klassik detalı, meydan sərhədini
+    // oxunaqlı edir (dörd künc, ucuz həndəsə)
+    {
+      const dirəkMat = new THREE.MeshStandardMaterial({ color: 0xf2f4f8, roughness: 0.8 });
+      const bayraqMat = new THREE.MeshStandardMaterial({
+        color: 0xffd34d, roughness: 0.9, side: THREE.DoubleSide, flatShading: true,
+      });
+      for (const sx of [-1, 1]) {
+        for (const sz2 of [-1, 1]) {
+          const dirək = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 2.4, 6), dirəkMat);
+          dirək.position.set(sx * (FIELD_W / 2 - 0.8), 1.2, sz2 * (FIELD_H / 2 - 0.8));
+          this.scene.add(dirək);
+          const bayraq = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.6), bayraqMat);
+          bayraq.position.set(dirək.position.x - sx * 0.5, 2.05, dirək.position.z);
+          bayraq.rotation.y = sx > 0 ? 0 : Math.PI;
+          this.scene.add(bayraq);
+        }
+      }
+    }
+
     // Tribunalar — izləyici kütləsi teksturası ilə (canvas, bir dəfə çəkilir)
     const crowdCv = document.createElement('canvas');
     crowdCv.width = 256; crowdCv.height = 32;

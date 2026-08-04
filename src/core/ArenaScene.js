@@ -127,6 +127,31 @@ export class ArenaScene {
     floor.rotation.x = -Math.PI / 2;
     this.scene.add(floor);
 
+    // NEON ŞƏBƏKƏ: döşəmə ekranın 60%-ni tutur və tamamilə boş görünürdü.
+    // Nazik radial + konsentrik xətlər sahəyə miqyas və istiqamət verir
+    // (həm estetik, həm oyunçu üçün məsafə hissi). Tək additiv mesh.
+    {
+      const g = new THREE.BufferGeometry();
+      const v = [];
+      const R = ARENA_R * 0.99;
+      for (let i = 0; i < 24; i++) {            // radial
+        const a = (i / 24) * Math.PI * 2;
+        v.push(Math.cos(a) * 8, 0.03, Math.sin(a) * 8, Math.cos(a) * R, 0.03, Math.sin(a) * R);
+      }
+      for (const k of [0.22, 0.44, 0.66, 0.88]) { // konsentrik
+        const rr = R * k;
+        for (let i = 0; i < 72; i++) {
+          const a0 = (i / 72) * Math.PI * 2, a1 = ((i + 1) / 72) * Math.PI * 2;
+          v.push(Math.cos(a0) * rr, 0.03, Math.sin(a0) * rr, Math.cos(a1) * rr, 0.03, Math.sin(a1) * rr);
+        }
+      }
+      g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+      const şəbəkə = new THREE.LineSegments(g, new THREE.LineBasicMaterial({
+        color: 0x7a5cff, transparent: true, opacity: 0.13, blending: THREE.AdditiveBlending, depthWrite: false,
+      }));
+      this.scene.add(şəbəkə);
+    }
+
     // Neon halqalar teksturadan ÇIXARILDI (təkrarlananda 9 dəfə çıxırdı) —
     // indi ayrıca nazik həndəsədir, ölçüsü arenaya bağlıdır
     for (const [k, col] of [[0.39, 0xb44bff], [0.70, 0xff6b1a], [0.97, 0x37b8ff]]) {
@@ -207,6 +232,18 @@ export class ArenaScene {
       );
       cap.position.set(p.position.x, 9.2, p.position.z);
       this.scene.add(cap);
+      // NEON ZOLAQ: sütunlar düz tünd silindr idi və arenanın neon dilindən
+      // kənarda qalırdı. İki nazik işıqlı halqa siluetə oxunaqlıq verir və
+      // qaranlıqda sütunun harada olduğunu uzaqdan göstərir (oyun faydası).
+      for (const [hh, kk] of [[2.2, 0.55], [6.4, 0.35]]) {
+        const halqa = new THREE.Mesh(
+          new THREE.CylinderGeometry(2.95 - hh * 0.06, 2.95 - hh * 0.06, 0.22, 7, 1, true),
+          new THREE.MeshBasicMaterial({ color: 0x37b8ff, transparent: true, opacity: kk,
+            blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false })
+        );
+        halqa.position.set(p.position.x, hh, p.position.z);
+        this.scene.add(halqa);
+      }
       this.obstacles.push({ x: p.position.x, z: p.position.z, r: 3.4 });
     }
     for (let i = 0; i < 8; i++) {
