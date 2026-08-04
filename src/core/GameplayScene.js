@@ -1209,9 +1209,12 @@ export class GameplayScene {
     const speedT = Math.min(car.velocity.length() / car.maxSpeed, 1);
     let back = 6.6 + speedT * 0.8;
     let height = 3.2;
-    // Start girişi: geri sayımda kamera azca yuxarıdan/uzaqdan zərif enib oturur
-    if (this.raceManager?.state === 'countdown') {
-      const k = Math.max(0, Math.min(1, this.raceManager.countdown / 3));
+    // Start girişi: geri sayımda kamera azca yuxarıdan/uzaqdan zərif enib oturur.
+    // Onlaynda 'wait' fazası geri sayımdan ƏVVƏLDİR — ofset orada tam qalır,
+    // yoxsa kamera əvvəl oturub sonra geri sıçrayırdı.
+    const rmSt = this.raceManager?.state;
+    if (rmSt === 'countdown' || rmSt === 'wait') {
+      const k = rmSt === 'wait' ? 1 : Math.max(0, Math.min(1, this.raceManager.countdown / 3));
       const e = k * k;
       back += 6.5 * e;
       height += 3.0 * e;
