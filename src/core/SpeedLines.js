@@ -54,10 +54,12 @@ export class SpeedLines {
   }
 
   update(dt, speedT, speed) {
-    // Yalnız sürətin ~55%-dən yuxarı görünür, tədricən güclənir
-    const t = Math.max(0, (speedT - 0.55) / 0.45);
+    // ƏVVƏL: 55%-dən başlayır və opasite 0.4 idi — orta sürətdə ekranda
+    // "cızıq" kimi oxunurdu (skrinşotlarda aydın görünürdü). İndi yalnız
+    // yüksək sürətdə (78%+) və daha zəif — hərəkət hissi qalır, cızıq yox.
+    const t = Math.max(0, (speedT - 0.78) / 0.22);
     this.lines.visible = t > 0.02;
-    this.mat.opacity = t * 0.4;
+    this.mat.opacity = t * 0.22;
     if (!this.lines.visible) return;
 
     for (let i = 0; i < this.count; i++) {

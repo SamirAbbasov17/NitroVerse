@@ -138,13 +138,18 @@ export class TrackBuilder {
     const roadOpts = { roughness: 0.95, map: roadTex, uvMeters: 26 };
     const curbOpts = { emissive: 0xffffff, emissiveMap: curbTex, emissiveIntensity: 0.3, map: curbTex, uvMeters: 4.4 };
     // Yol lenti
-    this.group.add(this._ribbonFor(this.points, this.normals, true, -this.halfWidth, this.halfWidth, p.road, 0.02, roadOpts));
+    // ASFALT TONU: palitra rəngləri çox tünd idi (0x28…0x3a) və tekstura ilə
+    // birlikdə səth demək olar QAPQARA çıxırdı — ekranın yarısını tutan
+    // fakturasız qara sahə "ucuz" görünür. Çalar saxlanılır, yalnız
+    // parlaqlıq qaldırılır (real asfalt işıqda tünd-boz oxunur).
+    const roadCol = new THREE.Color(p.road).lerp(new THREE.Color(0xffffff), 0.16).getHex();
+    this.group.add(this._ribbonFor(this.points, this.normals, true, -this.halfWidth, this.halfWidth, roadCol, 0.02, roadOpts));
     // Kənar zolaqlar (curb) — şaxə girişlərində KƏSİLİR (təmiz çəngəl ağzı)
     this.group.add(this._ribbonFor(this.points, this.normals, true, this.halfWidth, this.halfWidth + 0.7, 0xffffff, 0.05, curbOpts, onBranch));
     this.group.add(this._ribbonFor(this.points, this.normals, true, -this.halfWidth - 0.7, -this.halfWidth, 0xffffff, 0.05, curbOpts, onBranch));
     // Şaxə yolları — bir az aşağı y: qovşaqda əsas yol üstünü örtür (z-fighting yox).
     // Rəngi bir az tozlu/köhnədir — "gizli yol" oxunuşu
-    const branchRoadC = new THREE.Color(p.road).lerp(new THREE.Color(0x9a8a6a), 0.14).getHex();
+    const branchRoadC = new THREE.Color(roadCol).lerp(new THREE.Color(0x9a8a6a), 0.14).getHex();
     for (const b of this.branches) {
       const hw = b.halfWidth;
       this.group.add(this._ribbonFor(b.points, b.normals, false, -hw, hw, branchRoadC, 0.012, roadOpts));
@@ -352,17 +357,29 @@ export class TrackBuilder {
     const ctx = c.getContext('2d');
     ctx.fillStyle = '#8a8a8a';
     ctx.fillRect(0, 0, 256, 256);
-    // Noise səpintisi
-    for (let i = 0; i < 2200; i++) {
-      const v = 118 + Math.floor(Math.random() * 40);
-      ctx.fillStyle = `rgba(${v},${v},${v},0.16)`;
-      ctx.fillRect(Math.random() * 256, Math.random() * 256, 1.6, 1.6);
+    // AQREQAT: yaxın planda görünən çınqıl dənəsi — səth "plastik" olmasın
+    for (let i = 0; i < 4200; i++) {
+      const v = 108 + Math.floor(Math.random() * 62);
+      ctx.fillStyle = `rgba(${v},${v},${v},0.22)`;
+      const r = 1 + Math.random() * 1.8;
+      ctx.fillRect(Math.random() * 256, Math.random() * 256, r, r);
+    }
+    // İRİ LƏKƏLƏR: təmir yamaqları / köhnəlmiş sahələr (təkrar hiss olunmasın)
+    for (let i = 0; i < 14; i++) {
+      const x = Math.random() * 256, y = Math.random() * 256;
+      const rad = 18 + Math.random() * 46;
+      const g2 = ctx.createRadialGradient(x, y, 2, x, y, rad);
+      const tünd = Math.random() < 0.5;
+      g2.addColorStop(0, tünd ? 'rgba(96,96,102,0.20)' : 'rgba(168,168,174,0.16)');
+      g2.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g2;
+      ctx.beginPath(); ctx.arc(x, y, rad, 0, 7); ctx.fill();
     }
     // Təkər izləri: u oxu yolun eni — iki tünd zolaq
     for (const u of [0.30, 0.70]) {
       const g = ctx.createLinearGradient((u - 0.10) * 256, 0, (u + 0.10) * 256, 0);
       g.addColorStop(0, 'rgba(30,30,34,0)');
-      g.addColorStop(0.5, 'rgba(30,30,34,0.28)');
+      g.addColorStop(0.5, 'rgba(30,30,34,0.16)');
       g.addColorStop(1, 'rgba(30,30,34,0)');
       ctx.fillStyle = g;
       ctx.fillRect((u - 0.10) * 256, 0, 0.2 * 256, 256);
