@@ -1263,9 +1263,6 @@ export class GameplayScene {
     {
       const app = this._appEl || (this._appEl = document.getElementById('app'));
       if (app) {
-        const t = Math.min(1, this.playerCar.velocity.length() / (this.playerCar.maxSpeed || 1));
-        const sürətli = t > 0.82;
-        if (sürətli !== this._fastOn) { this._fastOn = sürətli; app.classList.toggle('fast', sürətli); }
         if (boosting !== this._boostOn) { this._boostOn = boosting; app.classList.toggle('boosting', boosting); }
       }
     }
@@ -1363,6 +1360,9 @@ export class GameplayScene {
   }
 
   dispose() {
+    // Ekran siniflərini TƏMİZLƏ — əvvəl 'fast' sinfi yarışdan sonra qalırdı
+    // və statik şüalar zen-də də görünürdü (istifadəçi rəyi)
+    document.getElementById('app')?.classList.remove('fast', 'boosting', 'impact');
     this.input.enabled = true;
     this.input.binds.clear();
     this.hud?.destroy();
