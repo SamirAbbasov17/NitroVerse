@@ -419,6 +419,47 @@ export class Menu {
   }
 
   // ————— Mesajlar bölməsi: söhbətlərim —————
+  // ————— ADMİN: GƏLƏN BİLDİRİŞLƏR —————
+  // E-poçt filtrləri/qovluqları ilə əlləşməmək üçün bildirişlər oyunun
+  // içindən oxunur. Server tərəfdə son 300 bildiriş saxlanılır.
+  async showInbox() {
+    this._here = 'inbox';
+    this._stopRoomsPoll?.();
+    this._panel({
+      step: '📥', stepLabel: 'Admin', title: 'Gələn bildirişlər',
+      body: `<div class="menu-list menu-list--scroll" id="inbox-list">
+        <div class="who-note">${t('online.loading')}</div></div>`,
+      nav: `<button class="btn btn--ghost" data-back>${t('ui.back')}</button>
+            <button class="btn" data-refresh-inbox>⟳</button>`,
+    });
+    this.root.querySelector('[data-back]').onclick = () => this.showModes();
+    this.root.querySelector('[data-refresh-inbox]').onclick = () => this.showInbox();
+    const box = this.root.querySelector('#inbox-list');
+    try {
+      const r = await fetch(apiBase('report'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'list', token: auth.token }),
+      });
+      const d = await r.json();
+      if (!this.root.querySelector('#inbox-list')) return;
+      const items = d.items || [];
+      box.innerHTML = items.length ? items.map((it) => {
+        const vaxt = it.t ? new Date(it.t).toLocaleString() : '';
+        const m = it.meta || {};
+        return `<div class="mrow mrow--cos" style="align-items:flex-start">
+          <span class="mrow__body">
+            <span class="mrow__title">${esc(it.subject || '(başlıqsız)')}
+              <span class="mrow__lock" style="font-weight:600">${esc(vaxt)}</span></span>
+            <span class="mrow__desc" style="white-space:normal;line-height:1.5">${esc(it.message || '')}</span>
+            <span class="mrow__desc" style="opacity:.65">${esc(m.nick || 'qonaq')} · ${esc(m.lang || '')} ·
+              ${m.touch ? 'mobil' : 'masaüstü'} · ${esc(m.screen || '')}${it.email ? ' · ' + esc(it.email) : ''}</span>
+          </span></div>`;
+      }).join('') : '<div class="who-note">Hələ bildiriş yoxdur.</div>';
+    } catch {
+      box.innerHTML = '<div class="who-note">Siyahı alınmadı — bağlantını yoxla.</div>';
+    }
+  }
+
   // ————— XƏTA BİLDİR —————
   // İstifadəçi problemi buradan yazır; bildiriş Netlify Forms vasitəsilə
   // birbaşa e-poçta gedir (server kodu və açar tələb olunmur).
@@ -1592,6 +1633,8 @@ export class Menu {
           <div class="menu-foot">
             ${SUPPORT_URL ? `<a class="menu-foot__btn" href="${SUPPORT_URL}" target="_blank" rel="noopener noreferrer">${t('sup.coffee')}</a>` : ''}
             <button class="menu-foot__btn" data-bug>${t('sup.bug')}</button>
+            ${auth.profile?.nick?.toLowerCase() === 'samir'
+              ? '<button class="menu-foot__btn" data-inbox>📥 Bildirişlər</button>' : ''}
           </div>` : ''}
           ${hint ? `
           <div class="menu-hint">${t('hint')}</div>` : ''}
@@ -1599,6 +1642,8 @@ export class Menu {
       </div>`;
     const bugb = this.root.querySelector('[data-bug]');
     if (bugb) bugb.onclick = () => this.showBugReport();
+    const inb = this.root.querySelector('[data-inbox]');
+    if (inb) inb.onclick = () => this.showInbox();
     const gb = this.root.querySelector('[data-garage]');
     if (gb) gb.onclick = () => this.showGarage();
     const lb = this.root.querySelector('[data-lang]');

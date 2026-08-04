@@ -139,6 +139,38 @@ export function makeReport(getStore, env = process.env) {
 
     let b;
     try { b = await req.json(); } catch { return json({ error: 'bad-json' }, 400); }
+
+    // ————— ADMİN: bildiriş siyahısı —————
+    // E-poçtdan asılı olmadan bildirişləri oxumaq üçün. Yalnız admin
+    // hesabının tokeni ilə işləyir (token auth.mjs-dəki HMAC ilə yoxlanır).
+    if (b.action === 'list') {
+      const admin = (env.ADMIN_NICK || 'samir').toLowerCase();
+      const t = String(b.token || '');
+      const [payload, sig] = t.split('.');
+      if (!payload || !sig || !env.AUTH_SECRET) return json({ error: 'auth' }, 401);
+      let sessiya = null;
+      try {
+        const { createHmac, timingSafeEqual } = await import('node:crypto');
+        const gözlənilən = createHmac('sha256', env.AUTH_SECRET).update(payload).digest('base64url');
+        const a = Buffer.from(sig), c = Buffer.from(gözlənilən);
+        if (a.length !== c.length || !timingSafeEqual(a, c)) return json({ error: 'auth' }, 401);
+        sessiya = JSON.parse(Buffer.from(payload, 'base64url').toString());
+      } catch { return json({ error: 'auth' }, 401); }
+      if (!sessiya || sessiya.exp < Date.now() || String(sessiya.nick).toLowerCase() !== admin) {
+        return json({ error: 'forbidden' }, 403);
+      }
+      let store2 = null;
+      try { store2 = getStore('reports'); } catch { return json({ items: [] }); }
+      const { blobs } = await store2.list({ prefix: 'r/' });
+      const açarlar = blobs.map((x) => x.key).sort().reverse().slice(0, 40);
+      const items = [];
+      for (const k of açarlar) {
+        const v = await store2.get(k, { type: 'json' }).catch(() => null);
+        if (v) items.push({ ...v, key: k, t: Number(k.slice(2).split('-')[0]) || 0 });
+      }
+      return json({ items });
+    }
+
     if (b.hp) return json({ ok: true });   // bot tələsi — sükutla udulur
 
     const message = clean(b.message, MAX_MSG);
