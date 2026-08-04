@@ -101,6 +101,29 @@ export class EndlessScene {
     this._skyMat = new THREE.MeshBasicMaterial({ side: THREE.BackSide, fog: false, depthWrite: false });
     this.skyDome = new THREE.Mesh(new THREE.SphereGeometry(900, 24, 16), this._skyMat);
     this.scene.add(this.skyDome);
+
+    // ENV MAP: zen-də yox idi və maşın tamamilə mat görünürdü. Bir dəfə
+    // qurulan neytral qradiyent kifayətdir (gün vaxtı ilə yenilənməsi
+    // hər kadr PMREM demək olardı — çox baha).
+    if (this.renderer && !EndlessScene._envCache) {
+      const pm = new THREE.PMREMGenerator(this.renderer);
+      const cv = document.createElement('canvas');
+      cv.width = 4; cv.height = 128;
+      const cx2 = cv.getContext('2d');
+      const gg = cx2.createLinearGradient(0, 0, 0, 128);
+      gg.addColorStop(0, '#9fc4ff'); gg.addColorStop(0.5, '#e8eef6'); gg.addColorStop(1, '#6b6560');
+      cx2.fillStyle = gg; cx2.fillRect(0, 0, 4, 128);
+      const t2 = new THREE.CanvasTexture(cv);
+      t2.mapping = THREE.EquirectangularReflectionMapping;
+      t2.colorSpace = THREE.SRGBColorSpace;
+      EndlessScene._envCache = pm.fromEquirectangular(t2).texture;
+      EndlessScene._envCache.userData = { shared: true };
+      t2.dispose(); pm.dispose();
+    }
+    if (EndlessScene._envCache) {
+      this.scene.environment = EndlessScene._envCache;
+      this.scene.environmentIntensity = 0.45;
+    }
     // ULDUZ SAHƏSİ — gecə səması boş qalmasın (əvvəl yalnız arabir axan ulduz
     // vardı). Tək çağırış, 460 nöqtə — mobildə də sərbəstdir.
     {
@@ -1010,7 +1033,11 @@ export class EndlessScene {
     this._envCol.ground.lerp(mix(cur.ground, nxt.ground, k), kk);
     const skyC = this._envCol.sky.clone().multiplyScalar(day.sky);
     const skyB = this._envCol.skyB.clone().multiplyScalar(day.sky * (1 + day.warm * 0.25));
-    const fogC = this._envCol.fog.clone().multiplyScalar(0.35 + day.sky * 0.65);
+    // Duman səmanın üfüq rəngi ilə qarışır: uzaq relyef səmaya əriyir
+    // (atmosfer perspektivi). Əvvəl duman öz rəngində qalırdı və uzaq
+    // obyektlərlə səma arasında görünən sərhəd yaranırdı.
+    const fogC = this._envCol.fog.clone().multiplyScalar(0.35 + day.sky * 0.65)
+      .lerp(this._envCol.skyB, 0.35);
     const groundC = this._envCol.ground.clone().multiplyScalar(day.ground);
 
     // ——— GECƏ QRADASİYASI ———
@@ -1390,17 +1417,28 @@ export class EndlessScene {
 
   _skyTexture(top, bottom, night) {
     const cv = document.createElement('canvas');
-    cv.width = 8; cv.height = 256;
+    cv.width = 8; cv.height = 512;   // daha hamar keçid (banding yox)
     const ctx = cv.getContext('2d');
-    const g = ctx.createLinearGradient(0, 0, 0, 256);
-    const glow = bottom.clone().lerp(new THREE.Color(0xffffff), night > 0.5 ? 0.08 : 0.35);
-    g.addColorStop(0, '#' + top.getHexString());
-    g.addColorStop(0.47, '#' + bottom.getHexString());
-    g.addColorStop(0.5, '#' + glow.getHexString());
-    g.addColorStop(0.54, '#' + bottom.getHexString());
-    g.addColorStop(1, '#' + bottom.clone().multiplyScalar(0.75).getHexString());
+    const g = ctx.createLinearGradient(0, 0, 0, 512);
+    // ATMOSFER: əvvəl 5 dayaq və dar (0.47–0.54) üfüq zolağı vardı — keçid
+    // sərt idi və zolaqlanma (banding) görünürdü. İndi geniş, yumşaq
+    // atmosfer qatı: zenitdən üfüqə tədricən açılır, üfüqdə isti işıq
+    // halqası var (gecə soyuq ay parıltısı).
+    const glow = bottom.clone().lerp(new THREE.Color(night > 0.5 ? 0xa8c0ff : 0xffffff),
+      night > 0.5 ? 0.12 : 0.42);
+    const üst = top.clone();
+    const zenit = üst.clone().multiplyScalar(0.9);          // zenit bir az tünd
+    const orta = üst.clone().lerp(bottom, 0.55);
+    g.addColorStop(0.00, '#' + zenit.getHexString());
+    g.addColorStop(0.18, '#' + üst.getHexString());
+    g.addColorStop(0.38, '#' + orta.getHexString());
+    g.addColorStop(0.46, '#' + bottom.clone().lerp(glow, 0.35).getHexString());
+    g.addColorStop(0.50, '#' + glow.getHexString());
+    g.addColorStop(0.56, '#' + bottom.clone().lerp(glow, 0.25).getHexString());
+    g.addColorStop(0.72, '#' + bottom.getHexString());
+    g.addColorStop(1.00, '#' + bottom.clone().multiplyScalar(0.72).getHexString());
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 8, 256);
+    ctx.fillRect(0, 0, 8, 512);
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;

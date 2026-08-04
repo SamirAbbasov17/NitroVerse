@@ -595,7 +595,10 @@ export class EndlessRoad {
     // Prosedural relyefdə yer bəzən yolun səviyyəsinə çox yaxın düşür və
     // kənarlarda kəsişmə/z-döyüşü görünürdü. Kənar zolaq və ayırıcı xətt
     // də uyğun qaldırılıb (sıra pozulmasın). Fizika toxunulmazdır.
-    g.add(this._ribbon(pts, nrms, -hw, hw, s.road, 0.08, { map: this._roadTex, absStart }));
+    // Asfalt tonu yarış trekləri ilə eyni qaydada açılır (bax
+    // TrackBuilder: qapqara səth "ucuz" görünürdü)
+    const roadCol = new THREE.Color(s.road).lerp(new THREE.Color(0xffffff), 0.16).getHex();
+    g.add(this._ribbon(pts, nrms, -hw, hw, roadCol, 0.08, { map: this._roadTex, absStart }));
     g.add(this._ribbon(pts, nrms, hw, hw + 0.65, s.curb, 0.105, { emissive: s.curb, emissiveIntensity: 0.3, absStart }));
     g.add(this._ribbon(pts, nrms, -hw - 0.65, -hw, s.curb, 0.105, { emissive: s.curb, emissiveIntensity: 0.3, absStart }));
     // ÇİYİN: səkidən torpağa maili keçid. Olmayanda yol qara qalın plita kimi
@@ -1403,9 +1406,9 @@ export class EndlessRoad {
     const ctx = c.getContext('2d');
     ctx.fillStyle = '#8a8a8a';
     ctx.fillRect(0, 0, 256, 256);
-    for (let i = 0; i < 2200; i++) {
-      const v = 118 + Math.floor(Math.random() * 40);
-      ctx.fillStyle = `rgba(${v},${v},${v},0.16)`;
+    for (let i = 0; i < 4200; i++) {
+      const v = 108 + Math.floor(Math.random() * 62);
+      ctx.fillStyle = `rgba(${v},${v},${v},0.22)`;
       ctx.fillRect(Math.random() * 256, Math.random() * 256, 1.6, 1.6);
     }
     for (const u of [0.3, 0.7]) {

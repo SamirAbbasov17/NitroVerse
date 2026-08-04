@@ -75,8 +75,11 @@ export class ModelLibrary {
         o.castShadow = true;
         o.receiveShadow = false;
         if (o.material) {
-          o.material.roughness = 0.85;
-          o.material.metalness = 0.05;
+          // BOYALI MAŞIN SƏTHİ: əvvəl tam mat idi (0.85/0.05) — səhnədəki
+          // env map işə düşmürdü və maşın "plastik oyuncaq" kimi oxunurdu.
+          // İndi yüngül parıltı var: lak təbəqəsi hissi, xrom deyil.
+          o.material.roughness = 0.58;
+          o.material.metalness = 0.22;
           // Şablon materialı bütün səhnələrdə təkrar işlənir — səhnə
           // təmizlənməsi ona toxunmamalıdır (bax disposeObject3D)
           o.material.userData = { ...(o.material.userData || {}), shared: true };
