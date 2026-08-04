@@ -106,8 +106,8 @@ export class EndlessScene {
       const cx2 = cv.getContext('2d');
       const im = cx2.createImageData(128, 256);
       for (let py = 0; py < 256; py++) {
-        // canvas üstü (py=0) plane-in UZAQ ucudur — v ona görə çevrilir
-        const v = 1 - py / 255;
+        // EMPİRİK: plane-in maşına yaxın ucu canvas ÜSTÜDÜR (py=0)
+        const v = py / 255;
         // boyuna profil: qabaqda parlaq, uzaqda yumşaq sönmə
         const boy = Math.pow(1 - v, 1.35) * (0.25 + 0.75 * Math.min(1, v * 6));
         // konus: yaxında dar, uzaqda enli
