@@ -91,7 +91,8 @@ export class EndlessScene {
     // oturmurdu, ağac/qaya həcm vermirdi. Kadr büdcəsi bunu asanlıqla
     // götürür (p50 ~2 ms), çərçivə maşının ətrafında dar saxlanılır ki,
     // kölgə kartası dolğun olsun. Mobildə söndürülür (renderer.shadowMap).
-    if (!isTouchDevice()) {
+    this._shadowBase = !isTouchDevice();
+    if (this._shadowBase) {
       this.sun.castShadow = true;
       const sc = this.sun.shadow;
       sc.mapSize.set(2048, 2048);
@@ -1401,6 +1402,11 @@ export class EndlessScene {
     // Gecə istiqamətli "ay" işığını zəiflədirik: kontrast azalır, üzlər
     // arasındakı kəskin sərhəd yumşalır
     this.sun.intensity *= (1 - day.night * 0.45);
+    // GECƏ KÖLGƏ TAM SÖNÜR: ay kölgəsi fara işığında ekrandan kənar
+    // obyektlərin "görünməz kölgələri" kimi oxunurdu (istifadəçi rəyi,
+    // təkrar). Astana 0.45 — bu anda kölgə onsuz da hiss olunmur, pop yoxdur.
+    const kölgəAç = this._shadowBase && day.night < 0.45;
+    if (this.sun.castShadow !== kölgəAç) this.sun.castShadow = kölgəAç;
     this.headlight.intensity = day.night * 130;
     // Küçə lampaları yalnız qaranlıqda yanır (gündüz parlayan kürə = qüsur)
     setLampGlow(0.1 + day.night * 2.4);

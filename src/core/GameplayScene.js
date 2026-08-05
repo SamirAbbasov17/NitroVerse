@@ -362,7 +362,8 @@ export class GameplayScene {
     const f = this.playerData?.cosmetics?.finish;
     if (!f?.kind) return;
     this._finishFx?.dispose();
-    this._finishFx = playFinishFx(this.scene, f.kind, this.playerCar.position, f.hex);
+    // Maşının özü ötürülür: effekt finiş xəttində qalmır, maşını izləyir
+    this._finishFx = playFinishFx(this.scene, f.kind, this.playerCar, f.hex);
   }
 
   // ————— Onlayn şəbəkə axını —————

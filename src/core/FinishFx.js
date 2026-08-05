@@ -29,6 +29,13 @@ class Burst {
 
   update(dt) {
     this.t += dt;
+    // Maşın ötürülübsə effekt onu İZLƏYİR: əvvəl finiş xəttində qalırdı,
+    // maşın çıxıb gedirdi (istifadəçi rəyi) — halbuki bu, maşının öz
+    // qeyd auraşıdır
+    if (this.follow) {
+      const f = this.follow.position;
+      this.group.position.set(f.x, f.y || 0, f.z);
+    }
     for (let i = this.items.length - 1; i >= 0; i--) {
       const it = this.items[i];
       it.age = (it.age || 0) + dt;
@@ -197,10 +204,16 @@ const KINDS = { fireworks, pillar, goldrain, firering: fireRing, starspiral: sta
 export const FINISH_KINDS = Object.keys(KINDS);
 
 // Finiş effektini oynadır. Qaytarır: { update(dt), dispose(), done }
-export function playFinishFx(scene, kind, pos, hex = 0xffd257) {
+// target: Vector3 (statik nöqtə) VƏ YA maşın ({position: Vector3}) —
+// maşın ötürülsə effekt bütün ömrü boyu onu izləyir.
+const ORIGIN = new THREE.Vector3(0, 0, 0);
+export function playFinishFx(scene, kind, target, hex = 0xffd257) {
   const fn = KINDS[kind];
   if (!fn || !scene) return null;
   const b = new Burst(scene);
-  fn(b, pos, hex);
+  b.follow = target && target.position ? target : null;
+  const p0 = b.follow ? b.follow.position : target;
+  b.group.position.set(p0.x, p0.y || 0, p0.z);
+  fn(b, ORIGIN, hex);
   return b;
 }
