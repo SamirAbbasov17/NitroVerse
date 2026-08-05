@@ -82,11 +82,13 @@ export class NatureKit {
 
   async load() {
     const loader = new GLTFLoader();
-    // Bütün Nature Kit modelləri EYNİ palitra teksturasını işlədir, amma hər GLB
-    // öz material/tekstura nüsxəsini gətirir. Nüsxələr fərqli olduğu üçün chunk
-    // birləşdirməsi işləmirdi və hər ağac ayrıca draw call idi. Burada hamısı
-    // TƏK paylaşılan materiala keçirilir → chunk başına 1 çağırış.
-    this._shared = null;
+    // Kenney Nature Kit modelləri TEKSTURASIZDIR — hər mesh-in ÖZ RƏNGİ var
+    // (gövdə qəhvəyi, yarpaq yaşıl, qaya boz). KÖHNƏ XƏTA: hamısı yükləmə
+    // yarışını udan İLK materiala salınırdı → bütün təbiət tək rəng olurdu,
+    // ağ material udanda isə "ağappaq rəngsiz ağaclar" (istifadəçi rəyi).
+    // İndi materiallar RƏNGƏ görə paylaşılır: forma-rəng qorunur, eyni
+    // rəngli mesh-lər yenə tək instansiyanı bölüşür → merge işləyir.
+    this._mats = new Map();   // colorHex → paylaşılan material
     await Promise.all(Object.entries(MODELS).map(async ([name, targetH]) => {
       try {
         const gltf = await loader.loadAsync(`models/nature/${name}.glb`);
@@ -103,14 +105,17 @@ export class NatureKit {
         obj.position.y -= box2.min.y;
         obj.traverse((o) => {
           if (!o.isMesh || !o.material) return;
-          if (!this._shared) {
-            o.material.roughness = 0.9;
-            o.material.metalness = 0;
-            o.material.userData = { ...(o.material.userData || {}), shared: true };
-            if (o.material.map) o.material.map.userData = { shared: true };
-            this._shared = o.material;
+          const hex = o.material.color?.getHexString?.() ?? 'ffffff';
+          let m = this._mats.get(hex);
+          if (!m) {
+            m = o.material;
+            m.roughness = 0.9;
+            m.metalness = 0;
+            m.userData = { ...(m.userData || {}), shared: true };
+            if (m.map) m.map.userData = { shared: true };
+            this._mats.set(hex, m);
           }
-          o.material = this._shared;   // hamısı bir materialı paylaşır
+          o.material = m;   // eyni rəng → eyni instansiya
         });
         const wrap = new THREE.Group();
         wrap.add(obj);
@@ -120,23 +125,21 @@ export class NatureKit {
     this.ready = this.templates.size > 0;
   }
 
-  // Klon qaytarır (yoxdursa null — çağıran prosedurala düşür)
   // ——— BİOM TİNTİ ———
-  // Kenney modelləri öz palitrası ilə gəlir: səhrada nanə-yaşıl kaktus,
-  // qırmızı-göbələk və s. Bunlar isti səhra palitrasında "yad blob" kimi
-  // oxunurdu (istifadəçi rəyi ×3). Material biom rənginə vurulur: forma
-  // qalır, rəng səhnəyə oturur. Klonlar keşlənir — draw call artmır.
-  matFor(tintHex) {
-    if (!this._shared) return null;
-    if (!tintHex || tintHex === 0xffffff) return this._shared;
+  // Modelin ÖZ RƏNGİ biom tintinə VURULUR (əvəz olunmur): yaşıl yarpaq
+  // yaşıl qalır, isti biomda isti çalar alır. Klonlar (tint, baza) cütünə
+  // görə keşlənir — draw call sayı rəng sayı ilə məhdud qalır.
+  matFor(tintHex, baseMat) {
+    if (!baseMat) return null;
+    if (!tintHex || tintHex === 0xffffff) return baseMat;
     this._tints ||= new Map();
-    let m = this._tints.get(tintHex);
+    const key = tintHex + '|' + (baseMat.color?.getHexString?.() ?? baseMat.uuid);
+    let m = this._tints.get(key);
     if (!m) {
-      m = this._shared.clone();
-      m.color = new THREE.Color(0xffffff).multiply(new THREE.Color(tintHex));
-      m.map = this._shared.map;          // atlas paylaşılır
-      m.userData = { ...(this._shared.userData || {}), shared: true };
-      this._tints.set(tintHex, m);
+      m = baseMat.clone();
+      m.color = baseMat.color.clone().multiply(new THREE.Color(tintHex));
+      m.userData = { ...(baseMat.userData || {}), shared: true };
+      this._tints.set(key, m);
     }
     return m;
   }

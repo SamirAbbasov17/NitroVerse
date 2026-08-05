@@ -224,14 +224,18 @@ export class EndlessScene {
     this._city = sharedCity();
     if (this._city.ready) this.road.cityFactory = (n) => this._city.get(n, this.road.style?.natureTint);
     else this._city._loading.then(() => { this.road.cityFactory = (n) => this._city.get(n, this.road.style?.natureTint); });
-    // Təbiət modelinə BİOM TİNTİ tətbiq olunur (səhrada nanə-yaşıl kaktus
-    // problemi — bax NatureKit.matFor). Forma qalır, rəng palitraya oturur.
+    // Təbiət modelinə BİOM TİNTİ tətbiq olunur (bax NatureKit.matFor):
+    // hər mesh-in ÖZ RƏNGİ tintə vurulur — gövdə/yarpaq fərqi qorunur,
+    // rəng palitraya oturur (əvvəl hamısı tək rəngə salınırdı).
     this.road.natureFactory = (name) => {
       const o = this._nature.get(name);
       if (!o) return o;
       const tint = this.road.style?.natureTint;
-      const m = this._nature.matFor?.(tint);
-      if (m) o.traverse?.((c) => { if (c.isMesh) c.material = m; });
+      if (tint && tint !== 0xffffff) {
+        o.traverse?.((c) => {
+          if (c.isMesh && c.material) c.material = this._nature.matFor(tint, c.material);
+        });
+      }
       return o;
     };
     if (this._nature.ready) this._natureReady = true;
