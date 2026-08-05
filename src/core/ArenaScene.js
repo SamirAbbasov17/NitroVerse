@@ -585,24 +585,46 @@ export class ArenaScene {
 
   _fireMissile(r) {
     const c = r.car;
-    // HƏDƏF SEÇİMİ: əvvəl GÖRÜŞ SAHƏSİNDƏKİ (qabaq konus, ±55°) ən yaxın
-    // düşmən; qabaqda heç kim yoxdursa ancaq onda ümumi ən yaxın.
-    // Əvvəl sadəcə ən yaxını seçilirdi — raket arxadakı maşına dönürdü və
-    // oyunçu nişan aldığı hədəfi vura bilmirdi.
-    const KONUS = Math.cos(55 * Math.PI / 180);
-    const fx = Math.sin(c.heading), fz = Math.cos(c.heading);
-    let qabaq = null, qabaqD = 95, hər = null, hərD = 60;
-    for (const o of this.racers) {
-      if (o === r || !o.car.alive) continue;
-      const dx = o.car.position.x - c.position.x;
-      const dz = o.car.position.z - c.position.z;
-      const d = Math.hypot(dx, dz);
-      if (d < hərD) { hər = o; hərD = d; }
-      if (d < 0.001) continue;
-      const istiqamət = (dx * fx + dz * fz) / d;   // 1 = düz qabaqda
-      if (istiqamət >= KONUS && d < qabaqD) { qabaq = o; qabaqD = d; }
+    // HƏDƏF SEÇİMİ (istifadəçi istəyi): oyunçu üçün KAMERADA GÖRÜNƏN hədəf —
+    // ekranda olan düşmənlərdən nişana (ekran mərkəzinə) ən yaxını.
+    // Kamerada heç kim yoxdursa → ümumi ən yaxın. Botlar üçün köhnə
+    // qabaq-konus məntiqi qalır (botun kamerası yoxdur).
+    let best = null;
+    if (r.isLocal && this.camera) {
+      this._msTmp = this._msTmp || new THREE.Vector3();
+      this._msDir = this._msDir || new THREE.Vector3();
+      this.camera.getWorldDirection(this._msDir);
+      let bestScore = Infinity;
+      for (const o of this.racers) {
+        if (o === r || !o.car.alive) continue;
+        const p = o.car.position;
+        const d = Math.hypot(p.x - c.position.x, p.z - c.position.z);
+        if (d > 110) continue;
+        this._msTmp.set(p.x - this.camera.position.x, 0.8, p.z - this.camera.position.z);
+        if (this._msTmp.dot(this._msDir) <= 2) continue;   // kameranın arxasında
+        this._msTmp.set(p.x, (p.y || 0) + 0.8, p.z).project(this.camera);
+        if (Math.abs(this._msTmp.x) > 1 || Math.abs(this._msTmp.y) > 1) continue; // ekrandan kənar
+        // Nişan xalı: ekran mərkəzinə yaxınlıq əsas, məsafə köməkçi
+        const score = Math.hypot(this._msTmp.x, this._msTmp.y * 0.6) + d * 0.004;
+        if (score < bestScore) { bestScore = score; best = o; }
+      }
     }
-    const best = qabaq || hər;
+    if (!best) {
+      const KONUS = Math.cos(55 * Math.PI / 180);
+      const fx = Math.sin(c.heading), fz = Math.cos(c.heading);
+      let qabaq = null, qabaqD = 95, hər = null, hərD = 60;
+      for (const o of this.racers) {
+        if (o === r || !o.car.alive) continue;
+        const dx = o.car.position.x - c.position.x;
+        const dz = o.car.position.z - c.position.z;
+        const d = Math.hypot(dx, dz);
+        if (d < hərD) { hər = o; hərD = d; }
+        if (d < 0.001) continue;
+        const istiqamət = (dx * fx + dz * fz) / d;   // 1 = düz qabaqda
+        if (istiqamət >= KONUS && d < qabaqD) { qabaq = o; qabaqD = d; }
+      }
+      best = qabaq || hər;
+    }
     const mesh = new THREE.Mesh(
       new THREE.SphereGeometry(0.55, 8, 6),
       new THREE.MeshStandardMaterial({ color: 0xff6b1a, emissive: 0xff8438, emissiveIntensity: 1.6 })

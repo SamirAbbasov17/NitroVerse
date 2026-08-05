@@ -561,8 +561,8 @@ export class FootballScene {
       const d = Math.hypot(dx, dz) || 1;
       this._camDir = this._camDir || new THREE.Vector3();
       this._camDir.set(dx / d, 0, dz / d);
-      // Yaxın kamera ilə uyğun başlanğıc (9.6 m / 5.4 m)
-      this.camera.position.set(c.x + this._camDir.x * 9.6, 5.4, c.z + this._camDir.z * 9.6);
+      this.camera.position.set(c.x + this._camDir.x * 11, 6.4, c.z + this._camDir.z * 11);
+      this._chaseK = 0;   // kickoff-da həmişə topa bax
       this._camTarget.set(this.ballPos.x, 1.5, this.ballPos.z);
       this.camera.lookAt(this._camTarget);
       this.camera.fov = 62;
@@ -603,7 +603,6 @@ export class FootballScene {
         <div class="fhud__boost">
           <div class="fhud__charges"><span id="fh-charges">⚡</span><small class="fhud__key">E</small></div>
           <div class="fhud__lunge" id="fh-lunge">💥 Q</div>
-          <div class="fhud__lunge" id="fh-cam" title="Ball-cam (C)">🎯 C</div>
         </div>
         <div class="fhud__toast" id="fh-toast"></div>
         <div id="fh-overlay"></div>
@@ -614,12 +613,9 @@ export class FootballScene {
       time: this.uiRoot.querySelector('#fh-time'),
       charges: this.uiRoot.querySelector('#fh-charges'),
       lunge: this.uiRoot.querySelector('#fh-lunge'),
-      cam: this.uiRoot.querySelector('#fh-cam'),
       toast: this.uiRoot.querySelector('#fh-toast'),
       overlay: this.uiRoot.querySelector('#fh-overlay'),
     };
-    // Kamera düyməsi kliklə də işləyir (mobil daxil)
-    if (this._el.cam) this._el.cam.onclick = () => this._toggleBallCam();
     if (isTouchDevice()) {
       this.touchControls = new TouchControls(this.uiRoot, this.input, {
         onPause: () => this._togglePause(),
@@ -651,15 +647,6 @@ export class FootballScene {
     this.input.bind('KeyE', () => this._useNitro());
     this.input.bind('ShiftLeft', () => this._useNitro());
     this.input.bind('KeyQ', () => this._lunge());
-    this.input.bind('KeyC', () => this._toggleBallCam());
-  }
-
-  // Yeganə saxlanılan RL əlavəsi (istifadəçi istəyi): kamera topa baxsın,
-  // ya klassik təqib olsun — C / 🎯 ilə keçid. Oynanış toxunulmazdır.
-  _toggleBallCam() {
-    this._ballCam = !(this._ballCam ?? true);
-    this._toast(this._ballCam ? '🎯 Ball-cam: ON' : '🚗 Ball-cam: OFF');
-    if (this._el?.cam) this._el.cam.style.opacity = this._ballCam ? 1 : 0.45;
   }
 
   _togglePause() {
@@ -1272,29 +1259,40 @@ export class FootballScene {
     // BALL-CAM (Rocket League): kamera top→maşın xətti üzərində maşının
     // arxasında durur, həmişə topa baxır — maşın da, top da daim görünür.
     if (!this._camDir) this._camDir = new THREE.Vector3(0, 0, 1);
-    const ballCam = this._ballCam ?? true;
     const speed = car.velocity.length();
     const dx = car.position.x - bp.x, dz = car.position.z - bp.z;
     const d = Math.hypot(dx, dz);
+    // AVTO KAMERA REJİMİ (istifadəçi istəyi): top lap yaxında olanda (scrum)
+    // ball-cam fırlanıb İDARƏNİ pozur → kamera avtomatik "sərbəst" arxa
+    // rejimə keçir; top yaxşı görünəcək məsafəyə çıxan kimi yenidən topa
+    // baxır. Histerezis (5.5 / 9 m) + yumşaq qarışma — keçid hiss olunmur.
+    this._chaseK = this._chaseK ?? 0;
+    const hədəfK = d < 5.5 ? 1 : (d > 9 ? 0 : (this._chaseK > 0.5 ? 1 : 0));
+    this._chaseK += (hədəfK - this._chaseK) * Math.min(1, dt * 3);
+    const cK = this._chaseK;
     this._camDirTmp = this._camDirTmp || new THREE.Vector3();
-    if (!ballCam) {
-      // Klassik təqib: kamera maşının arxasında, irəli baxır (C ilə keçid)
-      this._camDirTmp.set(-Math.sin(car.heading), 0, -Math.cos(car.heading));
-      this._camDir.lerp(this._camDirTmp, 1 - Math.exp(-dt * (2.6 + speed * 0.06))).normalize();
-    } else if (d > 3) {
-      this._camDirTmp.set(dx / d, 0, dz / d);
+    if (d > 3 || cK > 0.02) {
+      if (d > 0.001) this._camDirTmp.set(dx / d, 0, dz / d);
+      else this._camDirTmp.set(-Math.sin(car.heading), 0, -Math.cos(car.heading));
+      if (cK > 0.02) {
+        // Arxa-rejim komponenti qarışdırılır
+        const bx2 = -Math.sin(car.heading), bz2 = -Math.cos(car.heading);
+        this._camDirTmp.x = this._camDirTmp.x * (1 - cK) + bx2 * cK;
+        this._camDirTmp.z = this._camDirTmp.z * (1 - cK) + bz2 * cK;
+        const n = Math.hypot(this._camDirTmp.x, this._camDirTmp.z) || 1;
+        this._camDirTmp.x /= n; this._camDirTmp.z /= n;
+      }
       // Sürətləndikcə kamera cəldləşir; top lap yaxındıkən (scrum/toqquşma)
       // istiqamət ləngiyir — kamera çırpınmır
-      const calm = Math.min(1, (d - 3) / 7);
+      const calm = Math.max(cK, Math.min(1, (d - 3) / 7));
       this._camDir.lerp(this._camDirTmp, 1 - Math.exp(-dt * (2.3 + speed * 0.04) * calm)).normalize();
     }
     // Dinamik məsafə/hündürlük: sürətdə və top uzaqlaşanda kamera geri açılır —
     // top da, maşın da HƏMİŞƏ kadrda qalır
-    // YAXIN KAMERA (istifadəçi rəyi, 2 dəfə: uzaq kamera pis hiss etdirir).
-    // Top uzaqlaşanda kamera ancaq AZCA açılır — maşın həmişə iri qalır.
-    const dist = Math.min(12.5, 9.4 + speed * 0.05 + Math.min(2.2, d * 0.022));
+    // ƏN ƏVVƏLKİ KAMERA PARAMETRLƏRİ (istifadəçi: "o daha maraqlı idi")
+    const dist = Math.min(15, 10.8 + speed * 0.06 + Math.min(3, d * 0.03));
     const desired = new THREE.Vector3(
-      car.position.x + this._camDir.x * dist, 4.5 + dist * 0.14 + Math.min(1.4, d * 0.018),
+      car.position.x + this._camDir.x * dist, 5.1 + dist * 0.16 + Math.min(2.5, d * 0.025),
       car.position.z + this._camDir.z * dist
     );
     // Kamera bortlardan kənara çıxmasın (divar arxasından baxış olmasın)
@@ -1306,28 +1304,26 @@ export class FootballScene {
     const sqz = Math.hypot(desired.x - car.position.x, desired.z - car.position.z);
     if (sqz < 8) desired.y = Math.max(3.4, desired.y * (0.5 + 0.5 * sqz / 8));
     this._camPrev = this._camPrev || this.camera.position.clone();
-    // Aşağı sürətdə (dayanıb-durma, itələnmə) kamera SAKİT qalır — rəqib
-    // vuranda hər sıçrayışı izləmir; sürətləndikcə köhnə cəldliyə qayıdır
-    this.camera.position.lerp(desired, 1 - Math.exp(-dt * (4.5 + Math.min(6, speed * 0.35))));
+    this.camera.position.lerp(desired, 1 - Math.exp(-dt * 9));
     // Sürət tavanı: toqquşmada maşın mövqeyi sıçrayanda kamera teleport etməsin
     const camStep = this.camera.position.distanceTo(this._camPrev);
-    const maxStep = Math.max(0.3, (14 + speed * 1.3) * dt);
+    const maxStep = Math.max(0.4, (20 + speed * 1.3) * dt);
     if (camStep > maxStep) {
       this.camera.position.lerpVectors(this._camPrev, this.camera.position, maxStep / camStep);
     }
     this._camPrev.copy(this.camera.position);
-    // BAXIŞ: ball-cam → topa; klassik → maşının irəlisinə
+    // BAXIŞ: topa yönəl; scrum rejimində maşının irəlisi ilə qarışdırılır
     const cp = this.camera.position;
+    const aBall = Math.atan2(bp.x - cp.x, bp.z - cp.z);
+    const lookD = Math.max(14, Math.hypot(bp.x - cp.x, bp.z - cp.z));
     this._lookTmp = this._lookTmp || new THREE.Vector3();
-    if (ballCam) {
-      const aBall = Math.atan2(bp.x - cp.x, bp.z - cp.z);
-      const lookD = Math.max(14, Math.hypot(bp.x - cp.x, bp.z - cp.z));
-      this._lookTmp.set(cp.x + Math.sin(aBall) * lookD, 1.5, cp.z + Math.cos(aBall) * lookD);
-    } else {
-      this._lookTmp.set(
-        car.position.x + Math.sin(car.heading) * 22, 1.2,
-        car.position.z + Math.cos(car.heading) * 22
-      );
+    this._lookTmp.set(cp.x + Math.sin(aBall) * lookD, 1.5, cp.z + Math.cos(aBall) * lookD);
+    if (cK > 0.02) {
+      const ax = car.position.x + Math.sin(car.heading) * 22;
+      const az = car.position.z + Math.cos(car.heading) * 22;
+      this._lookTmp.x = this._lookTmp.x * (1 - cK) + ax * cK;
+      this._lookTmp.y = this._lookTmp.y * (1 - cK) + 1.2 * cK;
+      this._lookTmp.z = this._lookTmp.z * (1 - cK) + az * cK;
     }
     this._camTarget.lerp(this._lookTmp, 1 - Math.exp(-dt * 9));
     // ——— SƏRT KADR QARANTI (lerp-dən SONRA, hər kadr) ———
@@ -1343,16 +1339,13 @@ export class FootballScene {
     // sıçrayırdı. Hamarlama sürətlə artır: aşağı sürətdə (toqquşma) güclü, yüksək
     // sürətdə demək olar yoxdur ki, çərçivə zəmanəti pozulmasın.
     this._frameAnchor = this._frameAnchor || car.position.clone();
-    // Aşağı sürətdə lövbər DAHA YAVAŞ (5/s): itələnmədə baxış bucağı
-    // titrəmir; sürətdə çərçivə zəmanəti üçün cəldləşir
-    this._frameAnchor.lerp(car.position, 1 - Math.exp(-dt * (5 + speed * 1.4)));
+    this._frameAnchor.lerp(car.position, 1 - Math.exp(-dt * (13 + speed * 1.3)));
     const cx = this._frameAnchor.x - cp.x, cyv = car.root.position.y + 0.8 - cp.y, cz = this._frameAnchor.z - cp.z;
     const cHor = Math.max(0.001, Math.hypot(cx, cz));
     const aC = Math.atan2(cx, cz), pC = Math.atan2(cyv, cHor);
-    // Maşının bucaq ölçüsü + kənar boşluğu — kamera yaxınlaşdıqca çərçivə
-    // daralır. Klassik kamerada qarant lazımsızdır (maşın onsuz da mərkəzdə).
-    const maxH = ballCam ? Math.max(0.12, hHalf - Math.atan(2.6 / cHor) - 0.09) : Math.PI;
-    const maxV = ballCam ? Math.max(0.1, vHalf - Math.atan(1.7 / cHor) - 0.07) : Math.PI;
+    // Maşının bucaq ölçüsü + kənar boşluğu — kamera yaxınlaşdıqca çərçivə daralır
+    const maxH = Math.max(0.12, hHalf - Math.atan(2.6 / cHor) - 0.09);
+    const maxV = Math.max(0.1, vHalf - Math.atan(1.7 / cHor) - 0.07);
     let offH = Math.atan2(tx, tz) - aC;
     while (offH > Math.PI) offH -= Math.PI * 2;
     while (offH < -Math.PI) offH += Math.PI * 2;

@@ -1402,10 +1402,11 @@ export class EndlessScene {
     // Gecə istiqamətli "ay" işığını zəiflədirik: kontrast azalır, üzlər
     // arasındakı kəskin sərhəd yumşalır
     this.sun.intensity *= (1 - day.night * 0.45);
-    // GECƏ KÖLGƏ TAM SÖNÜR: ay kölgəsi fara işığında ekrandan kənar
-    // obyektlərin "görünməz kölgələri" kimi oxunurdu (istifadəçi rəyi,
-    // təkrar). Astana 0.45 — bu anda kölgə onsuz da hiss olunmur, pop yoxdur.
-    const kölgəAç = this._shadowBase && day.night < 0.45;
+    // FARA YANAN KİMİ KÖLGƏ TAM SÖNÜR: işıq kölgə ilə ÜMUMİYYƏTLƏ
+    // qırılmamalıdır (istifadəçi rəyi, 3-cü dəfə) — toran pəncərəsində
+    // (night 0.1–0.45) də kölgə fara zolağını kəsirdi. İndi astana faranın
+    // yanma anı ilə üst-üstə düşür: qaranlıq EYNİ rəngdə, bütöv işıqlanır.
+    const kölgəAç = this._shadowBase && day.night < 0.12;
     if (this.sun.castShadow !== kölgəAç) this.sun.castShadow = kölgəAç;
     this.headlight.intensity = day.night * 130;
     // Küçə lampaları yalnız qaranlıqda yanır (gündüz parlayan kürə = qüsur)

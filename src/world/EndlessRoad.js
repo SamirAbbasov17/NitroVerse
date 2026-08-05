@@ -1319,10 +1319,33 @@ export class EndlessRoad {
       const side = Math.random() < 0.5 ? -1 : 1;
       const off = 70 + Math.random() * 110;
       const r = 12 + Math.random() * 16;
+      let hx = pts[i].x + nrms[i].x * off * side;
+      let hz = pts[i].z + nrms[i].z * off * side;
+      // TƏPƏ DƏ BÜTÜN YOLDAN UZAQ OLMALIDIR (istifadəçi buqu: "tunelin
+      // içinə dağ girdi") — yol pəncərə daxilində geri qayıdanda təpə
+      // BAŞQA seqmentin (o cümlədən tunelin) üstünə düşürdü. Dağlardakı
+      // qayda tətbiq olunur: yaxındırsa uzağa itələ, yenə yaxındırsa qurulmur.
+      const yolaMəsafə = () => {
+        let cmin = Infinity;
+        for (let q = 0; q < this.points.length; q += 2) {
+          const dq = Math.hypot(hx - this.points[q].x, hz - this.points[q].z);
+          if (dq < cmin) cmin = dq;
+        }
+        return cmin;
+      };
+      const NEED = r * 1.25 + this.halfWidth + 12;
+      let clear = yolaMəsafə();
+      for (let cəhd = 0; cəhd < 2 && clear < NEED; cəhd++) {
+        hx += nrms[i].x * side * (r + 18);
+        hz += nrms[i].z * side * (r + 18);
+        clear = yolaMəsafə();
+      }
+      this._hillStats = this._hillStats || { placed: 0, skipped: 0, minClear: Infinity };
+      if (clear < NEED) { this._hillStats.skipped++; continue; }  // yer tapılmadı
+      this._hillStats.placed++;
+      this._hillStats.minClear = Math.min(this._hillStats.minClear, clear - NEED);
       const hill = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), hillMat);
       hill.scale.y = 0.3;
-      const hx = pts[i].x + nrms[i].x * off * side;
-      const hz = pts[i].z + nrms[i].z * off * side;
       hill.position.set(hx, terrainY(hx, hz) - r * 0.06, hz);
       g.add(hill);
       chunkSpots.push({ x: hill.position.x, z: hill.position.z, r: r * 0.95 });
