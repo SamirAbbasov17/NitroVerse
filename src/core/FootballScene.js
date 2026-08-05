@@ -18,19 +18,15 @@ import { mergeStaticGroup } from './MergeUtils.js';
 
 // ⚽ FUTBOL 3v3 — Rocket League ruhu: top, iki qapı, nitro + irəli atılma.
 // Onlaynda top və botlar HOST-da simulyasiya olunur.
-// RL PROPORSİYALARI (istifadəçi istəyi): stadion, qapı və top böyüdü,
-// divarlar hündürdür (divar sürüşü üçün), qapının TİRİ artıq real maneədir.
-const FIELD_W = 120;   // en (x) — əvvəl 96
-const FIELD_H = 184;   // uzunluq (z) — qapılar z=±H/2 — əvvəl 150
-const GOAL_W = 30;     // əvvəl 22
-const GOAL_H = 7.2;    // qapı hündürlüyü — tirdən yuxarı QOL DEYİL
-const BALL_R = 2.9;    // əvvəl 2.3
+const FIELD_W = 96;    // en (x)
+const FIELD_H = 150;   // uzunluq (z) — qapılar z=±H/2
+const GOAL_W = 22;
+const BALL_R = 2.3;
 const CAR_R = 1.6;
 const MATCH_TIME = 180;
 const LUNGE_CD = 2.6;
 const HOP_T = 0.68;    // zərbə sıçrayışının müddəti (s) — hiss olunan havalanma
-const CORNER = 20;     // meydança künclərinin diaqonal kəsimi
-const WALL_H = 10;     // bort hündürlüyü — divar sürüşü buna qədər qalxır
+const CORNER = 13;     // meydança künclərinin diaqonal kəsimi
 const NITRO_REGEN_T = 8; // saniyədə bir yığım
 
 const TEAM_COLORS = { blue: 0x37b8ff, red: 0xff4544 };
@@ -197,7 +193,7 @@ export class FootballScene {
     this.scene.add(around);
 
     // ——— Peşəkar bortlar: reklam lövhəsi zolağı + üstündə "şüşə" ———
-    const wallH = WALL_H;
+    const wallH = 5;
     const boardCv = document.createElement('canvas');
     boardCv.width = 1024; boardCv.height = 64;
     const bx = boardCv.getContext('2d');
@@ -287,13 +283,13 @@ export class FootballScene {
         color: 0xf4f7ff, emissive: 0xdfe8ff, emissiveIntensity: 0.7, roughness: 0.35,
       });
       for (const px of [-GOAL_W / 2, GOAL_W / 2]) {
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, GOAL_H, 8), frameMat);
-        post.position.set(px, GOAL_H / 2, sz * (FIELD_H / 2 + 0.6));
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 4.8, 8), frameMat);
+        post.position.set(px, 2.4, sz * (FIELD_H / 2 + 0.6));
         this.scene.add(post);
       }
       const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, GOAL_W, 8), frameMat);
       bar.rotation.z = Math.PI / 2;
-      bar.position.set(0, GOAL_H, sz * (FIELD_H / 2 + 0.6));
+      bar.position.set(0, 4.8, sz * (FIELD_H / 2 + 0.6));
       this.scene.add(bar);
       const glow = new THREE.Mesh(
         new THREE.BoxGeometry(GOAL_W, 0.5, 1.4),
@@ -325,8 +321,8 @@ export class FootballScene {
         map: FootballScene._netTex, color: TEAM_COLORS[team],
         transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide,
       });
-      const net = new THREE.Mesh(new THREE.BoxGeometry(GOAL_W, GOAL_H - 0.5, 6.5), netMat);
-      net.position.set(0, (GOAL_H - 0.5) / 2, sz * (FIELD_H / 2 + 3.9));
+      const net = new THREE.Mesh(new THREE.BoxGeometry(GOAL_W, 4.4, 5), netMat);
+      net.position.set(0, 2.2, sz * (FIELD_H / 2 + 3.2));
       this.scene.add(net);
     }
     // KÜNC BAYRAQLARI — stadion dilinin klassik detalı, meydan sərhədini
@@ -414,8 +410,7 @@ export class FootballScene {
     this.scene.add(new THREE.Points(starGeo,
       new THREE.PointsMaterial({ color: 0xcfd8ee, size: 1.3, sizeAttenuation: false, fog: false })));
     // Projektorlar
-    const pX = FIELD_W / 2 + 22, pZ = FIELD_H / 2 + 20;
-    for (const [x, z] of [[-pX, -pZ], [pX, -pZ], [-pX, pZ], [pX, pZ]]) {
+    for (const [x, z] of [[-70, -95], [70, -95], [-70, 95], [70, 95]]) {
       const pole = new THREE.Mesh(
         new THREE.CylinderGeometry(0.5, 0.7, 26, 6),
         new THREE.MeshStandardMaterial({ color: 0x2a3048 })
@@ -434,51 +429,19 @@ export class FootballScene {
 
   _buildBall() {
     this.ball = new THREE.Group();
-    // RL-üslub top teksturası: gümüşü panel + altıbucaq şəbəkə + narıncı
-    // vurğu xanaları (canvas — yükləmə yoxdur, istifadəçi istəyi: "top
-    // teksturası daha yaxşı olsun")
-    if (!FootballScene._ballTex) {
-      const bc = document.createElement('canvas');
-      bc.width = 512; bc.height = 256;
-      const g = bc.getContext('2d');
-      g.fillStyle = '#eef1f7';
-      g.fillRect(0, 0, 512, 256);
-      const R = 22;                                  // altıbucaq radiusu
-      const hexAt = (cx2, cy2, fill, stroke) => {
-        g.beginPath();
-        for (let i = 0; i < 6; i++) {
-          const a = Math.PI / 3 * i + Math.PI / 6;
-          const px2 = cx2 + Math.cos(a) * R, py2 = cy2 + Math.sin(a) * R;
-          i ? g.lineTo(px2, py2) : g.moveTo(px2, py2);
-        }
-        g.closePath();
-        if (fill) { g.fillStyle = fill; g.fill(); }
-        g.strokeStyle = stroke; g.lineWidth = 2.2; g.stroke();
-      };
-      let n = 0;
-      for (let row = 0; row < 8; row++) {
-        for (let col = 0; col < 14; col++) {
-          const cx2 = col * R * 1.74 + (row % 2 ? R * 0.87 : 0);
-          const cy2 = row * R * 1.5;
-          // hər 11-ci xana narıncı, hər 7-ci tünd — RL panel ritmi
-          const fill = n % 11 === 3 ? '#ff6b1a' : (n % 7 === 5 ? '#2b3350' : null);
-          hexAt(cx2, cy2, fill, 'rgba(43,51,80,0.5)');
-          n++;
-        }
-      }
-      const t = new THREE.CanvasTexture(bc);
-      t.colorSpace = THREE.SRGBColorSpace;
-      t.wrapS = THREE.RepeatWrapping;
-      FootballScene._ballTex = t;
-    }
     const core = new THREE.Mesh(
-      new THREE.SphereGeometry(BALL_R, 26, 18),
+      new THREE.IcosahedronGeometry(BALL_R, 1),
       new THREE.MeshStandardMaterial({
-        map: FootballScene._ballTex, roughness: 0.38, metalness: 0.08,
-        emissive: 0x8fb8ff, emissiveIntensity: 0.12,
+        color: 0xf2f4f8, flatShading: true, roughness: 0.4,
+        emissive: 0x8fb8ff, emissiveIntensity: 0.18,
       })
     );
     this.ball.add(core);
+    const band = new THREE.Mesh(
+      new THREE.TorusGeometry(BALL_R * 0.99, 0.14, 6, 20),
+      new THREE.MeshStandardMaterial({ color: 0xff6b1a, emissive: 0xff6b1a, emissiveIntensity: 0.7 })
+    );
+    this.ball.add(band);
     this.scene.add(this.ball);
     this.ballVel = new THREE.Vector3();
     // Top şleyfi — sürətli uçuşda parlaq iz
@@ -572,14 +535,12 @@ export class FootballScene {
     this.ballPos.set(0, BALL_R, 0);
     this.ballVel.set(0, 0, 0);
     this.ball.position.copy(this.ballPos);
-    this.ball.visible = true;   // qol partlayışından sonra qayıdış
     this._kickT = 0; // kickoff-dan keçən vaxt — botlar dərhal lunge etməsin
     let bIdx = 0, rIdx = 0;
     for (const r of this.racers) {
       const idx = r.team === 'blue' ? bIdx++ : rIdx++;
       // Striker · cinah · qapıçı (qapı xəttində start — kickoff zərbəsini tutur)
-      // Mövqelər sahə ölçüsündən törənir — sahə böyüyəndə pozulmasın
-      const rows = [[0, FIELD_H * 0.17], [-FIELD_W * 0.16, FIELD_H * 0.29], [0, FIELD_H * 0.44]];
+      const rows = [[0, 26], [-15, 44], [0, 66]];
       const [x, z] = rows[idx % 3];
       const sign = r.team === 'blue' ? -1 : 1; // blue qapısı z=-H/2
       const pos = new THREE.Vector3(x, 0, z * sign);
@@ -587,13 +548,10 @@ export class FootballScene {
       // Uzaq maşınlar da yerləşdirilir — əks halda ilk paket gələnə qədər
       // meydanın DÜZ ORTASINDA (0,0) görünüb sonra sürüşürdülər
       r.car.reset(pos, heading);
-      // Qol anında havada/divarda olan maşın "asılı" qalırdı — tam sıfırlama
+      // Qol anında havada olan maşın "asılı" qalırdı — sıçrayış sıfırlanır
       r.car._hopT = 0;
-      r.car._wall = null; r.car._wallY = 0; r.car._wallVy = 0;
-      r.car._dodgeT = 0; r.car._flip = false; r.car._jumpN = 0; r.car._hopBaseY = 0;
       r.car.root.position.y = 0;
       r.car.root.rotation.x = 0;
-      r.car.root.rotation.z = 0;
     }
     if (this.playerCar) {
       this.playerCar.nitroCharges = Math.max(1, this.playerCar.nitroCharges | 0);
@@ -645,7 +603,6 @@ export class FootballScene {
         <div class="fhud__boost">
           <div class="fhud__charges"><span id="fh-charges">⚡</span><small class="fhud__key">E</small></div>
           <div class="fhud__lunge" id="fh-lunge">💥 Q</div>
-          <div class="fhud__lunge" id="fh-jump">⤴ ␣</div>
           <div class="fhud__lunge" id="fh-cam" title="Ball-cam (C)">🎯 C</div>
         </div>
         <div class="fhud__toast" id="fh-toast"></div>
@@ -694,12 +651,13 @@ export class FootballScene {
     this.input.bind('KeyE', () => this._useNitro());
     this.input.bind('ShiftLeft', () => this._useNitro());
     this.input.bind('KeyQ', () => this._lunge());
-    this.input.bind('Space', () => this._jump());
     this.input.bind('KeyC', () => this._toggleBallCam());
   }
 
+  // Yeganə saxlanılan RL əlavəsi (istifadəçi istəyi): kamera topa baxsın,
+  // ya klassik təqib olsun — C / 🎯 ilə keçid. Oynanış toxunulmazdır.
   _toggleBallCam() {
-    this._ballCam = !this._ballCam;
+    this._ballCam = !(this._ballCam ?? true);
     this._toast(this._ballCam ? '🎯 Ball-cam: ON' : '🚗 Ball-cam: OFF');
     if (this._el?.cam) this._el.cam.style.opacity = this._ballCam ? 1 : 0.45;
   }
@@ -741,45 +699,12 @@ export class FootballScene {
     audio.sfx('boost');
   }
 
-  // RL tullanma axını: Space = təmiz tullanma (aerial toxunuş);
-  // havada ikinci Space = dodge-flip; Q = yerdən birbaşa dodge.
-  _jump() {
-    const car = this.playerCar;
+  _lunge(car = this.playerCar, silent = false) {
     if (this._state !== 'play' || !car) return;
-    if (car._wall) {
-      // Divardan sıçrayış: meydana doğru itələnmə (RL wall-jump)
-      const side = car._wall;
-      car._wall = null;
-      car._hopT = HOP_T;
-      car._jumpN = 1;
-      car._hopBaseY = car._wallY;   // enmə divar hündürlüyündən başlayır
-      car._wallY = 0;
-      car.velocity.x += -side * 16;
-      audio.sfx('tick');
-      return;
-    }
-    if ((car._hopT ?? 0) <= 0) {
-      car._hopT = HOP_T;
-      car._jumpN = 1;
-      car._flip = false;
-      audio.sfx('tick');
-    } else if ((car._jumpN ?? 0) === 1) {
-      car._jumpN = 2;
-      this._lunge(car, false, true); // havada dodge-flip
-    }
-  }
-
-  _lunge(car = this.playerCar, silent = false, airborne = false) {
-    if (this._state !== 'play' || !car) return;
-    if (!airborne && (car._lungeCd ?? 0) > 0) return;
+    if ((car._lungeCd ?? 0) > 0) return;
     car._lungeCd = LUNGE_CD;
-    car._hopT = airborne ? Math.min(car._hopT + 0.2, HOP_T) : HOP_T;
-    car._flip = true;      // tam ön flip animasiyası (RL dodge)
-    car._dodgeT = 0.5;     // bu pəncərədə vuruş = alçaq sürülmüş zərbə
-    // Sükan istiqaməti basılıbsa diaqonal dodge (RL kimi), yoxsa düz irəli
-    const st = this.input?.getDrive?.().steer ?? 0;
-    const yön = car.heading + st * -0.55;
-    const fx = Math.sin(yön), fz = Math.cos(yön);
+    car._hopT = HOP_T; // qabağa sıçrayış (RL dodge hissi)
+    const fx = Math.sin(car.heading), fz = Math.cos(car.heading);
     car.velocity.x += fx * 24;
     car.velocity.z += fz * 24;
     if (!silent) audio.sfx('missile');
@@ -810,12 +735,13 @@ export class FootballScene {
           if (r && this._time - (r._lastKick ?? -9) > 0.12) {
             const dx = this.ballPos.x - m.x, dz = this.ballPos.z - m.z;
             const d = Math.hypot(dx, dz);
-            if (d < 9) {
+            if (d < 8) {
               r._lastKick = this._time;
               const nx = d > 0.001 ? dx / d : 1, nz = d > 0.001 ? dz / d : 0;
               const sp = Math.hypot(m.vx, m.vz);
-              // Qonağın dodge/hop bayraqları hadisə ilə gəlir — vuruş modeli eyni
-              this._ballKick({ velocity: { x: m.vx, y: 0, z: m.vz } }, nx, nz, sp, !!m.d, !!m.hp);
+              const push = Math.max(8, Math.min(40, sp * 1.15));
+              this.ballVel.set(nx * push + m.vx * 0.4, Math.min(14, 3 + sp * 0.28), nz * push + m.vz * 0.4);
+              this._capBall();
               this._lastTouch = r.name;
             }
           }
@@ -860,53 +786,28 @@ export class FootballScene {
   _capBall() {
     const v = this.ballVel;
     const h = Math.hypot(v.x, v.z);
-    if (h > 54) { v.x *= 54 / h; v.z *= 54 / h; }
-    if (v.y > 20) v.y = 20;
-  }
-
-  // VURUŞ MODELİ (RL hissi + balans) — zərbənin NÖVÜ nəticəni dəyişir:
-  // - dodge (Q və ya havada 2-ci Space): alçaq, sürülmüş "screamer"
-  // - tullanma vuruşu: qaldırılmış aerial/lob
-  // - adi yerüstü: güc artdıqca top DAHA ÇOX qalxır → maksimum nitro
-  //   vuruşu tirdən yuxarı gedə bilər. Eyni nitro-vuruşun həmişə qol
-  //   olması bununla + GOAL_H qaydası ilə kəsilir; təmiz vuruş yenə güclüdür.
-  _ballKick(car, nx, nz, spdOverride = null, dodgeFlag = null, hopFlag = null) {
-    const v = this.ballVel;
-    const carSpeed = spdOverride ?? car.velocity.length();
-    const isDodge = dodgeFlag ?? ((car?._dodgeT ?? 0) > 0);
-    const isHop = hopFlag ?? ((car?._hopT ?? 0) > 0);
-    const push = Math.max(9, Math.min(52, carSpeed * (isDodge ? 1.5 : 1.28)));
-    v.x = nx * push + (car?.velocity?.x ?? 0) * 0.42;
-    v.z = nz * push + (car?.velocity?.z ?? 0) * 0.42;
-    if (isDodge) v.y = Math.min(8, 2 + carSpeed * 0.10);
-    else if (isHop) v.y = Math.min(20, 6 + carSpeed * 0.32);
-    else v.y = Math.min(16, 3 + carSpeed * 0.26);
-    this._capBall();
+    if (h > 46) { v.x *= 46 / h; v.z *= 46 / h; }
+    if (v.y > 15) v.y = 15;
   }
 
   // ————— Top fizikası (host/offline) —————
   _simBall(dt) {
     const p = this.ballPos, v = this.ballVel;
-    // RL topu: yüngül-üzən (cazibə 20) və DAHA SIÇRAYIŞLI (0.75/0.85) —
-    // istifadəçi istəyi: "bounce effektini birazda artır"
-    v.y -= 20 * dt;
-    v.multiplyScalar(1 - 0.11 * dt);
+    v.y -= 22 * dt;
+    v.multiplyScalar(1 - 0.12 * dt);
     p.addScaledVector(v, dt);
-    if (p.y < BALL_R) { p.y = BALL_R; if (v.y < 0) v.y = -v.y * 0.75; if (Math.abs(v.y) < 1.2) v.y = 0; }
+    if (p.y < BALL_R) { p.y = BALL_R; if (v.y < 0) v.y = -v.y * 0.68; if (Math.abs(v.y) < 1.2) v.y = 0; }
     // Yan divarlar
     const hx = FIELD_W / 2 - BALL_R;
-    if (Math.abs(p.x) > hx) { p.x = Math.sign(p.x) * hx; v.x = -v.x * 0.85; }
-    // Qapı xətti / arxa divar. BALANS: tirdən (GOAL_H) yuxarı QOL DEYİL —
-    // nitro ilə eyni güclü düz vuruşun həmişə qol olması istismarını kəsir:
-    // güclü yerüstü vuruş topu qaldırır və tirə/tir üstünə gedir.
+    if (Math.abs(p.x) > hx) { p.x = Math.sign(p.x) * hx; v.x = -v.x * 0.8; }
+    // Qapı xətti / arxa divar
     const hz = FIELD_H / 2 - BALL_R;
     if (Math.abs(p.z) > hz) {
-      const qapıda = Math.abs(p.x) < GOAL_W / 2 - 1 && p.y < GOAL_H - 0.6;
-      if (qapıda) {
+      if (Math.abs(p.x) < GOAL_W / 2 - 1) {
         if (Math.abs(p.z) > FIELD_H / 2 + 2.5) this._goal(p.z > 0 ? 'blue' : 'red');
       } else {
         p.z = Math.sign(p.z) * hz;
-        v.z = -v.z * 0.85;
+        v.z = -v.z * 0.8;
       }
     }
     // Diaqonal künclər — top küncdə ilişmir, mərkəzə sıçrayır
@@ -928,17 +829,21 @@ export class FootballScene {
       const dz = p.z - car.position.z;
       const d = Math.hypot(dx, dz);
       const min = BALL_R + CAR_R;
-      // Yerdə: top alçaqdadırsa vur; hopda/divarda: maşının vizual hündürlüyü
-      // ilə 3D yoxlama — havada və divar üstündə topa dəymək mümkün olsun
-      const hopHit = (car._hopT ?? 0) > 0 && Math.abs(p.y - (car.root.position.y + 1.1)) < 3.6;
-      const wallHit = (car._wallY ?? 0) > 0.5 && Math.abs(p.y - (car._wallY + 1.1)) < 3.8;
-      if (d < min && d > 0.001 && (p.y < 4.0 || hopHit || wallHit)) {
+      // Yerdə: top alçaqdadırsa vur; hopda: maşının vizual hündürlüyü ilə 3D yoxlama —
+      // tullanıb havadakı topa dəymək mümkün olsun (içindən keçməsin)
+      const hopHit = (car._hopT ?? 0) > 0 && Math.abs(p.y - (car.root.position.y + 1.1)) < 3.3;
+      if (d < min && d > 0.001 && (p.y < 3.4 || hopHit)) {
         this._lastTouch = car._rname || this._lastTouch; // qol müəllifi üçün
         const nx = dx / d, nz = dz / d;
         p.x = car.position.x + nx * min;
         p.z = car.position.z + nz * min;
-        this._ballKick(car, nx, nz);
-        if (this.ballVel.length() > 20) {
+        const carSpeed = car.velocity.length();
+        const push = Math.max(8, Math.min(40, carSpeed * 1.15));
+        v.x = nx * push + car.velocity.x * 0.4;
+        v.z = nz * push + car.velocity.z * 0.4;
+        v.y = Math.min(14, 3 + carSpeed * 0.28);
+        this._capBall();
+        if (push > 18) {
           this.effects.spawnSparkle(new THREE.Vector3(p.x, 1.6, p.z), 0xfff2c0);
           this.effects.spawnSmoke({ x: p.x, y: 0.6, z: p.z }, false, car.smokeColor ?? null, 0.6);
         }
@@ -958,81 +863,14 @@ export class FootballScene {
     this._state = 'goal';
     this._goalT = 2.4;
     audio.sfx('finish');
-    // RL qol partlayışı: top PARTLAYIR (gizlənir + zərbə dalğası + qəlpələr),
-    // kamera silkələnir; kickoff-da top yenidən görünür
-    this._spawnGoalBlast(this.ball.position.clone(), team);
-    this.ball.visible = false;
-    if (this._trail) this._trail.material.opacity = 0;
-    this._shakeT = 0.55;
     this.effects.spawnConfetti(this.ball.position, true);
     const gz = (FIELD_H / 2) * (team === 'blue' ? 1 : -1);
-    this.effects.spawnExplosion(this.ball.position);
     this.effects.spawnExplosion(new THREE.Vector3(0, 2, gz));
     this.effects.spawnConfetti(new THREE.Vector3(-GOAL_W / 3, 1, gz * 0.9), true);
     this.effects.spawnConfetti(new THREE.Vector3(GOAL_W / 3, 1, gz * 0.9), true);
     this._toast((team === 'blue' ? '🔵' : '🔴') + ' ' + t('fb.goal') + (scorer ? ' — ' + scorer : ''));
     this._el.blue.textContent = this.scores.blue;
     this._el.red.textContent = this.scores.red;
-  }
-
-  // Qol partlayışı: genişlənən üfüqi + şaquli zərbə halqaları, işıq
-  // kürəsi və qəlpə hissəcikləri. Hamısı additiv, ~1.4 s, sonra dispose.
-  _spawnGoalBlast(pos, team) {
-    this._gfx = this._gfx || [];
-    const col = TEAM_COLORS[team] ?? 0xffd257;
-    const mk = (mesh, life, tick) => {
-      this.scene.add(mesh);
-      this._gfx.push({ mesh, life, age: 0, tick });
-    };
-    const matO = (c, op) => new THREE.MeshBasicMaterial({
-      color: c, transparent: true, opacity: op,
-      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
-    });
-    // Üfüqi zərbə dalğası
-    const r1 = new THREE.Mesh(new THREE.RingGeometry(1.5, 3.2, 40), matO(col, 0.9));
-    r1.rotation.x = -Math.PI / 2;
-    r1.position.set(pos.x, 0.4, pos.z);
-    mk(r1, 1.1, (it, k) => { it.mesh.scale.setScalar(1 + k * 16); it.mesh.material.opacity = 0.9 * (1 - k); });
-    // Şaquli halqa (partlayış nöqtəsində)
-    const r2 = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.28, 8, 36), matO(0xffffff, 0.85));
-    r2.position.copy(pos);
-    mk(r2, 0.9, (it, k) => { it.mesh.scale.setScalar(1 + k * 7); it.mesh.material.opacity = 0.85 * (1 - k); });
-    // İşıq kürəsi
-    const fl = new THREE.Mesh(new THREE.SphereGeometry(BALL_R * 1.1, 14, 10), matO(0xffffff, 0.95));
-    fl.position.copy(pos);
-    mk(fl, 0.5, (it, k) => { it.mesh.scale.setScalar(1 + k * 4.5); it.mesh.material.opacity = 0.95 * (1 - k) * (1 - k); });
-    // Qəlpələr
-    const shardGeo = new THREE.TetrahedronGeometry(0.5);
-    for (let i = 0; i < 22; i++) {
-      const s = new THREE.Mesh(shardGeo, matO(i % 3 ? col : 0xffffff, 0.95));
-      s.position.copy(pos);
-      const a = Math.random() * Math.PI * 2, e = Math.random() * Math.PI;
-      const sp = 11 + Math.random() * 14;
-      const v = new THREE.Vector3(Math.sin(e) * Math.cos(a), Math.cos(e) * 0.7 + 0.5, Math.sin(e) * Math.sin(a)).multiplyScalar(sp);
-      mk(s, 1.4, (it, k, dt2) => {
-        it.mesh.position.addScaledVector(v, dt2);
-        v.y -= 16 * dt2;
-        it.mesh.rotation.x += dt2 * 7; it.mesh.rotation.y += dt2 * 5;
-        it.mesh.material.opacity = 0.95 * (1 - k);
-      });
-    }
-  }
-
-  _updateGoalFx(dt) {
-    if (!this._gfx?.length) return;
-    for (let i = this._gfx.length - 1; i >= 0; i--) {
-      const it = this._gfx[i];
-      it.age += dt;
-      const k = it.age / it.life;
-      if (k >= 1) {
-        this.scene.remove(it.mesh);
-        it.mesh.geometry.dispose();
-        it.mesh.material.dispose();
-        this._gfx.splice(i, 1);
-        continue;
-      }
-      it.tick(it, k, dt);
-    }
   }
 
   _finish(scores) {
@@ -1108,7 +946,7 @@ export class FootballScene {
       if (backIdx >= 1) {
         // Qapıçı: top qapıya yaxındırsa üstünə çıxıb təmizləyir,
         // uzaqdırsa xətdə mövqe tutur (dirəkləri tam örtmür — künclər açıqdır)
-        clearThreat = Math.abs(bp.z - myGoalZ) < 36 && car.position.distanceTo(bp) < 19;
+        clearThreat = Math.abs(bp.z - myGoalZ) < 30 && car.position.distanceTo(bp) < 16;
         if (clearThreat) {
           target = new THREE.Vector3(bp.x, 0, bp.z);
         } else {
@@ -1138,12 +976,9 @@ export class FootballScene {
     car.update(dt, drive, this._fakeTrack);
     // Yaxın + istiqamətdə → lunge
     if ((isChaser || clearThreat) && (this._kickT ?? 9) > 3
-      && myDist < 7.5 && Math.abs(err) < 0.35 && (car._lungeCd ?? 0) <= 0) {
+      && myDist < 6 && Math.abs(err) < 0.35 && (car._lungeCd ?? 0) <= 0) {
       car._lungeCd = LUNGE_CD + 1.5 + Math.random() * 2.5;
       car._hopT = HOP_T;
-      // Botlar da dodge vuruşu edir — oyunçu ilə eyni vuruş modeli
-      car._dodgeT = 0.5;
-      car._flip = true;
       const fx = Math.sin(car.heading), fz = Math.cos(car.heading);
       car.velocity.x += fx * 18;
       car.velocity.z += fz * 18;
@@ -1220,21 +1055,17 @@ export class FootballScene {
 
     // Sıçrayış animasiyası: hündür qövs, zirvədə "asılma", oturaqlı eniş
     for (const car of this.cars) {
-      car._dodgeT = Math.max(0, (car._dodgeT ?? 0) - dt);
-      if (car._wall) continue;   // divar sürüşü öz vizualını idarə edir
       if ((car._hopT ?? 0) > 0) {
         car._hopT = Math.max(0, car._hopT - dt);
         const ht = 1 - car._hopT / HOP_T;
-        // ^0.75 — parabolanın zirvəsi yastılanır: havada asılma hissi.
-        // _hopBaseY: divardan tullananda eniş divar hündürlüyündən başlayır.
-        const base = (car._hopBaseY ?? 0) * (1 - ht);
-        car.root.position.y = (car.position.y || 0) + base + 2.9 * Math.pow(4 * ht * (1 - ht), 0.75);
-        // Dodge = tam ön flip (RL); adi tullanma = yüngül burun qalxması
-        car.root.rotation.x = car._flip ? -Math.PI * 2 * ht : -Math.sin(Math.PI * ht) * 0.38;
+        // ^0.75 — parabolanın zirvəsi yastılanır: havada asılma hissi
+        // XƏTA İDİ: `+=` hər kadr ƏLAVƏ edirdi. Qol fasiləsində maşın
+        // yenilənmədiyi üçün y sıfırlanmır və bot havaya uçurdu
+        // (istifadəçi rəyi). İndi baza hündürlükdən TƏYİN olunur.
+        car.root.position.y = (car.position.y || 0) + 2.9 * Math.pow(4 * ht * (1 - ht), 0.75);
+        car.root.rotation.x = -Math.sin(Math.PI * ht) * 0.38;
         // Eniş anı: tüstü + yüngül zərbə səsi — çəkisi hiss olunsun
         if (car._hopT === 0) {
-          car._flip = false; car._jumpN = 0; car._hopBaseY = 0;
-          car.root.rotation.x = 0;
           const fx = Math.sin(car.heading), fz = Math.cos(car.heading);
           this.effects.spawnSmoke({ x: car.position.x - fx, y: 0.3, z: car.position.z - fz }, false, car.smokeColor ?? null, 0.8);
           this.effects.spawnSmoke({ x: car.position.x + fx * 0.4, y: 0.3, z: car.position.z + fz * 0.4 }, false, car.smokeColor ?? null, 0.6);
@@ -1243,54 +1074,11 @@ export class FootballScene {
       }
     }
 
-    // Divar sərhədləri (yerli simulyasiya olunan maşınlar) + DİVAR SÜRÜŞÜ.
-    // RL-sayağı: yan divara sürətlə çatan maşın ondan sıçramaq əvəzinə
-    // divara DIRMAŞIR — divar boyu sürmək, oradan topa vurmaq və Space ilə
-    // meydana sıçramaq mümkündür. Nüvə fizikası 2D qalır (x,z): divar
-    // hündürlüyü ayrıca _wallY-də aparılır, vizual root.y + yan yatma ilə.
+    // Divar sərhədləri (yerli simulyasiya olunan maşınlar)
     for (const car of this.cars) {
       if (car.isRemote) continue;
       const hx = FIELD_W / 2 - 1.4;
-      if (car._wall) {
-        const side = car._wall;
-        car.position.x = side * hx;                       // divara bərkidilib
-        car._wallY += car._wallVy * dt;
-        car._wallVy -= 30 * dt;                           // divar boyu "cazibə"
-        const capY = WALL_H - 2;
-        if (car._wallY >= capY) { car._wallY = capY; car._wallVy = Math.min(0, car._wallVy); }
-        const along = Math.abs(car.velocity.z);
-        // Eniş: sürət düşdü və ya divar boyu sürüşüb yerə çatdı
-        if (car._wallY <= 0 || (along < 9 && car._wallVy <= 0)) {
-          car._wall = null;
-          car._hopBaseY = Math.max(0, car._wallY); car._wallY = 0;
-          if (car._hopBaseY > 0.5) { car._hopT = HOP_T * 0.6; car._jumpN = 1; }
-          else car.root.position.y = car.position.y || 0;
-          car.root.rotation.z = 0;
-          this.effects.spawnSmoke({ x: car.position.x, y: 0.3, z: car.position.z }, false, car.smokeColor ?? null, 0.7);
-          if (car.isPlayer) audio.sfx('tick');
-        } else {
-          // Vizual: divarda yatmış vəziyyət — təkərlər divara baxır
-          car.root.position.y = car._wallY;
-          const k = Math.min(1, car._wallY / 3);
-          car.root.rotation.z += (-side * 1.05 * k - car.root.rotation.z) * Math.min(1, dt * 10);
-          car.velocity.x = 0;
-        }
-      } else if (Math.abs(car.position.x) > hx) {
-        const side = Math.sign(car.position.x);
-        const toward = car.velocity.x * side;              // divara doğru sürət
-        const along = Math.abs(car.velocity.z);            // divar boyu sürət
-        if (along > 13 && toward > 3 && (car._hopT ?? 0) <= 0) {
-          // Divar sürüşünə keçid: yaxınlaşma sürəti dırmaşmaya çevrilir
-          car._wall = side;
-          car._wallY = 0.6;
-          car._wallVy = Math.max(7, toward * 0.9);
-          car.position.x = side * hx;
-          car.velocity.x = 0;
-        } else {
-          car.position.x = side * hx;
-          car.velocity.x *= -0.35;
-        }
-      }
+      if (Math.abs(car.position.x) > hx) { car.position.x = Math.sign(car.position.x) * hx; car.velocity.x *= -0.35; }
       // Qapı xətti maşınlar üçün TAM bağlıdır (yalnız top keçir)
       const hz = FIELD_H / 2 - 1.4;
       if (Math.abs(car.position.z) > hz) {
@@ -1352,34 +1140,35 @@ export class FootballScene {
         const dx = this.ballPos.x - c.position.x;
         const dz = this.ballPos.z - c.position.z;
         const d = Math.hypot(dx, dz);
-        const hopHit2 = (c._hopT ?? 0) > 0 && Math.abs(this.ballPos.y - (c.root.position.y + 1.1)) < 3.6;
-        const wallHit2 = (c._wallY ?? 0) > 0.5 && Math.abs(this.ballPos.y - (c._wallY + 1.1)) < 3.8;
-        if (d < BALL_R + CAR_R && d > 0.001 && (this.ballPos.y < 4.0 || hopHit2 || wallHit2)) {
+        const hopHit2 = (c._hopT ?? 0) > 0 && Math.abs(this.ballPos.y - (c.root.position.y + 1.1)) < 3.3;
+        if (d < BALL_R + CAR_R && d > 0.001 && (this.ballPos.y < 3.4 || hopHit2)) {
           this._kickCd = 0.15;
           const nx = dx / d, nz = dz / d;
-          this._ballKick(c, nx, nz);
+          const sp = c.velocity.length();
+          const push = Math.max(8, Math.min(40, sp * 1.15));
+          this.ballVel.set(nx * push + c.velocity.x * 0.4, Math.min(14, 3 + sp * 0.28), nz * push + c.velocity.z * 0.4);
+          this._capBall();
           this.ballPos.x = c.position.x + nx * (BALL_R + CAR_R);
           this.ballPos.z = c.position.z + nz * (BALL_R + CAR_R);
           this._predictT = 0.3; // qısa müddət lokal fizika — host sonra düzəldir
           audio.sfx('click');
-          if (this.ballVel.length() > 20) {
+          if (push > 18) {
             this.effects.spawnSparkle(new THREE.Vector3(this.ballPos.x, 1.6, this.ballPos.z), 0xfff2c0);
           }
           this._net.sendEvent({
             kind: 'kick',
             x: +c.position.x.toFixed(1), z: +c.position.z.toFixed(1),
             vx: +c.velocity.x.toFixed(1), vz: +c.velocity.z.toFixed(1),
-            d: (c._dodgeT ?? 0) > 0 ? 1 : 0, hp: (c._hopT ?? 0) > 0 ? 1 : 0,
           });
         }
       }
       if (this._predictT > 0) {
-        // Lokal proqnoz: sadə fizika (host paketi gələnə qədər) — host ilə EYNİ sabitlər
+        // Lokal proqnoz: sadə fizika (host paketi gələnə qədər)
         const p = this.ballPos, v = this.ballVel;
-        v.y -= 20 * dt;
-        v.multiplyScalar(1 - 0.11 * dt);
+        v.y -= 22 * dt;
+        v.multiplyScalar(1 - 0.12 * dt);
         p.addScaledVector(v, dt);
-        if (p.y < BALL_R) { p.y = BALL_R; if (v.y < 0) v.y = -v.y * 0.75; }
+        if (p.y < BALL_R) { p.y = BALL_R; if (v.y < 0) v.y = -v.y * 0.68; }
       } else if (this._netBall) {
         // Qonaq: interpolyasiya
         this.ballPos.x += (this._netBall.p[0] - this.ballPos.x) * Math.min(1, dt * 12);
@@ -1388,8 +1177,8 @@ export class FootballScene {
       }
     }
     this.ball.position.copy(this.ballPos);
-    this.ball.rotation.x += this.ballVel.z * dt * 0.16;
-    this.ball.rotation.z -= this.ballVel.x * dt * 0.16;
+    this.ball.rotation.x += this.ballVel.z * dt * 0.2;
+    this.ball.rotation.z -= this.ballVel.x * dt * 0.2;
 
     // Nitro yığımı + lunge cd (oyunçu)
     const pc = this.playerCar;
@@ -1451,20 +1240,6 @@ export class FootballScene {
 
     this.effects.update(dt);
     this.skids.update(dt);
-    this._updateGoalFx(dt);
-    // RL boost izi: nitro zamanı arxada qığılcım axını (yalnız oyunçu — perf)
-    if (pc.boostTimer > 0 && this._state === 'play') {
-      this._boostFxT = (this._boostFxT ?? 0) - dt;
-      if (this._boostFxT <= 0) {
-        this._boostFxT = 0.045;
-        const fx = Math.sin(pc.heading), fz = Math.cos(pc.heading);
-        this.effects.spawnSparkle(new THREE.Vector3(
-          pc.position.x - fx * 2.3 + (Math.random() - 0.5) * 0.5,
-          (pc.root.position.y || 0) + 0.5,
-          pc.position.z - fz * 2.3 + (Math.random() - 0.5) * 0.5,
-        ), 0xffb45a);
-      }
-    }
     this._updateCamera(dt);
     // Matç bitəndə motor səsi qalib ekranında da davam edirdi
     const over = this._state === 'done';
@@ -1495,17 +1270,15 @@ export class FootballScene {
     const car = this.playerCar;
     const bp = this.ballPos;
     // BALL-CAM (Rocket League): kamera top→maşın xətti üzərində maşının
-    // arxasında durur, həmişə topa baxır. C düyməsi (RL kimi) söndürür:
-    // onda klassik təqib kamerası — maşının arxasında, irəli baxır.
-    this._ballCam ??= true;
-    const ballCam = this._ballCam;
+    // arxasında durur, həmişə topa baxır — maşın da, top da daim görünür.
     if (!this._camDir) this._camDir = new THREE.Vector3(0, 0, 1);
+    const ballCam = this._ballCam ?? true;
     const speed = car.velocity.length();
     const dx = car.position.x - bp.x, dz = car.position.z - bp.z;
     const d = Math.hypot(dx, dz);
     this._camDirTmp = this._camDirTmp || new THREE.Vector3();
     if (!ballCam) {
-      // Maşın-kamera: arxadan, sürüşlə dönür
+      // Klassik təqib: kamera maşının arxasında, irəli baxır (C ilə keçid)
       this._camDirTmp.set(-Math.sin(car.heading), 0, -Math.cos(car.heading));
       this._camDir.lerp(this._camDirTmp, 1 - Math.exp(-dt * (2.6 + speed * 0.06))).normalize();
     } else if (d > 3) {
@@ -1543,7 +1316,7 @@ export class FootballScene {
       this.camera.position.lerpVectors(this._camPrev, this.camera.position, maxStep / camStep);
     }
     this._camPrev.copy(this.camera.position);
-    // BAXIŞ: ball-cam → topa; maşın-kamera → maşının irəlisinə
+    // BAXIŞ: ball-cam → topa; klassik → maşının irəlisinə
     const cp = this.camera.position;
     this._lookTmp = this._lookTmp || new THREE.Vector3();
     if (ballCam) {
@@ -1577,7 +1350,7 @@ export class FootballScene {
     const cHor = Math.max(0.001, Math.hypot(cx, cz));
     const aC = Math.atan2(cx, cz), pC = Math.atan2(cyv, cHor);
     // Maşının bucaq ölçüsü + kənar boşluğu — kamera yaxınlaşdıqca çərçivə
-    // daralır. Maşın-kamerada qarant lazımsızdır (maşın onsuz da mərkəzdə).
+    // daralır. Klassik kamerada qarant lazımsızdır (maşın onsuz da mərkəzdə).
     const maxH = ballCam ? Math.max(0.12, hHalf - Math.atan(2.6 / cHor) - 0.09) : Math.PI;
     const maxV = ballCam ? Math.max(0.1, vHalf - Math.atan(1.7 / cHor) - 0.07) : Math.PI;
     let offH = Math.atan2(tx, tz) - aC;
@@ -1605,14 +1378,6 @@ export class FootballScene {
       cp.y + Math.tan(pitch) * tHor,
       cp.z + Math.cos(aim) * tHor
     );
-    // Qol partlayışı silkələnməsi — mövqeyə kiçik təsadüfi sarsıntı
-    if ((this._shakeT ?? 0) > 0) {
-      this._shakeT -= dt;
-      const k = Math.max(0, this._shakeT) * 1.5;
-      this.camera.position.x += (Math.random() - 0.5) * k;
-      this.camera.position.y += (Math.random() - 0.5) * k * 0.6;
-      this.camera.position.z += (Math.random() - 0.5) * k;
-    }
     this.camera.lookAt(this._camTarget);
     // FOV: boost/sürət zərbəsi — yumşaq "sürət hissi"
     const wantFov = 62 + (car.boostTimer > 0 ? 7 : 0) + Math.min(4, speed * 0.09);
