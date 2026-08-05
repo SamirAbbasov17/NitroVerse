@@ -21,6 +21,7 @@ export function mergeStaticGroup(group) {
     if (!g.attributes.uv && m.map) { skipped.push(o); return; } // UV yoxdursa qarışar
     const key = [
       o.userData?.roadPart ? 'road' : '-',   // yol hissələri ayrıca yığılır
+      o.receiveShadow ? 'rs' : '-',          // kölgə qəbulu bucket-i bölür
       m.map?.uuid || '-',
       m.color?.getHexString(),
       m.emissive?.getHexString(),
@@ -33,7 +34,7 @@ export function mergeStaticGroup(group) {
     ].join('|');
     let b = buckets.get(key);
     if (!b) {
-      b = { material: m, geos: [], roadPart: !!o.userData?.roadPart };
+      b = { material: m, geos: [], roadPart: !!o.userData?.roadPart, receiveShadow: !!o.receiveShadow };
       buckets.set(key, b);
     }
     b.geos.push(g.clone().applyMatrix4(o.matrixWorld));
@@ -46,9 +47,11 @@ export function mergeStaticGroup(group) {
     if (!merged) continue;
     const mesh = new THREE.Mesh(merged, b.material);
     mesh.castShadow = true;
-    // KÖLGƏ QƏBULU birləşmədən sonra da qalmalıdır: əvvəl itirdi və zen-də
-    // yol/torpaq maşının kölgəsini göstərmirdi (kölgə sistemi "işləmirdi").
-    mesh.receiveShadow = true;
+    // KÖLGƏ QƏBULU MƏNBƏDƏN QORUNUR (şərtsiz true DEYİL): zen yolu/kənarı
+    // bayrağı özü qoyur və kölgə alır; neon binaları isə heç vaxt kölgə
+    // qəbul etməyib — şərtsiz true onları gecə bir-birinin kölgəsində
+    // "qapqara" göstərirdi (istifadəçi rəyi).
+    mesh.receiveShadow = b.receiveShadow;
     // Yol hissəsi işarəsi birləşmədən SONRA da qalmalıdır — yoxsa dəhliz
     // süpürgəsi yolun öz kəsik xətlərini və körpü dayaqlarını "maneə" sanır
     if (b.roadPart) mesh.userData.roadPart = true;
