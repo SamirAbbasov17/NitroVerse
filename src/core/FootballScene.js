@@ -562,7 +562,6 @@ export class FootballScene {
       this._camDir = this._camDir || new THREE.Vector3();
       this._camDir.set(dx / d, 0, dz / d);
       this.camera.position.set(c.x + this._camDir.x * 11, 6.4, c.z + this._camDir.z * 11);
-      this._chaseK = 0;   // kickoff-da həmişə topa bax
       this._camTarget.set(this.ballPos.x, 1.5, this.ballPos.z);
       this.camera.lookAt(this._camTarget);
       this.camera.fov = 62;
@@ -1279,38 +1278,26 @@ export class FootballScene {
     const speed = car.velocity.length();
     const dx = car.position.x - bp.x, dz = car.position.z - bp.z;
     const d = Math.hypot(dx, dz);
-    // AVTO KAMERA REJİMİ (istifadəçi istəyi): kameranın topa baxa
-    // bilmədiyi hallarda avtomatik arxa rejim. İki hal:
-    //  1) top lap yaxın (d<8, scrum/driblinq) — ball-cam fırlanıb idarəni pozur
-    //  2) oyunçu topdan SÜRƏTLƏ UZAQLAŞIR (mövqe dəyişmə) — ball-cam arxaya
-    //     baxıb sürüşü kor edirdi
-    // Keçid cəld (4.5/s), qayıdış yumşaq (2/s); top 13 m-dən uzaq olub
-    // ona doğru dönəndə kamera özü yenidən topa baxır.
-    this._chaseK = this._chaseK ?? 0;
-    const yaxınlaşma = d > 0.001
-      ? (car.velocity.x * -dx + car.velocity.z * -dz) / d : 0;  // + = topa doğru
-    const uzaqlaşır = yaxınlaşma < -6 && d < 24 && speed > 8;
-    const istə = d < 8 || uzaqlaşır;
-    const burax = d > 13 && !uzaqlaşır;
-    const hədəfK = istə ? 1 : (burax ? 0 : (this._chaseK > 0.5 ? 1 : 0));
-    this._chaseK += (hədəfK - this._chaseK) * Math.min(1, dt * (hədəfK > this._chaseK ? 4.5 : 2));
-    const cK = this._chaseK;
-    this._camDirTmp = this._camDirTmp || new THREE.Vector3();
-    if (d > 3 || cK > 0.02) {
-      if (d > 0.001) this._camDirTmp.set(dx / d, 0, dz / d);
-      else this._camDirTmp.set(-Math.sin(car.heading), 0, -Math.cos(car.heading));
-      if (cK > 0.02) {
-        // Arxa-rejim komponenti qarışdırılır
-        const bx2 = -Math.sin(car.heading), bz2 = -Math.cos(car.heading);
-        this._camDirTmp.x = this._camDirTmp.x * (1 - cK) + bx2 * cK;
-        this._camDirTmp.z = this._camDirTmp.z * (1 - cK) + bz2 * cK;
-        const n = Math.hypot(this._camDirTmp.x, this._camDirTmp.z) || 1;
-        this._camDirTmp.x /= n; this._camDirTmp.z /= n;
-      }
-      // Sürətləndikcə kamera cəldləşir; top lap yaxındıkən (scrum/toqquşma)
-      // istiqamət ləngiyir — kamera çırpınmır
-      const calm = Math.max(cK, Math.min(1, (d - 3) / 7));
-      this._camDir.lerp(this._camDirTmp, 1 - Math.exp(-dt * (2.3 + speed * 0.04) * calm)).normalize();
+    // TƏMİZ BALL-CAM (istifadəçi rəyi: avto arxa-rejim pis idi, kamera
+    // HƏMİŞƏ topu izləsin). Yeganə düzəliş: dönüş BUCAQ FƏZASINDADIR —
+    // top maşının arxasına keçəndə köhnə vektor-lerp 180° çevrilmədə
+    // qəfil sıçrayıb donurdu. İndi kamera məhdud bucaq sürəti ilə
+    // (~2.2 rad/s) yavaş-yavaş topa tərəf dönür və baxış topa
+    // yaxınlaşdıqca eksponensial şəkildə TAM kilidlənir.
+    if (d > 3) {
+      const cur = Math.atan2(this._camDir.x, this._camDir.z);
+      const tgt = Math.atan2(dx / d, dz / d);
+      let diff = tgt - cur;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      // Sürətləndikcə kamera cəldləşir; top lap yaxındıkən (scrum)
+      // istiqamət ləngiyir — kamera çırpınmır (orijinal davranış)
+      const calm = Math.min(1, (d - 3) / 7);
+      let step = diff * (1 - Math.exp(-dt * (2.3 + speed * 0.04) * calm));
+      const stepCap = 2.2 * dt;                    // 180° dönüş ≈ 1.4 s
+      if (Math.abs(step) > stepCap) step = Math.sign(step) * stepCap;
+      const yeni = cur + step;
+      this._camDir.set(Math.sin(yeni), 0, Math.cos(yeni));
     }
     // Dinamik məsafə/hündürlük: sürətdə və top uzaqlaşanda kamera geri açılır —
     // top da, maşın da HƏMİŞƏ kadrda qalır
@@ -1337,19 +1324,12 @@ export class FootballScene {
       this.camera.position.lerpVectors(this._camPrev, this.camera.position, maxStep / camStep);
     }
     this._camPrev.copy(this.camera.position);
-    // BAXIŞ: topa yönəl; scrum rejimində maşının irəlisi ilə qarışdırılır
+    // BAXIŞ: tam topa yönəl (yumşaq lerp) — qarant SONRA tətbiq olunur
     const cp = this.camera.position;
     const aBall = Math.atan2(bp.x - cp.x, bp.z - cp.z);
     const lookD = Math.max(14, Math.hypot(bp.x - cp.x, bp.z - cp.z));
     this._lookTmp = this._lookTmp || new THREE.Vector3();
     this._lookTmp.set(cp.x + Math.sin(aBall) * lookD, 1.5, cp.z + Math.cos(aBall) * lookD);
-    if (cK > 0.02) {
-      const ax = car.position.x + Math.sin(car.heading) * 22;
-      const az = car.position.z + Math.cos(car.heading) * 22;
-      this._lookTmp.x = this._lookTmp.x * (1 - cK) + ax * cK;
-      this._lookTmp.y = this._lookTmp.y * (1 - cK) + 1.2 * cK;
-      this._lookTmp.z = this._lookTmp.z * (1 - cK) + az * cK;
-    }
     this._camTarget.lerp(this._lookTmp, 1 - Math.exp(-dt * 9));
     // ——— SƏRT KADR QARANTI (lerp-dən SONRA, hər kadr) ———
     // Maşının FINAL baxışa görə üfüqi VƏ şaquli kənarlaşması real FOV
