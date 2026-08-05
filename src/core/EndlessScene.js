@@ -128,9 +128,10 @@ export class EndlessScene {
       for (let py = 0; py < N; py++) {
         // v: 0 = maşına yaxın uc, 1 = uzaq uc
         const v = py / (N - 1);
-        // Boyuna profil: buferin lap yanında yumşaq başlayır, ~30%-də ən
-        // parlaq, uzaqda tədricən sönür. Hər iki uc SIFIRDIR.
-        const giriş = Math.min(1, v / 0.16);              // yaxın ucun sönməsi
+        // Boyuna profil: işıq BUFERİN ALTINDAN başlayır (yaxın uc maşının
+        // altındadır) — əvvəl 6 m-lik açılma maşının qabağında "qara cib"
+        // yaradırdı (istifadəçi skrinşotu: "işıqdakı qara nədi").
+        const giriş = Math.min(1, v / 0.055);             // yaxın ucun sönməsi (~2 m)
         const çıxış = Math.pow(1 - v, 1.55);              // uzaq ucun sönməsi
         const boy = giriş * çıxış;
         // Konus: yaxında dar, uzaqda enli
@@ -159,6 +160,29 @@ export class EndlessScene {
       this._beamPool.rotation.x = -Math.PI / 2;
       this._beamPool.renderOrder = 2;      // asfaltdan sonra çəkilsin
       this.scene.add(this._beamPool);
+      // YAXIN İŞIQ HOVUZU: maşının burnunun altını/ətrafını yumşaq doldurur —
+      // şüa zolağı ilə maşın arasında qaranlıq cib qalmasın
+      const pc = document.createElement('canvas');
+      pc.width = pc.height = 128;
+      const pg = pc.getContext('2d');
+      const grad = pg.createRadialGradient(64, 64, 4, 64, 64, 62);
+      grad.addColorStop(0, 'rgba(255,232,188,0.85)');
+      grad.addColorStop(0.55, 'rgba(255,228,180,0.35)');
+      grad.addColorStop(1, 'rgba(255,226,176,0)');
+      pg.fillStyle = grad;
+      pg.fillRect(0, 0, 128, 128);
+      const pt = new THREE.CanvasTexture(pc);
+      pt.colorSpace = THREE.SRGBColorSpace;
+      this._beamNear = new THREE.Mesh(
+        new THREE.CircleGeometry(5.6, 24),
+        new THREE.MeshBasicMaterial({
+          map: pt, blending: THREE.AdditiveBlending, transparent: true,
+          depthWrite: false, opacity: 0,
+        })
+      );
+      this._beamNear.rotation.x = -Math.PI / 2;
+      this._beamNear.renderOrder = 2;
+      this.scene.add(this._beamNear);
     }
 
     // ——— Səma + günəş diski + yer ———
@@ -1412,6 +1436,7 @@ export class EndlessScene {
     // Küçə lampaları yalnız qaranlıqda yanır (gündüz parlayan kürə = qüsur)
     setLampGlow(0.1 + day.night * 2.4);
     if (this._beamPool) this._beamPool.material.opacity = day.night * 0.6;
+    if (this._beamNear) this._beamNear.material.opacity = day.night * 0.34;
     this._updateHeadlights(day.night);
 
     // Günəş mövqeyi (maşını izləyir)
@@ -1636,13 +1661,19 @@ export class EndlessScene {
         const fx2 = Math.sin(hh), fz2 = Math.cos(hh);
         const uzaqY = this.road.heightAtPos(
           { x: c.x + fx2 * 36, y: 0, z: c.z + fz2 * 36 }, this.playerCar.wpHint);
-        bp.position.set(c.x + fx2 * 18, hy + 0.1, c.z + fz2 * 18);
+        // 16 m: zolağın yaxın ucu (uz. 38) buferin ALTINA düşür — qara cib yox
+        bp.position.set(c.x + fx2 * 16, hy + 0.1, c.z + fz2 * 16);
         bp.rotation.order = 'YXZ';
         bp.rotation.y = hh;
         bp.rotation.x = -Math.PI / 2 + Math.atan2(uzaqY - hy, 30);
         bp.visible = true;
+        if (this._beamNear) {
+          this._beamNear.position.set(c.x + fx2 * 2.2, hy + 0.06, c.z + fz2 * 2.2);
+          this._beamNear.visible = true;
+        }
       } else if (this._beamPool) {
         this._beamPool.visible = false;
+        if (this._beamNear) this._beamNear.visible = false;
       }
     }
 
