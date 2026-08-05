@@ -1112,6 +1112,23 @@ export class FootballScene {
         }
       }
     }
+    // DİVAR SIXACI TƏKRAR (istifadəçi buqu: "maşın bəzən sərhədin içinə
+    // girir"): yuxarıdakı maşın-maşın ayrılması sıxacdan SONRA işlədiyi
+    // üçün divar yanında itələnən maşın bortun içinə basılırdı. Toqquşma
+    // həllindən sonra sərhəd yenidən tətbiq olunur.
+    for (const car of this.cars) {
+      if (car.isRemote) continue;
+      const hx2 = FIELD_W / 2 - 1.4, hz2 = FIELD_H / 2 - 1.4;
+      if (Math.abs(car.position.x) > hx2) car.position.x = Math.sign(car.position.x) * hx2;
+      if (Math.abs(car.position.z) > hz2) car.position.z = Math.sign(car.position.z) * hz2;
+      const cLim2 = FIELD_W / 2 + FIELD_H / 2 - CORNER - 1.4;
+      const cSum2 = Math.abs(car.position.x) + Math.abs(car.position.z);
+      if (cSum2 > cLim2) {
+        const over = (cSum2 - cLim2) / Math.SQRT2;
+        car.position.x -= Math.sign(car.position.x) / Math.SQRT2 * over;
+        car.position.z -= Math.sign(car.position.z) / Math.SQRT2 * over;
+      }
+    }
 
     // Top
     const hostSim = !this.online || this.online.net.isHost;
@@ -1262,13 +1279,21 @@ export class FootballScene {
     const speed = car.velocity.length();
     const dx = car.position.x - bp.x, dz = car.position.z - bp.z;
     const d = Math.hypot(dx, dz);
-    // AVTO KAMERA REJİMİ (istifadəçi istəyi): top lap yaxında olanda (scrum)
-    // ball-cam fırlanıb İDARƏNİ pozur → kamera avtomatik "sərbəst" arxa
-    // rejimə keçir; top yaxşı görünəcək məsafəyə çıxan kimi yenidən topa
-    // baxır. Histerezis (5.5 / 9 m) + yumşaq qarışma — keçid hiss olunmur.
+    // AVTO KAMERA REJİMİ (istifadəçi istəyi): kameranın topa baxa
+    // bilmədiyi hallarda avtomatik arxa rejim. İki hal:
+    //  1) top lap yaxın (d<8, scrum/driblinq) — ball-cam fırlanıb idarəni pozur
+    //  2) oyunçu topdan SÜRƏTLƏ UZAQLAŞIR (mövqe dəyişmə) — ball-cam arxaya
+    //     baxıb sürüşü kor edirdi
+    // Keçid cəld (4.5/s), qayıdış yumşaq (2/s); top 13 m-dən uzaq olub
+    // ona doğru dönəndə kamera özü yenidən topa baxır.
     this._chaseK = this._chaseK ?? 0;
-    const hədəfK = d < 5.5 ? 1 : (d > 9 ? 0 : (this._chaseK > 0.5 ? 1 : 0));
-    this._chaseK += (hədəfK - this._chaseK) * Math.min(1, dt * 3);
+    const yaxınlaşma = d > 0.001
+      ? (car.velocity.x * -dx + car.velocity.z * -dz) / d : 0;  // + = topa doğru
+    const uzaqlaşır = yaxınlaşma < -6 && d < 24 && speed > 8;
+    const istə = d < 8 || uzaqlaşır;
+    const burax = d > 13 && !uzaqlaşır;
+    const hədəfK = istə ? 1 : (burax ? 0 : (this._chaseK > 0.5 ? 1 : 0));
+    this._chaseK += (hədəfK - this._chaseK) * Math.min(1, dt * (hədəfK > this._chaseK ? 4.5 : 2));
     const cK = this._chaseK;
     this._camDirTmp = this._camDirTmp || new THREE.Vector3();
     if (d > 3 || cK > 0.02) {

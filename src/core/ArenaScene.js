@@ -672,8 +672,14 @@ export class ArenaScene {
     c.root.visible = false;
     this._elimOrder.push(r.tid);
     const by = r.car._lastBy;
+    // MƏNTIQ (istifadəçi rəyi): 2-ci olub öləndə matç ELƏ HƏMİN AN bitir —
+    // "tamaşa edirsən" yazıb dərhal nəticə göstərmək mənasız idi. Tamaşa
+    // rejimi yalnız matç doğrudan davam edəndə (≥2 sağ) açılır.
+    const davamEdir = this._aliveList().length >= 2;
     this._toast(r.isLocal
-      ? (by ? `☠️ ${by} səni vurdu — tamaşa edirsən` : '☠️ Elendin — tamaşa edirsən')
+      ? (davamEdir
+        ? (by ? `☠️ ${by} səni vurdu — tamaşa edirsən` : '☠️ Elendin — tamaşa edirsən')
+        : (by ? `☠️ ${by} səni vurdu` : '☠️ Elendin'))
       : (by === 'zona' ? `☠️ ${r.name} zonada yandı`
         : by ? `☠️ ${by} → ${r.name}` : `☠️ ${r.name} elendi`));
     if (broadcast && this.online && (r.isLocal || (r.isBot && this._simBots))) {
@@ -682,7 +688,7 @@ export class ArenaScene {
     if (r.isLocal) {
       this._setHP(0);
       this.touchControls?.setVisible(false);
-      this._showSpecBar();
+      if (davamEdir) this._showSpecBar();
     }
     this._checkEnd();
   }
