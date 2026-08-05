@@ -249,6 +249,7 @@ function startGame(config) {
     audio.startEngine();
     const fb = new FootballScene(config, {
       input, uiRoot, renderer: game.renderer, library, onQuit: goMenu,
+      onRestart: () => startGame(config),
     });
     game.setActive(fb);
     return;

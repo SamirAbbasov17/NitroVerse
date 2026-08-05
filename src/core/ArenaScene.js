@@ -541,12 +541,15 @@ export class ArenaScene {
         <div class="btn-row">
           <button class="btn btn--primary" data-resume>${t('pause.resume')}</button>
           ${this.online ? `<button class="btn" data-lobby>${t('pause.backRoom')}</button>` : ''}
+          ${!this.online && this.onRestart ? `<button class="btn" data-restart>🔄 ${t('ui.again')}</button>` : ''}
           <button class="btn btn--ghost" data-quit>${this.online ? 'Otaqdan çıx' : 'Menyu'}</button>
         </div>
       </div>`;
     this._el.overlay.querySelector('[data-resume]').onclick = () => this._togglePause();
     const plb = this._el.overlay.querySelector('[data-lobby]');
     if (plb) plb.onclick = () => this.onQuit?.(); // onlaynda onQuit = lobbiyə qayıdış
+    const prs = this._el.overlay.querySelector('[data-restart]');
+    if (prs) prs.onclick = () => this.onRestart?.();
     this._el.overlay.querySelector('[data-quit]').onclick = () =>
       (this.online && this.onLeave ? this.onLeave() : this.onQuit?.());
   }

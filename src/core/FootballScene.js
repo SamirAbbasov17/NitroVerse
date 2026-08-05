@@ -32,7 +32,7 @@ const NITRO_REGEN_T = 8; // saniyədə bir yığım
 const TEAM_COLORS = { blue: 0x37b8ff, red: 0xff4544 };
 
 export class FootballScene {
-  constructor(config, { input, uiRoot, renderer = null, library, onLeave = null, onQuit }) {
+  constructor(config, { input, uiRoot, renderer = null, library, onLeave = null, onQuit, onRestart = null }) {
     this.config = config;
     this.input = input;
     this.uiRoot = uiRoot;
@@ -40,6 +40,7 @@ export class FootballScene {
     this.library = library;
     this.onQuit = onQuit;
     this.onLeave = onLeave;
+    this.onRestart = onRestart;
     this.online = config.online || null;
     this._state = 'countdown';
     this._time = 0;
@@ -667,12 +668,15 @@ export class FootballScene {
         <div class="btn-row">
           <button class="btn btn--primary" data-resume>${t('pause.resume')}</button>
           ${this.online ? `<button class="btn" data-lobby>${t('pause.backRoom')}</button>` : ''}
+          ${!this.online && this.onRestart ? `<button class="btn" data-restart>🔄 ${t('ui.again')}</button>` : ''}
           <button class="btn btn--ghost" data-quit>${this.online ? 'Otaqdan çıx' : 'Menyu'}</button>
         </div>
       </div>`;
     this._el.overlay.querySelector('[data-resume]').onclick = () => this._togglePause();
     const plb = this._el.overlay.querySelector('[data-lobby]');
     if (plb) plb.onclick = () => this.onQuit?.(); // onlaynda onQuit = lobbiyə qayıdış
+    const prs = this._el.overlay.querySelector('[data-restart]');
+    if (prs) prs.onclick = () => this.onRestart?.();
     this._el.overlay.querySelector('[data-quit]').onclick = () =>
       (this.online && this.onLeave ? this.onLeave() : this.onQuit?.());
   }
@@ -725,8 +729,8 @@ export class FootballScene {
               r._lastKick = this._time;
               const nx = d > 0.001 ? dx / d : 1, nz = d > 0.001 ? dz / d : 0;
               const sp = Math.hypot(m.vx, m.vz);
-              const push = Math.max(8, Math.min(40, sp * 1.15));
-              this.ballVel.set(nx * push + m.vx * 0.4, Math.min(14, 3 + sp * 0.28), nz * push + m.vz * 0.4);
+              const push = Math.max(9, Math.min(48, sp * 1.32));
+              this.ballVel.set(nx * push + m.vx * 0.4, Math.min(15, 3 + sp * 0.3), nz * push + m.vz * 0.4);
               this._capBall();
               this._lastTouch = r.name;
             }
@@ -772,17 +776,18 @@ export class FootballScene {
   _capBall() {
     const v = this.ballVel;
     const h = Math.hypot(v.x, v.z);
-    if (h > 46) { v.x *= 46 / h; v.z *= 46 / h; }
-    if (v.y > 15) v.y = 15;
+    if (h > 52) { v.x *= 52 / h; v.z *= 52 / h; }
+    if (v.y > 16) v.y = 16;
   }
 
   // ————— Top fizikası (host/offline) —————
   _simBall(dt) {
     const p = this.ballPos, v = this.ballVel;
     v.y -= 22 * dt;
-    v.multiplyScalar(1 - 0.12 * dt);
+    // Sürtünmə azaldıldı (0.12→0.10) — vuruşdan sonra top daha uzağa gedir
+    v.multiplyScalar(1 - 0.10 * dt);
     p.addScaledVector(v, dt);
-    if (p.y < BALL_R) { p.y = BALL_R; if (v.y < 0) v.y = -v.y * 0.68; if (Math.abs(v.y) < 1.2) v.y = 0; }
+    if (p.y < BALL_R) { p.y = BALL_R; if (v.y < 0) v.y = -v.y * 0.72; if (Math.abs(v.y) < 1.2) v.y = 0; }
     // Yan divarlar
     const hx = FIELD_W / 2 - BALL_R;
     if (Math.abs(p.x) > hx) { p.x = Math.sign(p.x) * hx; v.x = -v.x * 0.8; }
@@ -824,10 +829,11 @@ export class FootballScene {
         p.x = car.position.x + nx * min;
         p.z = car.position.z + nz * min;
         const carSpeed = car.velocity.length();
-        const push = Math.max(8, Math.min(40, carSpeed * 1.15));
+        // GÜCLÜ VURUŞ (istifadəçi istəyi): top daha uzağa uçur
+        const push = Math.max(9, Math.min(48, carSpeed * 1.32));
         v.x = nx * push + car.velocity.x * 0.4;
         v.z = nz * push + car.velocity.z * 0.4;
-        v.y = Math.min(14, 3 + carSpeed * 0.28);
+        v.y = Math.min(15, 3 + carSpeed * 0.3);
         this._capBall();
         if (push > 18) {
           this.effects.spawnSparkle(new THREE.Vector3(p.x, 1.6, p.z), 0xfff2c0);
@@ -1148,8 +1154,8 @@ export class FootballScene {
           this._kickCd = 0.15;
           const nx = dx / d, nz = dz / d;
           const sp = c.velocity.length();
-          const push = Math.max(8, Math.min(40, sp * 1.15));
-          this.ballVel.set(nx * push + c.velocity.x * 0.4, Math.min(14, 3 + sp * 0.28), nz * push + c.velocity.z * 0.4);
+          const push = Math.max(9, Math.min(48, sp * 1.32));
+          this.ballVel.set(nx * push + c.velocity.x * 0.4, Math.min(15, 3 + sp * 0.3), nz * push + c.velocity.z * 0.4);
           this._capBall();
           this.ballPos.x = c.position.x + nx * (BALL_R + CAR_R);
           this.ballPos.z = c.position.z + nz * (BALL_R + CAR_R);
@@ -1166,12 +1172,12 @@ export class FootballScene {
         }
       }
       if (this._predictT > 0) {
-        // Lokal proqnoz: sadə fizika (host paketi gələnə qədər)
+        // Lokal proqnoz: sadə fizika (host paketi gələnə qədər) — host ilə EYNİ
         const p = this.ballPos, v = this.ballVel;
         v.y -= 22 * dt;
-        v.multiplyScalar(1 - 0.12 * dt);
+        v.multiplyScalar(1 - 0.10 * dt);
         p.addScaledVector(v, dt);
-        if (p.y < BALL_R) { p.y = BALL_R; if (v.y < 0) v.y = -v.y * 0.68; }
+        if (p.y < BALL_R) { p.y = BALL_R; if (v.y < 0) v.y = -v.y * 0.72; }
       } else if (this._netBall) {
         // Qonaq: interpolyasiya
         this.ballPos.x += (this._netBall.p[0] - this.ballPos.x) * Math.min(1, dt * 12);
