@@ -689,12 +689,27 @@ export class EndlessScene {
         const rvx = car.velocity.x - tvx, rvz = car.velocity.z - tvz;
         const vn = rvx * nx + rvz * nz;
         if (vn < 0) {
-          // yalnız normal komponent silinir → maşın yan boyu sürüşür
+          // ARXADAN DƏYMƏ: normal komponenti tam silmək maşını DAYANDIRIRDI
+          // (istifadəçi rəyi: "dəyir dayanır" — yol boş olsa yanından keçib
+          // getməli idi). İndi yalnız NİSBİ yaxınlaşma söndürülür: oyunçu
+          // qabaqdakının sürətini saxlayır, üstəlik yan tərəfə sıyrılır və
+          // təbii şəkildə ötür.
           car.velocity.x -= vn * nx;
           car.velocity.z -= vn * nz;
-          car.velocity.multiplyScalar(0.985);
-          // arxadan dəyəndə qabaqdakı maşın itələnir/yavaşıyır — hiss real olur
-          t.spd = Math.max(6, t.spd - Math.min(6, -vn * 0.22));
+          // YANA SIYRILMA: təmas normalının yol eninə (lateral) komponenti
+          // istiqamətində yüngül itələmə — maşın yapışıb qalmır, ötür
+          const yan = Math.abs(nx * Math.cos(car.heading) - nz * Math.sin(car.heading));
+          if (yan < 0.55) {
+            // demək olar tam arxadan dəyib: hansı tərəf boşdursa ora sıyır
+            const sx = -Math.cos(car.heading), sz = Math.sin(car.heading);
+            const tərəf = (car.lateral || 0) > 0 ? -1 : 1;   // yolun ortasına doğru
+            car.velocity.x += sx * tərəf * 4.2;
+            car.velocity.z += sz * tərəf * 4.2;
+            car.position.x += sx * tərəf * 0.22;
+            car.position.z += sz * tərəf * 0.22;
+          }
+          // qabaqdakı maşın itələnir (yavaşıyır) — hiss real olur
+          t.spd = Math.max(6, t.spd - Math.min(5, -vn * 0.18));
           if (-vn > 11 && (this._scrapeT || 0) <= 0) {
             this._scrapeT = 0.3;
             this.effects.spawnSmoke({ x: car.position.x - nx, y: 0.4, z: car.position.z - nz });

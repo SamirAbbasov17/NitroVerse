@@ -742,6 +742,49 @@ export class EndlessRoad {
           lamp.rotation.y = Math.atan2(tn[i].x, tn[i].z);
           g.add(lamp);
         }
+        // ————— DAĞ MASSİVİ —————
+        // ƏVVƏL tunel düz səhrada "səbəbsiz boz lövhə" kimi görünürdü
+        // (istifadəçi rəyi: tunel pozulub) — çünki zona determinist idi və
+        // relyefin qalxıb-qalxmamasına baxmırdı. İndi qabığın üstünə
+        // relyefi ÖZÜMÜZ qururuq: yol həqiqətən təpənin içindən keçir.
+        {
+          const mCol = this.style.mountainColor ?? 0x8a6a4a;
+          const mMat = new THREE.MeshStandardMaterial({
+            color: mCol, roughness: 1, metalness: 0, flatShading: true,
+          });
+          const uzunluq = tp.length;
+          for (let i = 1; i < uzunluq - 1; i += 3) {
+            const c = tp[i], n = tn[i];
+            const yerY = terrainY(c.x, c.z);
+            // Şərt TAVANA görədir: relyef qabığın üstünü (c.y + H) örtmürsə
+            // kütlə lazımdır. Əvvəl yola görə yoxlanırdı və tunel borusu
+            // relyefin üstündən çıxıb "boz boru" kimi görünürdü.
+            const örtülü = yerY > c.y + H + 3;
+            if (örtülü) continue;
+            for (const sd of [-1, 1]) {
+              const r = 16 + Math.random() * 10;
+              const h = H + 5 + Math.random() * 9;
+              const kütlə = new THREE.Mesh(new THREE.ConeGeometry(r, h, 6 + ((i + (sd > 0 ? 1 : 0)) % 3), 1), mMat);
+              // portal ağzını qapatmasın: kütlə yolun YANINDA, azca kənarda
+              kütlə.position.set(
+                c.x + n.x * sd * (W + r * 0.62),
+                Math.min(c.y, yerY) - 1.2 + h / 2,
+                c.z + n.z * sd * (W + r * 0.62),
+              );
+              kütlə.rotation.y = Math.random() * 3;
+              kütlə.userData.roadPart = true;   // dəhliz süpürgəsi toxunmasın
+              g.add(kütlə);
+            }
+            // üstdən bağlayan kütlə: qabığı TAM örtür (boru görünməsin)
+            const üstH = H + 11 + Math.random() * 6;
+            const üst = new THREE.Mesh(new THREE.ConeGeometry(W + 15, üstH, 7, 1), mMat);
+            üst.position.set(c.x, Math.min(c.y, yerY) - 1.5 + üstH / 2, c.z);
+            üst.rotation.y = Math.random() * 3;
+            üst.userData.roadPart = true;
+            g.add(üst);
+          }
+        }
+
         // Giriş/çıxış portalları — beton çərçivə
         const portMat = new THREE.MeshStandardMaterial({ color: 0x6a6e7c, roughness: 0.9, flatShading: true });
         for (const e of [0, tp.length - 1]) {
