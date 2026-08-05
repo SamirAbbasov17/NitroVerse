@@ -108,82 +108,13 @@ export class EndlessScene {
     this.scene.add(this.sun.target);
     this.amb = new THREE.AmbientLight(0xffffff, 0.32);
     this.scene.add(this.amb);
-    // Gecə faraları (gündüz intensity=0 — işıq sayı dəyişmir)
-    // Fara: nöqtəvi işıq hər tərəfə yayılırdı və yolu işıqlandırmırdı.
-    // Projektor irəli yönəlir — asfalt, dekor və işarələr həqiqətən işıq alır.
-    this.headlight = new THREE.SpotLight(0xffe2b0, 0, 90, 0.64, 1.0, 1.15);
+    // FARA — TƏK konusvari projektor (istifadəçi istəyi: bütün çəkilmiş
+    // zolaq/gölməçə overlay-ları silindi, yolu yalnız real işıq aydınladır).
+    // Penumbra 0.55: konusun kənarı yumşaq, amma forması oxunur.
+    this.headlight = new THREE.SpotLight(0xffe2b0, 0, 95, 0.6, 0.55, 1.0);
     this.headlight.castShadow = false;   // mobil üçün: kölgəsiz
     this.scene.add(this.headlight);
     this.scene.add(this.headlight.target);
-    // FARA GÖLMƏÇƏSİ — additiv işıq ləkəsi (spot işığın asfaltda görünməsi
-    // səth bucağından asılıdır və zəif çıxırdı). KRİTİK: alfa DÖRD kənarda da
-    // sıfıra enməlidir — əvvəl lövhənin düzbucaqlı sərhədi ekranda "kəsik
-    // kölgə" kimi görünürdü (istifadəçi rəyi ×3).
-    {
-      const N = 256;
-      const cv = document.createElement('canvas');
-      cv.width = cv.height = N;
-      const cx2 = cv.getContext('2d');
-      const im = cx2.createImageData(N, N);
-      for (let py = 0; py < N; py++) {
-        // v: 0 = maşına yaxın uc, 1 = uzaq uc
-        const v = py / (N - 1);
-        // Boyuna profil: işıq BUFERİN ALTINDAN başlayır (yaxın uc maşının
-        // altındadır) — əvvəl 6 m-lik açılma maşının qabağında "qara cib"
-        // yaradırdı (istifadəçi skrinşotu: "işıqdakı qara nədi").
-        const giriş = Math.min(1, v / 0.055);             // yaxın ucun sönməsi (~2 m)
-        const çıxış = Math.pow(1 - v, 1.55);              // uzaq ucun sönməsi
-        const boy = giriş * çıxış;
-        // Konus: yaxında dar, uzaqda enli
-        const yayıl = 0.13 + v * 0.40;
-        for (let px = 0; px < N; px++) {
-          const u = (px - (N - 1) / 2) / ((N - 1) / 2);   // -1..1
-          const en = Math.exp(-(u * u) / (2 * yayıl * yayıl));
-          // Yan kənar zəmanəti: |u| → 1 olanda mütləq sıfır
-          const kənar = Math.pow(Math.max(0, 1 - u * u), 1.1);
-          const a = Math.max(0, Math.min(1, boy * en * kənar));
-          const o = (py * N + px) * 4;
-          im.data[o] = 255 * a; im.data[o + 1] = 232 * a; im.data[o + 2] = 188 * a;
-          im.data[o + 3] = 255;
-        }
-      }
-      cx2.putImageData(im, 0, 0);
-      const tex = new THREE.CanvasTexture(cv);
-      tex.colorSpace = THREE.SRGBColorSpace;
-      this._beamPool = new THREE.Mesh(
-        new THREE.PlaneGeometry(12, 38),
-        new THREE.MeshBasicMaterial({
-          map: tex, blending: THREE.AdditiveBlending, transparent: true,
-          depthWrite: false, opacity: 0,
-        })
-      );
-      this._beamPool.rotation.x = -Math.PI / 2;
-      this._beamPool.renderOrder = 2;      // asfaltdan sonra çəkilsin
-      this.scene.add(this._beamPool);
-      // YAXIN İŞIQ HOVUZU: maşının burnunun altını/ətrafını yumşaq doldurur —
-      // şüa zolağı ilə maşın arasında qaranlıq cib qalmasın
-      const pc = document.createElement('canvas');
-      pc.width = pc.height = 128;
-      const pg = pc.getContext('2d');
-      const grad = pg.createRadialGradient(64, 64, 4, 64, 64, 62);
-      grad.addColorStop(0, 'rgba(255,232,188,0.85)');
-      grad.addColorStop(0.55, 'rgba(255,228,180,0.35)');
-      grad.addColorStop(1, 'rgba(255,226,176,0)');
-      pg.fillStyle = grad;
-      pg.fillRect(0, 0, 128, 128);
-      const pt = new THREE.CanvasTexture(pc);
-      pt.colorSpace = THREE.SRGBColorSpace;
-      this._beamNear = new THREE.Mesh(
-        new THREE.CircleGeometry(5.6, 24),
-        new THREE.MeshBasicMaterial({
-          map: pt, blending: THREE.AdditiveBlending, transparent: true,
-          depthWrite: false, opacity: 0,
-        })
-      );
-      this._beamNear.rotation.x = -Math.PI / 2;
-      this._beamNear.renderOrder = 2;
-      this.scene.add(this._beamNear);
-    }
 
     // ——— Səma + günəş diski + yer ———
     this._skyMat = new THREE.MeshBasicMaterial({ side: THREE.BackSide, fog: false, depthWrite: false });
@@ -338,7 +269,6 @@ export class EndlessScene {
 
     this.skids = new SkidMarks(this.scene);
     this.effects = new Effects(this.scene);
-    this._buildHeadlights();
 
     // ——— Biom / hava / gün vəziyyəti ———
     this._biomeIdx = 0;
@@ -1227,56 +1157,6 @@ export class EndlessScene {
     return v.y;
   }
 
-  // ————— FARALAR —————
-  // Nöqtəvi işıq TEXNİKİ olaraq yanırdı, amma görünmürdü: asfalt demək olar
-  // qaradır və işığın özü (konus, lampa, yolda işıq gölməçəsi) yox idi.
-  // Low-poly gecə sürüşündə görüntünü məhz bu üç element satır.
-  _buildHeadlights() {
-    const g = new THREE.Group();
-    // Nə konus, nə lampa topları — ikisi də süni görünürdü (istifadəçi rəyi).
-    // Gecə görüntüsünü YALNIZ projektor işığı + yolda yumşaq işıq sahəsi verir.
-    this._hlBeams = [];
-    // Yolda işıq gölməçəsi — radial qradiyent
-    const cv = document.createElement('canvas');
-    cv.width = cv.height = 64;
-    const cx = cv.getContext('2d');
-    const gr = cx.createRadialGradient(32, 32, 1, 32, 32, 31);
-    gr.addColorStop(0, 'rgba(255,240,210,0.95)');
-    gr.addColorStop(0.30, 'rgba(255,234,195,0.55)');
-    gr.addColorStop(0.62, 'rgba(255,228,182,0.20)');
-    gr.addColorStop(1, 'rgba(255,225,175,0)');
-    cx.fillStyle = gr;
-    cx.fillRect(0, 0, 64, 64);
-    const tex = new THREE.CanvasTexture(cv);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    this._hlPool = new THREE.Mesh(
-      new THREE.PlaneGeometry(1, 1),
-      new THREE.MeshBasicMaterial({
-        map: tex, transparent: true, opacity: 0.5,
-        blending: THREE.AdditiveBlending, depthWrite: false,
-      })
-    );
-    this._hlPool.rotation.x = -Math.PI / 2;
-    this._hlPool.scale.set(11, 30, 1);
-    this._hlPool.position.set(0, 0.07, 12.0);
-    this._hlPool.renderOrder = 2;
-    g.add(this._hlPool);
-    g.visible = false;
-    this._hl = g;
-    this.playerCar.root.add(g);
-  }
-
-  // night: 0..1 — gecə payı
-  _updateHeadlights(night) {
-    if (!this._hl) return;
-    const on = night > 0.06;
-    this._hl.visible = on;
-    if (!on) return;
-    // Yüngül titrəyiş — canlı görünsün, amma göz yormasın
-    const flick = 0.96 + Math.sin(this._time * 2.3) * 0.04;
-    this._hlPool.material.opacity = 0.42 * night * flick;
-  }
-
   _buildRain() {
     const geo = new THREE.BoxGeometry(0.03, 0.85, 0.03);
     const mat = new THREE.MeshBasicMaterial({ color: 0xcfe0ee, transparent: true, opacity: 0.55 });
@@ -1432,12 +1312,10 @@ export class EndlessScene {
     // yanma anı ilə üst-üstə düşür: qaranlıq EYNİ rəngdə, bütöv işıqlanır.
     const kölgəAç = this._shadowBase && day.night < 0.12;
     if (this.sun.castShadow !== kölgəAç) this.sun.castShadow = kölgəAç;
-    this.headlight.intensity = day.night * 130;
+    // Tək işıq mənbəyi olduğundan daha güclüdür
+    this.headlight.intensity = day.night * 200;
     // Küçə lampaları yalnız qaranlıqda yanır (gündüz parlayan kürə = qüsur)
     setLampGlow(0.1 + day.night * 2.4);
-    if (this._beamPool) this._beamPool.material.opacity = day.night * 0.6;
-    if (this._beamNear) this._beamNear.material.opacity = day.night * 0.34;
-    this._updateHeadlights(day.night);
 
     // Günəş mövqeyi (maşını izləyir)
     const c = this.playerCar.position;
@@ -1649,32 +1527,12 @@ export class EndlessScene {
     // kölgə səhnədən "qopur" (dünya boyu sürüşən ləkə kimi görünür)
     if (this.sun.castShadow) this.sun.shadow.camera.updateProjectionMatrix();
     {
+      // TƏK konus işıq: buferdən çıxır, yola aşağı bucaqla dəyir
       const hh = this.playerCar.heading;
       const hy = (this._carGy ?? 0);
-      this.headlight.position.set(c.x + Math.sin(hh) * 2.0, hy + 1.15, c.z + Math.cos(hh) * 2.0);
-      // Hədəf 24 m qabaqda, yol səviyyəsində — konus asfaltı yalayır
-      this.headlight.target.position.set(c.x + Math.sin(hh) * 38, hy - 0.35, c.z + Math.cos(hh) * 38);
+      this.headlight.position.set(c.x + Math.sin(hh) * 2.0, hy + 1.3, c.z + Math.cos(hh) * 2.0);
+      this.headlight.target.position.set(c.x + Math.sin(hh) * 30, hy - 0.6, c.z + Math.cos(hh) * 30);
       this.headlight.target.updateMatrixWorld();
-      // Gölməçə: maşının 16 m qabağında, yolun mailinə uyğun əyilmiş
-      if (this._beamPool && this._beamPool.material.opacity > 0.01) {
-        const bp = this._beamPool;
-        const fx2 = Math.sin(hh), fz2 = Math.cos(hh);
-        const uzaqY = this.road.heightAtPos(
-          { x: c.x + fx2 * 36, y: 0, z: c.z + fz2 * 36 }, this.playerCar.wpHint);
-        // 16 m: zolağın yaxın ucu (uz. 38) buferin ALTINA düşür — qara cib yox
-        bp.position.set(c.x + fx2 * 16, hy + 0.1, c.z + fz2 * 16);
-        bp.rotation.order = 'YXZ';
-        bp.rotation.y = hh;
-        bp.rotation.x = -Math.PI / 2 + Math.atan2(uzaqY - hy, 30);
-        bp.visible = true;
-        if (this._beamNear) {
-          this._beamNear.position.set(c.x + fx2 * 2.2, hy + 0.06, c.z + fz2 * 2.2);
-          this._beamNear.visible = true;
-        }
-      } else if (this._beamPool) {
-        this._beamPool.visible = false;
-        if (this._beamNear) this._beamNear.visible = false;
-      }
     }
 
     // Hava dəyişimi
