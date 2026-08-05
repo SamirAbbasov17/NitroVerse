@@ -46,6 +46,9 @@ export function mergeStaticGroup(group) {
     if (!merged) continue;
     const mesh = new THREE.Mesh(merged, b.material);
     mesh.castShadow = true;
+    // KÖLGƏ QƏBULU birləşmədən sonra da qalmalıdır: əvvəl itirdi və zen-də
+    // yol/torpaq maşının kölgəsini göstərmirdi (kölgə sistemi "işləmirdi").
+    mesh.receiveShadow = true;
     // Yol hissəsi işarəsi birləşmədən SONRA da qalmalıdır — yoxsa dəhliz
     // süpürgəsi yolun öz kəsik xətlərini və körpü dayaqlarını "maneə" sanır
     if (b.roadPart) mesh.userData.roadPart = true;

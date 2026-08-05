@@ -127,15 +127,36 @@ export function makeBuilding(opts = {}) {
 
 // ————— Küçə lampası —————
 // withLight=false: yalnız emissive baş (performans üçün — çox PointLight FPS öldürür)
+// Lampa baş materialları RƏNGƏ görə keşlənir və PAYLAŞILIR: birləşmiş
+// chunk-larda da eyni instansiya qalır, ona görə səhnə gecə payına görə
+// hamısının emissiveIntensity-ni dəyişə bilir (gündüz lampa YANMIR —
+// istifadəçi auditində gün ortası parlayan kürələr qüsur kimi qeydə alındı).
+// DİQQƏT: rəng parametri qorunur — neon trekdə mavi/çəhrayı növbələşməsi
+// köhnə davranışdır, itməməlidir.
+const LAMP_MATS = new Map();
+export function lampHeadMat(color = 0x34e0ff) {
+  let m = LAMP_MATS.get(color);
+  if (!m) {
+    m = new THREE.MeshStandardMaterial({
+      color, emissive: color, emissiveIntensity: 2.1, flatShading: true,
+    });
+    m.userData = { shared: true };
+    LAMP_MATS.set(color, m);
+  }
+  return m;
+}
+// Bütün lampa başlarının parıltısı birdən (zen gün əyrisi / səhnə resetı)
+export function setLampGlow(k) {
+  for (const m of LAMP_MATS.values()) m.emissiveIntensity = k;
+}
+export const LAMP_HEAD_MAT = lampHeadMat(0x34e0ff);
+
 export function makeLamp(color = 0x34e0ff, withLight = false) {
   const g = new THREE.Group();
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 6, 6), flatMat(0x20242e));
   pole.position.y = 3;
   g.add(pole);
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.55, 8, 6),
-    new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 2.1, flatShading: true })
-  );
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.55, 8, 6), lampHeadMat(color));
   head.position.y = 6;
   g.add(head);
   if (withLight) {

@@ -4,7 +4,7 @@ import { t } from './i18n.js';
 import { CARS, getCarById, carSkin } from '../data/cars.js';
 import { getTrackById } from '../data/tracks.js';
 import { TrackBuilder } from '../world/TrackBuilder.js';
-import { makeNameTag, makeContainer } from './AssetFactory.js';
+import { makeNameTag, makeContainer, setLampGlow } from './AssetFactory.js';
 import { Environment } from '../world/Environment.js';
 import { Car } from '../entities/Car.js';
 import { PlayerController } from '../entities/PlayerController.js';
@@ -52,6 +52,10 @@ export class GameplayScene {
     this.onQuit = onQuit;
     this.onLobby = onLobby;
     this.onRestart = onRestart;
+
+    // Zen gün əyrisi paylaşılan lampa materiallarını söndürmüş ola bilər —
+    // yarış/arena/futbol səhnəsi tam parıltı ilə başlamalıdır
+    setLampGlow(2.1);
 
     this.isRace = config.mode === 'race';
     this.online = config.online || null; // { net, players } — onlayn yarış

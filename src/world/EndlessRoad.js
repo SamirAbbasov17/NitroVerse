@@ -484,6 +484,7 @@ export class EndlessRoad {
       color, roughness: 1, metalness: 0, flatShading: true, side: THREE.DoubleSide,
     }));
     mesh.userData.roadPart = true;   // dəhliz süpürgəsi toxunmasın
+    mesh.receiveShadow = true;
     return mesh;
   }
 
@@ -538,6 +539,7 @@ export class EndlessRoad {
       side: THREE.DoubleSide,
     }));
     rb.userData.roadPart = true;
+    rb.receiveShadow = true;      // maşın/dekor kölgəsi asfaltda görünsün
     return rb;
   }
 
@@ -721,14 +723,19 @@ export class EndlessRoad {
         const THICK = 1.15;
         g.add(this._arch(tp, tn, W, WALL_H, H - WALL_H, ceilC));
         g.add(this._arch(tp, tn, W + THICK, WALL_H, H - WALL_H + THICK, 0x5d6270));
+        // KRİTİK: divar/zolaq mesh-lərinə roadPart qoyulmalıdır — dəhliz
+        // süpürgəsi (_clearRoadCorridor) onları 'yol üstündəki maneə' sanıb
+        // SİLİRDİ. Nəticədə tunelin içi divarsız-işıqsız qara boşluq idi
+        // (vizual audit tapıntısı).
+        const qoru = (m) => { m.userData.roadPart = true; return m; };
         for (const sd of [1, -1]) {
-          g.add(this._wall(tp, tn, sd * W, 0, WALL_H, wallC, { emissive: 0x3a3e4a, emissiveIntensity: 0.75 }));
+          g.add(qoru(this._wall(tp, tn, sd * W, 0, WALL_H, wallC, { emissive: 0x3a3e4a, emissiveIntensity: 0.75 })));
           // xarici divar üzü — qalınlıq çöldən görünsün
-          g.add(this._wall(tp, tn, sd * (W + 1.15), 0, WALL_H, 0x5d6270, { roughness: 1 }));
+          g.add(qoru(this._wall(tp, tn, sd * (W + 1.15), 0, WALL_H, 0x5d6270, { roughness: 1 })));
           // Divar boyu işıq zolağı — tunel işıqlandırması
-          g.add(this._wall(tp, tn, sd * (W - 0.05), WALL_H - 0.62, WALL_H - 0.24, 0xfff0c8, {
+          g.add(qoru(this._wall(tp, tn, sd * (W - 0.05), WALL_H - 0.62, WALL_H - 0.24, 0xfff0c8, {
             emissive: 0xffdca0, emissiveIntensity: 2.6, roughness: 0.4,
-          }));
+          })));
         }
         // Tavan lampaları — tunel içi işıqlı olsun
         for (let i = 2; i < tp.length - 1; i += 3) {
@@ -740,48 +747,74 @@ export class EndlessRoad {
           );
           lamp.position.set(tp[i].x, tp[i].y + H - 0.25, tp[i].z);
           lamp.rotation.y = Math.atan2(tn[i].x, tn[i].z);
+          lamp.userData.roadPart = true;   // süpürgə tavan lampasını silməsin
           g.add(lamp);
         }
-        // ————— DAĞ MASSİVİ —————
-        // ƏVVƏL tunel düz səhrada "səbəbsiz boz lövhə" kimi görünürdü
-        // (istifadəçi rəyi: tunel pozulub) — çünki zona determinist idi və
-        // relyefin qalxıb-qalxmamasına baxmırdı. İndi qabığın üstünə
-        // relyefi ÖZÜMÜZ qururuq: yol həqiqətən təpənin içindən keçir.
+        // ————— DAĞ SİLSİLƏSİ —————
+        // 1-ci cəhd (konuslar) portalı udurdu və yolun üstündən kütlə
+        // asılırdı (vizual audit: maşın 'qayanın içinə girirdi'). İndi qabığın
+        // üstünə oturan, yol boyu uzanan SİLSİLƏ prizması qurulur: en kəsiyi
+        // qabıqdan kənarda başlayır (±(W+0.9), H+0.5), zirvəsi mərkəzdə,
+        // ətəkləri terrainə enir. Portallardan 1 seqment içəridə başlayır —
+        // giriş üzü açıq qalır. Ucları qapaqla bağlanır (içi görünməsin).
         {
           const mCol = this.style.mountainColor ?? 0x8a6a4a;
           const mMat = new THREE.MeshStandardMaterial({
             color: mCol, roughness: 1, metalness: 0, flatShading: true,
           });
-          const uzunluq = tp.length;
-          for (let i = 1; i < uzunluq - 1; i += 3) {
-            const c = tp[i], n = tn[i];
-            const yerY = terrainY(c.x, c.z);
-            // Şərt TAVANA görədir: relyef qabığın üstünü (c.y + H) örtmürsə
-            // kütlə lazımdır. Əvvəl yola görə yoxlanırdı və tunel borusu
-            // relyefin üstündən çıxıb "boz boru" kimi görünürdü.
-            const örtülü = yerY > c.y + H + 3;
-            if (örtülü) continue;
-            for (const sd of [-1, 1]) {
-              const r = 16 + Math.random() * 10;
-              const h = H + 5 + Math.random() * 9;
-              const kütlə = new THREE.Mesh(new THREE.ConeGeometry(r, h, 6 + ((i + (sd > 0 ? 1 : 0)) % 3), 1), mMat);
-              // portal ağzını qapatmasın: kütlə yolun YANINDA, azca kənarda
-              kütlə.position.set(
-                c.x + n.x * sd * (W + r * 0.62),
-                Math.min(c.y, yerY) - 1.2 + h / 2,
-                c.z + n.z * sd * (W + r * 0.62),
-              );
-              kütlə.rotation.y = Math.random() * 3;
-              kütlə.userData.roadPart = true;   // dəhliz süpürgəsi toxunmasın
-              g.add(kütlə);
+          const a0 = 1, b0 = tp.length - 2;
+          if (b0 - a0 >= 2) {
+            const rnd = (i) => Math.sin(i * 12.9898 + 78.233) * 0.5 + 0.5;
+            const verts = [], idx = [];
+            const PROF = 5;   // profil nöqtəsi sayı
+            for (let i = a0; i <= b0; i++) {
+              const c = tp[i], n = tn[i];
+              // ucları alçalt — silsilə təbii şəkildə yerə enir
+              const k = Math.min(1, Math.min(i - a0, b0 - i) / 2.5);
+              const zirvə = c.y + H + (3 + 6.5 * k) + rnd(absStart + i) * 2.2 * k;
+              const çiyinY = c.y + H + 0.5;
+              const döşəmə = c.y - 3;   // göl/dərin çuxur ətəyi dartmasın
+              const solƏtəkY = Math.min(çiyinY, Math.max(terrainY(c.x - n.x * (W + 17), c.z - n.z * (W + 17)), döşəmə));
+              const sağƏtəkY = Math.min(çiyinY, Math.max(terrainY(c.x + n.x * (W + 17), c.z + n.z * (W + 17)), döşəmə));
+              const prof = [
+                [-(W + 17), solƏtəkY],
+                [-(W + 0.9), çiyinY],
+                [rnd(absStart + i + 7) * 2 - 1, zirvə],
+                [(W + 0.9), çiyinY],
+                [(W + 17), sağƏtəkY],
+              ];
+              for (const [off, y] of prof) verts.push(c.x + n.x * off, y, c.z + n.z * off);
             }
-            // üstdən bağlayan kütlə: qabığı TAM örtür (boru görünməsin)
-            const üstH = H + 11 + Math.random() * 6;
-            const üst = new THREE.Mesh(new THREE.ConeGeometry(W + 15, üstH, 7, 1), mMat);
-            üst.position.set(c.x, Math.min(c.y, yerY) - 1.5 + üstH / 2, c.z);
-            üst.rotation.y = Math.random() * 3;
-            üst.userData.roadPart = true;
-            g.add(üst);
+            const rows = b0 - a0 + 1;
+            for (let i = 0; i < rows - 1; i++) {
+              for (let j = 0; j < PROF - 1; j++) {
+                const o = i * PROF + j;
+                idx.push(o, o + PROF, o + 1, o + 1, o + PROF, o + PROF + 1);
+              }
+            }
+            // UC QAPAQLARI: profil halqasından çiyin ortasına yelpik
+            for (const [ring, çevir] of [[0, true], [rows - 1, false]]) {
+              const base = ring * PROF;
+              const cIdx = verts.length / 3;
+              // mərkəz nöqtəsi: profilin orta hündürlüyündə
+              const cx = (verts[base * 3] + verts[(base + PROF - 1) * 3]) / 2;
+              const cy = verts[(base + 1) * 3 + 1];
+              const cz = (verts[base * 3 + 2] + verts[(base + PROF - 1) * 3 + 2]) / 2;
+              verts.push(cx, cy, cz);
+              for (let j = 0; j < PROF - 1; j++) {
+                if (çevir) idx.push(base + j, base + j + 1, cIdx);
+                else idx.push(base + j + 1, base + j, cIdx);
+              }
+            }
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+            geo.setIndex(idx);
+            geo.computeVertexNormals();
+            const silsilə = new THREE.Mesh(geo, mMat);
+            silsilə.userData.roadPart = true;   // dəhliz süpürgəsi toxunmasın
+            silsilə.castShadow = true;
+            silsilə.receiveShadow = true;
+            g.add(silsilə);
           }
         }
 
@@ -793,11 +826,13 @@ export class EndlessRoad {
             const col = new THREE.Mesh(new THREE.BoxGeometry(1.5, H + 1.4, 1.6), portMat);
             col.position.set(c.x + n.x * (W + 0.7) * sd, c.y + (H + 1.4) / 2, c.z + n.z * (W + 0.7) * sd);
             col.rotation.y = Math.atan2(n.x, n.z);
+            col.userData.roadPart = true;
             g.add(col);
           }
           const lint = new THREE.Mesh(new THREE.BoxGeometry(W * 2 + 3.2, 1.5, 1.8), portMat);
           lint.position.set(c.x, c.y + H + 0.7, c.z);
           lint.rotation.y = Math.atan2(n.x, n.z);
+          lint.userData.roadPart = true;
           g.add(lint);
         }
       };

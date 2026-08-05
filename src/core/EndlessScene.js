@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { playerCarData } from '../data/playerCar.js';
 import { t } from './i18n.js';
+import { setLampGlow } from './AssetFactory.js';
 import { getCarById, CARS } from '../data/cars.js';
 import { Car } from '../entities/Car.js';
 import { PlayerController } from '../entities/PlayerController.js';
@@ -85,6 +86,23 @@ export class EndlessScene {
     this.scene.add(this.hemi);
     this.sun = new THREE.DirectionalLight(0xffffff, 1.2);
     this.sun.position.set(60, 110, 40);
+    // ————— KÖLGƏ (Faza 2.1) —————
+    // Zen indiyə qədər kölgəsiz idi və hər şey "yastı" görünürdü: maşın yola
+    // oturmurdu, ağac/qaya həcm vermirdi. Kadr büdcəsi bunu asanlıqla
+    // götürür (p50 ~2 ms), çərçivə maşının ətrafında dar saxlanılır ki,
+    // kölgə kartası dolğun olsun. Mobildə söndürülür (renderer.shadowMap).
+    if (!isTouchDevice()) {
+      this.sun.castShadow = true;
+      const sc = this.sun.shadow;
+      sc.mapSize.set(2048, 2048);
+      const R = 62;                       // yarım-çərçivə (m)
+      sc.camera.left = -R; sc.camera.right = R;
+      sc.camera.top = R; sc.camera.bottom = -R;
+      sc.camera.near = 1; sc.camera.far = 330;
+      sc.bias = -0.0006;
+      sc.normalBias = 0.035;              // akne/peter-panning tarazlığı
+      sc.camera.updateProjectionMatrix();
+    }
     this.scene.add(this.sun);
     this.scene.add(this.sun.target);
     this.amb = new THREE.AmbientLight(0xffffff, 0.32);
@@ -211,6 +229,7 @@ export class EndlessScene {
     );
     this.ground.rotation.x = -Math.PI / 2;
     this.ground.position.y = 0;
+    this.ground.receiveShadow = true;
     this.scene.add(this.ground);
     this._groundSnap = { x: NaN, z: NaN };
 
@@ -247,8 +266,8 @@ export class EndlessScene {
     this._nature = sharedNature();     // paylaşılan nüsxə (yarış da işlədir)
     // KayKit şəhər modelləri — rayonlarda prosedural qutuları əvəz edir
     this._city = sharedCity();
-    if (this._city.ready) this.road.cityFactory = (n) => this._city.get(n);
-    else this._city._loading.then(() => { this.road.cityFactory = (n) => this._city.get(n); });
+    if (this._city.ready) this.road.cityFactory = (n) => this._city.get(n, this.road.style?.natureTint);
+    else this._city._loading.then(() => { this.road.cityFactory = (n) => this._city.get(n, this.road.style?.natureTint); });
     // Təbiət modelinə BİOM TİNTİ tətbiq olunur (səhrada nanə-yaşıl kaktus
     // problemi — bax NatureKit.matFor). Forma qalır, rəng palitraya oturur.
     this.road.natureFactory = (name) => {
@@ -281,7 +300,7 @@ export class EndlessScene {
       try {
         const inst = library.instantiate(seç.model, seç.bodyColor, null, null);
         const root = inst.root || inst;
-        root.traverse?.((o) => { o.castShadow = false; });
+        root.traverse?.((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
         root.visible = false;
         this.scene.add(root);
         this._trafPool.push({ root, wheels: inst.wheels || [], boş: true });
@@ -537,7 +556,7 @@ export class EndlessScene {
           <button class="ehud__btn" id="ehud-retro" title="Retro filtr">📺</button>
           <button class="ehud__btn" id="ehud-pause" title="Pauza">⏸</button>
         </div>
-        <div class="ehud__speed"><b id="ehud-speed">0</b><span>km/s</span></div>
+        <div class="ehud__speed"><b id="ehud-speed">0</b><span>${t('hud.kmh')}</span></div>
         <div class="ehud__toast" id="ehud-toast"></div>
         <div id="ehud-overlay"></div>
       </div>
@@ -748,9 +767,13 @@ export class EndlessScene {
 
   _setDayTime(id) {
     this._timeOverride = id;
-    const P = { dawn: 0.93, day: 0.2, dusk: 0.48, night: 0.7 };
+    // Fazalar DAY_KEYS açarlarına uyğundur: dan=0.0, günorta yaylası=0.34,
+    // qürub açarı=0.60, ən dərin gecə=0.72 (köhnə 4-pilləli əyrinin
+    // dəyərləri yeni əyridə YANLIŞ mərhələyə düşürdü — "qürub" seçəndə
+    // səhnə hələ günorta kimi qalırdı).
+    const P = { dawn: 0.0, day: 0.34, dusk: 0.60, night: 0.72 };
     // Ani sıçrayış yox: cari fazadan seçilənə doğru yumşaq sürüşmə
-    if (this._dayPhase == null) this._dayPhase = (this._time % DAY_PERIOD) / DAY_PERIOD;
+    if (this._dayPhase == null) this._dayPhase = ((this._time / DAY_PERIOD) + 0.26) % 1;
     this._dayPhaseTarget = id ? P[id] : null;
     this._dayFree = !id;
   }
@@ -1074,15 +1097,41 @@ export class EndlessScene {
     return { cur, nxt, k, seg };
   }
 
+  // ————— GÜN ƏYRİSİ (Faza 2.2) —————
+  // Əvvəl 4 pilləli kobud keçid vardı: gündüz düz, qürub qısa, gecə sabit.
+  // İndi 6 açar mərhələ (dan → səhər → günorta → günortadan sonra → qürub →
+  // gecə) və aralarında HAMAR interpolyasiya. Hər mərhələ öz dəyər dəstini
+  // gətirir: səma/torpaq parlaqlığı, günəş gücü, istilik, günəş yüksəkliyi,
+  // gecə payı, duman sıxlığı və ekspozisiya. Bu, atmosferi "yastı"lıqdan
+  // çıxarır — səhər soyuq və dumanlı, günorta kontrastlı, qürub isti-alçaq.
+  static DAY_KEYS = [
+    // ph,   sky,  ground, sunI, warm, elev, night, fogMul, expo
+    [0.00, 0.34, 0.52, 0.42, 0.62, 0.16, 0.55, 1.55, 1.02],  // dan
+    [0.10, 0.86, 0.90, 1.02, 0.34, 0.46, 0.06, 1.30, 1.10],  // səhər (dumanlı)
+    [0.28, 1.00, 1.00, 1.24, 0.04, 1.00, 0.00, 0.85, 1.15],  // günorta (kontrast)
+    [0.46, 0.98, 0.98, 1.16, 0.22, 0.78, 0.00, 0.95, 1.14],  // günortadan sonra
+    [0.60, 0.72, 0.80, 0.72, 1.00, 0.22, 0.10, 1.25, 1.08],  // qürub (isti, alçaq)
+    [0.72, 0.20, 0.40, 0.16, 0.30, 0.12, 1.00, 1.40, 0.98],  // toran → gecə
+    [1.00, 0.34, 0.52, 0.42, 0.62, 0.16, 0.55, 1.55, 1.02],  // dövr qapanır (dan)
+  ];
+
   _dayTint(t) {
-    // 0..1 dövr: gündüz → qürub → gecə → dan (əl ilə seçim varsa sabit qalır)
-    const ph = this._dayPhase != null ? this._dayPhase : (t % DAY_PERIOD) / DAY_PERIOD;
-    let sky = 1, ground = 1, sunI = 1.2, warm = 0, elev = 1, night = 0;
-    if (ph < 0.42) { /* gündüz */ }
-    else if (ph < 0.55) { const k = (ph - 0.42) / 0.13; warm = k; sunI = 1.2 - k * 0.4; sky = 1 - k * 0.25; elev = 1 - k * 0.6; }
-    else if (ph < 0.85) { const k = Math.min(1, (ph - 0.55) / 0.08); night = k; sky = 0.75 - k * 0.55; ground = 1 - k * 0.6; sunI = 0.8 - k * 0.62; warm = 1 - k; elev = 0.4 - k * 0.25; }
-    else { const k = (ph - 0.85) / 0.15; night = 1 - k; sky = 0.2 + k * 0.8; ground = 0.4 + k * 0.6; sunI = 0.18 + k * 1.0; warm = k * 0.4; elev = 0.15 + k * 0.85; }
-    return { sky, ground, sunI, warm, elev, night };
+    // BAŞLANĞIC OFSETİ: dövr 0-dan başlasa oyun DAN qaranlığında açılır və
+    // ilk təəssürat sönük olur. 0.26 → parlaq səhər/günorta arası.
+    const ph = this._dayPhase != null ? this._dayPhase
+      : ((t / DAY_PERIOD) + 0.26) % 1;
+    const K = EndlessScene.DAY_KEYS;
+    let i = 0;
+    while (i < K.length - 2 && ph >= K[i + 1][0]) i++;
+    const a = K[i], b2 = K[i + 1];
+    const span = Math.max(1e-6, b2[0] - a[0]);
+    let k = Math.min(1, Math.max(0, (ph - a[0]) / span));
+    k = k * k * (3 - 2 * k);                       // smoothstep — pillə yoxdur
+    const mix = (n) => a[n] + (b2[n] - a[n]) * k;
+    return {
+      sky: mix(1), ground: mix(2), sunI: mix(3), warm: mix(4),
+      elev: mix(5), night: mix(6), fogMul: mix(7), expo: mix(8),
+    };
   }
 
   // Maşının oturacağı hündürlük: yolda yol səthi, kənarda TORPAQ.
@@ -1317,9 +1366,17 @@ export class EndlessScene {
 
     this._groundMat.color.copy(groundC);
     this.scene.fog.color.copy(fogC);
-    const fogFar = 640 * (1 - this._weather.fogMul * 0.42) * (1 - day.night * 0.22);
-    this.scene.fog.near = Math.max(42, 85 * (1 - this._weather.fogMul * 0.45));
-    this.scene.fog.far = Math.max(210, fogFar);
+    // DUMAN artıq gün mərhələsindən də asılıdır (Faza 2.2): səhər sıx,
+    // günorta təmiz, qürub yumşaq, gecə orta — atmosfer canlı olur
+    const gDay = day.fogMul ?? 1;
+    const fogFar = 640 / gDay * (1 - this._weather.fogMul * 0.42) * (1 - day.night * 0.20);
+    this.scene.fog.near = Math.max(38, (85 / gDay) * (1 - this._weather.fogMul * 0.45));
+    this.scene.fog.far = Math.max(200, fogFar);
+    // Ekspozisiya mərhələ ilə dəyişir: günorta parlaq, gecə sakit
+    if (this.renderer && day.expo) {
+      const hədəf = day.expo * (1 - this._weather.fogMul * 0.06);
+      this.renderer.toneMappingExposure += (hədəf - this.renderer.toneMappingExposure) * Math.min(1, dt * 2.5);
+    }
     this.scene.background = fogC;
 
     // Səma toxuması — seyrək yenilənir (hər 0.4s)
@@ -1345,6 +1402,8 @@ export class EndlessScene {
     // arasındakı kəskin sərhəd yumşalır
     this.sun.intensity *= (1 - day.night * 0.45);
     this.headlight.intensity = day.night * 130;
+    // Küçə lampaları yalnız qaranlıqda yanır (gündüz parlayan kürə = qüsur)
+    setLampGlow(0.1 + day.night * 2.4);
     if (this._beamPool) this._beamPool.material.opacity = day.night * 0.6;
     this._updateHeadlights(day.night);
 
@@ -1512,7 +1571,7 @@ export class EndlessScene {
           const n1 = Math.sin(wx * 0.050 + 0.7) * Math.cos(wz * 0.044 - 1.2);
           const n2 = Math.sin((wx * 0.7 + wz) * 0.081 + 2.4);
           const n3 = Math.sin(wx * 0.118 - wz * 0.093 + 4.1);
-          const k = 0.972 + (n1 * 0.5 + n2 * 0.3 + n3 * 0.2) * 0.052;   // 0.92 … 1.02
+          const k = 0.978 + (n1 * 0.5 + n2 * 0.3 + n3 * 0.2) * 0.036;   // 0.92 … 1.02
           const warm = 1 + n2 * 0.014;
           job.c[i * 3] = k * warm; job.c[i * 3 + 1] = k; job.c[i * 3 + 2] = k * (2 - warm);
         }
@@ -1538,9 +1597,25 @@ export class EndlessScene {
     this.sunDisc.lookAt(c.x, 0, c.z);
     this.sunDisc.material.color.set(day.night > 0.5 ? 0xdfe8ff : (day.warm > 0.5 ? 0xffb46a : 0xffe6b0));
     this.sunDisc.scale.setScalar(day.night > 0.5 ? 0.65 : 1);
-    this.sun.position.set(c.x + 60, 110, c.z + 40);
+    // GÜNƏŞ YÜKSƏKLİYİ gün mərhələsindən gəlir (Faza 2.2): səhər/qürub
+    // alçaq → uzun kölgələr, günorta yuxarı → qısa. Əvvəl sabit dik idi və
+    // kölgə maşının altında itirdi.
+    {
+      const el = 0.14 + (day.elev ?? 1) * 0.72;          // 0..1 → bucaq payı
+      const bucaq = 0.16 + el * 0.95;                    // ~9° … ~63°
+      const az = 2.42;                                   // sabit azimut (arxa-sağ)
+      const D = 160;
+      this.sun.position.set(
+        c.x + Math.cos(az) * Math.cos(bucaq) * D,
+        Math.max(12, Math.sin(bucaq) * D),
+        c.z + Math.sin(az) * Math.cos(bucaq) * D,
+      );
+    }
     this.sun.target.position.copy(c);
     this.sun.target.updateMatrixWorld();
+    // Kölgə çərçivəsi maşınla birlikdə hərəkət edir; matris yenilənməsə
+    // kölgə səhnədən "qopur" (dünya boyu sürüşən ləkə kimi görünür)
+    if (this.sun.castShadow) this.sun.shadow.camera.updateProjectionMatrix();
     {
       const hh = this.playerCar.heading;
       const hy = (this._carGy ?? 0);
@@ -1572,13 +1647,15 @@ export class EndlessScene {
       this._time += step;
       if (need <= step + 0.01) this._timeGoal = null;
     }
-    // Günün vaxtı seçiləndə yumşaq keçid (ən qısa istiqamətlə, ~6 s)
+    // Günün vaxtı seçiləndə yumşaq keçid (ən qısa istiqamətlə, ~3.5 s).
+    // ƏVVƏL dt/22 idi — gecədən gündüzə 11 s çəkirdi və düymə "işləmir"
+    // təəssüratı yaradırdı (vizual audit: "day" kadrı keçidin ortasında).
     if (this._dayPhase != null) {
       if (this._dayPhaseTarget != null) {
         let d = this._dayPhaseTarget - this._dayPhase;
         if (d > 0.5) d -= 1;
         if (d < -0.5) d += 1;
-        const step = Math.sign(d) * Math.min(Math.abs(d), dt / 22);
+        const step = Math.sign(d) * Math.min(Math.abs(d), dt / 7);
         this._dayPhase = (this._dayPhase + step + 1) % 1;
         if (Math.abs(d) < 0.004) { this._dayPhase = this._dayPhaseTarget; this._dayPhaseTarget = null; }
       } else if (this._dayFree) {

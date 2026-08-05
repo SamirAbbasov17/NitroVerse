@@ -77,7 +77,7 @@ self.onmessage = (e) => {
     const n1 = Math.sin(wx * 0.050 + 0.7) * Math.cos(wz * 0.044 - 1.2);
     const n2 = Math.sin((wx * 0.7 + wz) * 0.081 + 2.4);
     const n3 = Math.sin(wx * 0.118 - wz * 0.093 + 4.1);
-    const k = 0.972 + (n1 * 0.5 + n2 * 0.3 + n3 * 0.2) * 0.052;
+    const k = 0.978 + (n1 * 0.5 + n2 * 0.3 + n3 * 0.2) * 0.036;
     const warm = 1 + n2 * 0.014;
     col[v * 3] = k * warm;
     col[v * 3 + 1] = k;

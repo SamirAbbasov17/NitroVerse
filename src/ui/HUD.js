@@ -53,7 +53,7 @@ export class HUD {
         <div class="hud__gear" id="hud-gear">1</div>
         <div class="hud__speed">
           <div class="hud__speed-num" id="hud-speed">0</div>
-          <div class="hud__speed-unit">km/s</div>
+          <div class="hud__speed-unit">${t('hud.kmh')}</div>
         </div>
         <div class="hud__missile-warn" id="hud-missile-warn">${t('hud.missile')}</div>
         <div class="hud__hp" id="hud-hp" style="display:none"><i id="hud-hp-fill"></i></div>

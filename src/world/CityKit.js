@@ -71,9 +71,31 @@ class CityKit {
     this.ready = this.templates.size > 0;
   }
 
-  get(name) {
+  // Biom tinti: şəhər binaları isti səhra/kanyon palitrasında doymuş
+  // qırmızı-yaşıl bloklar kimi seçilirdi (vizual audit). Yüngül multiply
+  // modeli saxlanır — atlas naxışı itmir, rəng mühitə oturur.
+  matFor(tintHex) {
+    if (!this._shared) return null;
+    if (!tintHex || tintHex === 0xffffff) return this._shared;
+    this._tints ||= new Map();
+    let m = this._tints.get(tintHex);
+    if (!m) {
+      m = this._shared.clone();
+      m.map = this._shared.map;
+      m.color = new THREE.Color(0xffffff).lerp(new THREE.Color(tintHex), 0.38);
+      m.userData = { ...(this._shared.userData || {}), shared: true };
+      this._tints.set(tintHex, m);
+    }
+    return m;
+  }
+
+  get(name, tintHex = null) {
     const t = this.templates.get(name);
-    return t ? t.clone(true) : null;
+    if (!t) return null;
+    const c = t.clone(true);
+    const m = this.matFor(tintHex);
+    if (m && m !== this._shared) c.traverse((o) => { if (o.isMesh) o.material = m; });
+    return c;
   }
 }
 
