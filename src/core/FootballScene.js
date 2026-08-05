@@ -668,7 +668,7 @@ export class FootballScene {
         <div class="btn-row">
           <button class="btn btn--primary" data-resume>${t('pause.resume')}</button>
           ${this.online ? `<button class="btn" data-lobby>${t('pause.backRoom')}</button>` : ''}
-          ${!this.online && this.onRestart ? `<button class="btn" data-restart>🔄 ${t('ui.again')}</button>` : ''}
+          ${!this.online && this.onRestart ? `<button class="btn" data-restart>${t('ui.again')}</button>` : ''}
           <button class="btn btn--ghost" data-quit>${this.online ? 'Otaqdan çıx' : 'Menyu'}</button>
         </div>
       </div>`;

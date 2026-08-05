@@ -541,7 +541,7 @@ export class ArenaScene {
         <div class="btn-row">
           <button class="btn btn--primary" data-resume>${t('pause.resume')}</button>
           ${this.online ? `<button class="btn" data-lobby>${t('pause.backRoom')}</button>` : ''}
-          ${!this.online && this.onRestart ? `<button class="btn" data-restart>🔄 ${t('ui.again')}</button>` : ''}
+          ${!this.online && this.onRestart ? `<button class="btn" data-restart>${t('ui.again')}</button>` : ''}
           <button class="btn btn--ghost" data-quit>${this.online ? 'Otaqdan çıx' : 'Menyu'}</button>
         </div>
       </div>`;
@@ -703,7 +703,7 @@ export class ArenaScene {
     if (!el) return;
     const extra = this.online
       ? `<button class="btn btn--ghost" data-spec-lobby>${t('pause.backRoom')}</button>`
-      : `<button class="btn" data-spec-retry>🔄 Yenidən</button>
+      : `<button class="btn" data-spec-retry>${t('ui.again')}</button>
          <button class="btn btn--ghost" data-spec-end>🏁 Nəticələndir</button>`;
     el.innerHTML = `
       <div class="spec-bar">
