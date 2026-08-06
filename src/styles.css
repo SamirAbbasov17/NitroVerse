@@ -168,6 +168,14 @@ button { font-family: var(--font); color: inherit; }
   scrollbar-width: thin;
   scrollbar-color: var(--accent) transparent;
 }
+/* Skroll siyahısının UŞAQLARI sıxılmamalıdır: əks halda konteyner skroll
+   etmək əvəzinə düymələri əzirdi. Siyahı skroll etsin. */
+.menu-list--scroll > * { flex-shrink: 0; }
+/* .btn--primary-dəki flex:1 ÜFÜQİ cərgələr üçündür (bərabər en). ŞAQULİ
+   siyahıda flex-basis:0 düyməni 28px-ə çökdürürdü — "Otaq yarat" yazısı
+   yarıya qədər kəsilirdi (istifadəçi rəyi). Şaquli konteynerlərdə düymə
+   öz təbii hündürlüyünü saxlayır. */
+.menu-list > .btn, .auth-body > .btn { flex: none; }
 
 .mrow {
   display: flex;
