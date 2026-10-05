@@ -14,7 +14,7 @@ Növbəti: 2D Carmageddon (visual novel + 2D oynanış). Sahibi: Samir Abbasov.
 2. **Hissi dəyişən işi əvvəl təklif et.** Oynanış hissi, kamera, fizika, görünüş, UI axını dəyişirsə — 2-3 cümləlik təklif yaz, təsdiq al, sonra başla. Buq düzəlişi və istifadəçinin konkret dediyi iş üçün təsdiq lazım deyil.
 3. **Bir dəyişiklik → yoxla → commit.** `npm run check`, vizual işdə `npm run test:shots` və kadrlara **Read ilə bax**. Bir commit-də bir mövzu.
 4. **"Hazırdır" yalnız sübutla.** Ölçmə nəticəsi və ya kadr olmadan "düzəldi/gözəl oldu" demə. Yoxlaya bilmədiyini açıq de.
-5. **Soruşulmayanı əlavə etmə.** Tapdığın başqa problemi siyahıya yaz, özbaşına düzəltmə.
+5. **Aşkar qüsuru soruşmadan düzəlt.** Buq, sınıq görüntü, iç-içə keçən/yanıb-sönən obyekt, xəta tapdınsa — eyni sinifdən olanların hamısını axtar, düzəlt, ölç, commit et, sonra hesabat ver (istifadəçi: "düzəlməlidirsə düzəlt sadəcə"). Yeni xüsusiyyət və zövq/hiss dəyişikliyi bura aid deyil — onlar 2-ci bəndlə gedir.
 6. **Push və deploy yalnız istifadəçi deyəndə.** (`nitroverse-deploy` skill-i)
 7. **Öz işini tərifləmə.** Nəyin dəyişdiyini, nəyin ölçüldüyünü, nəyin qaldığını yaz.
 
