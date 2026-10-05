@@ -32,6 +32,7 @@ npm run test:leak    # səhnə dövrlərində tekstura/geometriya sızması
 npm run test:items   # bonus qutusu invariantı (ikon–işıq, maqnit)
 npm run test:overlap # iç-içə keçən / yolun üstündəki obyektlər
 npm run test:zfight  # yanıb-sönən səthlər (z-fighting) — ~7 dəq
+npm run test:hitch   # kadr donması (şeyder kompilyasiyası və s.) — ~6 dəq
 npm run test:feel    # sürüş modelinin rəqəmləri → tests/out/feel.json (fizika dəyişəndə əvvəl/sonra)
 npm run serve:dev    # öz backend (SQLite) yerli
 ```

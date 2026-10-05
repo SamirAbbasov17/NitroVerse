@@ -24,7 +24,7 @@ Mənbə: `docs/DESIGN.md`, `docs/MODELS.md`. Ziddiyyət olsa onlar üstündür.
 ## Qaydalar
 
 - **Postprocessing pipeline yoxdur** (EffectComposer, bloom, SSAO). Effekt: bir dəfəlik həndəsə, additiv sprite, vertex rəngi, CSS overlay. **İstisna (istifadəçi qərarı, 2026-10-05):** Faza 3-də yalnız masaüstündə, ayarlardan söndürülə bilən yüngül bloom + rəng qradasiyası əlavə olunacaq (`docs/UPGRADE-PLAN.md`). O faza başlayana qədər və mobildə qayda qüvvədədir.
-- İşıq sayı sabitdir (pool). İşıq əlavə etmək/silmək shader-i yenidən kompilyasiya edir → kadr donması.
+- İşıq sayı sabitdir (pool). İşıq əlavə etmək/silmək, **`light.visible` və ya `light.castShadow` dəyişmək** bütün materialların şeyderini yenidən kompilyasiya edir → 60–70 ms donma (zen-də ölçüldü). İşığı söndürmək üçün `intensity = 0`; kölgəni söndürmək üçün kölgə kamerasının `far`-ını `near`-a endir. Gizli gözləyən obyektlərin şeyderi səhnə açılanda `renderer.compile` ilə isidilir (`EndlessScene._warmShaders`, `GameplayScene._warmFx`). Yoxlama: `npm run test:hitch`.
 - Statik dekor `MergeUtils` ilə birləşdirilir və ya `InstancedMesh`. Material **paylaşılır**; dəstə aid olanlar `userData.shared = true` (təmizlənəndə silinməsin).
 - `MergeUtils` `receiveShadow`-u mənbədən qoruyur — birləşdirmədən sonra materialı/kölgəni yoxla (neon binaların qapqara çıxması buqu).
 - Dinamik effektlər (tüstü, iz, sprite) pool-lanır. Kadr dövründə `new THREE.*` və ya `.clone()` yazma.

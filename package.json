@@ -20,7 +20,8 @@
     "test:items": "playwright test tests/box-invariant.spec.js",
     "test:feel": "playwright test tests/feel.spec.js",
     "test:overlap": "playwright test tests/overlap.spec.js",
-    "test:zfight": "playwright test tests/zfight.spec.js"
+    "test:zfight": "playwright test tests/zfight.spec.js",
+    "test:hitch": "playwright test tests/hitch.spec.js"
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.10",

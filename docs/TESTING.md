@@ -19,6 +19,7 @@ Testlər Playwright-dır və repo-dadır: `tests/`. Dev serveri (5173) özləri 
 | `npm run test:feel` | sürüş modeli: sürətlənmə, əyləc, sükan cavabı, drift, yoldan kənar, nitro — sabit addımla, maneəsiz → `tests/out/feel.json` | yoxdur — əvvəl/sonra müqayisə | ~5 s |
 | `npm run test:overlap` | bərk obyektlərin bir-birinin içinə girməsi və yolun üstünə çıxması (6 trek + zen) → `tests/out/overlap.json` | 0 (zavod konteynerləri və uzaq fon dağları istisna) | ~1.5 dəq |
 | `npm run test:zfight` | yanıb-sönən (eyni dərinlikdə üst-üstə düşən) səthlər: sürüş zamanı 36 baxış, hər biri iki dəfə render olunub müqayisə edilir → `tests/out/zfight/` (qırmızı = pozuntu) | ekranın < 0.05%-i | ~7 dəq |
+| `npm run test:hitch` | kadr donması: zen-də gün vaxtı/hava/biom keçidləri + yarış/futbol/arena 45 s; hər kadrın update+render xərci → `tests/out/hitch.json` | 33 ms-dən uzun kadr 0 | ~6 dəq |
 | `npm run test:mobile` | 844×390-da HUD düymələrinin örtüşməsi və ekrandan çıxması | 0 | ~30 s |
 
 Tək test: `npx playwright test tests/shots.spec.js -g "race-neon"`.

@@ -293,8 +293,23 @@ export class EndlessScene {
     // "maşın görsənmir" çaşqınlığı yaradırdı; 🎥/V ilə keçid yenə mümkündür
     this._camMode = 'tps';
 
+    this._warmShaders();
+
     if (typeof window !== 'undefined') window.__scene = this;
     if (import.meta.env.DEV && typeof window !== 'undefined') window.__THREE = THREE;
+  }
+
+  // Gizli gözləyən obyektlərin (yağış/qar, ulduzlar, quşlar, trafik maşınları)
+  // şeyderləri səhnə açılanda kompilyasiya olunur. Əvvəl ilk yağışda / ilk
+  // trafik maşınında kompilyasiya sürüşün ortasına düşür və kadr donurdu
+  // (ölçüldü: yağışın ilk kadrı 69 ms).
+  _warmShaders() {
+    if (!this.renderer) return;
+    const gizli = [this._rain?.mesh, this.stars, this._birds, ...(this._trafPool || []).map((t) => t.root)]
+      .filter((o) => o && o.visible === false);
+    for (const o of gizli) o.visible = true;
+    try { this.renderer.compile(this.scene, this.camera); } catch { /* köhnə brauzer */ }
+    for (const o of gizli) o.visible = false;
   }
 
   // Yumşaq dairəvi parıltı teksturası (atəşböcəyi/halə üçün)
@@ -1314,8 +1329,17 @@ export class EndlessScene {
     // qırılmamalıdır (istifadəçi rəyi, 3-cü dəfə) — toran pəncərəsində
     // (night 0.1–0.45) də kölgə fara zolağını kəsirdi. İndi astana faranın
     // yanma anı ilə üst-üstə düşür: qaranlıq EYNİ rəngdə, bütöv işıqlanır.
+    // DİQQƏT: `castShadow` DƏYİŞDİRİLMİR. Onu söndürüb-yandırmaq kölgəli işıq
+    // sayını dəyişir → three.js səhnədəki BÜTÜN materialların şeyderini yenidən
+    // kompilyasiya edir (ölçüldü: 61–70 ms donma, hər toran/dan keçidində).
+    // Əvəzinə kölgə kamerasının dərinliyi sıfıra endirilir: kölgə xəritəsi boş
+    // qalır, kölgə görünmür, şeyder isə eyni qalır.
     const kölgəAç = this._shadowBase && day.night < 0.12;
-    if (this.sun.castShadow !== kölgəAç) this.sun.castShadow = kölgəAç;
+    if (this._shadowBase && this._shadowOn !== kölgəAç) {
+      this._shadowOn = kölgəAç;
+      const kam = this.sun.shadow.camera;
+      kam.far = kölgəAç ? 330 : kam.near + 0.001;
+    }
     // Tək işıq mənbəyi olduğundan daha güclüdür
     this.headlight.intensity = day.night * 200;
     // Küçə lampaları yalnız qaranlıqda yanır (gündüz parlayan kürə = qüsur)
