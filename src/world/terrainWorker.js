@@ -7,7 +7,6 @@
 // üçün). terrainY/groundYAt düsturları eynidir — dəyişəndə HƏR İKİSİ
 // yenilənməlidir (yoxsa maşın ilə görüntü arasında fərq yaranar).
 
-const WATER_LEVEL = 0.9;
 const CUT_IN = 20, CUT_OUT = 34;
 
 function terrainY(x, z) {
@@ -26,7 +25,7 @@ function groundYAt(x, z, roadY, dist) {
 }
 
 self.onmessage = (e) => {
-  const { id, gx, gz, px, py, pz, localX, localY, baseColor, CELL } = e.data;
+  const { id, gx, gz, px, py, pz, localX, localY, CELL } = e.data;
   const n = localX.length;
   const h = new Float32Array(n);
   const col = new Float32Array(n * 3);

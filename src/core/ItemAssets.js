@@ -326,7 +326,6 @@ export function makeBullet() {
 export function makeMissile() {
   const g = new THREE.Group();
   const red = new THREE.MeshStandardMaterial({ color: 0xe33225, roughness: 0.4, metalness: 0.3, flatShading: true });
-  const dark = new THREE.MeshStandardMaterial({ color: 0x23252e, roughness: 0.5, flatShading: true });
   const white = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.4, flatShading: true });
 
   // Gövdə

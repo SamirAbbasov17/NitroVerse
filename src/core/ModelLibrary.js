@@ -457,15 +457,15 @@ export class ModelLibrary {
       const tint = typeof it === 'string' ? null : (it.tint ?? null);
       const kit = typeof it === 'string' ? null : (it.kit ?? null);
       // Açar cars.js-dəki carSkin() ilə EYNİ olmalıdır (model+boya+dəst)
-      const key = typeof it === 'string' ? it
+      const key2 = typeof it === 'string' ? it
         : name + (tint != null ? '@' + tint.toString(16) : '')
           + (kit ? '+' + Object.entries(kit).map((e) => e.join('')).join('') : '');
-      if (thumbs[key]) continue;
+      if (thumbs[key2]) continue;
       const inst = this.instantiate(name, tint, null, kit);
       inst.root.rotation.y = Math.PI * 0.82; // ön-yan baxış
       scene.add(inst.root);
       renderer.render(scene, camera);
-      thumbs[key] = canvas.toDataURL('image/png');
+      thumbs[key2] = canvas.toDataURL('image/png');
       scene.remove(inst.root);
     }
 

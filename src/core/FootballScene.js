@@ -225,11 +225,11 @@ export class FootballScene {
     boardTex.colorSpace = THREE.SRGBColorSpace;
     boardTex.wrapS = THREE.RepeatWrapping;
     const mkBoardMat = (rep) => {
-      const t = boardTex.clone();
-      t.repeat.set(rep, 1);
-      t.needsUpdate = true;
+      const tt = boardTex.clone();
+      tt.repeat.set(rep, 1);
+      tt.needsUpdate = true;
       return new THREE.MeshStandardMaterial({
-        map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.5, roughness: 0.7,
+        map: tt, emissive: 0xffffff, emissiveMap: tt, emissiveIntensity: 0.5, roughness: 0.7,
       });
     };
     const glassMat = new THREE.MeshStandardMaterial({
@@ -309,9 +309,9 @@ export class FootballScene {
         nx.strokeStyle = 'rgba(255,255,255,0.75)';
         nx.lineWidth = 1.6;
         for (let i = 0; i <= 8; i++) {
-          const t = (i / 8) * 64;
-          nx.beginPath(); nx.moveTo(t, 0); nx.lineTo(t, 64); nx.stroke();
-          nx.beginPath(); nx.moveTo(0, t); nx.lineTo(64, t); nx.stroke();
+          const tt = (i / 8) * 64;
+          nx.beginPath(); nx.moveTo(tt, 0); nx.lineTo(tt, 64); nx.stroke();
+          nx.beginPath(); nx.moveTo(0, tt); nx.lineTo(64, tt); nx.stroke();
         }
         const tx = new THREE.CanvasTexture(nc);
         tx.wrapS = tx.wrapT = THREE.RepeatWrapping;
@@ -488,7 +488,7 @@ export class FootballScene {
       seats.push({ team: 'blue', netId: null, name: 'Sən', carId: this.config.carId, isLocal: true, isBot: false });
     }
     // Botlarla 3v3-ə doldur
-    const count = (t) => seats.filter((s) => s.team === t).length;
+    const count = (tt) => seats.filter((s) => s.team === tt).length;
     let bi = 1;
     while (count('blue') < 3) seats.push({ team: 'blue', name: 'Bot ' + bi++, carId: pool[(bi * 3) % pool.length].id, isBot: true });
     while (count('red') < 3) seats.push({ team: 'red', name: 'Bot ' + bi++, carId: pool[(bi * 3) % pool.length].id, isBot: true });
@@ -641,8 +641,8 @@ export class FootballScene {
     }
   }
 
-  _toast(t) {
-    this._el.toast.textContent = t;
+  _toast(tt) {
+    this._el.toast.textContent = tt;
     this._el.toast.classList.add('is-on');
     clearTimeout(this._toastT);
     this._toastT = setTimeout(() => this._el.toast.classList.remove('is-on'), 2000);

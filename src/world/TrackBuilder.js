@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { makeStartArch } from '../core/AssetFactory.js';
 import { mergeStaticGroup } from '../core/MergeUtils.js';
 
-const UP = new THREE.Vector3(0, 1, 0);
 
 // Trek datasından yol mesh-i, kənar zolaqlar, start tağı və proqres üçün nöqtələr qurur.
 export class TrackBuilder {

@@ -157,7 +157,7 @@ export function makeReport(getStore, env = process.env) {
       const t = String(b.token || '');
       const [payload, sig] = t.split('.');
       if (!payload || !sig || !env.AUTH_SECRET) return json({ error: 'auth' }, 401);
-      let sessiya = null;
+      let sessiya;
       try {
         const { createHmac, timingSafeEqual } = await import('node:crypto');
         const gözlənilən = createHmac('sha256', env.AUTH_SECRET).update(payload).digest('base64url');
@@ -168,7 +168,7 @@ export function makeReport(getStore, env = process.env) {
       if (!sessiya || sessiya.exp < Date.now() || String(sessiya.nick).toLowerCase() !== admin) {
         return json({ error: 'forbidden' }, 403);
       }
-      let store2 = null;
+      let store2;
       try { store2 = getStore('reports'); } catch { return json({ items: [] }); }
       const { blobs } = await store2.list({ prefix: 'r/' });
       const açarlar = blobs.map((x) => x.key).sort().reverse().slice(0, 40);
@@ -208,7 +208,7 @@ export function makeReport(getStore, env = process.env) {
       const stack = String(b.stack ?? '').slice(0, 1600);
       const m = b.meta || {};
       const imza = fnv(msg + '|' + (stack.split('\n').find((l) => /\.js|\bat\b/.test(l)) || '').replace(/[?#].*$/, ''));
-      let store = null;
+      let store;
       try { store = getStore('reports'); } catch { return json({ ok: true, stored: false }); }
       try {
         const cid = clean(b.cid, 40) || 'anon';

@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "serve": "node server/index.mjs",
     "serve:dev": "AUTH_SECRET=dev-secret DB_FILE=./data/dev.db node server/index.mjs",
-    "lint": "eslint src tests server netlify",
+    "lint": "eslint src tests server netlify --max-warnings 0",
     "test:smoke": "playwright test tests/smoke.spec.js",
     "test:perf": "playwright test tests/perf.spec.js",
     "test:shots": "playwright test tests/shots.spec.js",

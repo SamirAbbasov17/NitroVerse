@@ -303,11 +303,11 @@ export class HUD {
     const host = this.root.querySelector('.hud');
     if (!host) return; // HUD artıq sökülüb (səhnədən çıxılıb)
     host.querySelectorAll('.toast').forEach((el) => el.remove()); // üst-üstə düşməsin
-    const t = document.createElement('div');
-    t.className = 'toast';
-    t.textContent = text;
-    host.appendChild(t);
-    setTimeout(() => t.remove(), 1800);
+    const tt = document.createElement('div');
+    tt.className = 'toast';
+    tt.textContent = text;
+    host.appendChild(tt);
+    setTimeout(() => tt.remove(), 1800);
   }
 
   setPaused(paused) {

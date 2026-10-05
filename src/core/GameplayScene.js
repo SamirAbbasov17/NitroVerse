@@ -561,19 +561,19 @@ export class GameplayScene {
     const car = this.playerCar;
     // Şaxədəyiksə şaxənin üstünə (öz istiqaməti ilə) qaytar — əsas yola sıçratma
     const onBr = this.track.branches?.length ? this.track.getBranchNearest(car.position, 6) : null;
-    let p, t;
+    let p, tt;
     if (onBr) {
       p = onBr.point;
-      t = onBr.tangent;
+      tt = onBr.tangent;
     } else {
       const near = this.track.getNearest(car.position); // tam axtarış
       p = this.track.points[near.index];
-      t = this.track.tangents[near.index];
+      tt = this.track.tangents[near.index];
     }
     // Tüstü effekti köhnə yerdə
     for (let i = 0; i < 5; i++) this.effects.spawnSmoke(car.position);
     audio.sfx('rescue');
-    this._place(car, { position: p.clone(), heading: Math.atan2(t.x, t.z) });
+    this._place(car, { position: p.clone(), heading: Math.atan2(tt.x, tt.z) });
     // Tüstü + effekt yeni yerdə
     for (let i = 0; i < 5; i++) this.effects.spawnSmoke(p);
     this._rescueCooldown = 1.2;
@@ -855,8 +855,8 @@ export class GameplayScene {
     const pyGeo = new THREE.BoxGeometry(0.6, 2.4, 0.6);
     const pyMat = new THREE.MeshStandardMaterial({ color: 0x3a3d46, roughness: 0.7 });
     const tipMat = new THREE.MeshStandardMaterial({ color: 0xff4433, emissive: 0xff4433, emissiveIntensity: 1.5 });
-    hz.lasers.forEach((t, gi) => {
-      const i = Math.round(t * N) % N;
+    hz.lasers.forEach((tt, gi) => {
+      const i = Math.round(tt * N) % N;
       const c = this.track.points[i];
       const n = this.track.normals[i];
       const tg = this.track.tangents[i];
@@ -1020,7 +1020,7 @@ export class GameplayScene {
   _updateMissileWarning(dt) {
     const missileIn = this.powerups.projectiles.some((p) => p.target?.isPlayer);
     const boltIn = this.powerups.pendingBolts?.some(
-      (b) => b.targets?.some((t) => t.isPlayer)
+      (b) => b.targets?.some((tt) => tt.isPlayer)
     );
     const inbound = missileIn || !!boltIn;
     const text = missileIn ? '🚀 RAKET GƏLİR!' : '🌩 ŞİMŞƏK GƏLİR!';

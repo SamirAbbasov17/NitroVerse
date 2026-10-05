@@ -61,9 +61,9 @@ for (const ev of ['touchstart', 'click']) {
 // yoxlayıb musiqini qururuq. Jest tələb edən brauzerlərdə zərərsizdir.
 {
   let cəhd = 0;
-  const t = setInterval(() => {
+  const tt = setInterval(() => {
     if (audio.ctx && audio.ctx.state === 'running' && audio._stalled) audio.resume(true);
-    if (++cəhd >= 16 || (audio.ctx && audio.ctx.state === 'running' && !audio._stalled)) clearInterval(t);
+    if (++cəhd >= 16 || (audio.ctx && audio.ctx.state === 'running' && !audio._stalled)) clearInterval(tt);
   }, 500);
 }
 window.addEventListener('pointerdown', () => {
@@ -116,7 +116,7 @@ function goMenu() {
     onStart: startGame,
     onStartOnline: startOnlineGame,
     thumbs,
-    onPreviewTrack: (t) => showcase.setTrack(t),
+    onPreviewTrack: (tt) => showcase.setTrack(tt),
     onPreviewCar: (c) => showcase.setCar(c),
     onPreviewDemo: (kind, cos) => showcase.setDemo(kind, cos),
   });
@@ -140,7 +140,7 @@ function goLobby(net) {
     onStart: startGame,
     onStartOnline: startOnlineGame,
     thumbs,
-    onPreviewTrack: (t) => showcase.setTrack(t),
+    onPreviewTrack: (tt) => showcase.setTrack(tt),
     onPreviewCar: (c) => showcase.setCar(c),
     onPreviewDemo: (kind, cos) => showcase.setDemo(kind, cos),
   });
@@ -321,7 +321,7 @@ async function boot() {
     thumbs = library.renderThumbnails(CARS);
     // Power-up ikonları — professional vektor badge-lər
     const abilityIcons = renderAbilityIcons();
-    for (const t of POWERUP_TYPES) t.img = abilityIcons[t.id];
+    for (const tt of POWERUP_TYPES) tt.img = abilityIcons[tt.id];
   } catch (err) {
     console.error('Model yükləmə xətası:', err);
   }

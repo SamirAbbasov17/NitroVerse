@@ -293,10 +293,6 @@ export class ArenaScene {
     const plateMat = new THREE.MeshStandardMaterial({
       color: 0x18102e, emissive: 0x2a1355, emissiveIntensity: 0.6, roughness: 0.5,
     });
-    const beamMat = new THREE.MeshBasicMaterial({
-      color: 0xc09aff, transparent: true, opacity: 0.2,
-      blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false,
-    });
     const padCandidates = [[0, 0]];
     for (let i = 0; i < 5; i++) {
       const a = (i / 5) * Math.PI * 2 + 0.25;
@@ -495,7 +491,7 @@ export class ArenaScene {
   _syncTouchItem() {
     if (!this.touchControls) return;
     const me = this.racers.find((r) => r.isLocal);
-    const it = me?.item ? PICKUP_TYPES.find((t) => t.id === me.item) : null;
+    const it = me?.item ? PICKUP_TYPES.find((tt) => tt.id === me.item) : null;
     this.touchControls.setItems(it ? { id: it.id, icon: it.icon, name: it.id } : null, null);
     for (const sel of ['[data-t="x"]', '[data-t="swap"]', '[data-t="rescue"]', '[data-t="back"]']) {
       const b = this.uiRoot.querySelector(sel);
@@ -504,13 +500,13 @@ export class ArenaScene {
   }
 
   _setHP(hp) {
-    const t = Math.max(0, hp) / HP_MAX;
-    this._el.hp.style.width = (t * 100).toFixed(0) + '%';
-    this._el.hp.style.background = t > 0.55 ? '#43d17c' : t > 0.28 ? '#ffb347' : '#ff5252';
+    const tt = Math.max(0, hp) / HP_MAX;
+    this._el.hp.style.width = (tt * 100).toFixed(0) + '%';
+    this._el.hp.style.background = tt > 0.55 ? '#43d17c' : tt > 0.28 ? '#ffb347' : '#ff5252';
   }
 
-  _toast(t) {
-    this._el.toast.textContent = t;
+  _toast(tt) {
+    this._el.toast.textContent = tt;
     this._el.toast.classList.add('is-on');
     clearTimeout(this._toastT);
     this._toastT = setTimeout(() => this._el.toast.classList.remove('is-on'), 2100);

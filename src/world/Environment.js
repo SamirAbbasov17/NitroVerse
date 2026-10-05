@@ -748,10 +748,9 @@ export class Environment {
           const s = 0.7 + Math.random() * 0.9;
           const rock = new THREE.Mesh(rockGeo, rockMat);
           rock.scale.set(s, s * 0.7, s);
-          rock.position.set(
-            pt.x + n.x * (half + 2.0 + Math.random() * 1.5), s * 0.3,
-            pt.z + n.z * (half + 2.0 + Math.random() * 1.5)
-          );
+          // BUQ İDİ: `side` işlədilmirdi — hər iki daş çayın EYNİ sahilinə düşürdü
+          const kənar = (half + 2.0 + Math.random() * 1.5) * side;
+          rock.position.set(pt.x + n.x * kənar, s * 0.3, pt.z + n.z * kənar);
           rock.rotation.y = Math.random() * 6;
           g.add(rock);
         }

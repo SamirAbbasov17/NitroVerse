@@ -182,11 +182,14 @@ export class Menu {
       this._gSending = true;
       inp.value = '';
       const nick = auth.profile?.nick || this._onlineName();
-      const t = await social.send(nick, text);
+      // BUQ İDİ: bu dəyişən `t` adlanırdı və i18n `t()` funksiyasını kölgələyirdi —
+      // mesaj göndərilməyəndə `t('online.msgFail')` çağırışı "t is not a function"
+      // atırdı və oyunçu heç bir izah görmürdü.
+      const sentAt = await social.send(nick, text);
       this._gSending = false;
-      if (t) {
-        this._gSeen.add(t);
-        this._appendGchat({ nick, text, t }, true);
+      if (sentAt) {
+        this._gSeen.add(sentAt);
+        this._appendGchat({ nick, text, t: sentAt }, true);
       } else {
         this._appendGchat({ nick: 'Sistem', text: t('online.msgFail'), t: 0 }, false);
       }
@@ -874,10 +877,10 @@ export class Menu {
       </button>`;
     }).join('');
 
-    const trackBtns = TRACKS.map((t) => `
-      <button class="seg seg--sm ${t.id === net.lobbyTrack ? 'is-selected' : ''}" data-ltrack="${t.id}" ${isHost ? '' : 'disabled'}>
-        <span class="seg__num" style="font-size:20px">${t.icon}</span>
-        <span class="seg__label">${t.name.split(' ')[0]}</span>
+    const trackBtns = TRACKS.map((tt) => `
+      <button class="seg seg--sm ${tt.id === net.lobbyTrack ? 'is-selected' : ''}" data-ltrack="${tt.id}" ${isHost ? '' : 'disabled'}>
+        <span class="seg__num" style="font-size:20px">${tt.icon}</span>
+        <span class="seg__label">${tt.name.split(' ')[0]}</span>
       </button>`).join('');
     const lapBtns = [1, 3, 5].map((n) => `
       <button class="seg seg--sm ${n === net.lobbyLaps ? 'is-selected' : ''}" data-llaps="${n}" ${isHost ? '' : 'disabled'}>

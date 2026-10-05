@@ -2,11 +2,11 @@ import * as THREE from 'three';
 import { playerCarData } from '../data/playerCar.js';
 import { t } from './i18n.js';
 import { setLampGlow } from './AssetFactory.js';
-import { getCarById, CARS } from '../data/cars.js';
+import { CARS } from '../data/cars.js';
 import { Car } from '../entities/Car.js';
 import { PlayerController } from '../entities/PlayerController.js';
-import { EndlessRoad, waterMaterial, terrainY, groundYAt, RAIL_ABOVE, CUT_IN, CUT_OUT, WATER_LEVEL } from '../world/EndlessRoad.js';
-import { sharedNature, NATURE_BY_BIOME, SMALL_BY_BIOME } from '../world/NatureKit.js';
+import { EndlessRoad, waterMaterial, terrainY, groundYAt, RAIL_ABOVE, CUT_OUT, WATER_LEVEL } from '../world/EndlessRoad.js';
+import { sharedNature, NATURE_BY_BIOME } from '../world/NatureKit.js';
 import { sharedCity } from '../world/CityKit.js';
 import { disposeObject3D } from './MergeUtils.js';
 import { SkidMarks } from './SkidMarks.js';
@@ -305,7 +305,7 @@ export class EndlessScene {
   // (ölçüldü: yağışın ilk kadrı 69 ms).
   _warmShaders() {
     if (!this.renderer) return;
-    const gizli = [this._rain?.mesh, this.stars, this._birds, ...(this._trafPool || []).map((t) => t.root)]
+    const gizli = [this._rain?.mesh, this.stars, this._birds, ...(this._trafPool || []).map((tt) => tt.root)]
       .filter((o) => o && o.visible === false);
     for (const o of gizli) o.visible = true;
     try { this.renderer.compile(this.scene, this.camera); } catch { /* köhnə brauzer */ }
@@ -323,9 +323,9 @@ export class EndlessScene {
     g.addColorStop(1, 'rgba(255,220,150,0)');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 64, 64);
-    const t = new THREE.CanvasTexture(c);
-    t.colorSpace = THREE.SRGBColorSpace;
-    return t;
+    const tt = new THREE.CanvasTexture(c);
+    tt.colorSpace = THREE.SRGBColorSpace;
+    return tt;
   }
 
   // ————— Zen atmosferi: game feel detalları —————
@@ -508,10 +508,10 @@ export class EndlessScene {
     if (this._birds.visible) {
       this._birdLife -= dt;
       this._birds.position.addScaledVector(this._birdVel, dt);
-      const t = this._time * 7;
+      const tt = this._time * 7;
       this._birdList.forEach((b, i) => {
-        b.rotation.x = Math.sin(t + i * 1.1) * 0.45; // qanad çırpma
-        b.position.y = -(i % 3) * 1.2 + Math.sin(t * 0.5 + i) * 0.4;
+        b.rotation.x = Math.sin(tt + i * 1.1) * 0.45; // qanad çırpma
+        b.position.y = -(i % 3) * 1.2 + Math.sin(tt * 0.5 + i) * 0.4;
       });
       if (this._birdLife <= 0 || day.night > 0.3) this._birds.visible = false;
     }
@@ -610,7 +610,7 @@ export class EndlessScene {
     const abs = playerAbs + (dir === 1 ? 19 : 24) + Math.floor(Math.random() * 8);
     const li = abs - road.base;
     if (li < 2 || li >= road.points.length - 6) return;
-    for (const t of this._traffic) if (Math.abs(t.abs - abs) < 8) return;
+    for (const tt of this._traffic) if (Math.abs(tt.abs - abs) < 8) return;
     const boşlar = this._trafPool.filter((s) => s.boş);
     if (!boşlar.length) return;
     const slot = boşlar[Math.floor(Math.random() * boşlar.length)];
@@ -631,34 +631,34 @@ export class EndlessScene {
     }
     const hw = road.halfWidth;
     for (let i = this._traffic.length - 1; i >= 0; i--) {
-      const t = this._traffic[i];
+      const tt = this._traffic[i];
       // öndəki EYNİ istiqamətli trafikə çatanda arxasınca getsin
       for (const o of this._traffic) {
-        if (o !== t && o.dir === t.dir && (o.abs - t.abs) * t.dir > 0 &&
-            Math.abs(o.abs - t.abs) < 5) t.spd = Math.min(t.spd, o.spd);
+        if (o !== tt && o.dir === tt.dir && (o.abs - tt.abs) * tt.dir > 0 &&
+            Math.abs(o.abs - tt.abs) < 5) tt.spd = Math.min(tt.spd, o.spd);
       }
-      t.abs += (t.dir * t.spd * dt) / SEGm;
-      const li = Math.floor(t.abs) - road.base;
-      if (t.abs < pAbs - 14 || t.abs > pAbs + 42 || li < 1 || li >= road.points.length - 3) {
-        t.root.visible = false;
-        if (t.slot) t.slot.boş = true;
+      tt.abs += (tt.dir * tt.spd * dt) / SEGm;
+      const li = Math.floor(tt.abs) - road.base;
+      if (tt.abs < pAbs - 14 || tt.abs > pAbs + 42 || li < 1 || li >= road.points.length - 3) {
+        tt.root.visible = false;
+        if (tt.slot) tt.slot.boş = true;
         this._traffic.splice(i, 1);
         continue;
       }
-      const f = t.abs - Math.floor(t.abs);
+      const f = tt.abs - Math.floor(tt.abs);
       const p0 = road.points[li], p1 = road.points[li + 1];
       const n0 = road.normals[li];
       const tx = p1.x - p0.x, tz = p1.z - p0.z;
       const L = Math.hypot(tx, tz) || 1;
       // öz istiqamətinə görə SAĞ zolaq: qarşıdan gələn o biri tərəfdə olur
-      const rSign = (Math.sign(n0.z * (tx / L) - n0.x * (tz / L)) || 1) * t.dir;
+      const rSign = (Math.sign(n0.z * (tx / L) - n0.x * (tz / L)) || 1) * tt.dir;
       const lat = rSign * hw * 0.45;
       const x = p0.x + (p1.x - p0.x) * f + n0.x * lat;
       const z = p0.z + (p1.z - p0.z) * f + n0.z * lat;
       const y = p0.y + (p1.y - p0.y) * f;
-      t.root.position.set(x, y + 0.08, z);
-      t.root.rotation.y = Math.atan2(tx * t.dir, tz * t.dir);
-      for (const w of t.wheels) w.rotation.x += t.spd * dt;
+      tt.root.position.set(x, y + 0.08, z);
+      tt.root.rotation.y = Math.atan2(tx * tt.dir, tz * tt.dir);
+      for (const w of tt.wheels) w.rotation.x += tt.spd * dt;
       // ——— OYUNÇU ↔ TRAFİK ———
       // ƏVVƏLKİ BUQ: maşın hərəkətdə olan trafikə dəyəndə hər kadr sərt
       // sıxışdırılırdı və geri "atılırdı" (istifadəçi rəyi: bounce edir).
@@ -677,8 +677,8 @@ export class EndlessScene {
         car.position.x += nx * örtüşmə * 0.45;
         car.position.z += nz * örtüşmə * 0.45;
         // Trafik maşınının öz sürəti (istiqamət × sürət) — NİSBİ sürətlə işlə
-        const tvx = Math.sin(t.root.rotation.y) * t.spd;
-        const tvz = Math.cos(t.root.rotation.y) * t.spd;
+        const tvx = Math.sin(tt.root.rotation.y) * tt.spd;
+        const tvz = Math.cos(tt.root.rotation.y) * tt.spd;
         const rvx = car.velocity.x - tvx, rvz = car.velocity.z - tvz;
         const vn = rvx * nx + rvz * nz;
         if (vn < 0) {
@@ -702,7 +702,7 @@ export class EndlessScene {
             car.position.z += sz * tərəf * 0.22;
           }
           // qabaqdakı maşın itələnir (yavaşıyır) — hiss real olur
-          t.spd = Math.max(6, t.spd - Math.min(5, -vn * 0.18));
+          tt.spd = Math.max(6, tt.spd - Math.min(5, -vn * 0.18));
           if (-vn > 11 && (this._scrapeT || 0) <= 0) {
             this._scrapeT = 0.3;
             this.effects.spawnSmoke({ x: car.position.x - nx, y: 0.4, z: car.position.z - nz });
@@ -1089,11 +1089,11 @@ export class EndlessScene {
     [1.00, 0.34, 0.52, 0.42, 0.62, 0.16, 0.55, 1.55, 1.02],  // dövr qapanır (dan)
   ];
 
-  _dayTint(t) {
+  _dayTint(tt) {
     // BAŞLANĞIC OFSETİ: dövr 0-dan başlasa oyun DAN qaranlığında açılır və
     // ilk təəssürat sönük olur. 0.26 → parlaq səhər/günorta arası.
     const ph = this._dayPhase != null ? this._dayPhase
-      : ((t / DAY_PERIOD) + 0.26) % 1;
+      : ((tt / DAY_PERIOD) + 0.26) % 1;
     const K = EndlessScene.DAY_KEYS;
     let i = 0;
     while (i < K.length - 2 && ph >= K[i + 1][0]) i++;
@@ -1454,11 +1454,11 @@ export class EndlessScene {
       const SLICE = sıçrayış ? 1e9 : 8800;
       const son = Math.min(pos.count, job.i + SLICE);
       for (let i = job.i; i < son; i++) {
-        const gx = jgx, gz = jgz;
+        const gx2 = jgx, gz2 = jgz;
         // Plane XY müstəvisindədir (sonra X oxu ətrafında döndərilib):
         // yerli x → dünya x, yerli y → dünya -z
-        const wx = gx + pos.getX(i);
-        const wz = gz - pos.getY(i);
+        const wx = gx2 + pos.getX(i);
+        const wz = gz2 - pos.getY(i);
         // YOL KƏSİYİ: yol torpaqdan aşağıdırsa (tunel/qazma) torpaq kəsilir —
         // yoxsa relyef yolun üstünü örtür və maşın "torpağın içində" qalır
         let bd = Infinity, by = 0, bi = -1;
@@ -1487,11 +1487,11 @@ export class EndlessScene {
             const ex = a1.x - a0.x, ez = a1.z - a0.z;
             const L2 = ex * ex + ez * ez;
             if (L2 < 1e-6) continue;
-            let t = ((wx - a0.x) * ex + (wz - a0.z) * ez) / L2;
-            t = Math.max(0, Math.min(1, t));
-            const px = a0.x + ex * t, pz = a0.z + ez * t;
+            let tt = ((wx - a0.x) * ex + (wz - a0.z) * ez) / L2;
+            tt = Math.max(0, Math.min(1, tt));
+            const px = a0.x + ex * tt, pz = a0.z + ez * tt;
             const d2 = (wx - px) * (wx - px) + (wz - pz) * (wz - pz);
-            if (d2 < bd) { bd = d2; by = a0.y + (a1.y - a0.y) * t; }
+            if (d2 < bd) { bd = d2; by = a0.y + (a1.y - a0.y) * tt; }
           }
         }
         // Maşının hündürlüyü ilə EYNİ funksiya (bax _groundYFor).

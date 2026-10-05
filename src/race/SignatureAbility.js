@@ -5,7 +5,6 @@ import { abilityFor } from '../data/abilities.js';
 // Yarışda BİR DƏFƏ işlədilir. Maşına görə fərqli mexanika, hər birinin öz
 // vizual effekti var. Rəqibə birbaşa zərər vermir — balans qorunur.
 
-const UP = new THREE.Vector3(0, 1, 0);
 
 export class SignatureAbility {
   constructor(car, scene) {

@@ -2,7 +2,7 @@
 // Statik faylları verir + /api/{auth,rooms,social,report} endpointlərini işlədir.
 // Anbar: SQLite (fayl). Xarici asılılıq yoxdur — `node server/index.mjs` kifayətdir.
 import { createServer } from 'node:http';
-import { readFile, stat } from 'node:fs/promises';
+import { stat } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
 import { join, extname, normalize } from 'node:path';
 import { createGzip } from 'node:zlib';

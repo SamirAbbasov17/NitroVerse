@@ -300,7 +300,7 @@ export class EndlessRoad {
         if (dərin > ənDərin) { ənDərin = dərin; ən = { sp, dx, dz, d }; }
       }
       if (!ən) break;
-      const { sp, dx, dz, d } = ən;
+      const { dx, dz, d } = ən;
       const nx = d > 0.001 ? dx / d : 1, nz = d > 0.001 ? dz / d : 0;
       const addım = Math.min(1.8, ənDərin);
       this._pos.x += nx * addım;
@@ -996,7 +996,6 @@ export class EndlessRoad {
               const kitObj = tower && kitAd ? this.cityFactory(kitAd) : null;
               // Hündürlük SIRAYA görə: ön sıra alçaq mağaza/ofis, arxa
               // sıralar göydələn — yaxın planda "karton divar" olmur
-              const hRange = [[9, 17], [15, 26], [21, 34]][row];
               // KÖHNƏ PROSEDURAL BİNALAR SİLİNDİ (istifadəçi qərarı):
               // qara qutu siluetləri KayKit modellərinin yanında ucuz
               // görünürdü. Kit hazır deyilsə bina QOYULMUR — yarımçıq
