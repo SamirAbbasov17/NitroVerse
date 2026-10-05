@@ -45,3 +45,47 @@ for (const name of ['race-desert', 'zen', 'football', 'arena']) {
     expect.soft(res.offscreen, 'ekrandan kənar düymələr').toEqual([]);
   });
 }
+
+// Zen filtrləri: heç bir filtr HUD düymələrini örtməməlidir (Kino lentbox zolaqları
+// yuxarıdakı düymələrin yarısını gizlədirdi). Hər filtrdə hər düymənin 4 küncü və
+// mərkəzi üçün ən üstdəki GÖRÜNƏN element yoxlanır (pointer-events nəzərə alınmadan).
+for (const [tag, use] of [['masaüstü', { viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1, hasTouch: false, isMobile: false }], ['mobil', {}]]) {
+  test.describe(`zen filtrləri ${tag}`, () => {
+    test.use(use);
+    test(`zen filtrləri HUD-u örtmür (${tag})`, async ({ page }) => {
+      await boot(page);
+      await startMode(page, MODES.find((m) => m.name === 'zen').config);
+      await page.waitForTimeout(2500);
+      const names = await page.evaluate(() => window.__active.constructor.FILTERS.map((f) => f.ad));
+      const bad = [];
+      for (let i = 0; i < names.length; i++) {
+        await page.evaluate((k) => window.__active._applyFilter(k, true), i);
+        await page.waitForTimeout(250);
+        const hidden = await page.evaluate(() => {
+          const out = [];
+          const els = [...document.querySelectorAll('#ui-root .ehud__btn, #ui-root .ehud__score, #ui-root .ehud__speed, #ui-root .touch button')]
+            .filter((el) => el.offsetParent && getComputedStyle(el).display !== 'none');
+          // Örtən qatları tap: pointer-events:none olan tam ekran qatlar da sayılır
+          const covers = [...document.querySelectorAll('#filter-fx, #retro-lines')].filter((c) => getComputedStyle(c).display !== 'none');
+          for (const el of els) {
+            const r = el.getBoundingClientRect();
+            for (const c of covers) {
+              // zolaq hündürlüyü qatın ÖZ fonundan oxunur (qara lentin bitdiyi piksel) —
+              // HUD-un necə sürüşdürüldüyündən asılı deyil
+              const stops = [...getComputedStyle(c).backgroundImage.matchAll(/rgb\(0, 0, 0\) ([\d.]+)(px|vh)/g)]
+                .map((m) => parseFloat(m[1]) * (m[2] === 'vh' ? innerHeight / 100 : 1));
+              const px = stops.length ? Math.max(...stops) : 0;
+              if (c.id === 'filter-fx' && px > 0 && (r.top < px - 0.5 || r.bottom > innerHeight - px + 0.5)) {
+                out.push(`${el.id || el.dataset.t || el.className} y=${Math.round(r.top)}..${Math.round(r.bottom)} zolaq=${Math.round(px)}`);
+              }
+            }
+          }
+          return out;
+        });
+        if (hidden.length) bad.push(`${names[i]}: ${hidden.join(', ')}`);
+      }
+      await page.evaluate(() => window.__active._applyFilter(0, true));
+      expect(bad, 'filtr zolağının altında qalan HUD elementləri').toEqual([]);
+    });
+  });
+}

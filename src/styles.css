@@ -1657,6 +1657,17 @@ body.flt-kino #filter-fx {
     linear-gradient(to top, #000 0, #000 5.5vh, transparent 5.5vh),
     radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 0, 0.28) 100%);
 }
+/* Lentbox zolaqları (5.5vh) HUD-u ÖRTMƏSİN: zolaq aktiv olanda yuxarı/aşağı
+   elementlər zolağın hündürlüyü qədər içəri çəkilir. Əvvəl düymələrin, xalın və
+   sürət göstəricisinin yarısı qara zolağın altında qalırdı (istifadəçi rəyi). */
+body.flt-kino { --kino-bar: 5.5vh; }
+body.flt-kino .ehud__score { top: calc(16px + var(--kino-bar)); }
+body.flt-kino .ehud__btns { top: calc(16px + var(--kino-bar)); }
+body.flt-kino .ehud__toast { top: calc(92px + var(--kino-bar)); }
+body.flt-kino .ehud__speed { bottom: calc(16px + var(--kino-bar)); }
+@media (pointer: coarse) {
+  body.flt-kino .ehud__btns { top: calc(10px + var(--kino-bar)); }
+}
 /* NOİR: ağ-qara, sərt kontrast + vinyet */
 body.flt-noir #game-canvas { filter: grayscale(1) contrast(1.28) brightness(1.06); }
 body.flt-noir #filter-fx {
