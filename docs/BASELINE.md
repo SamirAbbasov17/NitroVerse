@@ -50,6 +50,22 @@ Qalın = `docs/MODELS.md` büdcəsindən kənar (yarış < 140, zen < 110 draw c
 
 Yəni sabit yükdə 9 rejimdən 5-i büdcədən kənardadır (əvvəl "7-si" yazılmışdı — o, maksimuma görə idi). Effekt partlayışları ayrıca problemdir: futbolda qol anında 392-yə çıxır. `test:perf` indi büdcəni mediana tətbiq edir.
 
+**Faza 1.4-dən sonra (2026-10-05)** — effekt hissəcikləri instanslandı, küçə lampaları və futbol tribunaları birləşdirildi:
+
+| Rejim | median əvvəl → sonra | maks əvvəl → sonra |
+|---|---|---|
+| race-desert | 92 → 79 | 244 → 99 |
+| race-neon | 86 → 67 | 169 → 139 |
+| race-alpine | 101 → 94 | 221 → 125 |
+| race-canyon | 167 → 103 | 274 → 130 |
+| race-riviera | 145 → 118 | 193 → 164 |
+| race-zavod | 135 → 139 | 237 → 201 |
+| zen | 151 → **162** | 162 → 178 |
+| football | 140 → 112 | 392 → 145 |
+| arena | 147 → 122 | 234 → 177 |
+
+Büdcədən kənarda yalnız zen qalır (110): hər yol parçası ~17 ayrı materialla çəkilir, görünən 8–9 parça × 17. Həlli struktur dəyişikliyidir (rəngləri vertex rənginə köçürüb parçanı 3–4 mesh-ə endirmək) — ayrıca iş.
+
 Oxunuşu:
 - **CPU kadr xərci aşağıdır** (p99 < 8 ms) — bu maşında ehtiyat böyükdür.
 - **Draw call sənəddəki büdcədən 9 rejimdən 7-də yüksəkdir.** Sayğaca kölgə keçidi də daxildir (masaüstündə kölgə aktivdir), köhnə ölçmə üsulu məlum deyil. Ya büdcə yenidən təyin olunmalıdır, ya da səhnələr optimallaşdırılmalıdır — mobil ölçmə ilə qərar verilməlidir.

@@ -543,6 +543,7 @@ export class EndlessRoad {
       side: THREE.DoubleSide,
     }));
     rb.userData.roadPart = true;
+    rb.userData.flat = true;      // yerə yatan lent — kölgə salmır (bax MergeUtils)
     rb.receiveShadow = true;      // maşın/dekor kölgəsi asfaltda görünsün
     return rb;
   }

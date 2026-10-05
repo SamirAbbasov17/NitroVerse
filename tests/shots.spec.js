@@ -74,6 +74,30 @@ test.describe('masaüstü oyun kadrları', () => {
     });
   }
 
+  // Effektlər: partlayış, tüstü, qığılcım, konfeti — geri sayımda (maşın dayanıb),
+  // kamera sabitdir, ona görə əvvəl/sonra müqayisəsi mümkündür.
+  test('shots: effektlər', async ({ page }) => {
+    await boot(page);
+    await startMode(page, MODES.find((m) => m.name === 'race-alpine').config);
+    await page.waitForTimeout(1200);
+    const fire = () => page.evaluate(() => {
+      const sc = window.__active;
+      const c = sc.playerCar.position;
+      const h = sc.playerCar.heading;
+      const at = (d, side, y) => ({ x: c.x + Math.sin(h) * d - Math.cos(h) * side, y, z: c.z + Math.cos(h) * d + Math.sin(h) * side });
+      const v = (p) => sc.playerCar.position.clone().set(p.x, p.y, p.z);
+      sc.effects.spawnExplosion(v(at(9, -4, 1)));
+      for (let i = 0; i < 10; i++) sc.effects.spawnSmoke(at(6 + i * 0.5, 3, 0.4), i % 2 === 0, i > 5 ? 0xff5a2a : null, 1);
+      sc.effects.spawnSparkle(v(at(5, 0, 1.6)));
+      sc.effects.spawnConfetti(v(at(8, 1, 1)), true);
+    });
+    await fire();
+    await page.waitForTimeout(140);
+    await shot(page, 'd-fx-0');
+    await page.waitForTimeout(260);
+    await shot(page, 'd-fx-1');
+  });
+
   test('shots: pauza menyusu (yarış)', async ({ page }) => {
     await boot(page);
     await startMode(page, MODES[0].config);

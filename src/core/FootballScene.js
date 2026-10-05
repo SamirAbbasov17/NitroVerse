@@ -375,10 +375,16 @@ export class FootballScene {
         [(FIELD_W / 2 + 18 + tier * 7), 0, 8, FIELD_H + 36 + tier * 14],
         [-(FIELD_W / 2 + 18 + tier * 7), 0, 8, FIELD_H + 36 + tier * 14],
       ]) {
-        const seg = new THREE.Mesh(
-          new THREE.BoxGeometry(w, 2.6, d),
-          [crowdMat, crowdMat, standTop, standTop, crowdMat, crowdMat]
-        );
+        // BoxGeometry 6 üz qrupu ilə gəlir və material massivi ilə HƏR QRUP ayrı
+        // draw call-dur (12 tribuna × 6 = 72). İndekslər yenidən düzülür: 4 yan üz
+        // (izləyici) bir qrup, üst/alt bir qrup → tribuna başına 2 draw call.
+        const geo = new THREE.BoxGeometry(w, 2.6, d);
+        const ix = geo.index.array;
+        geo.setIndex([...ix.slice(0, 12), ...ix.slice(24, 36), ...ix.slice(12, 24)]);
+        geo.clearGroups();
+        geo.addGroup(0, 24, 0);
+        geo.addGroup(24, 12, 1);
+        const seg = new THREE.Mesh(geo, [crowdMat, standTop]);
         seg.position.set(px, 1.3 + tier * 2.9, pz);
         this.scene.add(seg);
       }

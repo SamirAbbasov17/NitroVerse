@@ -217,8 +217,14 @@ export class Environment {
       side *= -1;
       ci++;
     }
-    this.scene.add(g);
-    this._track(g);
+    // Dirək və başlıqlar birləşdirilir (işıqlar toxunulmaz qalır): 30 lampa
+    // 60 draw call idi, indi rəng başına 1 + dirəklər üçün 1. Başlıq materialı
+    // paylaşılan nüsxədir — setLampGlow əvvəlki kimi işləyir.
+    const merged = mergeStaticGroup(g);
+    merged.traverse((o) => { if (o.isMesh) o.castShadow = false; }); // əvvəl də kölgə salmırdı
+    g.traverse((o) => { if (o.isMesh) o.geometry?.dispose?.(); });
+    this.scene.add(merged);
+    this._track(merged);
   }
 
   // Uzaq relyef — dağlar / şəhər silueti

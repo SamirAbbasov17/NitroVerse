@@ -22,6 +22,7 @@ export function mergeStaticGroup(group) {
     const key = [
       o.userData?.roadPart ? 'road' : '-',   // yol hissələri ayrıca yığılır
       o.receiveShadow ? 'rs' : '-',          // kölgə qəbulu bucket-i bölür
+      o.userData?.flat ? 'flat' : '-',       // yastı səth (asfalt, zolaq) kölgə SALMIR
       m.map?.uuid || '-',
       m.color?.getHexString(),
       m.emissive?.getHexString(),
@@ -34,7 +35,7 @@ export function mergeStaticGroup(group) {
     ].join('|');
     let b = buckets.get(key);
     if (!b) {
-      b = { material: m, geos: [], roadPart: !!o.userData?.roadPart, receiveShadow: !!o.receiveShadow };
+      b = { material: m, geos: [], roadPart: !!o.userData?.roadPart, receiveShadow: !!o.receiveShadow, flat: !!o.userData?.flat };
       buckets.set(key, b);
     }
     b.geos.push(g.clone().applyMatrix4(o.matrixWorld));
@@ -46,7 +47,9 @@ export function mergeStaticGroup(group) {
     b.geos.forEach((g) => g.dispose());
     if (!merged) continue;
     const mesh = new THREE.Mesh(merged, b.material);
-    mesh.castShadow = true;
+    // Yerə yatan lentlər (asfalt, kənar zolaq, mərkəz xətti) kölgə salmır —
+    // kölgə keçidində boşuna çəkilirdilər
+    mesh.castShadow = !b.flat;
     // KÖLGƏ QƏBULU MƏNBƏDƏN QORUNUR (şərtsiz true DEYİL): zen yolu/kənarı
     // bayrağı özü qoyur və kölgə alır; neon binaları isə heç vaxt kölgə
     // qəbul etməyib — şərtsiz true onları gecə bir-birinin kölgəsində

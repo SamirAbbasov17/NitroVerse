@@ -7,11 +7,23 @@ export class Effects {
     this.group = new THREE.Group();
     this.scene.add(this.group);
     this.list = [];
+    this._tmpCol = new THREE.Color();
 
     this._shardGeo = new THREE.TetrahedronGeometry(0.34);
     this._sparkGeo = new THREE.TetrahedronGeometry(0.18);
     this._puffGeo = new THREE.IcosahedronGeometry(0.4, 0);
     this._flashGeo = new THREE.SphereGeometry(1, 10, 8);
+
+    // İNSTANS HOVUZLARI: tüstü, qəlpə, qığılcım və konfeti hər növü TƏK çəkimlə
+    // (InstancedMesh) render olunur. ƏVVƏL hər hissəcik ayrı Mesh idi — arenada
+    // tüstü 85 draw call, futbolda qol anı 392-yə çatırdı (ölçüldü).
+    this._confettiGeo = new THREE.PlaneGeometry(0.3, 0.2);
+    this._inst = {
+      puff: this._makeInst(this._puffGeo, 220, { emissive: 0 }),
+      shard: this._makeInst(this._shardGeo, 140, { emissive: 0.6 }),
+      spark: this._makeInst(this._sparkGeo, 140, { emissive: 1.6 }),
+      confetti: this._makeInst(this._confettiGeo, 240, { basic: true }),
+    };
 
     // İŞIQ HOVUZU: runtime-da işıq sayı DƏYİŞMİR — yeni PointLight əlavə etmək
     // bütün shaderlərin yenidən kompilyasiyasına (FPS donmasına) səbəb olur.
@@ -21,6 +33,80 @@ export class Effects {
       this.group.add(l);
       this._lights.push(l);
     }
+  }
+
+  // Bir hissəcik növü üçün InstancedMesh. Hər instansın öz rəngi (instanceColor)
+  // və öz şəffaflığı (instOpacity atributu — şeyderə kiçik əlavə) var; boş
+  // slotların matrisi sıfırdır (görünmür). Hər slotun daimi "proxy" Object3D-si
+  // var: effekt kodu əvvəlki kimi position/rotation/scale/material.opacity
+  // yazır, update() onu instans buferinə köçürür.
+  _makeInst(geo, cap, { emissive = 0, basic = false } = {}) {
+    const mat = basic
+      ? new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, side: THREE.DoubleSide })
+      : new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, flatShading: true });
+    const uEmis = { value: emissive };
+    mat.onBeforeCompile = (sh) => {
+      sh.uniforms.uEmis = uEmis;
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\nattribute float instOpacity;\nvarying float vInstOpacity;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvInstOpacity = instOpacity;');
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying float vInstOpacity;\nuniform float uEmis;')
+        .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.a *= vInstOpacity;');
+      if (!basic) {
+        sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>',
+          '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vColor * uEmis;');
+      }
+    };
+    mat.customProgramCacheKey = () => `fxinst-${basic ? 'b' : 's'}`;
+    const mesh = new THREE.InstancedMesh(geo, mat, cap);
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    mesh.frustumCulled = false;
+    const opacity = new THREE.InstancedBufferAttribute(new Float32Array(cap).fill(1), 1);
+    opacity.setUsage(THREE.DynamicDrawUsage);
+    geo.setAttribute('instOpacity', opacity);
+    const zero = new THREE.Matrix4().makeScale(0, 0, 0);
+    const white = new THREE.Color(0xffffff);
+    const proxies = [];
+    const free = [];
+    for (let i = cap - 1; i >= 0; i--) {
+      mesh.setMatrixAt(i, zero);
+      mesh.setColorAt(i, white);
+      free.push(i);
+    }
+    for (let i = 0; i < cap; i++) {
+      const o = new THREE.Object3D();
+      o.material = { opacity: 1 };   // köhnə kod `mesh.material.opacity` yazır
+      o.userData.slot = i;
+      proxies.push(o);
+    }
+    this.group.add(mesh);
+    return { mesh, opacity, proxies, free, zero, live: 0 };
+  }
+
+  // Hovuzdan instans götür: proxy qaytarır (dolu olsa null — effekt buraxılır)
+  _spawnInst(kind, color, opacity = 1) {
+    const I = this._inst[kind];
+    if (!I.free.length) return null;
+    const slot = I.free.pop();
+    const o = I.proxies[slot];
+    o.position.set(0, 0, 0);
+    o.rotation.set(0, 0, 0);
+    o.scale.setScalar(1);
+    o.material.opacity = opacity;
+    o.userData.inst = I;
+    I.mesh.setColorAt(slot, this._tmpCol.set(color));
+    I.mesh.instanceColor.needsUpdate = true;
+    I.live++;
+    return o;
+  }
+
+  _freeInst(o) {
+    const I = o.userData.inst;
+    I.mesh.setMatrixAt(o.userData.slot, I.zero);
+    I.mesh.instanceMatrix.needsUpdate = true;
+    I.free.push(o.userData.slot);
+    I.live--;
   }
 
   // Hovuzdan işıq götürüb qısa parlama et
@@ -80,19 +166,12 @@ export class Effects {
     // Qəlpələr
     const colors = [0xff6b1a, 0xffd257, 0x3a3d46, 0xe33225];
     for (let i = 0; i < 14; i++) {
-      const m = this._take(this._shardGeo, true, {
-        color: colors[i % colors.length],
-        emissive: colors[i % colors.length],
-        emissiveIntensity: 0.6,
-        flatShading: true,
-        transparent: true,
-        opacity: 1,
-      });
+      const m = this._spawnInst('shard', colors[i % colors.length]);
+      if (!m) break;
       m.position.copy(pos);
       const a = Math.random() * Math.PI * 2;
       const up = 3 + Math.random() * 8;
       const sp = 5 + Math.random() * 9;
-      this.group.add(m);
       this.list.push({
         mesh: m, kind: 'shard', t: 0, life: 0.65 + Math.random() * 0.3,
         vel: new THREE.Vector3(Math.cos(a) * sp, up, Math.sin(a) * sp),
@@ -132,13 +211,10 @@ export class Effects {
   // Item qutusu götürüləndə qığılcımlar (rəng seçilə bilər)
   spawnSparkle(pos, color = 0xffc94d) {
     for (let i = 0; i < 9; i++) {
-      const m = this._take(this._sparkGeo, true, {
-        color, emissive: color, emissiveIntensity: 1.6,
-        flatShading: true, transparent: true, opacity: 1,
-      });
+      const m = this._spawnInst('spark', color);
+      if (!m) break;
       m.position.copy(pos);
       const a = (i / 9) * Math.PI * 2;
-      this.group.add(m);
       this.list.push({
         mesh: m, kind: 'shard', t: 0, life: 0.5,
         vel: new THREE.Vector3(Math.cos(a) * 5, 4 + Math.random() * 3, Math.sin(a) * 5),
@@ -212,16 +288,12 @@ export class Effects {
   spawnConfetti(pos, big = false) {
     const colors = [0xffd257, 0xff6b1a, 0x46d47e, 0x37b8ff, 0xff3d8a, 0xb44bff];
     const n = big ? 54 : 34;
-    const geo = this._confettiGeo ?? (this._confettiGeo = new THREE.PlaneGeometry(0.3, 0.2));
     for (let i = 0; i < n; i++) {
-      const col = colors[i % colors.length];
-      const m = this._take(geo, false, {
-        color: col, side: THREE.DoubleSide, transparent: true, opacity: 1,
-      });
+      const m = this._spawnInst('confetti', colors[i % colors.length]);
+      if (!m) break;
       m.position.set(pos.x, 1.2, pos.z);
       const a = Math.random() * Math.PI * 2;
       const sp = 3 + Math.random() * 6;
-      this.group.add(m);
       this.list.push({
         mesh: m, kind: 'confetti', t: 0, life: 1.8 + Math.random() * 0.9,
         vel: new THREE.Vector3(Math.cos(a) * sp, 7 + Math.random() * 6, Math.sin(a) * sp),
@@ -245,13 +317,11 @@ export class Effects {
       col = c;
       opacity = 0.58;
     }
-    const m = this._take(this._puffGeo, true, {
-      color: col, transparent: true, opacity, flatShading: true,
-    });
+    const m = this._spawnInst('puff', col, opacity);
+    if (!m) return;
     if (scale !== 1) m.scale.setScalar(scale);
     m.position.set(pos.x + (Math.random() - 0.5), pos.y + 0.4, pos.z + (Math.random() - 0.5));
     m.rotation.set(Math.random() * 3, Math.random() * 3, 0);
-    this.group.add(m);
     this.list.push({ mesh: m, kind: 'smoke', t: 0, life: 0.7 + Math.random() * 0.3 });
   }
 
@@ -265,6 +335,8 @@ export class Effects {
           // Hovuz işığı: silinmir, sönüb geri qaytarılır
           e.mesh.intensity = 0;
           e.mesh.userData.busy = false;
+        } else if (e.mesh.userData.inst) {
+          this._freeInst(e.mesh);   // instans: slot hovuza qayıdır
         } else {
           this.group.remove(e.mesh);
           // Hovuzdan gələn mesh geri qayıdır; qalanlar köhnə qayda ilə silinir
@@ -329,15 +401,35 @@ export class Effects {
           e.mesh.scale.setScalar(1 - k * 0.3);
           break;
       }
+      // İnstans hissəciyi: proxy-nin vəziyyətini instans buferinə köçür
+      const I = e.mesh.userData.inst;
+      if (I) {
+        e.mesh.updateMatrix();
+        I.mesh.setMatrixAt(e.mesh.userData.slot, e.mesh.matrix);
+        I.opacity.array[e.mesh.userData.slot] = e.mesh.material.opacity;
+        I.dirty = true;
+      }
+    }
+    for (const I of Object.values(this._inst)) {
+      if (!I.dirty) continue;
+      I.dirty = false;
+      I.mesh.instanceMatrix.needsUpdate = true;
+      I.opacity.needsUpdate = true;
     }
   }
 
   dispose() {
     for (const e of this.list) {
+      if (e.mesh.userData?.inst) continue;   // instans proxy-si — resursu yoxdur
       this.group.remove(e.mesh);
       e.mesh.material?.dispose?.();
     }
     this.list = [];
+    for (const I of Object.values(this._inst)) {
+      this.group.remove(I.mesh);
+      I.mesh.material.dispose();
+      I.mesh.dispose();
+    }
     this.scene.remove(this.group);
     for (const arr of this._mpool?.values() || []) {
       for (const m of arr) m.material?.dispose?.();
