@@ -1,6 +1,6 @@
 ---
 name: nitroverse-art-2d
-description: NitroVerse üçün 2D art yaratmaq — personaj, fon, CG, UI illüstrasiyası, ikon, promo şəkli. Draw Things (lokal) və Gemini (bulud) ilə generasiya, stil bibliyası, personaj ardıcıllığı və son emal qaydaları. Carmageddon visual novel işi, personaj dizaynı, sprite/ifadə vərəqi, fon şəkli və ya istənilən 2D şəkil generasiyası lazım olanda işlədilir.
+description: NitroVerse üçün 2D art yaratmaq — personaj, fon, CG, UI illüstrasiyası, ikon, promo şəkli. Draw Things (lokal) ilə generasiya, stil bibliyası, personaj ardıcıllığı və son emal qaydaları. Carmageddon visual novel işi, personaj dizaynı, sprite/ifadə vərəqi, fon şəkli və ya istənilən 2D şəkil generasiyası lazım olanda işlədilir.
 ---
 
 # 2D art axını
@@ -22,7 +22,7 @@ Stil hələ seçilməyibsə: 3–4 fərqli istiqamətdə kiçik nümunə hazırl
 | Alət | Nə üçün | Qeyd |
 |---|---|---|
 | **Draw Things** (`drawthings` MCP, lokal) | əsas generasiya, limitsiz | tətbiq açıq və API Server aktiv olmalıdır (Settings → API Server, HTTP, 7860). sürət bu maşında hələ ölçülməyib — ilk işdə ölç və bura yaz |
-| **Gemini API** (`GEMINI_API_KEY`, `.env.local`) | referansla redaktə, personajı yeni poza/ifadəyə salmaq | pulsuz kvota məhduddur və dəyişir — partiya işindən əvvəl yoxla |
+| **Gemini API** (`GEMINI_API_KEY`, `.env.local`) | referansla redaktə, personajı yeni poza/ifadəyə salmaq | **pulsuz tier-də şəkil kvotası 0-dır** (2026-10-05 sınağı: 429, limit 0). Yalnız istifadəçi billing qoşsa işləyir — qoşulmayıbsa cəhd etmə, Draw Things işlət |
 | **ffmpeg / Python PIL** | kəsmə, ölçü, format, vərəq yığma | PIL quraşdırılmayıbsa `uv run --with pillow` |
 | `pixel-plugin` (Aseprite MCP) | piksel art redaktəsi | **Aseprite quraşdırılmayıb — işləmir.** Piksel stil seçilərsə istifadəçidən Aseprite (pullu) və ya LibreSprite qərarını soruş |
 

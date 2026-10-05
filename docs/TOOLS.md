@@ -50,7 +50,7 @@ Maşın: MacBook Air M5, 16 GB RAM. Blender 5.1.1, Chrome, ffmpeg, uv, Node 26 q
 
 **AI 2D:**
 - Draw Things (lokal, limitsiz). Modellər: FLUX.2 [klein] 4B, Z-Image Turbo — Apache 2.0
-- Gemini API pulsuz tier ("Nano Banana" şəkil modeli) — referans şəkillə redaktə və personaj ardıcıllığında güclüdür; açar: aistudio.google.com → `.env.local` → `GEMINI_API_KEY`. Kvota 2025 dekabrından bəri dəfələrlə azaldılıb, rəqəmə etibar etmə.
+- Gemini API — **pulsuz tier-də şəkil generasiyası yoxdur.** 2026-10-05-də real açarla yoxlanıldı: `gemini-2.5-flash-image`, `gemini-3.1-flash-image`, `gemini-3.1-flash-lite-image` hamısı `429 … free_tier_requests, limit: 0` qaytarır. Açar `.env.local`-dadır (`GEMINI_API_KEY`) və etibarlıdır (model siyahısı gəlir), amma şəkil üçün ödənişli hesab (billing) lazımdır. Billing qoşulsa referansla redaktə/personaj ardıcıllığı üçün ən güclü seçim budur.
 
 ## Rədd edilənlər
 
@@ -59,6 +59,7 @@ Maşın: MacBook Air M5, 16 GB RAM. Blender 5.1.1, Chrome, ffmpeg, uv, Node 26 q
 | **Higgsfield** | Pulsuz deyil: pulsuz planda 0 kredit, kommersiya istifadəsi qadağan; MCP hər generasiyada kredit yeyir; ən ucuz plan ~$15–19/ay. Pul ayrılsa treyler/video üçün yenidən baxıla bilər. |
 | Pollinations | Əvvəl işlədilib (`art/carmageddon/gen_*.py`): nəzarət zəif, keyfiyyət sabit deyil. |
 | ElevenLabs SFX (pulsuz) | Pulsuz tier kommersiya istifadəsini qadağan edir. |
+| Gemini şəkil API (pulsuz tier) | Kvota 0 — sınaqla təsdiqləndi (yuxarıda). Onlayn bələdçilərdəki "gündə 500 pulsuz şəkil" artıq doğru deyil. |
 | Meshy (pulsuz) | Ayda ~3 teksturalı model — praktik deyil. |
 | Aseprite | $20. Piksel stil seçilərsə qərar veriləcək (alternativ: LibreSprite, pulsuz). |
 | ComfyUI | Draw Things eyni maşında ~20–40% sürətlidir və qurulumu sadədir. |
