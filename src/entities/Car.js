@@ -30,6 +30,12 @@ export class Car {
     this.heading = 0;
     this.velocity = new THREE.Vector3();
     this.vF = 0;
+    // Sürüş modeli: null → köhnə; TUNING.feel2 → arcade-drift (bax _driveV2)
+    this.feel = null;
+    this.tau = TUNING.feel2.tauMax - (s.accel / 100) * TUNING.feel2.tauRange;
+    this.grip2 = TUNING.feel2.gripMin + (s.grip / 100) * TUNING.feel2.gripRange;
+    this.driftT = 0;       // cari driftin müddəti (s)
+    this.driftBoostT = 0;  // drift çıxışı təkanının qalan vaxtı (s)
 
     // proqres keşi (RaceManager oxuyur)
     this.wpHint = 0;
@@ -126,12 +132,93 @@ export class Car {
     this.root.add(this._shield);
   }
 
+  // ————— SÜRÜŞ MODELİ v2 —————
+  // Qaz, süzmə, əyləc, döngə itkisi, yoldan kənar, drift və drift çıxışı təkanı.
+  // Yeni irəli sürəti qaytarır, yan sürəti `this._vR2`-yə yazır.
+  //
+  // Köhnə modeldən əsas fərq: yan sürət ENERJİ İTİRMƏDƏN düzlənir — sürət
+  // vektoru burun istiqamətinə doğru fırlanır, uzunluğu dəyişmir. Köhnədə yan
+  // sürət sadəcə sönürdü, ona görə drift sürəti yeyirdi və "yana fırlanma" olurdu.
+  _driveV2(dt, drive, vF, vR, vMaxBase, sigPow, boosting, drifting) {
+    const F = this.feel;
+    const th = drive.throttle;
+    this.driftBoostT = Math.max(0, this.driftBoostT - dt);
+
+    // Drift çıxışı: kifayət qədər uzun driftdən sonra qısa təkan
+    if (drifting) {
+      if (Math.abs(drive.steer) > 0.2) this.driftT += dt;
+    } else if (this.driftT > 0) {
+      if (this.driftT >= F.boostMin && th > 0) {
+        this.driftBoostT = Math.min(F.boostMax, 0.3 + this.driftT * 0.45);
+      }
+      this.driftT = 0;
+    }
+
+    // 1) Yan tutum: sürüşmə bucağı β = atan2(vR, vF) eksponensial sönür
+    let g = drifting ? F.driftGrip : this.grip2;
+    if (this.slipTimer > 0) g = 0.4;                 // yağ: demək olar tutum yoxdur
+    else if (this._sigGrip > 0) g = Math.max(g, 9);  // "mükəmməl tutum" imza gücü
+    let S = Math.hypot(vF, vR);
+    if (vF > 0.5) {
+      const beta = Math.atan2(vR, vF) * Math.exp(-g * dt);
+      vF = S * Math.cos(beta);
+      vR = S * Math.sin(beta);
+    } else {
+      vR *= Math.exp(-g * dt);                       // dayanıq/geri: sadə sönmə
+    }
+
+    // 2) İcazə verilən sürət
+    let vAllow = vMaxBase;
+    if (this.offRoad > 0 && this._sigOffroad <= 0) vAllow *= 1 - F.offRoadCut * this.offRoad;
+    if (this.driftBoostT > 0) vAllow *= F.boostSpeed;
+    if (drifting) vAllow *= F.driftTarget;
+    let tau = this.tau / sigPow;
+    if (boosting) tau /= F.nitroAccel;
+    if (this.driftBoostT > 0) tau /= F.boostAccel;
+
+    // 3) Uzununa qüvvə. Driftdə idarə olunan kəmiyyət ÜMUMİ sürətdir (S), yoxsa
+    //    irəli sürət (vF) — sürüşmə bucağı böyük olanda ikisi fərqlənir.
+    let v = drifting ? S : vF;
+    if (th > 0) {
+      // Oyunçu: qaz sürətlənmə tempini miqyaslayır, hədəf həmişə vAllow-dur.
+      // Bot: qaz HƏDƏF sürəti təyin edir (köhnə modeldə az qaz = aşağı tarazlıq
+      // sürəti idi və botlar döngədə məhz belə yavaşlayırdı).
+      const target = this.isPlayer
+        ? vAllow
+        : vAllow * Math.min(1, (this.engineForce * th) / (TUNING.car.drag * this.maxSpeed));
+      if (v < target) v = Math.min(target, v + ((target * F.overshoot - v) / tau) * (this.isPlayer ? th : 1) * dt);
+      else v -= ((v - target) / F.tauDown) * dt;
+    } else if (th < 0) {
+      if (v > 0.5) v -= F.brake * dt;                            // əyləc
+      else v += this.engineForce * 0.6 * th * dt;                // geri
+    } else {
+      v -= v * F.coast * dt;                                     // süzmə
+      if (v > vAllow) v -= ((v - vAllow) / F.tauDown) * dt;
+    }
+    // Döngədə sürət itkisi (driftdə YOX — drift məhz bundan qaçmağın yoludur)
+    if (!drifting && v > 0) {
+      const s2 = this._steerSmooth * this._steerSmooth;
+      v -= v * (F.cornerScrub / this.tau) * s2 * Math.min(v / this.maxSpeed, 1) * dt;
+    }
+
+    if (drifting && S > 0.01) {
+      const k = Math.max(0, v) / S;
+      vF *= k; vR *= k;
+    } else {
+      vF = v;
+    }
+    this._vR2 = vR;
+    return vF;
+  }
+
   reset(position, heading) {
     this.position.copy(position);
     this.position.y = 0;
     this.heading = heading;
     this.velocity.set(0, 0, 0);
     this.vF = 0;
+    this.driftT = 0;
+    this.driftBoostT = 0;
     this.wpHint = 0;
     this.root.position.copy(this.position);
     this.root.rotation.y = heading;
@@ -167,19 +254,26 @@ export class Car {
 
     // Mühərrik / əyləc / geri
     const th = drive.throttle;
-    if (th > 0) {
-      vF += engine * th * dt;
-    } else if (th < 0) {
-      if (vF > 0.5) vF -= this.brakeForce * dt;         // əyləc
-      else vF += engine * 0.6 * th * dt;                // geri
-    }
-    // Əl əyləci = DRİFT: yarışda sürət çox az itir (əyləc deyil, sürüşmə).
-    // Arenada bu dəyər aşağıdır — kiçik meydanda driftdən sonra tam sürətlə
-    // uçmaq idarəni öldürürdü (bax TUNING.arena).
-    if (drive.handbrake) vF *= Math.pow(this.driftScrub, dt * 60);
+    const F = this.feel;
+    // Drift vəziyyəti (yalnız v2): əl əyləci + kifayət qədər sürət
+    const drifting = !!F && drive.handbrake && vF > F.driftMinSpeed;
+    if (F) {
+      vF = this._driveV2(dt, drive, vF, vR, vMax, sigPow, boosting, drifting);
+    } else {
+      if (th > 0) {
+        vF += engine * th * dt;
+      } else if (th < 0) {
+        if (vF > 0.5) vF -= this.brakeForce * dt;         // əyləc
+        else vF += engine * 0.6 * th * dt;                // geri
+      }
+      // Əl əyləci = DRİFT: yarışda sürət çox az itir (əyləc deyil, sürüşmə).
+      // Arenada bu dəyər aşağıdır — kiçik meydanda driftdən sonra tam sürətlə
+      // uçmaq idarəni öldürürdü (bax TUNING.arena).
+      if (drive.handbrake) vF *= Math.pow(this.driftScrub, dt * 60);
 
-    // Sürtünmə
-    vF -= vF * this.drag * dt;
+      // Sürtünmə
+      vF -= vF * this.drag * dt;
+    }
 
     // Raket dəyibsə — güclü yavaşlama + silkələnmə
     if (this.hitTimer > 0) {
@@ -189,12 +283,12 @@ export class Car {
 
     // Yoldan kənar — TƏDRİCƏN, mülayim yavaşlama (sürünmə yox)
     // "Hər yerdə yol" imza gücü aktivdirsə cəza yoxdur
-    if (this.offRoad > 0 && this._sigOffroad <= 0) {
+    if (!F && this.offRoad > 0 && this._sigOffroad <= 0) {
       vF *= Math.pow(1 - TUNING.car.offRoadDamp * this.offRoad, dt * 60);
     }
 
-    // Sürət limiti
-    vF = Math.max(-this.reverseMax, Math.min(vMax, vF));
+    // Sürət limiti (v2-də yuxarı hədd _driveV2-də yumşaq tətbiq olunur)
+    vF = Math.max(-this.reverseMax, Math.min(F ? vMax * 1.2 : vMax, vF));
 
     // Yan tutum — əl əyləci arxa təkərləri "buraxır" (drift sürüşməsi)
     let grip = drive.handbrake ? 0.991 : this.latFriction;
@@ -202,7 +296,8 @@ export class Car {
     // "Mükəmməl tutum" imza gücü — sürüşmə azalır, amma TAM öldürülmür:
     // 0.80-də yan impuls da itirdi və maşın YAVAŞLAYIRDI (ölçüldü: −25 m)
     if (this._sigGrip > 0) grip = Math.min(grip, 0.90);
-    vR *= Math.pow(grip, dt * 60);
+    if (F) vR = this._vR2;                       // v2: yan sürət _driveV2-də hesablanıb
+    else vR *= Math.pow(grip, dt * 60);
 
     // Sükan — yumşaq ramp: düymə basılanda tədricən artır, buraxılanda cəld mərkəzə qayıdır
     // Qeyd: heading AZALMASI ekranda SAĞA dönmədir (D → sağ)
@@ -216,7 +311,7 @@ export class Car {
     const speedRatio = Math.min(Math.abs(vF) / this.maxSpeed, 1);
     const highSpeedDamp = 1 - TUNING.car.highSpeedSteerDamp * speedRatio;
     // Drift zamanı burun daha iti fırlanır
-    const driftSteer = drive.handbrake ? 1.4 : 1;
+    const driftSteer = F ? (drifting ? F.driftSteer : 1) : (drive.handbrake ? 1.4 : 1);
     const steerFactor = Math.min(Math.abs(vF) / 6, 1) * highSpeedDamp * driftSteer;
     this.heading -= this._steerSmooth * this.turnRate * steerFactor * dt * Math.sign(vF || 1);
 

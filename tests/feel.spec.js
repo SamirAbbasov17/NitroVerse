@@ -9,19 +9,24 @@ import { boot, startMode, mergeJson } from './helpers.js';
 // kadr sürəti nəticəyə qarışmır; ölçülən yalnız Car.update modelidir.
 const CARS = ['blaze', 'titan', 'cargo'];
 
+// Hər maşın iki modeldə ölçülür: 'old' (indiki standart) və 'v2' (TUNING.feel2).
+for (const model of ['old', 'v2']) {
 for (const carId of CARS) {
-  test(`feel: ${carId}`, async ({ page }) => {
+  test(`feel: ${carId} (${model})`, async ({ page }) => {
     await boot(page);
     await startMode(page, { mode: 'race', trackId: 'desert', carId, laps: 3, difficulty: 'normal' });
 
-    const res = await page.evaluate(() => {
+    const res = await page.evaluate(async (useV2) => {
       const car = window.__active.playerCar;
+      const { TUNING } = await import('/src/data/balance.js');
+      car.feel = useV2 ? TUNING.feel2 : null;
       const DT = 1 / 60;
       const flat = { halfWidth: 1e9, maxRadius: 1e9, getNearest: () => ({ index: 0, t: 0, lateral: 0, onRoad: true }) };
       const rough = { ...flat, halfWidth: 0, getNearest: () => ({ index: 0, t: 0, lateral: 50, onRoad: false }) };
       const reset = () => {
         car.position.set(0, 0, 0); car.velocity.set(0, 0, 0);
         car.heading = 0; car.vF = 0; car._steerSmooth = 0; car.offRoad = 0;
+        car.driftT = 0; car.driftBoostT = 0; car.boostTimer = 0;
       };
       // `sec` saniyə sabit girişlə irəlilət; hər addımın vəziyyətini qaytar
       const run = (sec, throttle, steer, handbrake = false, track = flat) => {
@@ -102,8 +107,9 @@ for (const carId of CARS) {
       R.boost_top_pct = pct(Math.max(...bo.map((s) => s.v)));
       R.boost_ms_to_peak = firstT(bo, (s) => s.v >= car.maxSpeed * 1.44);
       return R;
-    });
-    console.log(JSON.stringify(res));
-    mergeJson('feel.json', carId, res);
+    }, model === 'v2');
+    console.log(model, JSON.stringify(res));
+    mergeJson('feel.json', `${carId}-${model}`, res);
   });
+}
 }

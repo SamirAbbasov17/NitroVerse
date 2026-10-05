@@ -28,6 +28,8 @@ Testlər Playwright-dır və repo-dadır: `tests/`. Dev serveri (5173) özləri 
 Tək test: `npx playwright test tests/shots.spec.js -g "race-neon"`.
 Brauzeri görərək: `npx playwright test tests/smoke.spec.js --headed`.
 
+**Yeni sürüş modeli ilə işlətmək (Faza 2 sınağı):** `FEEL=2 npm run test:smoke` — istənilən dəst yeni modeldə işləyir. `test:feel` hər iki modeli özü ölçür.
+
 ## Köməkçilər (`tests/helpers.js`)
 
 - `boot(page)` — oyunu açır, menyunu gözləyir (dil az, səs bağlı)

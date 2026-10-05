@@ -130,3 +130,47 @@ test('oynanış: rejimlər arasında sürətli keçid', async ({ page }) => {
   await racing(page);
   expect(errors, errors.join('\n')).toEqual([]);
 });
+
+// ————— Faza 2 sınağı: sürüş modeli keçidi —————
+// Standartda nişan yoxdur və köhnə model işləyir; `?feel=2` ilə nişan çıxır,
+// yeni model tətbiq olunur və toxunma / F8 modeli sürüş əsnasında dəyişir.
+for (const name of ['race-desert', 'zen']) {
+  test(`sürüş sınağı: keçid — ${name}`, async ({ page }) => {
+    const cfg = MODES.find((m) => m.name === name).config;
+    const state = () => page.evaluate(() => ({
+      chip: document.querySelector('.feel-chip')?.textContent || null,
+      v2: !!window.__active.playerCar.feel,
+      bots: (window.__active.cars || []).filter((c) => !c.isPlayer).map((c) => !!c.feel),
+    }));
+    // 1) standart: sınaq bağlı
+    await boot(page);
+    await startMode(page, cfg);
+    let s = await state();
+    expect(s.chip).toBeNull();
+    expect(s.v2).toBe(false);
+    // 2) ?feel=2: nişan + yeni model (botlar da)
+    await page.goto('/?feel=2');
+    await page.waitForFunction(() => !!window.__menu && !!window.__showcase);
+    await startMode(page, cfg);
+    await page.waitForTimeout(400);
+    s = await state();
+    expect(s.chip).toContain('YENİ');
+    expect(s.v2).toBe(true);
+    expect(s.bots.every(Boolean)).toBe(true);
+    // 3) nişana klik → köhnə; F8 → yenə yeni
+    await page.click('.feel-chip');
+    s = await state();
+    expect(s.chip).toContain('KÖHNƏ');
+    expect(s.v2).toBe(false);
+    await page.keyboard.press('F8');
+    s = await state();
+    expect(s.v2).toBe(true);
+    // 4) ?feel=0: sınaq tam bağlanır
+    await page.goto('/?feel=0');
+    await page.waitForFunction(() => !!window.__menu && !!window.__showcase);
+    await startMode(page, cfg);
+    s = await state();
+    expect(s.chip).toBeNull();
+    expect(s.v2).toBe(false);
+  });
+}

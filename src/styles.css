@@ -2319,3 +2319,13 @@ body.flt-sepia #filter-fx {
   animation: btnSheen 3.6s ease-in-out infinite;
 }
 @keyframes btnSheen { 0%, 62% { left: -45%; } 88%, 100% { left: 115%; } }
+
+/* ——— Faza 2 sınağı: sürüş modeli keçidi (yalnız ?feel=2 ilə açılır) ——— */
+.feel-chip {
+  position: absolute; left: 50%; bottom: 44px; transform: translateX(-50%);
+  z-index: 40; padding: 7px 14px; border-radius: 20px; cursor: pointer;
+  font: 700 12px/1 var(--font-display, sans-serif); letter-spacing: 1.5px;
+  color: #cfd6e6; background: rgba(12, 15, 26, 0.78); border: 1px solid rgba(255, 255, 255, 0.28);
+}
+.feel-chip.is-new { color: #10131c; background: #ffb02e; border-color: #ffb02e; }
+@media (pointer: coarse) { .feel-chip { bottom: 6px; padding: 6px 12px; font-size: 11px; } }

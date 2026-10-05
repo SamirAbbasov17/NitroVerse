@@ -43,6 +43,30 @@ Görünüşü və hissi dəyişmir; sonrakı fazaların üstündə dayanacağı 
 | Yoldan kənar | 0.5 s-də 60%-ə, tarazlıq 38% | Kiçik səhv dərhal ağır cəzalanır |
 | Maşınlar arası fərq | maks. sürət 210–241, qalanı demək olar eyni | 18 maşın oxşar sürülür |
 
+### v2 modeli (sınaqdadır — 2026-10-05)
+
+2.1–2.5 bir model kimi yazılıb (`TUNING.feel2`, `Car._driveV2`) və **köhnə ilə yan-yana oynana bilir**: ünvana `?feel=2` yaz → ekranda "SÜRÜŞ: YENİ ⇄" nişanı çıxır; nişana toxunmaq və ya **F8** sürüş əsnasında modeli dəyişir. `?feel=0` sınağı bağlayır. Standart oyunçu heç nə görmür və köhnə modeldə qalır; onlayn yarışda sınaq işləmir.
+
+Ölçmə (`npm run test:feel`, Blaze GT):
+
+| Ölçü | Köhnə | v2 |
+|---|---|---|
+| 0 → 50% / 90% / 99% sürət | 0.70 / 1.52 / 1.75 s | 0.78 / 2.48 / 4.08 s |
+| Tam qazla tam sükan: saxlanılan sürət | 100% | 83% |
+| Dönmə radiusu (tam sükan) | 27.6 m | 20.2 m |
+| Drift 1 s: sürüşmə bucağı | 86° | 33° |
+| Drift 1 s: saxlanılan ümumi sürət | 70% | 96% |
+| Drift 1 s-də dönmə / adi dönmə | 116° / 75° | 111° / 80° |
+| Drift çıxışı: 95% sürətə qayıdış | 1.65 s | 0.12 s (çıxış təkanı ilə) |
+| Qazı buraxmaq: 2 s sonra sürət | 37% | 70% |
+| Əyləc 225 → 0 | 0.77 s / 14 m | 1.35 s / 27.5 m |
+| Yoldan kənar: 60%-ə düşmə / tarazlıq | 0.5 s / 38% | 1.5 s / 47% |
+| Nitro: zirvəyə çatma | 0.32 s | 0.57 s |
+
+Köhnə modeldə tutum statı tərsinə işləyirdi (yüksək "Tutum" = daha çox sürüşmə); v2-də yüksək tutum az sürüşür.
+
+Əhatə: yarış + zen (oflayn). Arena və futbol köhnə modeldədir — onların tənzimi ayrıdır.
+
 Təklif olunan istiqamət (hər biri ayrıca göstəriləcək və sən seçəcəksən):
 
 | # | İş | Ölçü |

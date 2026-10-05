@@ -37,6 +37,42 @@ export const TUNING = {
     kmhFactor: 5.5,
   },
 
+  // ————— SÜRÜŞ MODELİ v2 (arcade-drift) —————
+  // Faza 2 təklifi. `car.feel = TUNING.feel2` olan maşınlar bu modeli işlədir
+  // (yarış + zen, yalnız oflayn); qalanları yuxarıdakı köhnə modeldə qalır.
+  // Hər rəqəmin hədəfi `npm run test:feel` ilə ölçülür (docs/UPGRADE-PLAN.md).
+  feel2: {
+    // Sürətlənmə: v → vmax-a eksponensial yaxınlaşma, τ = tauMax − (accel/100)·tauRange.
+    // Hədəf vmax-dan 2% yuxarı götürülür ki, tavana sonlu vaxtda çatılsın.
+    // τ≈1.2 s → 50% ~0.8 s, 90% ~2.6 s, 99% ~4.2 s (köhnə: 99% 1.75 s)
+    tauMax: 2.0,
+    tauRange: 1.1,
+    overshoot: 1.02,
+    tauDown: 1.15,      // icazə verilən sürətdən yuxarıdaykən enmə (yoldan kənar, nitro sonu)
+    coast: 0.18,        // qaz buraxılanda: 2 s-də sürətin ~70%-i qalır (köhnə: 37%)
+    brake: 30,          // m/s² — 225 km/s-dən ~1.4 s, ~28 m (köhnə: 0.77 s, 14 m)
+    nitroAccel: 5,      // nitroda τ bu qədər qısalır — təkan dərhal hiss olunur
+    // Yan tutum (1/s): sürət vektorunun burun istiqamətinə düzlənmə tempi.
+    // Tutum statı YÜKSƏK olan maşın AZ sürüşür (köhnə modeldə tərsinə idi).
+    gripMin: 2.5,
+    gripRange: 5.2,
+    // Döngədə sürət itkisi: tam sükan + tam qazda sürət ~80%-də qərarlaşır
+    cornerScrub: 0.34,
+    // Yoldan kənar: icazə verilən sürət 45%-ə enir, ora ~1.5 s-də çatılır
+    offRoadCut: 0.55,
+    // Drift (əl əyləci + sükan): idarə olunan sürüşmə ~30°, sürətin ~90%-i qalır,
+    // adi dönmədən həm sürətli, həm iti → döngədə drift real üstünlükdür
+    driftMinSpeed: 9,
+    driftGrip: 3.8,     // driftdə düzlənmə tempi — kiçik = daha çox sürüşmə bucağı
+    driftSteer: 1.35,   // driftdə burun daha iti dönür
+    driftTarget: 0.9,   // driftdə saxlanılan sürət (vmax payı)
+    // Drift çıxışı: ≥ boostMin s driftdən sonra qısa təkan (uzun drift → uzun təkan)
+    boostMin: 0.6,
+    boostMax: 1.1,
+    boostSpeed: 1.12,
+    boostAccel: 3,
+  },
+
   // ————— ARENA PROFİLİ —————
   // Arena 104 m radiuslu qapalı meydandır: yarış tənzimi orada "sürüşkən və
   // ağır" hiss verir — driftdən sonra maşın tam sürətlə uçur və manevr etmək
