@@ -32,6 +32,9 @@ Mənbə: `docs/DESIGN.md`, `docs/MODELS.md`. Ziddiyyət olsa onlar üstündür.
 - Gecə ambient ≥ 0.5 — yoxsa flat-shaded iri üçbucaqlar sərt qara ləkə olur.
 - Kölgə yalnız masaüstündə (`Game.js`: `shadowMap.enabled = !touch`).
 - **Yol həmişə ən üstdədir:** heç bir dekor/relyef asfaltın üstünə çıxmır. Yerləşdirmədən əvvəl `_free(x, z, r)`.
+- **Lay hündürlükləri** (yarış): yer −0.04 · sahil −0.012 · su +0.009 · şaxə yolu +0.012 · yol +0.02 · zolaq +0.05. Yeni yastı lay əlavə edəndə qonşusundan ən azı ~2 sm aralı qoy — 4–5 mm fərq uzaqda yanıb-sönür.
+- İki qutunu eyni qalınlıqda üst-üstə qoyma (üzlər eyni müstəvidə qalır → z-fighting); biri digərindən nazik olsun. Yoxlama: `npm run test:zfight`.
+- Dekor yerləşdirəndə `_free()` işlət — o, su zonasını (`keepOut`) da yoxlayır. Yoxlanan radius toqquşma siyahısına yazılan radiusla eyni olsun. Yoxlama: `npm run test:overlap`.
 - Toqquşma radiusunu sabit yazma, modelin `Box3` ölçüsündən hesabla.
 - Kontekst: şəhərdə ağac/qaya, alpdə neon, səhrada palma olmaz. Səpələnmiş "doldurucu" obyekt qoyma.
 

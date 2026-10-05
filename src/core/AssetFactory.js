@@ -572,7 +572,9 @@ export function makeSponsorBoard(w = 6, color = 0x1f6feb) {
   stripe.position.set(0, 0.95, 0.01);
   g.add(stripe);
   for (const sx of [-1, 1]) {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.9, 0.16), flatMat(0x565d6b));
+    // Ayaq lövhədən NAZİKDİR (0.10 < 0.16): əvvəl eyni qalınlıqda idi və ön/arxa
+    // üzləri lövhənin üzləri ilə eyni müstəvidə qalıb yanıb-sönürdü (z-fighting).
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.9, 0.10), flatMat(0x565d6b));
     leg.position.set(sx * (w / 2 - 0.3), 0.45, 0);
     g.add(leg);
   }

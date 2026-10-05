@@ -26,6 +26,8 @@ Görünüşü və hissi dəyişmir; sonrakı fazaların üstündə dayanacağı 
 | 1.4 | **Draw call**: futbol 400, kanyon 258, arena 221, riviera 207, zavod 198, zen 192, neon 175 | Sənəd büdcəsi 140/110; 9 rejimdən 7-si kənardadır. Əvvəlcə mobil profildə ölç, sonra ən ağırları birləşdir/instansla | `test:perf` büdcəsi yaşıl; kadrlar dəyişməyib | M |
 | 1.5 | **Sabit fizika addımı** (60 Hz akkumulyator) | İndi fizika kadr vaxtı ilə irəliləyir (`dt` 50 ms-ə qədər): zəif telefonda maşın fərqli davranır, onlaynda oyunçular arası fərq yaranır | `test:feel` 30/60/120 FPS-də eyni rəqəm | M |
 | 1.6 | **Görünən buqlar**: zen-də əyri binalar · menyu fonunda dirəyin kadrı kəsməsi (9 ekrandan 3-ü) · futbolda kameranın divarın içinə girməsi | `BASELINE.md` §3, kadrlarla | əvvəl/sonra kadr | S–M |
+| 1.6b | **Zen-də qalan yerləşdirmə qüsurları** (2026-10-05 `test:overlap` ilə tapılıb, hələ düzəldilməyib): hər sürüşdə 1–3 iç-içə obyekt cütü; körpü hissələrində yolun eni daxilində (yan məsafə 4–5.5 m) kiçik toqquşma dairələri (r 0.3–0.45) — körpü dayaqları ola bilər, yolda görünməz maneə yaradıb-yaratmadığı yoxlanmalıdır | `tests/out/overlap.json` | `test:overlap` zen yaşıl | M |
+| 1.6c | Yarışda `_trackside` (tribuna, marşal, lövhə) yoxlanan və yazılan radius fərqlidir — təsadüfi 1 kəsişmə qalır (2 qaçışda 0–1) | `test:overlap` | 5 təkrarda 0 | S |
 | 1.7 | Kod təmizliyi: i18n `t` kölgələnməsi (26 yer), istifadəsiz dəyişənlər | Sənəddə "tələ" kimi qeyd olunub, real buq mənbəyidir | lint 0 xəbərdarlıq | S |
 | 1.8 | Musiqi lisenziyası: mənbə tapıldı — HoliznaCC0 (CC0). Qalan: 6 trekin ("Ocean Memory", "Summer Air") albom səhifəsindən təsdiqi + lisenziya mətninin `public/music/`-ə əlavəsi | `ASSETS-LICENSES.md` | səhifə linki jurnalda | S |
 

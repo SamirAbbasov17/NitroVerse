@@ -21,12 +21,21 @@ export class Environment {
   // Bunsuz iri obyektlər (bina, mesa, təpə, tribuna) bir-birinin İÇİNDƏN
   // çıxırdı (istifadəçi rəyi: şəhər trekində tribunalar üst-üstə düşür).
   _free(x, z, r, pad = 1.2) {
-    return !this.obstacles.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + r + pad);
+    return !this.obstacles.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + r + pad)
+      && !this._inWater(x, z, r);
+  }
+
+  // SU ZONASI: çay/göl səthi (körpü altı daxil). Toqquşma siyahısından AYRIDIR —
+  // körpü zonasında toqquşma yoxdur (yol keçir), amma dekor yenə qoyula bilməz.
+  // Əvvəl şin yığınları və daşlar suyun içinə düşürdü (istifadəçi rəyi).
+  _inWater(x, z, r = 0) {
+    return this.keepOut.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + r);
   }
 
   _build() {
     const p = this.data.palette;
     this.obstacles = []; // { x, z, r } — bütün bərk obyektlər (toqquşma üçün)
+    this.keepOut = [];   // { x, z, r } — su səthi: dekor qoyulmur (bax _inWater)
 
     // Trek-üzrə rəng qradasiyası (exposure) — hər xəritənin öz "saat/hava" hissi
     if (this.renderer) this.renderer.toneMappingExposure = p.exposure ?? 1.15;
@@ -114,6 +123,12 @@ export class Environment {
       const col = new THREE.BufferAttribute(new Float32Array(pos.count * 3), 3);
       const tmp = new THREE.Vector3();
       const baza = new THREE.Color(p.ground);
+      // Kənar tündləşməsi (dərinlik hissi) vertex rənginə yazılır. ƏVVƏL ayrıca
+      // "rim" halqası idi: yerdən 1 sm yuxarıda, eyni sahədə — relyef dalğası
+      // onun içindən çıxıb sərt kənarlı ləkələr yaradır, uzaqda isə iki səth
+      // yanıb-sönürdü (z-fighting; istifadəçi rəyi).
+      const kənar = new THREE.Color(p.groundEdge ?? p.ground);
+      const rəng = new THREE.Color();
       for (let i = 0; i < pos.count; i++) {
         const x = pos.getX(i), y = pos.getY(i);   // düzlük XY-dədir
         const wx = x, wz = -y;                     // döndərmədən sonra dünya
@@ -129,7 +144,9 @@ export class Environment {
         const n2 = Math.sin((wx * 0.7 + wz) * 0.013 + 2.4);
         const n3 = Math.sin(wx * 0.026 - wz * 0.019 + 4.1);
         const k = 0.955 + (n1 * 0.5 + n2 * 0.3 + n3 * 0.2) * 0.075;
-        col.setXYZ(i, baza.r * k, baza.g * k, baza.b * k * (1 + n2 * 0.02));
+        const e = Math.max(0, Math.min(1, (Math.hypot(wx, wz) - 200) / 90));
+        rəng.copy(baza).lerp(kənar, e * e * (3 - 2 * e));
+        col.setXYZ(i, rəng.r * k, rəng.g * k, rəng.b * k * (1 + n2 * 0.02));
       }
       gGeo.setAttribute('color', col);
       gGeo.computeVertexNormals();
@@ -140,37 +157,35 @@ export class Environment {
         vertexColors: true, flatShading: true })
     );
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -0.02;
+    // LAY SIRASI (aşağıdan yuxarı): yer −0.04 · sahil −0.012 · su +0.009 ·
+    // şaxə yolu +0.012 · yol +0.02 · zolaq +0.05. Laylar arası ən azı ~2 sm:
+    // 4–5 mm fərqlə uzaqda dərinlik buferi onları ayıra bilmir və yanıb-sönür.
+    ground.position.y = -0.04;
     ground.receiveShadow = true;
     this.scene.add(ground);
     this._track(ground);
-
-    // Kənar halqa (daha tünd, dərinlik hissi)
-    const rim = new THREE.Mesh(
-      new THREE.RingGeometry(200, 720, 64),
-      new THREE.MeshStandardMaterial({ color: p.groundEdge ?? p.ground, map: groundTex, roughness: 1 })
-    );
-    rim.rotation.x = -Math.PI / 2;
-    rim.position.y = -0.01;
-    rim.receiveShadow = true;
-    this.scene.add(rim);
-    this._track(rim);
+    this._groundGeo = gGeo;
 
     // Dəniz sahili varsa, dağ halqası hesablamadan ƏVVƏL bilinməlidir
     if (this.data.sea) this._seaCoast = this.track.maxRadius + 20;
     this._distant();
     this._clouds();
     if (this.data.sea) this._sea();
+    // SIRA VACİBDİR: su ƏVVƏL qurulur ki, sonrakı hər şey (təpə, şin, dekor)
+    // ondan yan keçsin. Əvvəl çay rekvizitlərdən SONRA gəlirdi → şin yığınları
+    // və təpələr suyun içində qalırdı.
+    if (this.data.river) this._river(this.data.river);
     if (this.data.id === 'canyon') this._canyonWalls();
     if (['desert', 'alpine', 'riviera'].includes(this.data.id)) this._hills();
     if (this.data.id === 'neon') this._billboards();
+    // Lampalar rekvizitlərdən ƏVVƏL: mövqeləri sabit addımlıdır (işıqlandırma),
+    // şin/bariyer isə onlardan yan keçir. Əvvəl lampalar ən sonda, yoxlamasız
+    // qoyulurdu və dirək şin yığınının içindən çıxırdı.
+    if (this.data.roadLamps) this._roadLamps();
     this._tracksideProps(); // şin qüllələri + bariyerlər — peşəkar trek görkəmi
-    if (this.data.river) this._river(this.data.river);
     this._scatterDecor();
     this._trackside();      // tribuna, projektor, marşal, sponsor, bayraq
     this._autoObstacles();   // təhlükəsizlik toru — bax aşağı
-    // Gecə trekində yol küçə lampaları ilə işıqlanır
-    if (this.data.roadLamps) this._roadLamps();
   }
 
   // Yol boyunca küçə lampaları (növbəli tərəflərdə)
@@ -188,7 +203,14 @@ export class Environment {
       const n = this.track.normals[i];
       // Performans: hər 3-cü lampada real işıq, qalanı emissive parıltı
       const lamp = makeLamp(colors[ci % colors.length], ci % 3 === 0);
-      const lx = p.x + n.x * off * side, lz = p.z + n.z * off * side;
+      let lx = p.x + n.x * off * side, lz = p.z + n.z * off * side;
+      // Suya düşürsə yol boyu bir az irəli/geri sürüşdür (körpü yanı)
+      for (const d of [6, -6, 12, -12]) {
+        if (!this._inWater(lx, lz, 1)) break;
+        const q = this.track.points[(i + d + N) % N], m = this.track.normals[(i + d + N) % N];
+        lx = q.x + m.x * off * side; lz = q.z + m.z * off * side;
+      }
+      if (this._inWater(lx, lz, 1)) { side *= -1; ci++; continue; }
       lamp.position.set(lx, 0, lz);
       g.add(lamp);
       this.obstacles.push({ x: lx, z: lz, r: 0.55 });   // dirək bərkdir
@@ -692,8 +714,10 @@ export class Environment {
       roughness: 1,
     });
     const g = new THREE.Group();
-    g.add(strip(half + 2.4, 0.005, bankMat)); // sahil
-    g.add(strip(half, 0.009, waterMat));      // su (yolun ALTINDA qalır: yol y=0.02)
+    g.add(strip(half + 2.4, -0.012, bankMat)); // sahil
+    g.add(strip(half, 0.009, waterMat));       // su (yolun ALTINDA qalır: yol y=0.02)
+    // Su zonası — körpü altı daxil bütün çay boyu (dekor qoyulmasın)
+    for (const pt of pts) this.keepOut.push({ x: pt.x, z: pt.z, r: half + 3.5 });
 
     // ÇAYA GİRMƏK OLMAZ: mərkəz xətti boyu toqquşma dairələri
     // (körpü zonası açıq qalır) + sahildə TƏBİİ maneə kimi daşlar
@@ -706,7 +730,7 @@ export class Environment {
     for (let i = 0; i < pts.length; i += 2) {
       const pt = pts[i];
       if (pt.distanceTo(c) < bridgeClear) continue;
-      this.obstacles.push({ x: pt.x, z: pt.z, r: half + 1.2 });
+      this.obstacles.push({ x: pt.x, z: pt.z, r: half + 1.2, water: true });
       // Hər 4-cü nöqtədə sahil daşları (vizual xəbərdarlıq)
       if (i % 4 === 0) {
         const a = pts[Math.max(0, i - 1)];
@@ -734,11 +758,13 @@ export class Environment {
       const end = arm.pts[arm.pts.length - 1];
       const R = arm.R;
       const phase = Math.random() * 6;
+      // Gölün konturu — su, sahil və sahil daşları EYNİ funksiyadan oxuyur
+      const edge = (th) => R * (1 + 0.20 * Math.sin(3 * th + phase) + 0.10 * Math.sin(7 * th + phase * 2));
       const blob = (scale) => {
         const shape = new THREE.Shape();
         for (let k = 0; k <= 30; k++) {
           const th = (k / 30) * Math.PI * 2;
-          const rr = R * scale * (1 + 0.20 * Math.sin(3 * th + phase) + 0.10 * Math.sin(7 * th + phase * 2));
+          const rr = edge(th) * scale;
           const px = Math.cos(th) * rr, py = Math.sin(th) * rr;
           if (k === 0) shape.moveTo(px, py); else shape.lineTo(px, py);
         }
@@ -746,24 +772,28 @@ export class Environment {
       };
       const bank = new THREE.Mesh(blob(1.16), bankMat);
       bank.rotation.x = -Math.PI / 2;
-      bank.position.set(end.x, 0.004, end.z);
+      bank.position.set(end.x, -0.012, end.z);
       g.add(bank);
       const lake = new THREE.Mesh(blob(1), waterMat);
       lake.rotation.x = -Math.PI / 2;
-      lake.position.set(end.x, 0.008, end.z);
+      lake.position.set(end.x, 0.009, end.z);
+      this.keepOut.push({ x: end.x, z: end.z, r: R * 1.36 });
       g.add(lake);
       // Göl sahili daşları + toqquşma
       for (let k = 0; k < 9; k++) {
         const th = (k / 9) * Math.PI * 2 + Math.random() * 0.4;
-        const rr = R * 1.12 * (1 + 0.20 * Math.sin(3 * th + phase));
+        // ShapeGeometry XY-də qurulub −90° döndərilir: (x, y) → dünya (x, −y).
+        // Əvvəl daş düsturu gölün konturu ilə uyğun deyildi (faza və 7θ
+        // həddi yox idi) → daşlar suyun ortasında qalırdı.
+        const rr = edge(th) * 1.13;
         const s = 0.8 + Math.random() * 1.1;
         const rock = new THREE.Mesh(rockGeo, rockMat);
         rock.scale.set(s, s * 0.7, s);
-        rock.position.set(end.x + Math.cos(th) * rr, s * 0.3, end.z + Math.sin(th) * rr);
+        rock.position.set(end.x + Math.cos(th) * rr, s * 0.3, end.z - Math.sin(th) * rr);
         rock.rotation.y = Math.random() * 6;
         g.add(rock);
       }
-      this.obstacles.push({ x: end.x, z: end.z, r: R * 1.1 + 1.2 });
+      this.obstacles.push({ x: end.x, z: end.z, r: R * 1.1 + 1.2, water: true });
     }
 
     // KÖRPÜ: keçiddə yol kənarı məhəccərlər + dayaq daşları
@@ -800,6 +830,27 @@ export class Environment {
     const merged = mergeStaticGroup(g);
     this.scene.add(merged);
     this._track(merged);
+    this._flattenGroundNearWater();
+  }
+
+  // Su ətrafında yer DÜZ olmalıdır: relyef dalğası (±1.7 m) suyun içindən
+  // çıxıb gölü sərt kənarlı parçalara bölürdü. Suya 28 m-dən yaxın təpələr
+  // sıfıra endirilir, 75 m-ə qədər yumşaq keçid.
+  _flattenGroundNearWater() {
+    const geo = this._groundGeo;
+    if (!geo || !this.keepOut.length) return;
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const h = pos.getZ(i);
+      if (h === 0) continue;
+      const wx = pos.getX(i), wz = -pos.getY(i);
+      let d = Infinity;
+      for (const o of this.keepOut) d = Math.min(d, Math.hypot(o.x - wx, o.z - wz) - o.r);
+      const k = Math.max(0, Math.min(1, (d - 28) / 47));
+      if (k < 1) pos.setZ(i, h * k * k * (3 - 2 * k));
+    }
+    pos.needsUpdate = true;
+    geo.computeVertexNormals();
   }
 
   // Yavaş animasiyalar (dəyirman qanadları, bulud dreyfi)
@@ -843,7 +894,8 @@ export class Environment {
     // yoxsa tribuna başqa obyektin içinə düşürdü
     const boşdur = (x, z, r) => !tutulan.some((o) =>
       Math.hypot(o.x - x, o.z - z) < o.r + r + 2)
-      && !this.obstacles.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + r + 1.5);
+      && !this.obstacles.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + r + 1.5)
+      && !this._inWater(x, z, r);
     const put = (obj, i, off, side, faceRoad = true, r = 2.5) => {
       const c = this.track.points[i], n = this.track.normals[i], t = this.track.tangents[i];
       const x = c.x + n.x * off * side, z = c.z + n.z * off * side;
@@ -980,6 +1032,9 @@ export class Environment {
             const near = this.track.getNearest(pos);
             if (Math.abs(near.lateral) < half + 6) continue;
             if (this.track.branches?.length && this.track.isOnBranch(pos, 6)) continue;
+            // Evlər də yer yoxlamasından keçir (əvvəl yoxlamasız qoyulurdu:
+            // bir-birinin və çayın içinə düşürdülər)
+            if (!this._free(pos.x, pos.z, 3.2, 0.5)) continue;
             const obj = makeDecor('house');
             obj.position.copy(pos);
             // Evlər klaster mərkəzinə (meydana) baxır — kənd hissi
@@ -995,7 +1050,7 @@ export class Environment {
         this._blades = this._blades || [];
         for (let wi = 0; wi < rule.count; wi++) {
           const pos = this._freeSpot(6, this.track.maxRadius * 0.3, this.track.maxRadius + 20);
-          if (!pos) continue;
+          if (!pos || !this._free(pos.x, pos.z, 2.6, 0.5)) continue;
           const wm = makeDecor('windmill');
           wm.position.copy(pos);
           wm.rotation.y = Math.random() * Math.PI * 2;
@@ -1039,7 +1094,16 @@ export class Environment {
         {
           box.setFromObject(obj); box.getSize(size);
           const rr = Math.max(size.x, size.z) * 0.42;
-          if (rr >= 3 && !this._free(pos.x, pos.z, rr, 0.5)) continue;
+          // Yoxlanan radius toqquşma siyahısına YAZILAN radiusla eyni olmalıdır
+          // (əvvəl 0.42×ölçü yoxlanır, 0.85×objR yazılırdı → iri dekor çayın
+          // üstünə düşürdü).
+          const yazılan = Math.min(objR * 0.85, 40);
+          if (rr >= 3 && !this._free(pos.x, pos.z, Math.max(rr, yazılan), 0.5)) continue;
+          if (this._inWater(pos.x, pos.z, rr)) continue; // kiçik dekor da suya düşməsin
+          // Kiçik dekor bir-birinə yaxın ola bilər, amma İRİ obyektin (təpə, mesa,
+          // bina) İÇİNDƏ ola bilməz — ağac təpənin gövdəsindən çıxırdı.
+          if (rr < 3 && this.obstacles.some((o) => o.r >= 5
+            && Math.hypot(o.x - pos.x, o.z - pos.z) < o.r + rr)) continue;
         }
         obj.position.copy(pos);
         obj.rotation.y = Math.random() * Math.PI * 2;

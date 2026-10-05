@@ -17,6 +17,8 @@ Testlər Playwright-dır və repo-dadır: `tests/`. Dev serveri (5173) özləri 
 | `npm run test:leak` | 18 səhnə dövrü — 3 tur (menyuya oyunun öz yolu ilə qayıdır) → `tests/out/leak.json` | 2-ci → 3-cü tur arasında artım yox | ~2.5 dəq |
 | `npm run test:items` | bonus qutusu invariantı: ikon öz işığından ayrılmır; maqnitdən sonra qutular yerinə qayıdır | ayrılma < 0.05 m | ~30 s |
 | `npm run test:feel` | sürüş modeli: sürətlənmə, əyləc, sükan cavabı, drift, yoldan kənar, nitro — sabit addımla, maneəsiz → `tests/out/feel.json` | yoxdur — əvvəl/sonra müqayisə | ~5 s |
+| `npm run test:overlap` | bərk obyektlərin bir-birinin içinə girməsi və yolun üstünə çıxması (6 trek + zen) → `tests/out/overlap.json` | 0 (zavod konteynerləri və uzaq fon dağları istisna) | ~1.5 dəq |
+| `npm run test:zfight` | yanıb-sönən (eyni dərinlikdə üst-üstə düşən) səthlər: sürüş zamanı 36 baxış, hər biri iki dəfə render olunub müqayisə edilir → `tests/out/zfight/` (qırmızı = pozuntu) | ekranın < 0.05%-i | ~7 dəq |
 | `npm run test:mobile` | 844×390-da HUD düymələrinin örtüşməsi və ekrandan çıxması | 0 | ~30 s |
 
 Tək test: `npx playwright test tests/shots.spec.js -g "race-neon"`.
@@ -37,9 +39,7 @@ Köhnə dəstdən bunlar itib və yenidən yazılmayıb — lazım olan sahəyə
 
 | Köhnə skript | Nə yoxlayırdı |
 |---|---|
-| `road-raycast` / `track-onroad` | yolun üstündə obyekt (şüa testi) — 0 pozuntu |
 | `building-collide` / `small-obs` / `tunnel-test` | binaya/dirəyə/tunel divarına girmə |
-| `overlap-test` | dekor kəsişməsi |
 | `pickup-test` | item/pad/imza gücü götürmə |
 | `diff-test` | çətinlik sırası (asan < normal < çətin), AI yola qayıdış |
 | `edge-suite` | pauza/resize/oflayn/sürətli keçid |
