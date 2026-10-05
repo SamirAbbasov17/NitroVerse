@@ -34,6 +34,22 @@ Yoxlanmayıb: onlayn (iki brauzer), toqquşma/şüa testləri, AI çətinlik sı
 
 Qalın = `docs/MODELS.md` büdcəsindən kənar (yarış < 140, zen < 110 draw call; < 90 000 üçbucaq).
 
+**Düzəliş (2026-10-05, yerləşdirmə düzəlişlərindən sonra yenidən ölçülüb):** yuxarıdakı draw call rəqəmləri 12 saniyənin **maksimumudur** — partlayış və hissəcik anları onu şişirdir (hər qəlpə ayrı draw call) və qaçışdan-qaçışa 2 dəfəyədək dəyişir. Sabit yükü **median** göstərir:
+
+| Rejim | Draw call median | maks | Büdcə |
+|---|---|---|---|
+| race-desert | 92 | 244 | 140 |
+| race-neon | 86 | 169 | 140 |
+| race-alpine | 101 | 221 | 140 |
+| race-canyon | **167** | 274 | 140 |
+| race-riviera | **145** | 193 | 140 |
+| race-zavod | 135 | 237 | 140 |
+| zen | **151** | 162 | 110 |
+| football | **140** | 392 | 140 |
+| arena | **147** | 234 | 140 |
+
+Yəni sabit yükdə 9 rejimdən 5-i büdcədən kənardadır (əvvəl "7-si" yazılmışdı — o, maksimuma görə idi). Effekt partlayışları ayrıca problemdir: futbolda qol anında 392-yə çıxır. `test:perf` indi büdcəni mediana tətbiq edir.
+
 Oxunuşu:
 - **CPU kadr xərci aşağıdır** (p99 < 8 ms) — bu maşında ehtiyat böyükdür.
 - **Draw call sənəddəki büdcədən 9 rejimdən 7-də yüksəkdir.** Sayğaca kölgə keçidi də daxildir (masaüstündə kölgə aktivdir), köhnə ölçmə üsulu məlum deyil. Ya büdcə yenidən təyin olunmalıdır, ya da səhnələr optimallaşdırılmalıdır — mobil ölçmə ilə qərar verilməlidir.
@@ -47,7 +63,7 @@ Oxunuşu:
 Mənbə: `tests/out/shots/` (54 kadr). Statik kadrlardan görünənlərdir; hərəkətdə təsdiq üçün playtest lazımdır.
 
 **Səhnə**
-1. **Zen: şəhər binaları əyri dayanır** — KayKit binaları şaquli deyil, yana əyilib (`d-zen-1drive`, `m-zen-hud`); səbəbi araşdırılmayıb.
+1. ~~Zen: şəhər binaları əyri dayanır~~ — **səhv müşahidə idi.** Yenidən baxıldı: binalar şaqulidir, kadrın kənarlarındakı meyl geniş bucaqlı kameranın perspektividir (kamera aşağı baxır). Qüsur deyil.
 2. **Neon: binalar qapqara siluetdir** — pəncərə işığı az, səth detalı yoxdur; yer də qaradır (`d-race-neon-*`).
 3. **Zavod: "binalar" teksturasız tünd-göy qutulardır**, mühit tutqun boz-qəhvəyidir (`d-race-zavod-*`).
 4. **Dağlar bütün treklərdə eyni konus formasındadır**, düz rəngli — fon təkrarlanır.
@@ -58,14 +74,18 @@ Mənbə: `tests/out/shots/` (54 kadr). Statik kadrlardan görünənlərdir; hər
 
 **Kamera**
 9. **Rəqib maşınlar kameranın önünü tutur** — arxadan gələn/yanaşan bot kadrın böyük hissəsini örtür (`d-race-alpine-1drive`, `-3later`, `d-race-canyon-3later`, `d-race-zavod-3later`).
-10. Futbolda divara yaxın kamera divarın içindən göstərir (`m-football-hud`).
-11. **Menyu fonu: finiş tağının dirəyi kadrı kəsir** — 9 ekrandan 3-də qara sütun görüntünü bölür (`d-menu-auth`, `-online`, `-signup`; mobil `m-menu-signup`).
+10. ~~Futbolda kamera divarın içindən göstərir~~ — **səhv müşahidə idi.** Kod kameranı meydanın içində saxlayır (bortdan 1.2 m); həmin kadr test sürücüsünün divara ilişdiyi vəziyyət idi. Kamera istifadəçinin rəyi ilə tənzimlənib — toxunulmur.
+11. ~~Menyu fonu: finiş tağının dirəyi kadrı kəsir~~ — **düzəldilib (2026-10-05):** maşın start xəttindən 16 m geridə dayanır, tağ fon olur; 9 ekrandan 0-da dirək.
 
 **HUD / UI**
 12. Yarışda sürət 6.7 saniyədə 225-ə çatır və orada qalır; zen-də 147-də sabitdir — sürət artımı hissi qısadır.
 13. Boş qabiliyyət slotları tünd boz kvadratdır — yer tutucu kimi görünür.
 14. Mobil menyu: rejim siyahısında 5-ci sətir (Onlayn) görünmür, sürüşdürmək lazımdır; "Xəta bildir" formunun aşağısı kəsilir.
 15. Riviera: avtopilot 13-cü saniyədə yoldan çıxdı və 8+ saniyə 38–40 km/s ilə kənarda qaldı (`d-race-riviera-2later`, `-3later`) — yoldan çıxmanın cəzası ağır ola bilər; avtopilotun xətası da ola bilər, playtest ilə yoxlanmalıdır.
+
+**Baseline-dan sonra tapılıb düzəldilənlər (2026-10-05)** — `test:overlap`, `test:zfight`:
+- Yarış: iç-içə obyekt cütü 39 → 0 (5 təkrar); su içində şin/daş/təpə; göldən çıxan relyef; yanıb-sönən yer/sahil/su layları; lampa dirəkləri şin və bariyerin içində; sponsor lövhələrinin yanıb-sönən ucları.
+- Zen: yoldaş dekorun əsas obyektin içinə girməsi; uzaq (60 m+) dekorun üst-üstə düşməsi; lampa × nişan × dirək kəsişməsi.
 
 ## 4. Kod və layihə
 

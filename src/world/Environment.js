@@ -1102,8 +1102,13 @@ export class Environment {
           if (this._inWater(pos.x, pos.z, rr)) continue; // kiçik dekor da suya düşməsin
           // Kiçik dekor bir-birinə yaxın ola bilər, amma İRİ obyektin (təpə, mesa,
           // bina) İÇİNDƏ ola bilməz — ağac təpənin gövdəsindən çıxırdı.
-          if (rr < 3 && this.obstacles.some((o) => o.r >= 5
-            && Math.hypot(o.x - pos.x, o.z - pos.z) < o.r + rr)) continue;
+          // Başqa kiçik obyektə TOXUNA bilər, amma gövdəsinə girə bilməz (≥60%
+          // məsafə) — ağac şin yığınının, kol bariyerin içindən çıxırdı.
+          const rk = Math.max(rr, yazılan);
+          if (rr < 3 && this.obstacles.some((o) => {
+            const d = Math.hypot(o.x - pos.x, o.z - pos.z);
+            return d < (o.r >= 5 ? o.r + rr : (o.r + rk) * 0.62);
+          })) continue;
         }
         obj.position.copy(pos);
         obj.rotation.y = Math.random() * Math.PI * 2;

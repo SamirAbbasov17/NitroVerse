@@ -145,6 +145,7 @@ export async function measure(page, ms) {
     const intervals = [];
     const costs = [];
     let calls = 0;
+    const callList = []; // kadr başına — partlayış/hissəcik anları maks-ı şişirdir, median sabit yükdür
     let tris = 0;
     let t0 = 0;
     const origUpdate = sc.update;
@@ -154,6 +155,7 @@ export async function measure(page, ms) {
       const out = origRender.call(this, s, c);
       if (t0) costs.push(performance.now() - t0);
       calls = Math.max(calls, r.info.render.calls);
+      callList.push(r.info.render.calls);
       tris = Math.max(tris, r.info.render.triangles);
       return out;
     };
@@ -188,6 +190,7 @@ export async function measure(page, ms) {
       costP99: round(q(costs, 0.99)),
       costMax: round(Math.max(0, ...costs)),
       drawCalls: calls,
+      drawCallsP50: q(callList, 0.5),
       triangles: tris,
       geometries: r.info.memory.geometries,
       textures: r.info.memory.textures,

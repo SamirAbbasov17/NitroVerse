@@ -75,9 +75,17 @@ export class ShowcaseScene {
 
   _placeCar() {
     if (!this.carRoot || !this.track) return;
-    const p = this.track.startPosition;
+    // Maşın start xəttindən ~16 m GERİDƏ (start pilləsində) dayanır, tağ isə
+    // qabaqda fon olur. ƏVVƏL düz tağın altında idi: kamera orbiti (r≈10–12 m)
+    // tağın dirəklərinin yanından keçir və qara sütun kadrın yarısını örtürdü.
+    const tr = this.track;
+    const back = Math.max(2, Math.round(16 / (tr.length / tr.N)));
+    const idx = (tr.N - back) % tr.N;
+    const p = tr.points[idx];
+    const tg = tr.tangents[idx];
+    this._carHeading = Math.atan2(tg.x, tg.z);
     this.carRoot.position.set(p.x, 0, p.z);
-    this.carRoot.rotation.y = this.track.startHeading;
+    this.carRoot.rotation.y = this._carHeading;
     this._carPos.set(p.x, 0, p.z);
 
     // Günəşi maşının üstünə yönəlt (kölgə görünsün)
@@ -109,7 +117,7 @@ export class ShowcaseScene {
     else if (finOpened) { this._demoFinKind = cos?.finish?.kind || null; this._playFinishDemo(); }
     // Alov arxadadır — tab açılanda orbit maşının arxa-yan tərəfindən başlasın,
     // yoxsa oyunçu aldığı şeyi yarım dövrə gözləməli olur
-    if (opened && this.track) this._angle = this.track.startHeading + Math.PI * 0.82;
+    if (opened && this.track) this._angle = (this._carHeading ?? this.track.startHeading) + Math.PI * 0.82;
   }
 
   _buildFlameDemo() {

@@ -119,6 +119,10 @@ export class EndlessRoad {
     this._backSinceTurn = 0;
     this.chunks = [];   // {startAbs, endAbs, group, obstacles[], spots[]}
     this.obstacles = []; // aktiv pəncərənin maneələri (chunk-lardan)
+    // YER TUTMA JURNALI: toqquşması OLMAYAN dekor da (yoldan 60 m+ uzaq ağac,
+    // qaya, təpə) buraya yazılır. _spotFree əvvəl yalnız `obstacles`-a baxırdı,
+    // ona görə uzaq dekor bir-birinin içindən çıxırdı.
+    this.placed = [];
     this.decorSpots = []; // BÜTÜN dekor mövqeləri — yeni yol onlardan yayınır
 
     // Cari biom görkəmi (EndlessScene idarə edir)
@@ -580,12 +584,19 @@ export class EndlessRoad {
   // Zen-də dekor müstəqil qoyulurdu və daş binanın İÇİNDƏ qala bilirdi
   // (istifadəçi rəyi).
   _spotFree(x, z, r, pad = 0.8) {
-    const ob = this.obstacles;
-    for (let i = ob.length - 1; i >= 0 && i > ob.length - 400; i--) {
-      const o = ob[i];
-      if (Math.hypot(o.x - x, o.z - z) < o.r + r + pad) return false;
+    for (const ob of [this.obstacles, this.placed]) {
+      for (let i = ob.length - 1; i >= 0 && i > ob.length - 400; i--) {
+        const o = ob[i];
+        if (Math.hypot(o.x - x, o.z - z) < o.r + r + pad) return false;
+      }
     }
     return true;
+  }
+
+  // Toqquşmasız obyektin yerini jurnala yaz (bax this.placed)
+  _mark(x, z, r, kind) {
+    this.placed.push({ x, z, r, kind });
+    if (this.placed.length > 1400) this.placed.splice(0, 500);
   }
 
   _clearRoadCorridor(group, pts) {
@@ -696,7 +707,7 @@ export class EndlessRoad {
         {
           const ox = pts[i].x + nrms[i].x * (hw + 1.5) * side;
           const oz = pts[i].z + nrms[i].z * (hw + 1.5) * side;
-          const ob = { x: ox, z: oz, r: 0.3 };
+          const ob = { x: ox, z: oz, r: 0.3, kind: 'post' };
           chunkObstacles.push(ob); this.obstacles.push(ob);
         }
         post.position.set(
@@ -1038,6 +1049,7 @@ export class EndlessRoad {
             const lx = pts[i].x + nrms[i].x * (hw + 2.2) * side;
             const lz = pts[i].z + nrms[i].z * (hw + 2.2) * side;
             if (terrainY(lx, lz) < WATER_LEVEL + 0.4) continue;   // suda fənər yox
+            if (!this._spotFree(lx, lz, 0.35, 0.3)) continue;      // post/nişanın içində olmasın
             lp.position.set(lx, groundYAt(lx, lz, pts[i].y, hw + 2.2), lz);
             g.add(lp);
             // Dirəyin kollideri: əvvəl yoxdu və küçə lampasının İÇİNDƏN
@@ -1174,20 +1186,19 @@ export class EndlessRoad {
           const bo = bt.startsWith('nk:') ? this.natureFactory?.(bt.slice(3)) : makeDecor(bt);
           if (!bo) continue;
           const ba = Math.random() * Math.PI * 2;
-          // YOLDAŞ ƏSAS OBYEKTİN NÜVƏSİNƏ GİRMƏSİN: böyük obyektdə (təpə,
-          // iri qaya) məsafə onun öz radiusundan başlayır — daş təpənin
-          // ƏTƏYİNDƏ durur, içində yox
-          const bd = (rr2 > 4 ? rr2 * 0.8 : 3.5) + Math.random() * 6;
+          bo.scale.setScalar(sc * (0.45 + Math.random() * 0.4));
+          // Yoldaşın ÖZ ölçüsü (əvvəl sabit 1.2 idi — iri yoldaş qonşunun içinə girirdi)
+          box.setFromObject(bo);
+          box.getSize(size);
+          const brÖn = Math.max(1.0, Math.max(size.x, size.z) * 0.42);
+          // YOLDAŞ ƏSAS OBYEKTİN GÖVDƏSİNƏ GİRMƏSİN: məsafə İKİ radiusun cəmindən
+          // hesablanır. Əvvəl yalnız əsas obyektin radiusunun 0.8-i idi —
+          // yoldaşın öz eni nəzərə alınmırdı və iri daş ağacın içindən çıxırdı.
+          const bd = Math.max(3.5, (rr2 + brÖn) * 0.85) + Math.random() * 6;
           const bx = px + Math.cos(ba) * bd, bz = pz + Math.sin(ba) * bd;
           const bDist = Math.hypot(bx - pts[i].x, bz - pts[i].z);
           const by = groundYAt(bx, bz, pts[i].y, bDist);
           if (by < WATER_LEVEL + 0.4) continue;
-          bo.scale.setScalar(sc * (0.45 + Math.random() * 0.4));
-          // Yoxlama YOLDAŞIN ÖZ ölçüsü ilə (əvvəl sabit 1.2 idi — iri yoldaş
-          // qonşu obyektin içinə girirdi)
-          box.setFromObject(bo);
-          box.getSize(size);
-          const brÖn = Math.max(1.0, Math.max(size.x, size.z) * 0.42);
           if (!this._spotFree(bx, bz, brÖn, 0.5)) continue;
           bo.position.set(bx, by, bz);
           bo.rotation.y = Math.random() * Math.PI * 2;
@@ -1195,19 +1206,21 @@ export class EndlessRoad {
           // Yoldaşların da toqquşması olmalıdır — əvvəl ağac/daşın içindən
           // keçmək olurdu (istifadəçi rəyi)
           const br = brÖn;
+          this._mark(bx, bz, br, 'companion');
           if (br >= 0.9 && bDist < 60) {
-            const bob = { x: bx, z: bz, r: br };
+            const bob = { x: bx, z: bz, r: br, kind: 'companion' };
             chunkObstacles.push(bob);
             this.obstacles.push(bob);
           }
         }
       }
+      this._mark(px, pz, rr2, 'decor'); // yoldaşlardan SONRA: onlar əsas obyektin ətəyindədir
       // Yayınma xəritəsinə yalnız kiçik/orta obyektlər (dağlar YOX — kilid riski)
       if (rr2 <= 30) chunkSpots.push({ x: px, z: pz, r: rr2 });
       // 34 m çox dar idi: oyunçu zen-də 50 m-ə qədər gəzir və oradakı
       // ağacların içindən keçirdi
       if (off < 60 && Math.abs(gy - pts[i].y) < 6) {
-        const ob = { x: px, z: pz, r: rr2 };
+        const ob = { x: px, z: pz, r: rr2, kind: 'decor' };
         chunkObstacles.push(ob);
         this.obstacles.push(ob);
       }
@@ -1256,11 +1269,12 @@ export class EndlessRoad {
         const pz = pts[i].z + nrms[i].z * off * poleSide;
         const gy = groundYAt(px, pz, pts[i].y, off);
         if (gy < WATER_LEVEL + 0.3) continue;
+        if (!this._spotFree(px, pz, 0.5, 0.4)) continue;
         const po = makeUtilityPole(7 + Math.random() * 1.5);
         po.position.set(px, gy, pz);
         po.rotation.y = Math.atan2(nrms[i].x, nrms[i].z);
         g.add(po);
-        { const ob = { x: px, z: pz, r: 0.5 }; chunkObstacles.push(ob); this.obstacles.push(ob); }
+        { const ob = { x: px, z: pz, r: 0.5, kind: 'pole' }; chunkObstacles.push(ob); this.obstacles.push(ob); }
       }
       // 2) Hasar sıraları — təsadüfi hissələrdə 4-8 seqment ard-arda
       // QEYD: chunk qısa da ola bilər (ilk/son parça) — `pts.length - 16`
@@ -1284,7 +1298,7 @@ export class EndlessRoad {
           // düşürdü (üst-üstə model + z-döyüşü). Yaxında hasar varsa keç.
           if (!this._spotFree(px, pz, 1.2, 0)) continue;
           const fe = makeFence(8.4);
-          { const ob = { x: px, z: pz, r: 3.4 }; chunkObstacles.push(ob); this.obstacles.push(ob); }
+          { const ob = { x: px, z: pz, r: 3.4, kind: 'fence' }; chunkObstacles.push(ob); this.obstacles.push(ob); }
           fe.position.set(px, gy, pz);
           const nx2 = pts[Math.min(i + 1, pts.length - 1)];
           fe.rotation.y = Math.atan2(nx2.x - pts[i].x, nx2.z - pts[i].z);
@@ -1301,8 +1315,9 @@ export class EndlessRoad {
         const pz = pts[i].z + nrms[i].z * off * side;
         const gy = groundYAt(px, pz, pts[i].y, off);
         if (gy < WATER_LEVEL + 0.3) continue;
+        if (!this._spotFree(px, pz, 0.45, 0.4)) continue; // lampa/postla üst-üstə düşürdü
         const sg = makeSignpost([0x2e7d5b, 0x2f6fe0, 0xb8862b][(Math.random() * 3) | 0]);
-        { const ob = { x: px, z: pz, r: 0.45 }; chunkObstacles.push(ob); this.obstacles.push(ob); }
+        { const ob = { x: px, z: pz, r: 0.45, kind: 'sign' }; chunkObstacles.push(ob); this.obstacles.push(ob); }
         sg.position.set(px, gy, pz);
         sg.rotation.y = Math.atan2(-nrms[i].x * side, -nrms[i].z * side);
         g.add(sg);

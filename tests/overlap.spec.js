@@ -9,24 +9,35 @@ const scan = () => {
   const tr = sc.track || sc.road;
   // r > 25: uzaq fon dağları — qəsdən üst-üstə düşən silsilədir, yoxlanmır
   const obs = (sc.environment?.obstacles || sc.road?.obstacles || []).filter((o) => o && o.r > 0 && o.r <= 25);
+  // Zen: toqquşması olmayan uzaq dekor da yoxlanır (road.placed jurnalı)
+  const all = [...obs];
+  for (const p of sc.road?.placed || []) {
+    if (p.r <= 25 && !all.some((o) => o.x === p.x && o.z === p.z)) all.push(p);
+  }
   const deep = [];
-  for (let i = 0; i < obs.length; i++) {
-    for (let j = i + 1; j < obs.length; j++) {
-      const a = obs[i];
-      const b = obs[j];
+  for (let i = 0; i < all.length; i++) {
+    for (let j = i + 1; j < all.length; j++) {
+      const a = all[i];
+      const b = all[j];
       if (a.water && b.water) continue; // çay gölə tökülür — su dairələri qəsdən üst-üstədir
       const d = Math.hypot(a.x - b.x, a.z - b.z);
       if (d < (a.r + b.r) * 0.55 && d > 0.01) {
-        deep.push({ x: Math.round(a.x), z: Math.round(a.z), d: +d.toFixed(1), ra: +a.r.toFixed(1), rb: +b.r.toFixed(1) });
+        deep.push({ x: Math.round(a.x), z: Math.round(a.z), d: +d.toFixed(1), ra: +a.r.toFixed(1), rb: +b.r.toFixed(1), ka: a.kind, kb: b.kind });
       }
     }
   }
   const onRoad = [];
   for (const o of obs) {
     const n = tr.getNearest({ x: o.x, z: o.z }, null);
+    // Zen: yol pəncərəsinin ucundakı obyektlər üçün "ən yaxın nöqtə" pəncərənin
+    // kənarıdır və yan məsafə saxta kiçik çıxır (yol arxada silinib) — yoxlanmır
+    if (tr.base != null) {
+      const li = n.index - tr.base;
+      if (li < 4 || li > tr.points.length - 5) continue;
+    }
     const edge = Math.abs(n.lateral) - o.r; // obyektin yola ən yaxın kənarı
     if (edge < tr.halfWidth - 1.0) { // körpü məhəccəri kimi kənar maneələr (0.5 m içəri) normaldır
-      onRoad.push({ x: Math.round(o.x), z: Math.round(o.z), r: +o.r.toFixed(1), lateral: +n.lateral.toFixed(1), half: tr.halfWidth });
+      onRoad.push({ x: Math.round(o.x), z: Math.round(o.z), r: +o.r.toFixed(1), lateral: +n.lateral.toFixed(1), half: tr.halfWidth, kind: o.kind });
     }
   }
   return { count: obs.length, deep, onRoad };
@@ -58,7 +69,9 @@ test('overlap: zen (60 s sürüş, 12 nümunə)', async ({ page }) => {
     const r = await page.evaluate(scan);
     deep = Math.max(deep, r.deep.length);
     onRoad = Math.max(onRoad, r.onRoad.length);
-    if (examples.length < 6) examples.push(...r.deep.slice(0, 2), ...r.onRoad.slice(0, 2));
+    for (const e of [...r.deep, ...r.onRoad]) {
+      if (examples.length < 12 && !examples.some((q) => q.x === e.x && q.z === e.z)) examples.push(e);
+    }
   }
   mergeJson('overlap.json', 'zen', { deep, onRoad, examples });
   console.log(`zen           dərin kəsişmə (maks) ${deep} · yolun üstündə (maks) ${onRoad}`);
