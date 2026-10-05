@@ -1,5 +1,7 @@
 # NitroVerse — "orta səviyyə" → "professional" planı
 
+> **Köhnəlib (2026-10-05).** Aktual plan: `docs/UPGRADE-PLAN.md` — ölçməyə əsaslanır. Bu sənəd ideya arxivi kimi qalır.
+
 Bu sənəd hazırkı vəziyyəti dürüst qiymətləndirir və oyunu professional
 səviyyəyə çıxaracaq işləri **təsir gücünə görə** sıralayır. Hər maddədə
 "nə edilir", "niyə vacibdir" və "necə yoxlanılır" var.

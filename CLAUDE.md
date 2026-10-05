@@ -30,6 +30,7 @@ npm run test:perf    # kadr vaxtı, draw call, üçbucaq → tests/out/perf.json
 npm run test:shots   # bütün rejim/trek/menyu kadrları → tests/out/shots/
 npm run test:leak    # səhnə dövrlərində tekstura/geometriya sızması
 npm run test:items   # bonus qutusu invariantı (ikon–işıq, maqnit)
+npm run test:feel    # sürüş modelinin rəqəmləri → tests/out/feel.json (fizika dəyişəndə əvvəl/sonra)
 npm run serve:dev    # öz backend (SQLite) yerli
 ```
 
@@ -79,4 +80,4 @@ Skill-lər: `nitroverse-playtest`, `nitroverse-visual-check`, `nitroverse-asset-
 
 ## Sənədlər
 
-`docs/BASELINE.md` (ölçülmüş hazırkı vəziyyət) · `docs/PRO-PLAN.md` (professional səviyyə planı) · `docs/DESIGN.md` · `docs/UI.md` · `docs/MOBILE.md` · `docs/MODELS.md` · `docs/TESTING.md` · `VISION.md` · `ROADMAP.md`
+`docs/UPGRADE-PLAN.md` (aktual upgrade planı — fazalar, qərarlar) · `docs/BASELINE.md` (ölçülmüş hazırkı vəziyyət) · `docs/DESIGN.md` · `docs/UI.md` · `docs/MOBILE.md` · `docs/MODELS.md` · `docs/TESTING.md` · `VISION.md` · `ROADMAP.md`

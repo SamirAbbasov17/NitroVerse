@@ -16,6 +16,7 @@ Testlər Playwright-dır və repo-dadır: `tests/`. Dev serveri (5173) özləri 
 | `npm run test:shots` | hər rejim 4 kadr, zen 4 gün vaxtı, pauza, 9 menyu ekranı × masaüstü/mobil, mobil HUD → `tests/out/shots/` | yoxdur — **kadrlara baxılır** | ~4 dəq |
 | `npm run test:leak` | 18 səhnə dövrü — 3 tur (menyuya oyunun öz yolu ilə qayıdır) → `tests/out/leak.json` | 2-ci → 3-cü tur arasında artım yox | ~2.5 dəq |
 | `npm run test:items` | bonus qutusu invariantı: ikon öz işığından ayrılmır; maqnitdən sonra qutular yerinə qayıdır | ayrılma < 0.05 m | ~30 s |
+| `npm run test:feel` | sürüş modeli: sürətlənmə, əyləc, sükan cavabı, drift, yoldan kənar, nitro — sabit addımla, maneəsiz → `tests/out/feel.json` | yoxdur — əvvəl/sonra müqayisə | ~5 s |
 | `npm run test:mobile` | 844×390-da HUD düymələrinin örtüşməsi və ekrandan çıxması | 0 | ~30 s |
 
 Tək test: `npx playwright test tests/shots.spec.js -g "race-neon"`.
