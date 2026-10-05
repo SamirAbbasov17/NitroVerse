@@ -15,7 +15,7 @@ Oyuna daxil olan **hər** xarici və ya AI ilə yaradılmış fayl burada qeyd o
 
 | Fayllar | Mənbə | Lisenziya | Status |
 |---|---|---|---|
-| `public/music/*.mp3` (24 trek, ~50 MB) | **qeyd olunmayıb** | **naməlum** | ⚠️ **Yoxlanmalıdır.** Repo-da, README-də və kodda mənbə/lisenziya izi yoxdur. İstifadəçi mənbəni təsdiqləməlidir; təsdiq olunmasa kommersiya buraxılışında risk var. |
+| `public/music/*.mp3` (24 trek, ~50 MB) | **HoliznaCC0** (Free Music Archive / holiznacc0.bandcamp.com) — əvvəlki sessiyada Claude tərəfindən endirilib; mənbə `src/core/AudioManager.js:317`-də qeyd olunub | CC0 1.0 (sənətçi bütün arxivini CC0 elan edib) | 18 trek "Lo-fi And Chill" toplusundandır. 6 faylın ID3 teqi `Holizna — Ocean Memory / Summer Air` göstərir (`cold-salt-water`, `currents-we-used-to-know`, `i-dont-understand-a-thing`, `ocean-memory`, `washed-up`, `roof-tops`) — bu albomların CC0 olması ayrıca səhifədən təsdiqlənməyib; kommersiya buraxılışından əvvəl FMA səhifəsində yoxlanmalıdır. Lisenziya mətni `public/music/`-ə əlavə olunmayıb. |
 | Menyu/yarış musiqisi | `src/core/AudioManager.js` (sintez) | öz kodumuz | OK |
 
 ## Şriftlər

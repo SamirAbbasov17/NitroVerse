@@ -27,7 +27,7 @@ Görünüşü və hissi dəyişmir; sonrakı fazaların üstündə dayanacağı 
 | 1.5 | **Sabit fizika addımı** (60 Hz akkumulyator) | İndi fizika kadr vaxtı ilə irəliləyir (`dt` 50 ms-ə qədər): zəif telefonda maşın fərqli davranır, onlaynda oyunçular arası fərq yaranır | `test:feel` 30/60/120 FPS-də eyni rəqəm | M |
 | 1.6 | **Görünən buqlar**: zen-də əyri binalar · menyu fonunda dirəyin kadrı kəsməsi (9 ekrandan 3-ü) · futbolda kameranın divarın içinə girməsi | `BASELINE.md` §3, kadrlarla | əvvəl/sonra kadr | S–M |
 | 1.7 | Kod təmizliyi: i18n `t` kölgələnməsi (26 yer), istifadəsiz dəyişənlər | Sənəddə "tələ" kimi qeyd olunub, real buq mənbəyidir | lint 0 xəbərdarlıq | S |
-| 1.8 | Musiqi lisenziyası: `public/music/` 24 mp3-ün mənbəyi | Heç yerdə qeyd yoxdur — **səndən cavab lazımdır** | `ASSETS-LICENSES.md` | — |
+| 1.8 | Musiqi lisenziyası: mənbə tapıldı — HoliznaCC0 (CC0). Qalan: 6 trekin ("Ocean Memory", "Summer Air") albom səhifəsindən təsdiqi + lisenziya mətninin `public/music/`-ə əlavəsi | `ASSETS-LICENSES.md` | səhifə linki jurnalda | S |
 
 ## Faza 2 — Sürüş hissi 🔶
 
@@ -70,6 +70,18 @@ Yoxlama: `test:feel` rəqəmləri (hədəf dəyərlər 2.1-dən əvvəl birlikd�
 | 3.5 | Hər trekə 2–3 landmark ("poster nöqtəsi") | orta lay boşdur | L |
 | 3.6 | Arena: döşəmə kontrastı, bonus ikonu ölçüsü; yarışda yaxın ikon ölçüsü | `d-arena-*`, `d-race-zavod-1drive` | S |
 | 3.7 | Zen gecə: su səthi, yol kənarı | `d-zen-tod-night` | S |
+
+**İstifadəçinin əlavə tələbi (2026-10-05): modellər, ətraf mühit və filtrlər professional görünsün.** Bu faza ona görə genişləndirildi:
+
+| # | İş | Niyə | Ölçü |
+|---|---|---|---|
+| 3.8 | **Maşın modelləri**: 10 Kenney gövdəsi 18 maşına paylanıb, fərq əsasən rəngdədir. Hər maşın üçün Blender-də detal keçidi (kənar əyriləri, fara/stop, spoyler, egzoz, şüşə), lazım olan siniflər üçün yeni CC0 gövdələr; qarajda siluet testi | Maşın ekranın mərkəzindədir — ən çox baxılan obyektdir | L |
+| 3.9 | **Ətraf mühit modelləri**: prosedural qutu/konus dekorun (tribuna, bariyer, bina, dağ, qaya) vahid üslublu modellərlə əvəzlənməsi — CC0 dəstlər + Blender; hər trek üçün bədii bibliyadakı siyahı üzrə | Prosedural həndəsə "prototip" kimi oxunur | L |
+| 3.10 | **Yer və yol səthi**: düz rəngli torpaq → səth variasiyası, yol kənarı keçidi, asfalt detalı | `d-race-*` kadrlarında yer boş və yastıdır | M |
+| 3.11 | **Filtrlər və rəng qradasiyası**: hər trek üçün qradasiya preseti (LUT/əyri), bloom, yüngül vinyet; zen-in retro filtrləri yenidən (indiki CSS qatı əvəzinə render daxilində); söndürülə bilən | Görüntünün "bitmiş" hiss verməsi üçün ən ucuz böyük addım | M |
+| 3.12 | **İşıq**: hər trek üçün günəş bucağı/rəngi/kölgə keyfiyyəti, gecə treklərində işıq mənbələrinin real parıltısı | Neon və Zavod tutqun və yastı işıqlanıb | M |
+
+Sıra bu fazanın daxilində: 3.1 (bibliya) → 3.11 + 3.12 (filtr və işıq — bütün treklərə dərhal təsir edir) → 3.8 (maşınlar) → 3.2 / 3.3 / 3.9 / 3.10 (mühit, trek-trek) → qalanı. Hər trek ayrıca göstərilir və təsdiqlənir.
 
 **Postprocessing (qərar verilib: bəli, yalnız masaüstündə).** İndiki qayda "heç vaxt" deyir (mobil FPS üçün). Masaüstündə kadr xərci 2–5 ms-dir, ehtiyat böyükdür. Təklif: **yalnız masaüstündə**, söndürülə bilən yüngül bloom + rəng qradasiyası; mobil olduğu kimi qalır. Bu, "professional görüntü" üçün ən ucuz böyük addımdır, amma qayda sənindir.
 
@@ -125,6 +137,5 @@ Verilib (2026-10-05, istifadəçi):
 
 Açıq qalır:
 
-1. **Musiqi fayllarının mənbəyi** (1.8) — `public/music/` 24 mp3 haradan götürülüb?
-2. **Three.js yenilənməsi** (6.3) — tələsmir, Faza 6-da qərar.
-3. Bu siyahıda **olmayan**, səni narahat edən şeylər — plan ölçmələrə söykənir, sənin oynayarkən gördüklərin daha vacibdir.
+1. **Three.js yenilənməsi** (6.3) — tələsmir, Faza 6-da qərar.
+2. Bədii istiqamət: Faza 3.1-də hər trek üçün referans kadrlarla seçim.

@@ -71,7 +71,7 @@ Mənbə: `tests/out/shots/` (54 kadr). Statik kadrlardan görünənlərdir; hər
 
 - Three.js **r160** (aktual r186) · Vite 5 · TypeScript və test yox idi (indi `tests/` var).
 - Ən böyük fayllar: `styles.css` 2 310 · `EndlessScene.js` 2 018 · `Menu.js` 1 706 · `EndlessRoad.js` 1 626 · `ArenaScene.js` 1 454 · `GameplayScene.js` 1 449 · `FootballScene.js` 1 417 sətir. Dörd oyun səhnəsi ortaq nüvəsiz, ayrı-ayrı yazılıb.
-- `public/music/` 50 MB (24 mp3) — **lisenziya mənbəyi qeyd olunmayıb** (`docs/ASSETS-LICENSES.md`).
+- `public/music/` 50 MB (24 mp3) — HoliznaCC0 (CC0); 6 trekin albomu ayrıca təsdiqlənməlidir (`docs/ASSETS-LICENSES.md`). *(Düzəliş: ilkin yoxlamada "mənbə qeyd olunmayıb" yazılmışdı — qeyd `AudioManager.js:317`-də var idi.)*
 - `README.md`-dəki canlı link Netlify-dır; `server/` Hetzner-də ayrıca yayımlanır.
 
 ## 5. Bu baseline-ın hədləri
