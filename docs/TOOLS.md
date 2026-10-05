@@ -9,20 +9,20 @@ Maşın: MacBook Air M5, 16 GB RAM. Blender 5.1.1, Chrome, ffmpeg, uv, Node 26 q
 | Server | Nə verir | Asılılıq |
 |---|---|---|
 | `chrome-devtools` (Google, rəsmi) | oyunu real Chrome-da açmaq, skrinşot, konsol, performans trace, CPU/şəbəkə throttle, mobil emulyasiya | — |
-| `threejs-devtools` (icma, v0.4) | canlı səhnə ağacı, material/shader/tekstura, draw call, yaddaş | dev server 5173-də; kiçik layihədir — problem yaradarsa `.mcp.json`-dan sil |
+| `threejs-devtools` (icma, v0.4) | canlı səhnə ağacı, material/shader/tekstura, draw call, yaddaş. Öz brauzerini açır (proxy 9222 → 5173); səhifədə bir neçə renderer olanda (maşın önizləmələri) yanlışını seçə bilər — nəticəni `chrome-devtools` ilə tutuşdur | dev server 5173-də; kiçik layihədir — problem yaradarsa `.mcp.json`-dan sil |
 | `context7` | kitabxanaların aktual sənədi (Three.js r160, PixiJS, inkjs, Playwright) | — |
 | `blender` (blender-mcp) | Blender-i interaktiv idarə; Poly Haven / Sketchfab / Hunyuan3D inteqrasiyası | Blender açıq + addon qoşulu (aşağıda) |
-| `drawthings` (mcp-drawthings) | lokal şəkil generasiyası | Draw Things açıq + API Server aktiv (aşağıda) |
+| `drawthings` (mcp-drawthings) | lokal şəkil generasiyası (sınaqdan keçib: ~56 s / 768×1024) | Draw Things açıq + API Server aktiv (aşağıda) |
 
 `pixel-plugin` (Aseprite MCP) qlobal qurulub, amma **Aseprite proqramı yoxdur** — alətlər işləmir.
 
 ### Əl ilə bir dəfəlik qurulum
 
-**Blender MCP**
-1. `https://github.com/ahujasid/blender-mcp` → `addon.py` faylını endir
-2. Blender → Edit → Preferences → Add-ons → Install from Disk → `addon.py` → aktiv et
-3. 3D görünüşdə `N` → BlenderMCP tabı → "Connect to Claude"
-4. İstəyə görə: Poly Haven qutusunu işarələ (CC0 HDRI/tekstura/model)
+**Blender MCP** (addon faylı 2026-10-05-də quraşdırılıb: `uvx mcp-for-blender install-addon`)
+1. Blender → Edit → Preferences → Add-ons → "MCP for Blender"-i söndür-yandır (və ya Blender-i yenidən başlat)
+2. 3D görünüşdə `N` → MCP tabı → **Start MCP Server**
+3. İstəyə görə: Poly Haven qutusunu işarələ (CC0 HDRI/tekstura/model)
+4. Addon köhnəlsə eyni əmrlə yenilənir
 
 **Draw Things**
 1. `/Applications/Draw Things.app` aç
