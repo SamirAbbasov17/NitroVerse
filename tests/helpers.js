@@ -36,16 +36,12 @@ export function collectErrors(page) {
 
 // Oyunu açır və menyu hazır olana qədər gözləyir.
 export async function boot(page, { lang = 'az' } = {}) {
-  // FEEL=2 npm run test:… → bütün dəst yeni sürüş modeli ilə işləyir (Faza 2 sınağı).
-  // Yalnız ilk açılışda yazılır: test özü ?feel=… ilə dəyişə bilsin.
-  const feel = process.env.FEEL || '';
-  await page.addInitScript(([l, f]) => {
+  await page.addInitScript((l) => {
     try {
       localStorage.setItem('apexLang', l);
       localStorage.setItem('apexMuted', '1');
-      if (f && !sessionStorage.getItem('feelSet')) { localStorage.setItem('apexFeel', f); sessionStorage.setItem('feelSet', '1'); }
     } catch { /* gizli rejim */ }
-  }, [lang, feel]);
+  }, lang);
   await page.goto('/');
   await page.waitForFunction(() => !!window.__menu && !!window.__showcase, null, { timeout: 60_000 });
 }

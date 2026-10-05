@@ -499,7 +499,7 @@ export class FootballScene {
     seats.forEach((seat, i) => {
       const data = seat.isLocal ? playerCarData(seat.carId) : getCarById(seat.carId);
       if (seat.isLocal) this._playerData = data;   // finiş animasiyası üçün
-      const car = new Car(data, this.library, { isPlayer: !!seat.isLocal });
+      const car = new Car(data, this.library, { isPlayer: !!seat.isLocal, legacyFeel: true });
       car.isRemote = !seat.isLocal && !seat.isBot ? true : (seat.isBot && !this._simBots);
       car.team = seat.team;
       car._rname = seat.name; // qol müəllifi göstərmək üçün

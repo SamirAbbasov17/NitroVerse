@@ -50,7 +50,7 @@ src/core/            Game.js (renderer+loop), səhnələr, audio, i18n, effektl�
   FootballScene.js   futbol 3v3     ArenaScene.js     battle royale
   ShowcaseScene.js   menyu fonu
 src/world/           TrackBuilder, EndlessRoad, Environment, NatureKit/CityKit
-src/entities/        Car.js (arcade fizika), Player/AI/Network controller
+src/entities/        Car.js (arcade fizika: v2 model yarış/zen, köhnə model arena/futbol), Player/AI/Network controller
 src/race/            RaceManager, PowerUpManager, SignatureAbility
 src/net/             NetRoom (PeerJS P2P, host-avtoritativ), Auth, Social
 src/ui/              Menu.js (bütün ekranlar _panel-dən keçir), HUD, Results

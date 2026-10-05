@@ -37,10 +37,11 @@ export const TUNING = {
     kmhFactor: 5.5,
   },
 
-  // ————— SÜRÜŞ MODELİ v2 (arcade-drift) —————
-  // Faza 2 təklifi. `car.feel = TUNING.feel2` olan maşınlar bu modeli işlədir
-  // (yarış + zen, yalnız oflayn); qalanları yuxarıdakı köhnə modeldə qalır.
-  // Hər rəqəmin hədəfi `npm run test:feel` ilə ölçülür (docs/UPGRADE-PLAN.md).
+  // ————— SÜRÜŞ MODELİ v2 (arcade-drift) — STANDART —————
+  // Yarış və zen bu modeli işlədir (istifadəçi 2026-10-05-də köhnə ilə yan-yana
+  // sınayıb seçdi). Arena və futbol hələ yuxarıdakı köhnə modeldədir
+  // (`new Car(…, { legacyFeel: true })`) — onların tənzimi ayrıdır.
+  // Hər rəqəm `npm run test:feel` ilə ölçülür (docs/UPGRADE-PLAN.md).
   feel2: {
     // Sürətlənmə: v → vmax-a eksponensial yaxınlaşma, τ = tauMax − (accel/100)·tauRange.
     // Hədəf vmax-dan 2% yuxarı götürülür ki, tavana sonlu vaxtda çatılsın.

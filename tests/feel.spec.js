@@ -9,8 +9,9 @@ import { boot, startMode, mergeJson } from './helpers.js';
 // kadr sürəti nəticəyə qarışmır; ölçülən yalnız Car.update modelidir.
 const CARS = ['blaze', 'titan', 'cargo'];
 
-// Hər maşın iki modeldə ölçülür: 'old' (indiki standart) və 'v2' (TUNING.feel2).
-for (const model of ['old', 'v2']) {
+// Hər maşın iki modeldə ölçülür: 'v2' (standart — yarış və zen) və 'old'
+// (köhnə model — arena və futbol hələ onu işlədir).
+for (const model of ['v2', 'old']) {
 for (const carId of CARS) {
   test(`feel: ${carId} (${model})`, async ({ page }) => {
     await boot(page);

@@ -9,7 +9,6 @@ import { Environment } from '../world/Environment.js';
 import { Car } from '../entities/Car.js';
 import { PlayerController } from '../entities/PlayerController.js';
 import { AIController } from '../entities/AIController.js';
-import { mountFeelTest } from './FeelTest.js';
 import { NetworkController } from '../entities/NetworkController.js';
 import { RaceManager } from '../race/RaceManager.js';
 import { PowerUpManager } from '../race/PowerUpManager.js';
@@ -100,8 +99,6 @@ export class GameplayScene {
     this._buildHUD();
     this.hud.setHP(this.hz.hp, this.hz.hp);
     this._bindKeys();
-    // Faza 2 sınağı: sürüş modeli keçidi (yalnız oflayn — onlaynda hamı eyni modeldə olmalıdır)
-    this._feelOff = this.online ? null : mountFeelTest(this.uiRoot, () => this.cars, this.input);
 
     // Kamera rejimi (yadda saxlanır): tps = arxadan, fps = sükan arxası
     this._camMode = ['fps', 'hood'].includes(localStorage.getItem('apexCamMode')) ? localStorage.getItem('apexCamMode') : 'tps';
@@ -1427,7 +1424,6 @@ export class GameplayScene {
   }
 
   dispose() {
-    this._feelOff?.();
     // Ekran siniflərini TƏMİZLƏ — əvvəl 'fast' sinfi yarışdan sonra qalırdı
     // və statik şüalar zen-də də görünürdü (istifadəçi rəyi)
     document.getElementById('app')?.classList.remove('fast', 'boosting', 'impact');

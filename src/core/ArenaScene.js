@@ -416,7 +416,7 @@ export class ArenaScene {
     seats.forEach((seat, i) => {
       const data = seat.isLocal ? playerCarData(seat.carId) : getCarById(seat.carId);
       if (seat.isLocal) this._playerData = data;   // finiş animasiyası üçün
-      const car = new Car(data, this.library, { isPlayer: !!seat.isLocal });
+      const car = new Car(data, this.library, { isPlayer: !!seat.isLocal, legacyFeel: true });
       // ARENA İDARƏ PROFİLİ — hamıya eyni (bax TUNING.arena)
       {
         const A = TUNING.arena;

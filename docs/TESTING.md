@@ -16,7 +16,7 @@ Testlər Playwright-dır və repo-dadır: `tests/`. Dev serveri (5173) özləri 
 | `npm run test:shots` | hər rejim 4 kadr, zen 4 gün vaxtı, pauza, 9 menyu ekranı × masaüstü/mobil, mobil HUD → `tests/out/shots/` | yoxdur — **kadrlara baxılır** | ~4 dəq |
 | `npm run test:leak` | 18 səhnə dövrü — 3 tur (menyuya oyunun öz yolu ilə qayıdır) → `tests/out/leak.json` | 2-ci → 3-cü tur arasında artım yox | ~2.5 dəq |
 | `npm run test:items` | bonus qutusu invariantı: ikon öz işığından ayrılmır; maqnitdən sonra qutular yerinə qayıdır | ayrılma < 0.05 m | ~30 s |
-| `npm run test:feel` | sürüş modeli: sürətlənmə, əyləc, sükan cavabı, drift, yoldan kənar, nitro — sabit addımla, maneəsiz → `tests/out/feel.json` | yoxdur — əvvəl/sonra müqayisə | ~5 s |
+| `npm run test:feel` | sürüş modeli (v2 — yarış/zen; köhnə — arena/futbol): sürətlənmə, əyləc, sükan cavabı, drift, yoldan kənar, nitro — sabit addımla, maneəsiz → `tests/out/feel.json` | yoxdur — əvvəl/sonra müqayisə | ~5 s |
 | `npm run test:overlap` | bərk obyektlərin bir-birinin içinə girməsi və yolun üstünə çıxması (6 trek + zen) → `tests/out/overlap.json` | 0 (zavod konteynerləri və uzaq fon dağları istisna) | ~1.5 dəq |
 | `npm run test:zfight` | yanıb-sönən (eyni dərinlikdə üst-üstə düşən) səthlər: sürüş zamanı 36 baxış, hər biri iki dəfə render olunub müqayisə edilir → `tests/out/zfight/` (qırmızı = pozuntu) | ekranın < 0.05%-i | ~7 dəq |
 | `npm run test:hitch` | kadr donması: zen-də gün vaxtı/hava/biom keçidləri + yarış/futbol/arena 45 s; hər kadrın update+render xərci → `tests/out/hitch.json` | 33 ms-dən uzun kadr 0 | ~6 dəq |
@@ -27,8 +27,6 @@ Testlər Playwright-dır və repo-dadır: `tests/`. Dev serveri (5173) özləri 
 
 Tək test: `npx playwright test tests/shots.spec.js -g "race-neon"`.
 Brauzeri görərək: `npx playwright test tests/smoke.spec.js --headed`.
-
-**Yeni sürüş modeli ilə işlətmək (Faza 2 sınağı):** `FEEL=2 npm run test:smoke` — istənilən dəst yeni modeldə işləyir. `test:feel` hər iki modeli özü ölçür.
 
 ## Köməkçilər (`tests/helpers.js`)
 

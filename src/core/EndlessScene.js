@@ -1,4 +1,3 @@
-import { mountFeelTest } from './FeelTest.js';
 import * as THREE from 'three';
 import { playerCarData } from '../data/playerCar.js';
 import { t } from './i18n.js';
@@ -306,8 +305,6 @@ export class EndlessScene {
     this._buildZenFx(); // zen-ə xas atmosfer: atəşböcəkləri, axan ulduz, quşlar
     this._buildHUD();
     this._bindKeys();
-    // Faza 2 sınağı: sürüş modeli keçidi
-    this._feelOff = mountFeelTest(this.uiRoot, () => [this.playerCar], this.input);
     audio.playMusic('lofi');
     audio.setZenMix(true); // musiqi önə, mühərrik arxa fona
 
@@ -2038,7 +2035,6 @@ export class EndlessScene {
   }
 
   dispose() {
-    this._feelOff?.();
     for (const s of this._trafPool || []) this.scene.remove(s.root);
     this._trafPool = [];
     this._traffic = [];

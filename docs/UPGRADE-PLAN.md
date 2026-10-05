@@ -43,9 +43,9 @@ Görünüşü və hissi dəyişmir; sonrakı fazaların üstündə dayanacağı 
 | Yoldan kənar | 0.5 s-də 60%-ə, tarazlıq 38% | Kiçik səhv dərhal ağır cəzalanır |
 | Maşınlar arası fərq | maks. sürət 210–241, qalanı demək olar eyni | 18 maşın oxşar sürülür |
 
-### v2 modeli (sınaqdadır — 2026-10-05)
+### v2 modeli — ✅ STANDART (2026-10-05)
 
-2.1–2.5 bir model kimi yazılıb (`TUNING.feel2`, `Car._driveV2`) və **köhnə ilə yan-yana oynana bilir**: ünvana `?feel=2` yaz → ekranda "SÜRÜŞ: YENİ ⇄" nişanı çıxır; nişana toxunmaq və ya **F8** sürüş əsnasında modeli dəyişir. `?feel=0` sınağı bağlayır. Standart oyunçu heç nə görmür və köhnə modeldə qalır; onlayn yarışda sınaq işləmir.
+2.1–2.5 bir model kimi yazılıb (`TUNING.feel2`, `Car._driveV2`). İstifadəçi köhnə ilə yan-yana oynayıb (`?feel=2` keçidi) **yenini seçdi** — indi yarış və zen-də (oflayn və onlayn) standartdır; sınaq keçidi silinib, onlayn protokol v14-ə qaldırılıb. Arena və futbol hələ köhnə modeldədir (`legacyFeel`) — ayrıca tənzimlənəcək (2.10).
 
 Ölçmə (`npm run test:feel`, Blaze GT):
 
@@ -65,20 +65,19 @@ Görünüşü və hissi dəyişmir; sonrakı fazaların üstündə dayanacağı 
 
 Köhnə modeldə tutum statı tərsinə işləyirdi (yüksək "Tutum" = daha çox sürüşmə); v2-də yüksək tutum az sürüşür.
 
-Əhatə: yarış + zen (oflayn). Arena və futbol köhnə modeldədir — onların tənzimi ayrıdır.
-
 Təklif olunan istiqamət (hər biri ayrıca göstəriləcək və sən seçəcəksən):
 
 | # | İş | Ölçü |
 |---|---|---|
-| 2.1 | 🔶 **Sürətlənmə əyrisi**: ilk 60% cəld, qalanı tədricən (tam sürətə ~5–6 s); nitro bu əyrinin üstündə hiss olunsun | S |
-| 2.2 | 🔶 **Döngədə sürət**: sərt sükanda yüngül sürət itkisi (understeer) — düz xətt, əyləc və drift arasında real seçim yaransın | S |
-| 2.3 | 🔶 **Drift yenidən**: idarə olunan sürüşmə (25–40°), sürətin 85–90%-i qalır, düz çıxışda kiçik təkan — arcade yarışların əsas "feel" mexanikası | M |
-| 2.4 | 🔶 Qaz buraxma və əyləc: daha uzun süzmə, daha yumşaq əyləc | S |
-| 2.5 | 🔶 Yoldan kənar cəzası: daha yumşaq giriş (~1.5 s), eyni tarazlıq | S |
+| 2.1 | ✅ **Sürətlənmə əyrisi**: ilk 60% cəld, qalanı tədricən (tam sürətə ~5–6 s); nitro bu əyrinin üstündə hiss olunsun | S |
+| 2.2 | ✅ **Döngədə sürət**: sərt sükanda yüngül sürət itkisi (understeer) — düz xətt, əyləc və drift arasında real seçim yaransın | S |
+| 2.3 | ✅ **Drift yenidən**: idarə olunan sürüşmə (25–40°), sürətin 85–90%-i qalır, düz çıxışda kiçik təkan — arcade yarışların əsas "feel" mexanikası | M |
+| 2.4 | ✅ Qaz buraxma və əyləc: daha uzun süzmə, daha yumşaq əyləc | S |
+| 2.5 | ✅ Yoldan kənar cəzası: daha yumşaq giriş (~1.5 s), eyni tarazlıq | S |
 | 2.6 | 🔶 **Maşın şəxsiyyəti**: statların real fərq yaratması (sürətlənmə, tutum, drift meyli) — 5 sinif fərqli sürülsün | M |
 | 2.7 | 🔶 **Kamera**: döngəyə qabaqcadan baxış; rəqib maşın kameranın önünü tutanda şəffaflaşma (4 trekdə kadrı örtür); divara girməmə | M |
 | 2.8 | 🔶 **AI** — ilkin ölçmə (40 s, botların median irəliləyişi; yoldan kənar vaxt), oyunçu maşını kənara çəkilmiş: Səhra asan 0.86 / normal 1.12 / çətin 1.16 (çətin 7.5% kənarda) · Neon 0.65 / 0.97 / 1.00 (çətin 13.6% kənarda) · Kanyon 0.49 / 0.61 / 0.70 (çətin 10.1% kənarda). Yəni "çətin" normaldan cəmi 3–14% sürətlidir və vaxtının ~10%-ni yoldan kənarda keçirir. **Sınanıb və geri götürülüb:** əyriliyə görə döngə sürəti + əyləc — tək qaçışlarda nəticə səs-küydən ayrılmadı (bonus zərbələri və botların toqquşması yoldan çıxmanın əsas səbəbi ola bilər). Düzgün yol: əvvəl nəzarətli ölçmə (bonuslar sönülü, hər səviyyədən 5 qaçış, dövrə vaxtı), sonra dəyişiklik | M |
+| 2.10 | 🔶 **Arena və futbol** — hələ köhnə sürüş modelindədir. v2-yə keçid ayrıca tənzim tələb edir (kiçik meydan, top fizikası, istifadəçinin tənzimlətdiyi futbol kamerası) | M |
 | 2.9 | Toz/tüstü: iri "daş" çoxüzlülər əvəzinə yumşaq sprite hissəciklər; sürət hissi (yol kənarı axını, FOV) | S–M |
 
 Yoxlama: `test:feel` rəqəmləri (hədəf dəyərlər 2.1-dən əvvəl birlikdə təsbit olunur) + sənin oynaman. Onlayn protokola toxunarsa `PREFIX` artır.

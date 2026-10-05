@@ -9,7 +9,7 @@ const tmpR = new THREE.Vector3();
 // Kenney GLB modeli + arcade drift fizikası.
 // forward = (sin h, 0, cos h);  right = (-cos h, 0, sin h)
 export class Car {
-  constructor(carData, library, { isPlayer = false } = {}) {
+  constructor(carData, library, { isPlayer = false, legacyFeel = false } = {}) {
     this.data = carData;
     this.isPlayer = isPlayer;
 
@@ -30,8 +30,9 @@ export class Car {
     this.heading = 0;
     this.velocity = new THREE.Vector3();
     this.vF = 0;
-    // Sürüş modeli: null → köhnə; TUNING.feel2 → arcade-drift (bax _driveV2)
-    this.feel = null;
+    // Sürüş modeli. Standart: arcade-drift (TUNING.feel2, bax _driveV2) — yarış və zen.
+    // `legacyFeel` → köhnə model: arena və futbol hələ onunla tənzimlənib.
+    this.feel = legacyFeel ? null : TUNING.feel2;
     this.tau = TUNING.feel2.tauMax - (s.accel / 100) * TUNING.feel2.tauRange;
     this.grip2 = TUNING.feel2.gripMin + (s.grip / 100) * TUNING.feel2.gripRange;
     this.driftT = 0;       // cari driftin müddəti (s)
