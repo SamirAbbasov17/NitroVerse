@@ -71,7 +71,7 @@ Yoxlama: `test:feel` rəqəmləri (hədəf dəyərlər 2.1-dən əvvəl birlikd�
 | 3.6 | Arena: döşəmə kontrastı, bonus ikonu ölçüsü; yarışda yaxın ikon ölçüsü | `d-arena-*`, `d-race-zavod-1drive` | S |
 | 3.7 | Zen gecə: su səthi, yol kənarı | `d-zen-tod-night` | S |
 
-**Qərar lazımdır — postprocessing.** İndiki qayda "heç vaxt" deyir (mobil FPS üçün). Masaüstündə kadr xərci 2–5 ms-dir, ehtiyat böyükdür. Təklif: **yalnız masaüstündə**, söndürülə bilən yüngül bloom + rəng qradasiyası; mobil olduğu kimi qalır. Bu, "professional görüntü" üçün ən ucuz böyük addımdır, amma qayda sənindir.
+**Postprocessing (qərar verilib: bəli, yalnız masaüstündə).** İndiki qayda "heç vaxt" deyir (mobil FPS üçün). Masaüstündə kadr xərci 2–5 ms-dir, ehtiyat böyükdür. Təklif: **yalnız masaüstündə**, söndürülə bilən yüngül bloom + rəng qradasiyası; mobil olduğu kimi qalır. Bu, "professional görüntü" üçün ən ucuz böyük addımdır, amma qayda sənindir.
 
 ## Faza 4 — Səs 🔶
 
@@ -113,10 +113,18 @@ Mənbə: Kenney Audio, Sonniss GDC, Freesound (CC0). Hər fayl `ASSETS-LICENSES.
 
 Səbəb: Faza 1 qalan hər şeyin ölçülə bilməsi üçündür. Faza 2 "axıcı oynanış"ın özüdür və heç bir asset tələb etmir. Görüntü (3) ən çox əmək tələb edən hissədir və bədii bibliya təsdiqindən asılıdır. 6.1/6.2 Carmageddon başlamazdan əvvəl lazımdır, ondan tez yox.
 
-## Səndən lazım olan qərarlar
+## Qərarlar
 
-1. **Sürüş istiqaməti** (Faza 2): yuxarıdakı təkliflər arcade-drift yönündədir (Mario Kart / Horizon Chase hissi). Razısan, yoxsa indiki "tam qazla hər döngə" sadəliyi qalsın və yalnız kamera/effektlər yaxşılaşsın?
-2. **Postprocessing** masaüstündə (Faza 3).
-3. **Musiqi fayllarının mənbəyi** (1.8).
-4. **Three.js yenilənməsi** (6.3) — tələsmir.
-5. Bu siyahıda **olmayan**, səni narahat edən şeylər — plan mənim ölçmələrimə söykənir, sənin oynayarkən gördüklərin daha vacibdir.
+Verilib (2026-10-05, istifadəçi):
+
+| Qərar | Seçim |
+|---|---|
+| Sürüş istiqaməti (Faza 2) | **Arcade-drift** — tədrici sürətlənmə, döngədə yüngül itki, idarə olunan və mükafatlandırılan drift. Hər dəyişiklik köhnə ilə yan-yana oynanıb seçilir. |
+| Postprocessing (Faza 3) | **Bəli, yalnız masaüstündə** — yüngül bloom + rəng qradasiyası, ayarlardan söndürülə bilən. Mobil toxunulmaz. `docs/DESIGN.md` qaydası Faza 3-də buna uyğun yenilənəcək. |
+| Başlanğıc | **Faza 1 (xətasızlıq)**, sonra tövsiyə olunan sıra. |
+
+Açıq qalır:
+
+1. **Musiqi fayllarının mənbəyi** (1.8) — `public/music/` 24 mp3 haradan götürülüb?
+2. **Three.js yenilənməsi** (6.3) — tələsmir, Faza 6-da qərar.
+3. Bu siyahıda **olmayan**, səni narahat edən şeylər — plan ölçmələrə söykənir, sənin oynayarkən gördüklərin daha vacibdir.

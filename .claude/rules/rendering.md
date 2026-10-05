@@ -23,7 +23,7 @@ Mənbə: `docs/DESIGN.md`, `docs/MODELS.md`. Ziddiyyət olsa onlar üstündür.
 
 ## Qaydalar
 
-- **Postprocessing pipeline yoxdur** (EffectComposer, bloom, SSAO). Effekt: bir dəfəlik həndəsə, additiv sprite, vertex rəngi, CSS overlay. Bu qaydanı dəyişmək istifadəçinin qərarıdır — özbaşına pozma.
+- **Postprocessing pipeline yoxdur** (EffectComposer, bloom, SSAO). Effekt: bir dəfəlik həndəsə, additiv sprite, vertex rəngi, CSS overlay. **İstisna (istifadəçi qərarı, 2026-10-05):** Faza 3-də yalnız masaüstündə, ayarlardan söndürülə bilən yüngül bloom + rəng qradasiyası əlavə olunacaq (`docs/UPGRADE-PLAN.md`). O faza başlayana qədər və mobildə qayda qüvvədədir.
 - İşıq sayı sabitdir (pool). İşıq əlavə etmək/silmək shader-i yenidən kompilyasiya edir → kadr donması.
 - Statik dekor `MergeUtils` ilə birləşdirilir və ya `InstancedMesh`. Material **paylaşılır**; dəstə aid olanlar `userData.shared = true` (təmizlənəndə silinməsin).
 - `MergeUtils` `receiveShadow`-u mənbədən qoruyur — birləşdirmədən sonra materialı/kölgəni yoxla (neon binaların qapqara çıxması buqu).
