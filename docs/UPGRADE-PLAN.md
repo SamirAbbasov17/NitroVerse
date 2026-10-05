@@ -20,14 +20,14 @@ Görünüşü və hissi dəyişmir; sonrakı fazaların üstündə dayanacağı 
 
 | # | İş | Niyə (sübut) | Yoxlama | Ölçü |
 |---|---|---|---|---|
-| 1.1 | **İtmiş testlərin bərpası**: yolun üstündə obyekt (şüa testi), binaya/dirəyə girmə, bonus götürmə, AI çətinlik sırası, pauza/resize/sürətli keçid | 16 köhnə skriptdən yalnız 6-sı bərpa olunub; maqnit buqu kimi xətaları sən tapırsan, test yox | `npm run check`-ə daxil olur | M |
+| 1.1 | ✅ **Testlərin bərpası** — indi 13 dəst: smoke, perf, shots, leak, items, overlap, zfight, hitch, collide (maneələrin içindən keçmə, 6 trek × 14), gameplay (bonus, bot sürəti, pauza, ölçü dəyişmə, sürətli keçid), errors, mobile, feel. Yazılmayıb: onlayn (iki brauzer), zen/arena toqquşması | `docs/TESTING.md` | yaşıl | — |
 | 1.2 | ✅ **Klient xəta bildirişi** — tutulmamış JS xətası avtomatik `/api/report`-a gedir (rejim adı, build, cihaz; ləqəbsiz). E-poçt göndərmir: eyni xəta bir qeyddə sayılır, admin qutusunda ən çox təkrarlanan yuxarıda görünür. Sessiyada ən çox 5, cihaz başına dəqiqədə 1 | `test:errors` | klient + server testi yaşıl | — |
 | 1.3 | ✅ **Zen donması** — düzəldilib. Səbəb yol qurulması deyildi: gecə düşəndə günəşin `castShadow`-u söndürülür və bütün şeyderlər yenidən kompilyasiya olunurdu (61–70 ms); yağış/qar ilk görünəndə də kompilyasiya olunurdu (69 ms). Qalan: chunk qurulması 12 ms çəkir — masaüstündə problem deyil, zəif telefonda ölçülməlidir | `test:hitch` | 5 880 kadrda >20 ms: 2 → 0 | — |
 | 1.4 | ✅ **Draw call** — 9 rejimdən 8-i büdcədə. Tüstü/qəlpə/qığılcım/konfeti instanslandı (futbolda qol anı 392 → 145, kanyon 274 → 130), küçə lampaları birləşdirildi (60 → 3), futbol tribunaları (72 → 24). **Qalan — zen 162 (büdcə 110):** yol parçası başına ~17 material; vertex rənginə keçid lazımdır | `test:perf` | zen istisna yaşıl | zen: M |
 | 1.5 | ❎ **Sabit fizika addımı — lazım deyil (ölçüldü).** Fərziyyə yanlış çıxdı: maşın modeli 20–120 FPS arasında demək olar eyni davranır (2 s tam sükan: 163° / 159°; 200 m-də mövqe fərqi < 3 m; əyləc 13.6 / 14.4 m). Model artıq `pow(x, dt·60)` ilə yazılıb. 20 FPS-dən aşağıda oyun yavaşlayır (dt tavanı 50 ms) — qəsdəndir | ölçmə | — | — |
 | 1.6 | ✅ **Görünən yerləşdirmə qüsurları** — düzəldilib: suyun içindəki obyektlər, göldən çıxan relyef, yanıb-sönən laylar və lövhələr, iç-içə dekor (yarış + zen), menyu fonunda dirək. ("Əyri binalar" və "futbol kamerası" səhv müşahidə çıxdı — `BASELINE.md` §3.) | `test:overlap`, `test:zfight` | yaşıl | — |
 | 1.7 | ✅ **Kod təmizliyi** — lint 43 xəbərdarlıq → 0 (bundan sonra xəbərdarlıq `check`-i qırır). Təmizlik 2 real buq üzə çıxardı: qlobal çatda mesaj getməyəndə izah əvəzinə xəta atılırdı (`t` kölgələnməsi); çay sahili daşlarının hamısı eyni sahilə düşürdü (işlədilməyən `side`) | `npm run lint` | 0 | — |
-| 1.8 | Musiqi lisenziyası: mənbə tapıldı — HoliznaCC0 (CC0). Qalan: 6 trekin ("Ocean Memory", "Summer Air") albom səhifəsindən təsdiqi + lisenziya mətninin `public/music/`-ə əlavəsi | `ASSETS-LICENSES.md` | səhifə linki jurnalda | S |
+| 1.8 | ✅ **Musiqi lisenziyası** — HoliznaCC0, CC0 1.0 Universal. Şübhəli 6 trekin albom səhifələri yoxlanıb; mənşə qeydi `public/music/LICENSE.txt` | `ASSETS-LICENSES.md` | — | — |
 
 ## Faza 2 — Sürüş hissi 🔶
 
@@ -54,7 +54,7 @@ Təklif olunan istiqamət (hər biri ayrıca göstəriləcək və sən seçəcə
 | 2.5 | 🔶 Yoldan kənar cəzası: daha yumşaq giriş (~1.5 s), eyni tarazlıq | S |
 | 2.6 | 🔶 **Maşın şəxsiyyəti**: statların real fərq yaratması (sürətlənmə, tutum, drift meyli) — 5 sinif fərqli sürülsün | M |
 | 2.7 | 🔶 **Kamera**: döngəyə qabaqcadan baxış; rəqib maşın kameranın önünü tutanda şəffaflaşma (4 trekdə kadrı örtür); divara girməmə | M |
-| 2.8 | AI: əvvəlcə ölç (dövrə vaxtı paylanması, səhvlər, yığılma), sonra təklif | M |
+| 2.8 | 🔶 **AI** — ilkin ölçmə (40 s, botların median irəliləyişi; yoldan kənar vaxt), oyunçu maşını kənara çəkilmiş: Səhra asan 0.86 / normal 1.12 / çətin 1.16 (çətin 7.5% kənarda) · Neon 0.65 / 0.97 / 1.00 (çətin 13.6% kənarda) · Kanyon 0.49 / 0.61 / 0.70 (çətin 10.1% kənarda). Yəni "çətin" normaldan cəmi 3–14% sürətlidir və vaxtının ~10%-ni yoldan kənarda keçirir. **Sınanıb və geri götürülüb:** əyriliyə görə döngə sürəti + əyləc — tək qaçışlarda nəticə səs-küydən ayrılmadı (bonus zərbələri və botların toqquşması yoldan çıxmanın əsas səbəbi ola bilər). Düzgün yol: əvvəl nəzarətli ölçmə (bonuslar sönülü, hər səviyyədən 5 qaçış, dövrə vaxtı), sonra dəyişiklik | M |
 | 2.9 | Toz/tüstü: iri "daş" çoxüzlülər əvəzinə yumşaq sprite hissəciklər; sürət hissi (yol kənarı axını, FOV) | S–M |
 
 Yoxlama: `test:feel` rəqəmləri (hədəf dəyərlər 2.1-dən əvvəl birlikdə təsbit olunur) + sənin oynaman. Onlayn protokola toxunarsa `PREFIX` artır.

@@ -21,6 +21,8 @@ Testlər Playwright-dır və repo-dadır: `tests/`. Dev serveri (5173) özləri 
 | `npm run test:zfight` | yanıb-sönən (eyni dərinlikdə üst-üstə düşən) səthlər: sürüş zamanı 36 baxış, hər biri iki dəfə render olunub müqayisə edilir → `tests/out/zfight/` (qırmızı = pozuntu) | ekranın < 0.05%-i | ~7 dəq |
 | `npm run test:hitch` | kadr donması: zen-də gün vaxtı/hava/biom keçidləri + yarış/futbol/arena 45 s; hər kadrın update+render xərci → `tests/out/hitch.json` | 33 ms-dən uzun kadr 0 | ~6 dəq |
 | `npm run test:errors` | avtomatik xəta bildirişi: klient tutur/təkrarlamır, server tək qeyddə sayır və e-poçt göndərmir | yaşıl | ~3 s |
+| `npm run test:collide` | maneələrin içindən keçmə: hər trekdə yola ən yaxın 14 bərk obyektə tam qazla sürülür | içindən keçilən 0 | ~3 dəq |
+| `npm run test:gameplay` | bonus götürmə/işlətmə · bot çətinlik sırası (3 trek, median irəliləyiş + yoldan kənar vaxt) · pauza · pəncərə ölçüsü (4 rejim) · sürətli rejim keçidi → `tests/out/gameplay.json` | yaşıl | ~8 dəq |
 | `npm run test:mobile` | 844×390-da HUD düymələrinin örtüşməsi və ekrandan çıxması | 0 | ~30 s |
 
 Tək test: `npx playwright test tests/shots.spec.js -g "race-neon"`.
@@ -35,18 +37,13 @@ Brauzeri görərək: `npx playwright test tests/smoke.spec.js --headed`.
 - `collectErrors(page)` — konsol xətaları (yerli `/api` və PeerJS şəbəkə xətaları istisna)
 - `MODES` — bütün rejim konfiqurasiyaları
 
-## Hələ bərpa olunmamış yoxlamalar
+## Hələ yazılmamış yoxlamalar
 
-Köhnə dəstdən bunlar itib və yenidən yazılmayıb — lazım olan sahəyə toxunanda `tests/`-ə əlavə et:
-
-| Köhnə skript | Nə yoxlayırdı |
+| Yoxlama | Qeyd |
 |---|---|
-| `building-collide` / `small-obs` / `tunnel-test` | binaya/dirəyə/tunel divarına girmə |
-| `pickup-test` | item/pad/imza gücü götürmə |
-| `diff-test` | çətinlik sırası (asan < normal < çətin), AI yola qayıdış |
-| `edge-suite` | pauza/resize/oflayn/sürətli keçid |
-| `ability-balance` | güc balansı (analitik) |
-| onlayn (iki brauzer) | otaq yaratma + qoşulma |
+| Onlayn (iki brauzer prosesi): otaq yaratma + qoşulma + sinxron yarış | yerli PeerJS brokeri və ya canlı server tələb edir |
+| Güc balansı (`ability-balance`, analitik) | Faza 2-də sürüş modeli dəyişəndən sonra |
+| Zen/arena/futbolda maneə toqquşması | `test:collide` yalnız yarış treklərini əhatə edir |
 
 ## Vizual analiz
 
