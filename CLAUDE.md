@@ -29,6 +29,7 @@ npm run test:smoke   # bütün rejimlər açılır, 0 konsol xətası
 npm run test:perf    # kadr vaxtı, draw call, üçbucaq → tests/out/perf.json
 npm run test:shots   # bütün rejim/trek/menyu kadrları → tests/out/shots/
 npm run test:leak    # səhnə dövrlərində tekstura/geometriya sızması
+npm run test:items   # bonus qutusu invariantı (ikon–işıq, maqnit)
 npm run serve:dev    # öz backend (SQLite) yerli
 ```
 

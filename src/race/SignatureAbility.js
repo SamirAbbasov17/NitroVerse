@@ -201,16 +201,7 @@ export class SignatureAbility {
     // Maqnit — yaxındakı bonusları çək
     if (this._magnetT > 0) {
       this._magnetT -= dt;
-      const boxes = this.scene?.powerups?.boxes || this.scene?.powerups?._boxes || [];
-      for (const bx of boxes) {
-        const p = bx.mesh?.position || bx.position;
-        if (!p) continue;
-        const dx = car.position.x - p.x, dz = car.position.z - p.z;
-        const d = Math.hypot(dx, dz);
-        if (d > this._magnetR || d < 0.5) continue;
-        const s = Math.min(1, dt * 3.4);
-        p.x += dx * s; p.z += dz * s;
-      }
+      this.scene?.powerups?.attract(car.position.x, car.position.z, this._magnetR, dt);
     }
 
     // Arxada iz qoyma

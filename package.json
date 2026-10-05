@@ -16,7 +16,8 @@
     "test:shots": "playwright test tests/shots.spec.js",
     "test:leak": "playwright test tests/leak.spec.js",
     "test:mobile": "playwright test tests/ui-mobile.spec.js",
-    "check": "npm run lint && npm run build && npm run test:smoke"
+    "check": "npm run lint && npm run build && npm run test:smoke",
+    "test:items": "playwright test tests/box-invariant.spec.js"
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.10",

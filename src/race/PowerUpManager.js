@@ -143,7 +143,26 @@ export class PowerUpManager {
     this.boxes.push({
       mesh, badge, type, i, rolls: 0, active: true, timer: 0,
       baseY: 1.05, phase: Math.random() * 6,
+      homeX: mesh.position.x, homeZ: mesh.position.z, pull: 0,
     });
+  }
+
+  // Maqnit gücü: radiusdakı AKTİV qutuları (x, z) nöqtəsinə çəkir. Qutunun öz
+  // yeri (homeX/homeZ) saxlanılır — çəkilmə bitəndə update() onu geri aparır.
+  // ƏVVƏL SignatureAbility birbaşa mesh.position-u dəyişirdi: nişan yerində
+  // qalır, 3 zolağın işığı bir nöqtəyə yığılır və heç vaxt geri qayıtmırdı
+  // (istifadəçi rəyi).
+  attract(x, z, radius, dt) {
+    const s = Math.min(1, dt * 3.4);
+    for (const b of this.boxes) {
+      if (!b.active) continue;
+      const p = b.mesh.position;
+      const dx = x - p.x, dz = z - p.z;
+      const d = Math.hypot(dx, dz);
+      if (d > radius || d < 0.5) continue;
+      p.x += dx * s; p.z += dz * s;
+      b.pull = 0.25; // bu müddət ərzində yerinə qayıtma dayanır
+    }
   }
 
   update(dt, racingActive) {
@@ -164,7 +183,13 @@ export class PowerUpManager {
         if (core) core.scale.set(2.3 * pulse, 2.3 * pulse, 1);
         const halo = b.mesh.getObjectByName('glowhalo');
         if (halo) halo.material.opacity = 0.42 + Math.sin(this._t * 3.4 + b.phase) * 0.12;
-        if (b.badge) b.badge.position.y = b.mesh.position.y + 1.55;
+        // Çəkilmə bitibsə öz yerinə yumşaq qayıdır
+        if (b.pull > 0) b.pull -= dt;
+        else if (b.mesh.position.x !== b.homeX || b.mesh.position.z !== b.homeZ) {
+          const dx = b.homeX - b.mesh.position.x, dz = b.homeZ - b.mesh.position.z;
+          if (dx * dx + dz * dz < 0.0004) b.mesh.position.set(b.homeX, b.mesh.position.y, b.homeZ);
+          else { const k = Math.min(1, dt * 4); b.mesh.position.x += dx * k; b.mesh.position.z += dz * k; }
+        }
         // Yenidən doğulanda böyüyərək peyda olur — NİŞAN da eyni sürətlə
         // böyüyür. Əvvəl nişan dərhal tam ölçüdə çıxırdı və "ikon var, işıq
         // yoxdur" görünüşü yaranırdı (istifadəçi rəyi).
@@ -182,6 +207,9 @@ export class PowerUpManager {
           b.active = true;
           b.mesh.visible = true;
           b.mesh.scale.setScalar(0.05); // kiçikdən böyüyür
+          b.mesh.position.x = b.homeX;  // maqnitlə çəkilib götürülübsə öz yerində doğulur
+          b.mesh.position.z = b.homeZ;
+          b.pull = 0;
           b.rolls++;
           b.type = this._rowUniqueType(b.i, b.rolls); // yeni item — hamıda EYNİ (seed-li)
           tintItemGlow(b.mesh, b.type.id);
@@ -192,6 +220,8 @@ export class PowerUpManager {
           }
         }
       }
+      // Nişan HƏMİŞƏ öz işığının üstündədir (yalnız y yox, x/z də izlənir)
+      if (b.badge) b.badge.position.set(b.mesh.position.x, b.mesh.position.y + 1.55, b.mesh.position.z);
     }
 
     // Götürmə — item olsa belə qutu götürülür və slot YENİLƏNİR
