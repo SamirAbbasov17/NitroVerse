@@ -9,6 +9,15 @@ dist
 
 # Yerli alətlər / OS
 .DS_Store
-.claude
+.claude/settings.local.json
+CLAUDE.local.md
 *.log
 promo-upload/
+
+# Test çıxışları
+tests/out/
+test-results/
+playwright-report/
+
+# Server ünvanı saxlayır — repo-ya getmir
+.claude/skills/nitroverse-deploy/

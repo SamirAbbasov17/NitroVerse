@@ -1,0 +1,32 @@
+{
+  "enableAllProjectMcpServers": true,
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npx playwright *)",
+      "Bash(npx eslint *)",
+      "Bash(npx vite build*)",
+      "Bash(npx gltf-transform *)"
+    ],
+    "ask": [
+      "Bash(git push*)",
+      "Bash(ssh *)",
+      "Bash(rsync *)",
+      "Bash(npx netlify-cli *)",
+      "Bash(npx netlify *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/lint-edited.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}

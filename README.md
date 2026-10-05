@@ -5,7 +5,7 @@ Brauzerdə işləyən low-poly yarış oyunu — **Three.js**, vanilla JavaScrip
 🎮 **Oyna:** https://apex-drift-racing.netlify.app
 
 ![Three.js](https://img.shields.io/badge/Three.js-r160-000000?logo=three.js&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-mobil%20dəstəkli-5A0FC8)
 
 ---

@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["-y", "chrome-devtools-mcp@latest"]
+    },
+    "threejs-devtools": {
+      "command": "npx",
+      "args": ["-y", "threejs-devtools-mcp"],
+      "env": { "DEV_PORT": "5173" }
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "blender": {
+      "command": "uvx",
+      "args": ["blender-mcp"]
+    },
+    "drawthings": {
+      "command": "npx",
+      "args": ["-y", "mcp-drawthings"]
+    }
+  }
+}
