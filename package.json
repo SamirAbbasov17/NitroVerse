@@ -16,12 +16,13 @@
     "test:shots": "playwright test tests/shots.spec.js",
     "test:leak": "playwright test tests/leak.spec.js",
     "test:mobile": "playwright test tests/ui-mobile.spec.js",
-    "check": "npm run lint && npm run build && npm run test:smoke",
+    "check": "npm run lint && npm run build && playwright test tests/smoke.spec.js tests/error-report.spec.js tests/box-invariant.spec.js",
     "test:items": "playwright test tests/box-invariant.spec.js",
     "test:feel": "playwright test tests/feel.spec.js",
     "test:overlap": "playwright test tests/overlap.spec.js",
     "test:zfight": "playwright test tests/zfight.spec.js",
-    "test:hitch": "playwright test tests/hitch.spec.js"
+    "test:hitch": "playwright test tests/hitch.spec.js",
+    "test:errors": "playwright test tests/error-report.spec.js"
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.10",

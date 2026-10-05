@@ -19,11 +19,17 @@ import { social } from './net/Social.js';
 import { Notices } from './ui/Notices.js';
 import { t } from './core/i18n.js';
 import { raceGold } from './data/economy.js';
+import { installErrorReporter } from './core/ErrorReporter.js';
 
 const canvas = document.getElementById('game-canvas');
 const uiRoot = document.getElementById('ui-root');
 
 const game = new Game(canvas);
+// Tutulmamış xətalar serverə bildirilir (rejim adı ilə) — bax ErrorReporter.js
+installErrorReporter({
+  getMode: () => game.active?.constructor?.name || 'boot',
+  getCid: () => social.identity?.cid || '',
+});
 const input = new Input();
 const library = new ModelLibrary();
 let thumbs = {};

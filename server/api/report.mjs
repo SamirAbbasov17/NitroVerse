@@ -23,6 +23,15 @@ const MAX_MSG = 1500;
 const MAX_SUBJ = 120;
 const KEEP = 300;          // anbarda saxlanan son bildiriş sayı
 const MIN_GAP_MS = 20000;  // eyni cihazdan ard-arda spam qarşısı
+const AUTO_GAP_MS = 60000; // avtomatik xəta: cihaz başına dəqiqədə 1
+const KEEP_AUTO = 150;     // saxlanan fərqli xəta imzası sayı
+
+// Qısa sabit imza (FNV-1a) — eyni xətanın təkrarlarını bir qeyddə toplamaq üçün
+const fnv = (str) => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(36);
+};
 
 const clean = (v, n) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
@@ -168,10 +177,73 @@ export function makeReport(getStore, env = process.env) {
         const v = await store2.get(k, { type: 'json' }).catch(() => null);
         if (v) items.push({ ...v, key: k, t: Number(k.slice(2).split('-')[0]) || 0 });
       }
-      return json({ items });
+      // Avtomatik xətalar — adi bildiriş formatına çevrilir ki, mövcud admin
+      // siyahısı dəyişmədən göstərsin (ən çox təkrarlanan yuxarıda)
+      const { blobs: eb } = await store2.list({ prefix: 'e/' });
+      const errors = [];
+      for (const x of eb) {
+        const v = await store2.get(x.key, { type: 'json' }).catch(() => null);
+        if (!v) continue;
+        errors.push({
+          key: x.key, t: v.last, auto: true, count: v.count,
+          subject: `⚙ ×${v.count} ${v.message}`.slice(0, MAX_SUBJ),
+          message: `${v.message}\n\n${v.stack}\n\nrejim: ${v.meta?.mode || '?'} · build: ${v.meta?.build || '?'}`,
+          email: '',
+          meta: { ...v.meta, nick: 'avtomatik', time: new Date(v.last).toISOString().replace('T', ' ').slice(0, 19) + ' UTC' },
+        });
+      }
+      errors.sort((p, q) => q.count - p.count);
+      return json({ items, errors });
     }
 
     if (b.hp) return json({ ok: true });   // bot tələsi — sükutla udulur
+
+    // ————— AVTOMATİK XƏTA (klientdə tutulmamış JS xətası) —————
+    // E-poçt GÖNDƏRİLMİR (bir buq yüzlərlə oyunçuda eyni anda baş verə bilər):
+    // xəta imzasına görə TƏK qeyd saxlanılır, təkrarlar sayğacı artırır.
+    // Admin siyahısında (action: 'list') adi bildirişlərlə birlikdə görünür.
+    if (b.kind === 'auto') {
+      const msg = clean(b.message, 300);
+      if (msg.length < 3) return json({ error: 'short' }, 400);
+      const stack = String(b.stack ?? '').slice(0, 1600);
+      const m = b.meta || {};
+      const imza = fnv(msg + '|' + (stack.split('\n').find((l) => /\.js|\bat\b/.test(l)) || '').replace(/[?#].*$/, ''));
+      let store = null;
+      try { store = getStore('reports'); } catch { return json({ ok: true, stored: false }); }
+      try {
+        const cid = clean(b.cid, 40) || 'anon';
+        // Cihaz başına dəqiqədə ən çox 1 avtomatik bildiriş
+        const last = await store.get(`ta/${cid}`);
+        if (last && Date.now() - Number(last) < AUTO_GAP_MS) return json({ error: 'slow-down' }, 429);
+        await store.set(`ta/${cid}`, String(Date.now()));
+        const key = `e/${imza}`;
+        const old = await store.get(key, { type: 'json' }).catch(() => null);
+        const now = Date.now();
+        await store.setJSON(key, {
+          message: msg,
+          stack,
+          count: (old?.count || 0) + 1,
+          first: old?.first || now,
+          last: now,
+          meta: {
+            mode: clean(m.mode, 40), build: clean(m.build, 40), lang: clean(m.lang, 8),
+            screen: clean(m.screen, 30), touch: !!m.touch, url: clean(m.url, 200), ua: clean(m.ua, 220),
+          },
+        });
+        const { blobs } = await store.list({ prefix: 'e/' });
+        if (blobs.length > KEEP_AUTO) {
+          // ən köhnə imzaları sil (son görünmə vaxtına görə)
+          const hamısı = [];
+          for (const x of blobs) {
+            const v = await store.get(x.key, { type: 'json' }).catch(() => null);
+            hamısı.push({ key: x.key, last: v?.last || 0 });
+          }
+          hamısı.sort((p, q) => p.last - q.last);
+          for (const x of hamısı.slice(0, blobs.length - KEEP_AUTO)) await store.delete(x.key);
+        }
+      } catch { /* anbar xətası oyunu narahat etməməlidir */ }
+      return json({ ok: true, stored: true });
+    }
 
     const message = clean(b.message, MAX_MSG);
     // Client validasiyası ilə EYNİ limitlər (client keçilə bilər)

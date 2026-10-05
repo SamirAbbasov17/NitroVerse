@@ -10,7 +10,7 @@ Testlər Playwright-dır və repo-dadır: `tests/`. Dev serveri (5173) özləri 
 
 | Əmr | Nə yoxlayır | Keçmə həddi | Müddət |
 |---|---|---|---|
-| `npm run check` | lint + build + smoke | hamısı yaşıl | ~2 dəq |
+| `npm run check` | lint + build + smoke + xəta bildirişi + bonus qutusu | hamısı yaşıl | ~2.5 dəq |
 | `npm run test:smoke` | 9 rejim/trek açılır, 8 s sürülür; menyu | **0 konsol xətası** | ~1.5 dəq |
 | `npm run test:perf` | kadr xərci (update+render), kadr intervalı, draw call, üçbucaq → `tests/out/perf.json` | `docs/MODELS.md` büdcəsi | ~2.5 dəq |
 | `npm run test:shots` | hər rejim 4 kadr, zen 4 gün vaxtı, pauza, 9 menyu ekranı × masaüstü/mobil, mobil HUD → `tests/out/shots/` | yoxdur — **kadrlara baxılır** | ~4 dəq |
@@ -20,6 +20,7 @@ Testlər Playwright-dır və repo-dadır: `tests/`. Dev serveri (5173) özləri 
 | `npm run test:overlap` | bərk obyektlərin bir-birinin içinə girməsi və yolun üstünə çıxması (6 trek + zen) → `tests/out/overlap.json` | 0 (zavod konteynerləri və uzaq fon dağları istisna) | ~1.5 dəq |
 | `npm run test:zfight` | yanıb-sönən (eyni dərinlikdə üst-üstə düşən) səthlər: sürüş zamanı 36 baxış, hər biri iki dəfə render olunub müqayisə edilir → `tests/out/zfight/` (qırmızı = pozuntu) | ekranın < 0.05%-i | ~7 dəq |
 | `npm run test:hitch` | kadr donması: zen-də gün vaxtı/hava/biom keçidləri + yarış/futbol/arena 45 s; hər kadrın update+render xərci → `tests/out/hitch.json` | 33 ms-dən uzun kadr 0 | ~6 dəq |
+| `npm run test:errors` | avtomatik xəta bildirişi: klient tutur/təkrarlamır, server tək qeyddə sayır və e-poçt göndərmir | yaşıl | ~3 s |
 | `npm run test:mobile` | 844×390-da HUD düymələrinin örtüşməsi və ekrandan çıxması | 0 | ~30 s |
 
 Tək test: `npx playwright test tests/shots.spec.js -g "race-neon"`.

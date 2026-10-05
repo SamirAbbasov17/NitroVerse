@@ -446,7 +446,8 @@ export class Menu {
       });
       const d = await r.json();
       if (!this.root.querySelector('#inbox-list')) return;
-      const items = d.items || [];
+      // Avtomatik (klient) xətaları yuxarıda — ən çox təkrarlanan birinci
+      const items = [...(d.errors || []), ...(d.items || [])];
       box.innerHTML = items.length ? items.map((it) => {
         const vaxt = it.t ? new Date(it.t).toLocaleString() : '';
         const m = it.meta || {};
