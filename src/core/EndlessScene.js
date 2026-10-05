@@ -53,6 +53,7 @@ const BIOMES = [
 const BIOME_LEN = 1600;   // hər biomun uzunluğu (m)
 const BLEND_LEN = 280;    // keçid zonası
 const DAY_PERIOD = 320;   // gün dövrü (saniyə)
+const SUN_SIZE = 56;      // günəş diskinin diametri (m) — ~600 m uzaqda ≈ 5° (əvvəl ~9°)
 // Gecə palitrası — bütün biomlar gecə soyuq indiqoya çəkilir (bax _updateWorld)
 const NIGHT_SKY = new THREE.Color(0x080d26);
 const NIGHT_SKY_B = new THREE.Color(0x16204a);
@@ -167,11 +168,29 @@ export class EndlessScene {
       this.stars.frustumCulled = false;
       this.scene.add(this.stars);
     }
-    this.sunDisc = new THREE.Mesh(
-      new THREE.CircleGeometry(46, 40),
-      new THREE.MeshBasicMaterial({ color: 0xffe6b0, fog: false, depthWrite: false })
-    );
-    this.scene.add(this.sunDisc);
+    // GÜNƏŞ / AY: kameraya baxan sprite, yumşaq kənarlı disk.
+    // ƏVVƏL 46 m radiuslu düz ağ dairə (CircleGeometry) idi: (1) göyün ~9°-ni
+    // tuturdu, (2) maşına baxdığı üçün kamera bucağından ELLİPS kimi görünürdü,
+    // (3) gecə eyni yerdə birdən ağ "ay"a çevrilirdi. İstifadəçi: "qəribə ağ işıq".
+    {
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = 128;
+      const cx = cv.getContext('2d');
+      const g = cx.createRadialGradient(64, 64, 0, 64, 64, 64);
+      g.addColorStop(0, 'rgba(255,255,255,1)');
+      g.addColorStop(0.78, 'rgba(255,255,255,1)');
+      g.addColorStop(0.9, 'rgba(255,255,255,0.35)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      cx.fillStyle = g;
+      cx.fillRect(0, 0, 128, 128);
+      const tex = new THREE.CanvasTexture(cv);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      this.sunDisc = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: tex, color: 0xffe6b0, fog: false, depthWrite: false, transparent: true,
+      }));
+      this.sunDisc.scale.setScalar(SUN_SIZE);
+      this.scene.add(this.sunDisc);
+    }
 
     const gt = this._noiseTexture();
     gt.repeat.set(GROUND_REPEAT, GROUND_REPEAT);
@@ -405,8 +424,10 @@ export class EndlessScene {
       this._halo.position.copy(this.sunDisc.position);
       const warm = day.warm || 0, night = day.night || 0;
       this._haloMat.color.set(night > 0.5 ? 0xa8c0e8 : warm > 0.4 ? 0xffa860 : 0xfff2d0);
-      this._haloMat.opacity = 0.14 + warm * 0.5 + night * 0.22;
-      this._halo.scale.setScalar(220 + warm * 130);
+      // Halə diskin görünməsi ilə birlikdə sönür (toran keçidində ikisi də itir)
+      const gör = this.sunDisc.material.opacity;
+      this._haloMat.opacity = (0.10 + warm * 0.34 + night * 0.10) * gör;
+      this._halo.scale.setScalar(130 + warm * 90 - night * 40);
     }
 
     // Yağışda təkər su tozu (qar deyilsə)
@@ -1532,9 +1553,16 @@ export class EndlessScene {
     this._lastCarPos.x = c.x; this._lastCarPos.z = c.z;
     const elevY = 80 + day.elev * 320;
     this.sunDisc.position.set(c.x + 500, elevY, c.z + 330);
-    this.sunDisc.lookAt(c.x, 0, c.z);
-    this.sunDisc.material.color.set(day.night > 0.5 ? 0xdfe8ff : (day.warm > 0.5 ? 0xffb46a : 0xffe6b0));
-    this.sunDisc.scale.setScalar(day.night > 0.5 ? 0.65 : 1);
+    {
+      // Gündüz günəş, gecə ay. Keçid QƏFİL deyil: toranda (night ≈ 0.5) disk tam
+      // sönür, sonra digər cisim kimi yenidən görünür — "günəş birdən aya çevrildi"
+      // sıçrayışı yoxdur. Ay solğun mavi-bozdur (parlaq ağ deyil) və kiçikdir.
+      const gecə = day.night > 0.5;
+      const m = this.sunDisc.material;
+      m.color.set(gecə ? 0xb9c6e4 : (day.warm > 0.5 ? 0xffb46a : 0xffe9bd));
+      m.opacity = Math.min(1, Math.abs(day.night - 0.5) * 5) * (gecə ? 0.9 : 1);
+      this.sunDisc.scale.setScalar(SUN_SIZE * (gecə ? 0.62 : 1));
+    }
     // GÜNƏŞ YÜKSƏKLİYİ gün mərhələsindən gəlir (Faza 2.2): səhər/qürub
     // alçaq → uzun kölgələr, günorta yuxarı → qısa. Əvvəl sabit dik idi və
     // kölgə maşının altında itirdi.
