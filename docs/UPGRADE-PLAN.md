@@ -109,6 +109,17 @@ Yoxlama: `test:feel` rəqəmləri (hədəf dəyərlər 2.1-dən əvvəl birlikd�
 
 Sıra bu fazanın daxilində: 3.1 (bibliya) → 3.11 + 3.12 (filtr və işıq — bütün treklərə dərhal təsir edir) → 3.8 (maşınlar) → 3.2 / 3.3 / 3.9 / 3.10 (mühit, trek-trek) → qalanı. Hər trek ayrıca göstərilir və təsdiqlənir.
 
+### 3.11 gedişatı — cila qatı 🔶 (2026-10-06, sənin seçimini gözləyir)
+
+`src/core/PostFX.js`: yalnız masaüstündə bloom + trek başına rəng qradasiyası (`tracks.js` → `grade`). Mobildə qat yaradılmır.
+
+- **Əsas görüntü dəyişmir.** Səhnə ekrana çəkildiyi kimi 8-bit MSAA hədəfə çəkilir, cila üstünə gəlir. `npm run test:postfx` bunu ölçür: bloom sıfır + neytral qradasiya ilə "bağlı" kadr arasında orta piksel fərqi 0.45–0.60 / 255 (9 rejim).
+- **İlk iki cəhd rədd edildi** (kadrda görünüb): HDR hədəf uzaq planı soldururdu (duman ton xəritəsindən sonra qarışır); 8-bit hədəfdə isə r160 duman rəngini xətti verir və dağlar tündləşirdi — kadr müddətinə rəng kompensasiya olunur.
+- **Xərc:** 9 rejimdə 60 FPS, p99 16.8 ms (cila bağlı ilə eyni); üstəlik 14 tam-ekran keçid (13 bloom + son keçid; səhnənin draw call sayına daxil deyil).
+- **Məhdudiyyət:** bloom ekran parlaqlığına görə seçir, ona görə işıq mənbəyi ilə ağ boyanı (zolaq, bordür) ayıra bilmir. Gündüz treklərində hədd 0.95-dir (səma ağarmasın) və təsir zəifdir; ən çox neon və zavodda görünür.
+- **Sınaq:** ünvana `?post=1` → ekranın altında "CİLA" nişanı (və ya F8) yandırıb-söndürür.
+- **Qalır:** sənin seçimin (saxla / gücünü dəyiş / sil), ayarlarda daimi açar, zen filtrlərinin render daxilinə köçürülməsi, vinyet.
+
 **Postprocessing (qərar verilib: bəli, yalnız masaüstündə).** İndiki qayda "heç vaxt" deyir (mobil FPS üçün). Masaüstündə kadr xərci 2–5 ms-dir, ehtiyat böyükdür. Təklif: **yalnız masaüstündə**, söndürülə bilən yüngül bloom + rəng qradasiyası; mobil olduğu kimi qalır. Bu, "professional görüntü" üçün ən ucuz böyük addımdır, amma qayda sənindir.
 
 ## Faza 4 — Səs 🔶

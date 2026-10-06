@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { isTouchDevice } from './TouchControls.js';
+import { PostFX } from './PostFX.js';
 
 // Renderer + əsas loop mühərriki. Aktiv "scene" obyektini idarə edir.
 // Aktiv scene interfeysi: { scene: THREE.Scene, camera: THREE.Camera, update(dt), dispose() }
@@ -26,6 +27,9 @@ export class Game {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.15;
+    // Render sonrası cila (bloom + qradasiya) yalnız masaüstündə — mobil toxunulmur
+    this.post = touch ? null : new PostFX(this.renderer);
+    this.post?.mountChip();
 
     this.active = null;
     this.clock = new THREE.Clock();
@@ -40,6 +44,7 @@ export class Game {
   setActive(sceneObj) {
     if (this.active && this.active.dispose) this.active.dispose();
     this.active = sceneObj;
+    this.post?.setGrade(sceneObj?.grade);
     // Yeni səhnənin yüklənmə sıçrayışları adaptiv ölçüyə düşməsin
     if (this._ad) { this._ad.isti = 0; this._ad.t = 0; this._ad.n = 0; this._ad.yavaş = 0; }
     if (import.meta.env.DEV) window.__active = sceneObj; // avtomatik testlər üçün
@@ -60,7 +65,8 @@ export class Game {
     if (this.active) {
       if (this.active.update) this.active.update(dt);
       if (this.active.scene && this.active.camera) {
-        this.renderer.render(this.active.scene, this.active.camera);
+        if (this.post?.enabled) this.post.render(this.active.scene, this.active.camera);
+        else this.renderer.render(this.active.scene, this.active.camera);
       } else {
         this.renderer.setClearColor(0x070a14, 1);
         this.renderer.clear();
@@ -89,6 +95,7 @@ export class Game {
       if (hədəf) {
         this.renderer.setPixelRatio(hədəf);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.post?.resize();
       }
     }
   }
@@ -97,6 +104,7 @@ export class Game {
     const w = window.innerWidth;
     const h = window.innerHeight;
     this.renderer.setSize(w, h);
+    this.post?.resize();
     const cam = this.active && this.active.camera;
     if (cam && cam.isPerspectiveCamera) {
       cam.aspect = w / h;
@@ -108,6 +116,7 @@ export class Game {
     window.removeEventListener('resize', this._onResize);
     this.renderer.setAnimationLoop(null);
     if (this.active && this.active.dispose) this.active.dispose();
+    this.post?.dispose();
     this.renderer.dispose();
   }
 }

@@ -84,6 +84,7 @@ uiRoot.addEventListener('click', (e) => {
 });
 if (import.meta.env.DEV) {
   window.__audio = audio;
+  window.__game = game;
   window.__social = social;
   window.__auth = auth;
   // Vizual testlər üçün (kosmetika yoxlanışı) — yalnız DEV

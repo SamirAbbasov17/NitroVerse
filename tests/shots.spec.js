@@ -4,7 +4,8 @@ import { MODES, OUT, boot, startMode, drive, ensureDir } from './helpers.js';
 
 // Kadr toplayıcı — heç nə təsdiqləmir, yalnız baxmaq üçün material yaradır.
 // Kadrlara BAXMADAN vizual iş "hazır" sayılmır (docs/TESTING.md).
-const DIR = ensureDir(path.join(OUT, 'shots'));
+// SHOTS_DIR: müqayisə üçün ayrı qovluq (məs. POST=0 SHOTS_DIR=shots-off)
+const DIR = ensureDir(path.join(OUT, process.env.SHOTS_DIR || 'shots'));
 const shot = (page, name) => page.screenshot({ path: path.join(DIR, `${name}.png`) });
 
 const MOBILE = { viewport: { width: 844, height: 390 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true };

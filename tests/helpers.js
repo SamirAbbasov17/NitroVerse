@@ -35,13 +35,16 @@ export function collectErrors(page) {
 }
 
 // Oyunu açır və menyu hazır olana qədər gözləyir.
-export async function boot(page, { lang = 'az' } = {}) {
-  await page.addInitScript((l) => {
+// POST=0 mühit dəyişəni render sonrası cilanı (bloom + qradasiya) söndürür —
+// "əvvəl/sonra" kadrları və ölçmələri üçün.
+export async function boot(page, { lang = 'az', post = process.env.POST !== '0' } = {}) {
+  await page.addInitScript(({ l, post: p }) => {
     try {
       localStorage.setItem('apexLang', l);
       localStorage.setItem('apexMuted', '1');
+      localStorage.setItem('apexPost', p ? '1' : '0');
     } catch { /* gizli rejim */ }
-  }, lang);
+  }, { l: lang, post });
   await page.goto('/');
   await page.waitForFunction(() => !!window.__menu && !!window.__showcase, null, { timeout: 60_000 });
 }
@@ -150,13 +153,21 @@ export async function measure(page, ms) {
     let t0 = 0;
     const origUpdate = sc.update;
     const origRender = r.render;
-    sc.update = function (dt) { t0 = performance.now(); return origUpdate.call(this, dt); };
+    // Cila açıq olanda bir kadrda bir neçə `render` çağırışı olur (səhnə + bloom +
+    // son keçid, hamısı tam-ekran dördbucaq). Sayğac hər çağırışda sıfırlanır, ona görə
+    // yalnız SƏHNƏ çağırışı sayılır — rəqəmlər cilasız ölçmələrlə müqayisə olunur.
+    // Xərc isə kadrın son çağırışına qədər ölçülür (cilanın CPU payı da daxildir).
+    let cur = null;
+    const flush = () => { if (cur) costs.push(cur.cost); cur = null; };
+    sc.update = function (dt) { flush(); t0 = performance.now(); return origUpdate.call(this, dt); };
     r.render = function (s, c) {
       const out = origRender.call(this, s, c);
-      if (t0) costs.push(performance.now() - t0);
-      calls = Math.max(calls, r.info.render.calls);
-      callList.push(r.info.render.calls);
-      tris = Math.max(tris, r.info.render.triangles);
+      if (s === sc.scene) {
+        calls = Math.max(calls, r.info.render.calls);
+        callList.push(r.info.render.calls);
+        tris = Math.max(tris, r.info.render.triangles);
+      }
+      if (t0) cur = { cost: performance.now() - t0 };
       return out;
     };
     let last = performance.now();
@@ -169,6 +180,7 @@ export async function measure(page, ms) {
       };
       requestAnimationFrame(tick);
     });
+    flush();
     delete sc.update; // prototip metoduna qayıt
     if (sc.update !== origUpdate) sc.update = origUpdate;
     r.render = origRender;

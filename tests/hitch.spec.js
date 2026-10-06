@@ -23,7 +23,7 @@ test('hitch: zen — gün vaxtı, hava və biom keçidləri', async ({ page }) =
     const oR = r.render.bind(r);
     sc.update = (dt) => { const t = performance.now(); oU(dt); tU = performance.now() - t; };
     r.render = (s, c) => {
-      frame++;
+      if (s === sc.scene) frame++; // cila keçidləri ayrı kadr deyil
       const p0 = r.info.programs.length;
       const t = performance.now();
       oR(s, c);
@@ -71,7 +71,7 @@ for (const name of ['race-desert', 'race-neon', 'race-zavod', 'football', 'arena
       const oR = r.render.bind(r);
       sc.update = (dt) => { const t = performance.now(); oU(dt); tU = performance.now() - t; };
       r.render = (s, c) => {
-        frame++;
+        if (s === sc.scene) frame++; // cila keçidləri ayrı kadr deyil
         const p0 = r.info.programs.length;
         const t = performance.now();
         oR(s, c);

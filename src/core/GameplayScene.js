@@ -61,6 +61,7 @@ export class GameplayScene {
     this.isRace = config.mode === 'race';
     this.online = config.online || null; // { net, players } — onlayn yarış
     this.trackData = getTrackById(config.trackId);
+    this.grade = this.trackData.grade; // Game.setActive → PostFX
     // CAN sistemi BÜTÜN xəritələrdə — lazer/manelər yalnız hazards olan trekdə (zavod)
     this.hz = this.trackData.hazards || { hp: 100, hitDamage: 18 };
 

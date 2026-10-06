@@ -8,6 +8,8 @@ export const TRACKS = [
     icon: '🏜️',
     roadWidth: 9,
     scale: 1.7,
+    // Render sonrası rəng qradasiyası (yalnız masaüstü) — bax core/PostFX.js
+    grade: { bloom: 0.2, bloomThreshold: 0.95, saturation: 1.12, contrast: 1.06, shadows: 0xf2f4ff, highlights: 0xfff6e8 },
     palette: {
       exposure: 1.18,
       sky: 0xf7b26a,
@@ -42,6 +44,8 @@ export const TRACKS = [
     roadWidth: 8,
     scale: 1.55,
     roadLamps: true,
+    // Render sonrası rəng qradasiyası (yalnız masaüstü) — bax core/PostFX.js
+    grade: { bloom: 0.45, bloomThreshold: 0.72, saturation: 1.2, contrast: 1.08, shadows: 0xf0f0ff, highlights: 0xfff2fb },
     palette: {
       exposure: 1.25,
       night: true,
@@ -78,6 +82,8 @@ export const TRACKS = [
     icon: '🌲',
     roadWidth: 10,
     scale: 1.65,
+    // Render sonrası rəng qradasiyası (yalnız masaüstü) — bax core/PostFX.js
+    grade: { bloom: 0.2, bloomThreshold: 0.96, saturation: 1.12, contrast: 1.05, shadows: 0xf0f6ff, highlights: 0xfffaf0 },
     palette: {
       exposure: 1.12,
       sky: 0x8fd4ff,
@@ -112,6 +118,8 @@ export const TRACKS = [
     icon: '⛰️',
     roadWidth: 9,
     scale: 1.75,
+    // Render sonrası rəng qradasiyası (yalnız masaüstü) — bax core/PostFX.js
+    grade: { bloom: 0.22, bloomThreshold: 0.95, saturation: 1.1, contrast: 1.07, shadows: 0xf6eeff, highlights: 0xfff3e4 },
     palette: {
       exposure: 1.18,
       sky: 0x86385e,
@@ -157,6 +165,8 @@ export const TRACKS = [
     roadWidth: 9,
     scale: 1.8,
     roadLamps: true,
+    // Render sonrası rəng qradasiyası (yalnız masaüstü) — bax core/PostFX.js
+    grade: { bloom: 0.25, bloomThreshold: 0.95, saturation: 1.14, contrast: 1.05, shadows: 0xf2f0ff, highlights: 0xfff4ea },
     palette: {
       exposure: 1.18,
       lampColors: [0xffd9a0, 0xffc98a],
@@ -219,6 +229,8 @@ export const TRACKS = [
         { t: 0.76, lane: 0.55 }, { t: 0.9, lane: 0 },
       ],
     },
+    // Render sonrası rəng qradasiyası (yalnız masaüstü) — bax core/PostFX.js
+    grade: { bloom: 0.35, bloomThreshold: 0.88, saturation: 1.0, contrast: 1.1, shadows: 0xeef4f6, highlights: 0xfff4e0 },
     palette: {
       exposure: 1.16,
       lampColors: [0xffd9a0, 0xf5c518],

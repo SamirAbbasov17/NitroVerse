@@ -5,7 +5,7 @@ vizual əlavə etməzdən əvvəl buradakı qaydalarla yoxla.
 
 ## Dəmir qaydalar
 
-1. **Postprocessing pipeline YOXDUR.** Bloom/DOF/SSAO mobil FPS-i öldürür.
+1. **Mobildə postprocessing YOXDUR.** Bloom/DOF/SSAO mobil FPS-i öldürür. Masaüstündə tək istisna: `src/core/PostFX.js` (bloom + rəng qradasiyası, söndürülə bilən; 2026-10-05 qərarı).
    Effekt lazımdırsa: bir dəfə hesablanan həndəsə, additiv sprite, vertex
    rəngi, yaxud CSS overlay (render dövrünə toxunmur).
 2. **Az, amma yerində.** Səpələnmiş obyekt sayı yox, **kompozisiya** işləyir.

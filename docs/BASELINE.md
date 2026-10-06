@@ -68,7 +68,7 @@ Büdcədən kənarda yalnız zen qalır (110): hər yol parçası ~17 ayrı mate
 
 Oxunuşu:
 - **CPU kadr xərci aşağıdır** (p99 < 8 ms) — bu maşında ehtiyat böyükdür.
-- **Draw call sənəddəki büdcədən 9 rejimdən 7-də yüksəkdir.** Sayğaca kölgə keçidi də daxildir (masaüstündə kölgə aktivdir), köhnə ölçmə üsulu məlum deyil. Ya büdcə yenidən təyin olunmalıdır, ya da səhnələr optimallaşdırılmalıdır — mobil ölçmə ilə qərar verilməlidir.
+- **Draw call sənəddəki büdcədən 9 rejimdən 7-də yüksəkdir.** ~~Sayğaca kölgə keçidi də daxildir~~ **Düzəliş (2026-10-06):** daxil DEYİL — r160 `renderer.info`-nu kölgə keçidindən SONRA sıfırlayır. Ölçüldü: səhrada kölgə keçidi ilə birlikdə 138 draw call / 91 min üçbucaq, onsuz 95–100 / 66–67 min. Yəni bütün büdcə rəqəmləri kölgəsiz saydır; masaüstündə real yük ~40% çoxdur. Ya büdcə yenidən təyin olunmalıdır, ya da səhnələr optimallaşdırılmalıdır — mobil ölçmə ilə qərar verilməlidir.
 - **Futbol 400 draw call** — 23 min üçbucaq üçün çoxdur; birləşdirilməmiş çoxlu kiçik obyekt əlamətidir.
 - **Zen-də 60–74 ms donma** hər ölçmədə 1 dəfə təkrarlandı (chunk yaradılması ehtimalı) — hiss olunan ilişmədir.
 - Yarışda 12 saniyədə 1–4 kadr 33 ms-i keçir (xərc deyil, interval) — səbəbi araşdırılmayıb.
