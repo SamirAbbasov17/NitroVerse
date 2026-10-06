@@ -46,3 +46,10 @@ Versiya **r160**. API-ni yaddaşdan yazma — `context7` ilə r160 üçün yoxla
 ## Yoxlama
 
 Vizual dəyişiklikdən sonra `nitroverse-visual-check` skill-i: `npm run test:shots` → kadrlara bax → `npm run test:perf`.
+
+## Trek palitrası — görünüş açarları (`src/data/tracks.js` → `palette`)
+
+- `sunDir: [x, y, z]` — günəş işığının istiqaməti (standart 60/110/40). Səmadakı disk də bundan qurulur və kameranı izləyir (`Environment.celestial`); ayrıca günəş həndəsəsi əlavə etmə — iki günəş alınır.
+- `sunSize`, `sunDisc` — diskin miqyası və rəngi (üfüqdə qarşıdan görünən günəş standart ölçüdə kadrı ağardır).
+- `groundGain` — yer rənginin gücləndiricisi. Yer teksturası bozdur (xətti 0.28), ona görə palitra rəngi ~3.5 dəfə tünd çıxır; standart 1 köhnə görünüşdür.
+- Kenney palma/ağac modelləri 190–340 üçbucaqdır (prosedural şam ~20) — sayını üçbucaq büdcəsi ilə hesabla.

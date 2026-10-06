@@ -169,6 +169,14 @@ export const TRACKS = [
     grade: { bloom: 0.25, bloomThreshold: 0.95, saturation: 1.14, contrast: 1.05, shadows: 0xf2f0ff, highlights: 0xfff4ea },
     palette: {
       exposure: 1.18,
+      // Gün batımı: günəş cənubda (dəniz tərəfdə), alçaqda — uzun isti kölgələr
+      sunDir: [-40, 52, -120],
+      // Alçaq günəş üfüqi yeri zəif işıqlandırır — səma işığı ilə kompensasiya (yer tünd qəhvəyi çıxırdı)
+      ambientIntensity: 0.6,
+      hemiIntensity: 1.15,
+      sunSize: 0.6,      // üfüqdə qarşıdan görünür — standart ölçüdə bütün kadrı ağardırdı
+      sunDisc: 0xffd08a, // gün batımı: narıncı-sarı disk
+      groundGain: 2.6, // açıq qum/quru ot — sahil (bax Environment: yer teksturası rəngi tündləşdirir)
       lampColors: [0xffd9a0, 0xffc98a],
       sky: 0x5a4a9e,
       skyBottom: 0xff9a6a,
@@ -200,7 +208,7 @@ export const TRACKS = [
     sea: {},
     river: { t: 0.415, width: 12, color: 0x2fb8c8 },
     decor: [
-      { type: 'pine', count: 60 },
+      { type: 'pine', count: 40 }, // Rivierada palma kimi qoyulur (bax Environment._scatterDecor)
       { type: 'lamp', count: 16 },
       { type: 'rock', count: 40 },
       { type: 'house', count: 18 },

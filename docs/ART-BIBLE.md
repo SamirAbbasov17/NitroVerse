@@ -45,6 +45,7 @@ Mənbə: `src/data/tracks.js` (indiki palitra və dekor) + 2026-10-06 kadrları 
 ### Riviera — "Riviera Sunset"
 - **Kimlik:** sahil qəsəbəsi, dəniz, gün batımı.
 - **Palitra (indiki):** səma `#5a4a9e → #ff9a6a` · yer `#e0bd86` · duman `#e8a37e` · vurğu (bordür) `#27e6c8`.
+- **Vəziyyət (2026-10-06):** dəniz yola gətirildi, çimərlik/palmalar/mayak/qayıqlar/təpə-qəsəbə/alçaq günəş əlavə olundu — rəy gözlənilir. Düzəliş: dəniz və mayak kodda əvvəl də var idi, sadəcə yoldan çox uzaqda idi.
 - **İndi nə pisdir:** kadrda dəniz və qəsəbə demək olar görünmür — yastı qəhvəyi düz, şamlar və bir çadır var; "sahil" oxunmur. Yer rəngi tərifdəki açıq qumdan xeyli tünd çıxır.
 - **Dekor (icazəli):** palma, ağ evlər (qırmızı dam), fənər, mayak, körpü/estakada, qayıq, çimərlik çətiri. **Olmaz:** şam (palma ilə əvəz), kaktus, dağ konusu.
 - **Təklif:** trekin bir tərəfi boyunca dəniz üfüqü (su müstəvisi + günəş yolu); pilləli ağ qəsəbə (orta plan); landmark — mayak və liman; şamların palma ilə əvəzlənməsi.

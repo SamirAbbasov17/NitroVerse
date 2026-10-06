@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { makeDecor, makeLamp, flatMat, makeTireStack, makeBarrier, cityBoxGeometry, cityMat, glowMat, makeCityBuilding,
   makeGrandstand, makeFloodlight, makeMarshalPost, makeSponsorBoard, makeBunting } from '../core/AssetFactory.js';
 import { mergeStaticGroup } from '../core/MergeUtils.js';
+import { sharedNature } from './NatureKit.js';
 
 // Səhnə mühiti: göy, fog, IBL env-map, işıqlar, yer, uzaq relyef və dekor.
 export class Environment {
@@ -29,6 +30,8 @@ export class Environment {
   // körpü zonasında toqquşma yoxdur (yol keçir), amma dekor yenə qoyula bilməz.
   // Əvvəl şin yığınları və daşlar suyun içinə düşürdü (istifadəçi rəyi).
   _inWater(x, z, r = 0) {
+    // Dəniz (çimərlik zolağı daxil): sahil xəttindən 14 m içəridən cənuba dekor qoyulmur
+    if (this._seaCoast && z - r < -(this._seaCoast - 14)) return true;
     return this.keepOut.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + r);
   }
 
@@ -86,7 +89,10 @@ export class Environment {
     this._track(hemi);
 
     const sun = new THREE.DirectionalLight(p.sun ?? 0xffffff, p.sunIntensity ?? 1.25);
-    sun.position.set(60, 110, 40);
+    // İstiqamət trekdən gəlir (palette.sunDir); standart — hündür günorta bucağı
+    const sd = p.sunDir ?? [60, 110, 40];
+    sun.position.set(sd[0], sd[1], sd[2]);
+    sun.userData.offset = sd;
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
     const cam = sun.shadow.camera;
@@ -123,6 +129,9 @@ export class Environment {
       const col = new THREE.BufferAttribute(new Float32Array(pos.count * 3), 3);
       const tmp = new THREE.Vector3();
       const baza = new THREE.Color(p.ground);
+      // Yer teksturası boz (#909090 → xətti 0.28) olduğu üçün palitra rəngi ~3.5 dəfə tünd
+      // çıxır. `groundGain` trek başına bunu kompensasiya edir (standart 1 = köhnə görünüş).
+      const gain = p.groundGain ?? 1;
       // Kənar tündləşməsi (dərinlik hissi) vertex rənginə yazılır. ƏVVƏL ayrıca
       // "rim" halqası idi: yerdən 1 sm yuxarıda, eyni sahədə — relyef dalğası
       // onun içindən çıxıb sərt kənarlı ləkələr yaradır, uzaqda isə iki səth
@@ -138,7 +147,10 @@ export class Environment {
         const uzaq = Math.max(0, Math.min(1, (yan - 34) / 90));
         const dalğa = Math.sin(wx * 0.011 + 1.3) * Math.cos(wz * 0.009 - 0.7)
           + Math.sin((wx + wz) * 0.021 + 2.1) * 0.5;
-        pos.setZ(i, dalğa * 1.7 * uzaq);           // ±1.7 m, yalnız uzaqda
+        // Dəniz zonasında (və sahildən 60 m içəridə) relyef yoxdur: dalğalar suyun
+        // üstünə çıxıb dənizin ortasında qəhvəyi "quru zolaqları" yaradırdı
+        const dəniz = this._seaCoast && wz < -(this._seaCoast - 60);
+        pos.setZ(i, dəniz ? 0 : dalğa * 1.7 * uzaq); // ±1.7 m, yalnız uzaqda
         // Rəng: üç oktava alçaq tezlik → təkrarlanmayan ləkələr
         const n1 = Math.sin(wx * 0.006 + 0.4) * Math.cos(wz * 0.0052 - 1.1);
         const n2 = Math.sin((wx * 0.7 + wz) * 0.013 + 2.4);
@@ -146,7 +158,7 @@ export class Environment {
         const k = 0.955 + (n1 * 0.5 + n2 * 0.3 + n3 * 0.2) * 0.075;
         const e = Math.max(0, Math.min(1, (Math.hypot(wx, wz) - 200) / 90));
         rəng.copy(baza).lerp(kənar, e * e * (3 - 2 * e));
-        col.setXYZ(i, rəng.r * k, rəng.g * k, rəng.b * k * (1 + n2 * 0.02));
+        col.setXYZ(i, rəng.r * k * gain, rəng.g * k * gain, rəng.b * k * gain * (1 + n2 * 0.02));
       }
       gGeo.setAttribute('color', col);
       gGeo.computeVertexNormals();
@@ -167,7 +179,14 @@ export class Environment {
     this._groundGeo = gGeo;
 
     // Dəniz sahili varsa, dağ halqası hesablamadan ƏVVƏL bilinməlidir
-    if (this.data.sea) this._seaCoast = this.track.maxRadius + 20;
+    // Sahil xətti trekin ƏN CƏNUB nöqtəsindən 24 m aralıdır. Əvvəl `maxRadius + 20`
+    // idi: Rivierada dəniz yoldan ən azı 67 m, çox yerdə yüzlərlə metr uzaqda və
+    // dumanın arxasında qalırdı — "sahil treki"ndə dəniz demək olar görünmürdü.
+    if (this.data.sea) {
+      let minZ = Infinity;
+      for (const q of this.track.points) if (q.z < minZ) minZ = q.z;
+      this._seaCoast = -minZ + (this.data.sea.gap ?? 24);
+    }
     this._distant();
     this._clouds();
     if (this.data.sea) this._sea();
@@ -176,6 +195,7 @@ export class Environment {
     // və təpələr suyun içində qalırdı.
     if (this.data.river) this._river(this.data.river);
     if (this.data.id === 'canyon') this._canyonWalls();
+    if (this.data.id === 'riviera') this._rivieraTown(); // təpələrdən əvvəl: yerini tutur
     if (['desert', 'alpine', 'riviera'].includes(this.data.id)) this._hills();
     if (this.data.id === 'neon') this._billboards();
     // Lampalar rekvizitlərdən ƏVVƏL: mövqeləri sabit addımlıdır (işıqlandırma),
@@ -189,6 +209,84 @@ export class Environment {
     if (this.data.id === 'neon') this._neonLandmarks();
     if (this.data.id === 'neon') this._cityBlocks(); // küçə divarı — ən sonda, boş qalan yerə
     this._autoObstacles();   // təhlükəsizlik toru — bax aşağı
+  }
+
+  // RİVİERA — SAHİL QƏSƏBƏSİ (bədii bibliya): sahil hissəsinin quru tərəfində kiçik
+  // təpə-qəsəbə. Üç halqa (aşağıdan yuxarı daralır), ağ evlər çölə baxır, zirvədə
+  // zəng qülləsi. Yol onun ətrafından dolanır, ona görə HƏR TƏRƏFDƏN eyni oxunmalıdır
+  // (ilk variant bir tərəfə baxan pillələr idi — arxadan çılpaq bej divar görünürdü).
+  // Hamısı 4 materialda birləşir: divar, dam, pəncərə, teras.
+  _rivieraTown() {
+    const tr = this.track;
+    const N = tr.N, half = tr.halfWidth;
+    let minZ = Infinity;
+    for (const q of tr.points) if (q.z < minZ) minZ = q.z;
+    const R0 = 31; // ən böyük halqanın radiusu
+    // Mərkəz üçün ən boş yer: sahil hissəsində, yoldan R0 + 12 m içəridə
+    let best = null;
+    for (let i = 0; i < N; i += 3) {
+      const p = tr.points[i], n0 = tr.normals[i];
+      if (p.z > minZ + 90) continue;
+      const sd = n0.z >= 0 ? 1 : -1; // quru (şimal) tərəf
+      const cx = p.x + n0.x * sd * (half + R0 + 12), cz = p.z + n0.z * sd * (half + R0 + 12);
+      let ok = 0;
+      for (let a = 0; a < 12; a++) {
+        const x = cx + Math.cos(a * Math.PI / 6) * (R0 + 5), z = cz + Math.sin(a * Math.PI / 6) * (R0 + 5);
+        const pos = new THREE.Vector3(x, 0, z);
+        if (Math.abs(tr.getNearest(pos).lateral) > half + 6 && !(tr.branches?.length && tr.isOnBranch(pos, 6))
+          && !this._inWater(x, z, 2)) ok++;
+      }
+      if (ok === 12 && this._free(cx, cz, R0 + 4, 0.5) && (!best || p.z < best.pz)) best = { cx, cz, pz: p.z };
+    }
+    if (!best) return;
+    const { cx, cz } = best;
+
+    const g = new THREE.Group();
+    // Divar kölgədə boz-bənövşəyi çıxmasın deyə xəfif isti öz-işığı
+    const wall = flatMat(0xfaf1e2, { roughness: 0.95, emissive: 0x5a4636, emissiveIntensity: 0.35 });
+    const roof = flatMat(0xc65a32, { roughness: 0.9 });
+    const terr = flatMat(0xdcc49a, { roughness: 1 });
+    const win = glowMat(0xffd9a0, 1.1);
+    const put = (geo, mat, x, y, z, ry = 0) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x, y, z);
+      m.rotation.y = ry;
+      m.castShadow = mat !== win;
+      g.add(m);
+      return m;
+    };
+    const RINGS = [{ r: R0 - 5, n: 13, y: 0 }, { r: 16.5, n: 8, y: 3.2 }, { r: 7.5, n: 4, y: 6.4 }];
+    // Teraslar: səkkizbucaqlı alçaq silindrlər (təpənin pillələri)
+    put(new THREE.CylinderGeometry(21.5, 23, 3.2, 10), terr, cx, 1.6, cz);
+    put(new THREE.CylinderGeometry(12, 13.5, 3.2, 8), terr, cx, 4.8, cz);
+    for (const ring of RINGS) {
+      const a0 = Math.random() * 6;
+      for (let k = 0; k < ring.n; k++) {
+        const a = a0 + (k / ring.n) * Math.PI * 2;
+        const ox = Math.sin(a), oz = Math.cos(a);             // çölə baxan istiqamət
+        const x = cx + ox * ring.r, z = cz + oz * ring.r;
+        const w = 5 + Math.random() * 1.6, d = 4.6 + Math.random() * 1.2, h = 4.2 + Math.random() * 3;
+        put(new THREE.BoxGeometry(w, h, d), wall, x, ring.y + h / 2, z, a);
+        const rf = put(new THREE.ConeGeometry(Math.max(w, d) * 0.78, 1.7, 4), roof, x, ring.y + h + 0.85, z, a + Math.PI / 4);
+        rf.scale.set(1, 1, 1);
+        // çölə baxan üzdə iki işıqlı pəncərə
+        for (const wx of [-w * 0.24, w * 0.24]) {
+          put(new THREE.BoxGeometry(1.0, 1.4, 0.12), win,
+            x + oz * wx + ox * (d / 2 + 0.03), ring.y + Math.min(h * 0.55, h - 1.3), z - ox * wx + oz * (d / 2 + 0.03), a);
+        }
+      }
+    }
+    // Zəng qülləsi — zirvədə (landmark)
+    put(new THREE.BoxGeometry(3.4, 14, 3.4), wall, cx, 6.4 + 7, cz, 0.4);
+    put(new THREE.BoxGeometry(3.5, 2.2, 1.5), win, cx, 6.4 + 11.6, cz, 0.4);
+    put(new THREE.BoxGeometry(1.5, 2.2, 3.5), win, cx, 6.4 + 11.6, cz, 0.4);
+    put(new THREE.ConeGeometry(3.1, 4.4, 4), roof, cx, 6.4 + 16.2, cz, 0.4 + Math.PI / 4);
+    this.obstacles.push({ x: cx, z: cz, r: R0 });   // bütün təpə bərkdir
+
+    const merged = mergeStaticGroup(g);
+    g.traverse((o) => { if (o.isMesh) o.geometry?.dispose?.(); });
+    this.scene.add(merged);
+    this._track(merged);
   }
 
   // NEON — LANDMARKLAR (bədii bibliya): yolun üstündən keçən işıqlı estakadalar və
@@ -541,14 +639,14 @@ export class Environment {
     const coast = this._seaCoast;
     const seaC = new THREE.Color(0x2b8fae).lerp(new THREE.Color(p.fog), 0.12);
     const sea = new THREE.Mesh(
-      new THREE.PlaneGeometry(1700, 720),
+      new THREE.PlaneGeometry(2800, 1500), // üfüqə qədər: arxasından quru (yer diski) görünməsin
       new THREE.MeshStandardMaterial({
         color: seaC, roughness: 0.32, metalness: 0,
         emissive: seaC, emissiveIntensity: 0.14,
       })
     );
     sea.rotation.x = -Math.PI / 2;
-    sea.position.set(0, 0.012, -(coast + 360));
+    sea.position.set(0, 0.012, -(coast + 750));
     this.scene.add(sea);
     this._track(sea);
     // Sahil köpük xətti
@@ -571,8 +669,73 @@ export class Environment {
       this.scene.add(isl);
       this._track(isl);
     }
-    // Mayak — sahildə landmark
-    this._lighthouse(90, -(coast + 6));
+    // ——— ÇİMƏRLİK: açıq qum zolağı (sahil xəttindən 16 m içəri) ———
+    const beach = new THREE.Mesh(
+      new THREE.PlaneGeometry(1700, 16),
+      new THREE.MeshStandardMaterial({ color: 0xf6e2b8, roughness: 1 })
+    );
+    beach.rotation.x = -Math.PI / 2;
+    beach.position.set(0, -0.015, -(coast - 8)); // yerdən 2.5 sm yuxarı, sudan aşağı
+    beach.receiveShadow = true;
+    this.scene.add(beach);
+    this._track(beach);
+
+    // Sudakı günəş yolu ayrıca həndəsə deyil: suyun materialı (roughness 0.32) alçaq
+    // günəşi özü əks etdirir; disk kameranı izlədiyi üçün parıltı düz onun altına düşür.
+
+    // ——— PALMA CƏRGƏSİ çimərlik boyu ———
+    const kit = sharedNature();
+    const deco = new THREE.Group();
+    if (kit.ready) {
+      for (let x = -330; x <= 330; x += 20 + Math.random() * 12) {
+        const z = -(coast - 9 - Math.random() * 4);
+        // (_free işlədilmir: o, çimərlik zolağını "su" sayır) — yalnız mövcud obyektlərə baxılır
+        if (this.obstacles.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + 1.5)) continue;
+        const palm = kit.get('tree_palmTall');
+        if (!palm) break;
+        palm.position.set(x, 0, z);
+        palm.rotation.y = Math.random() * 6;
+        palm.scale.setScalar(1.1 + Math.random() * 0.5);
+        deco.add(palm);
+        this.obstacles.push({ x, z, r: 0.6 });
+      }
+    }
+    // ——— YELKƏNLİ QAYIQLAR ———
+    const hullMat = flatMat(0xf4efe6), sailMat = flatMat(0xffffff), woodMat = flatMat(0x8a5a3a);
+    for (const [bx, bd, sc, rot] of [[-210, 60, 1, 0.4], [-60, 120, 1.3, -0.3], [40, 48, 0.9, 1.2], [200, 95, 1.2, 0.2], [310, 150, 1.5, -0.8]]) {
+      const b = new THREE.Group();
+      const hull = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.1, 7), hullMat);
+      hull.position.y = 0.45;
+      const mast = new THREE.Mesh(new THREE.BoxGeometry(0.18, 8, 0.18), woodMat);
+      mast.position.y = 4.6;
+      const sail = new THREE.Mesh(new THREE.ConeGeometry(2.6, 6.4, 3), sailMat);
+      sail.scale.set(0.12, 1, 1);
+      sail.position.set(0, 4.6, -0.9);
+      b.add(hull, mast, sail);
+      b.position.set(bx, 0, -(coast + bd));
+      b.rotation.y = rot;
+      b.scale.setScalar(sc);
+      deco.add(b);
+    }
+    // ——— KÖRPÜCÜK (pirs) + ucunda mayak ———
+    const PX = 90, PL = 30;
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.35, PL + 8), woodMat);
+    deck.position.set(PX, 0.85, -(coast + PL / 2 - 4));
+    deco.add(deck);
+    for (let k = 0; k <= 4; k++) {
+      for (const sx of [-1.5, 1.5]) {
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.7, 0.3), woodMat);
+        post.position.set(PX + sx, 0.1, -(coast - 6 + k * (PL / 4)));
+        deco.add(post);
+      }
+    }
+    const mergedDeco = mergeStaticGroup(deco);
+    deco.traverse((o) => { if (o.isMesh && !o.material.userData?.shared) o.geometry?.dispose?.(); });
+    this.scene.add(mergedDeco);
+    this._track(mergedDeco);
+
+    // Mayak — körpücüyün ucunda
+    this._lighthouse(PX, -(coast + PL));
   }
 
   _lighthouse(x, z) {
@@ -1261,7 +1424,13 @@ export class Environment {
         const pos = new THREE.Vector3(Math.cos(ang) * r, 0, Math.sin(ang) * r);
 
         // Neon: pəncərəli şəhər binaları (zavodun binaları ayrıca işdir — bədii bibliya)
-        const obj = makeDecor(rule.type, rule.type === 'building' && this.data.id === 'neon' ? { city: true } : undefined);
+        let obj = null;
+        // Riviera: şam əvəzinə palma (Kenney Nature Kit, CC0) — sahil qəsəbəsində şam yad idi
+        if (rule.type === 'pine' && this.data.id === 'riviera') {
+          // tək model: 190 üçbucaq ("Detailed" variantı 336 — 100 palma büdcəni aşırdı)
+          obj = sharedNature().get('tree_palmTall');
+        }
+        obj ||= makeDecor(rule.type, rule.type === 'building' && this.data.id === 'neon' ? { city: true } : undefined);
         // Şəhər binası miqyaslanmır: pəncərə ölçüsü bütün binalarda eyni qalsın
         const s = rule.type === 'building' && this.data.id === 'neon' ? 1 : 0.8 + Math.random() * 0.7;
         obj.scale.setScalar(s);
@@ -1344,22 +1513,31 @@ export class Environment {
 
   // Günəş (gündüz) və ya ay (gecə) diski + yumşaq halo
   _celestialBody(p) {
-    // Günəş istiqaməti işıq mənbəyi ilə üst-üstə düşür (60, 110, 40)
-    const dir = new THREE.Vector3(60, 42, 40).normalize(); // üfüqə yaxın — daha dramatik
+    // Günəş istiqaməti işıq mənbəyi ilə üst-üstə düşür (palette.sunDir, standart 60/110/40);
+    // disk işıqdan alçaqda çəkilir (y × 0.38) — üfüqə yaxın, daha dramatik
+    const sd = p.sunDir ?? [60, 110, 40];
+    const dir = new THREE.Vector3(sd[0], sd[1] * 0.38, sd[2]).normalize();
     const pos = dir.multiplyScalar(700);
+    // Qrup kameranı izləyir (GameplayScene): günəş "sonsuz uzaqda" qalır. Əvvəl mərkəzdən
+    // 700 m-də sabit dururdu — trekin kənarından baxanda işıq istiqamətindən 20–30°
+    // sürüşür, sudakı parıltı diskin altına düşmürdü.
+    const sky = new THREE.Group();
+    this.scene.add(sky);
+    this._track(sky);
+    this.celestial = sky;
+    const k = p.sunSize ?? 1; // disk və halələrin miqyası
     const night = !!p.night;
     const discColor = night
       ? 0xdfe8ff
-      : new THREE.Color(p.sun ?? 0xffe6b0).lerp(new THREE.Color(0xffffff), 0.35).getHex();
+      : (p.sunDisc ?? new THREE.Color(p.sun ?? 0xffe6b0).lerp(new THREE.Color(0xffffff), 0.35).getHex());
 
     const disc = new THREE.Mesh(
-      new THREE.CircleGeometry(night ? 30 : 44, 40),
+      new THREE.CircleGeometry((night ? 30 : 44) * k, 40),
       new THREE.MeshBasicMaterial({ color: discColor, fog: false, depthWrite: false })
     );
     disc.position.copy(pos);
     disc.lookAt(0, 0, 0);
-    this.scene.add(disc);
-    this._track(disc);
+    sky.add(disc);
 
     // Halo — radial qradiyent sprite (additiv)
     const hc = document.createElement('canvas');
@@ -1373,7 +1551,7 @@ export class Environment {
     hctx.fillRect(0, 0, 128, 128);
     const haloTex = new THREE.CanvasTexture(hc);
     const halo = new THREE.Mesh(
-      new THREE.CircleGeometry(night ? 90 : 150, 32),
+      new THREE.CircleGeometry((night ? 90 : 150) * k, 32),
       new THREE.MeshBasicMaterial({
         map: haloTex, transparent: true, fog: false, depthWrite: false,
         blending: THREE.AdditiveBlending,
@@ -1381,12 +1559,11 @@ export class Environment {
     );
     halo.position.copy(pos.clone().multiplyScalar(0.985));
     halo.lookAt(0, 0, 0);
-    this.scene.add(halo);
-    this._track(halo);
+    sky.add(halo);
 
     // İkinci, daha geniş və zəif halo — "hava işıqlanması" dərinliyi
     const halo2 = new THREE.Mesh(
-      new THREE.CircleGeometry(night ? 150 : 300, 32),
+      new THREE.CircleGeometry((night ? 150 : 300) * k, 32),
       new THREE.MeshBasicMaterial({
         map: haloTex, transparent: true, opacity: 0.4, fog: false, depthWrite: false,
         blending: THREE.AdditiveBlending,
@@ -1394,8 +1571,7 @@ export class Environment {
     );
     halo2.position.copy(pos.clone().multiplyScalar(0.97));
     halo2.lookAt(0, 0, 0);
-    this.scene.add(halo2);
-    this._track(halo2);
+    sky.add(halo2);
   }
 
   // Gecə səmasında ulduzlar — tək draw call

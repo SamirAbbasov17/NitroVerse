@@ -1398,10 +1398,13 @@ export class GameplayScene {
     // Günəş (kölgə kamerası) oyunçunu izləyir
     const sun = this.environment.sun;
     if (sun) {
-      sun.position.set(car.position.x + 60, 110, car.position.z + 40);
+      const o = sun.userData.offset; // trekin günəş istiqaməti (palette.sunDir)
+      sun.position.set(car.position.x + o[0], o[1], car.position.z + o[2]);
       sun.target.position.copy(car.position);
       sun.target.updateMatrixWorld();
     }
+    // Günəş diski kameranı izləyir — sonsuz uzaqda kimi (bax Environment._celestialBody)
+    this.environment.celestial?.position.set(this.camera.position.x, 0, this.camera.position.z);
 
     // 🎥 FPS: sükan arxası görünüş — sərt bağlı kamera
     if (this._camMode !== 'tps') {

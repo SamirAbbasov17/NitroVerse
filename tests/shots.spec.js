@@ -76,6 +76,45 @@ test.describe('masaüstü oyun kadrları', () => {
     }
   });
 
+  // Riviera: sahil (dəniz, günəş, mayak) və təpə-qəsəbə — yoldan baxış
+  test('shots: riviera sahili və qəsəbə', async ({ page }) => {
+    await boot(page);
+    await startMode(page, MODES.find((m) => m.name === 'race-riviera').config);
+    await page.waitForTimeout(1500);
+    const views = await page.evaluate(() => {
+      const sc = window.__active;
+      sc._updateCamera = () => {};
+      sc.update = () => {};
+      // günəş diski kameranı izləyir (oyunda GameplayScene edir)
+      window.__glit = () => sc.environment.celestial?.position.set(sc.camera.position.x, 0, sc.camera.position.z);
+      document.querySelector('#ui-root').style.display = 'none';
+      const tr = sc.track;
+      let mi = 0;
+      for (let i = 0; i < tr.N; i++) if (tr.points[i].z < tr.points[mi].z) mi = i;
+      const q = tr.points[mi];
+      const out = [{ px: q.x + 40, py: 5, pz: q.z + 6, lx: q.x - 90, ly: 14, lz: q.z - 160 }];
+      const town = sc._obstacles.find((o) => o.r === 31);
+      if (town) {
+        const i = tr.getNearest(new window.__THREE.Vector3(town.x, 0, town.z)).index;
+        for (const d of [-40, 40]) {
+          const p = tr.points[(i + d + tr.N) % tr.N];
+          out.push({ px: p.x, py: 4.5, pz: p.z, lx: town.x, ly: 7, lz: town.z });
+        }
+      }
+      return out;
+    });
+    for (const [i, v] of views.entries()) {
+      await page.evaluate((c) => {
+        const cam = window.__active.camera;
+        cam.position.set(c.px, c.py, c.pz);
+        cam.lookAt(c.lx, c.ly, c.lz);
+        window.__glit();
+      }, v);
+      await page.waitForTimeout(300);
+      await shot(page, `d-race-riviera-view${i}`);
+    }
+  });
+
   // Çay/göl olan treklər: körpü (hər iki tərəfə) və göl — su, sahil və relyefin
   // bir-birinin içindən çıxmadığına baxmaq üçün sabit baxış nöqtələri.
   for (const name of ['race-alpine', 'race-riviera']) {
