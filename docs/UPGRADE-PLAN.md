@@ -147,7 +147,17 @@ Mənbə: Kenney Audio, Sonniss GDC, Freesound (CC0). Hər fayl `ASSETS-LICENSES.
 ### Musiqi — yeni üslub 🔶 (istifadəçi dinləyib qərar verəcək)
 
 - **1-ci variant rədd edildi (2026-10-06):** oynaq/şən sintez (major, 104–122 bpm, marimba). İstifadəçi: "şən olmasını yox, rahatladıcı, soul tipli istəyirəm; istinad mahnıları qətiyyən şən deyil".
-- **2-ci variant (standart, `?music=walk`):** sakit, soul çalarlı sintez — 76/92 bpm, Fmaj9–Em7–Dm9–Am9, elektrik piano, dəyirmi bas, geri çəkilmiş ritm, notdan-nota sürüşən nəfəsli səslər (`AudioManager._playStepWalk`, `_voice`).
+- **2-ci variant rədd edildi (2026-10-06):** neo-soul sintezi (76/92 bpm, elektrik piano, hat). İstifadəçi: "files nisbətən yaxındır, amma o da lofidir; get mahnıları araşdır — adından mahnını necə bilə bilərsən".
+- **3-cü variant (standart, `?music=walk`) — ölçməyə əsaslanır.** İstinad treklər (aksfx: "Big Walk Theme (Jumping Voices)", "Radio: Lobby" — Motif / Leitmotif / Refrain) librosa ilə analiz olundu. Tapıntı: Bandcamp etiketləri *electronic, choir, minimalism, vocal*; tembr tünd-isti (enerjinin ~99%-i 2 kHz-dən aşağı, hat yoxdur); mövzuda nəbzi zərb yox, səslər verir (perkussiv pay 0.21, ~117 bpm, B major); lobbi ~86 bpm, Eb/Bb major, dərin bas. Bizim mövzu eyni alətlə ölçülür:
+
+  | | temp | ton | bas / orta / yuxarı-orta | dinamika |
+  |---|---|---|---|---|
+  | İstinad: mövzu | 117 | B major | 22 / 41 / 36 % | 12 dB |
+  | Bizim: menyu | 117 | B major | 19 / 50 / 31 % | 14 dB |
+  | İstinad: lobbi (Motif) | ~86 | Eb major | 16 / 69 / 14 % | 9 dB |
+  | Bizim: yarış | 86 | Eb major | 12 / 78 / 9 % | 20 dB |
+
+  Ölçülən oxşarlıq **eşidilən oxşarlıq demək deyil** — sintez olunmuş "xor" real səs yazısı kimi səslənmir. `RECORD=1 npx playwright test tests/music.spec.js -g yazı` mövzunu fayla yazır.
 - **Ehtiyat (`?music=files`):** menyu və yarışda zen-in yazılmış lofi siyahısı (HoliznaCC0, CC0; 34 trek) çalınır.
 - **Köhnə (`?music=classic`):** synthwave sintezi.
 - İstinad "Big Walk" (aksfx) yalnız üslubdur: sempl/melodiya götürülməyib. `npm run test:music` yalnız səviyyəni ölçür. **Musiqini mən eşidə bilmirəm.**
