@@ -160,6 +160,18 @@ export class EndlessRoad {
     return (m >= 1480 && m <= 1710) ? 1 : 0;
   }
 
+  // Tunelin dağı portaldan içəri getdikcə qalxır: 0 = portal, 1 = tam hündürlük (56 m içəridə)
+  _tunnelRise(abs) {
+    const m = ((abs * SEG) % 2600 + 2600) % 2600;
+    const k = Math.max(0, Math.min(1, Math.min(m - 1480, 1710 - m) / 56));
+    return k * k * (3 - 2 * k);
+  }
+
+  // Dağın ətəyinin yol oxundan məsafəsi (0 = bu nöqtədə dağ yoxdur) — dekor bura qoyulmur
+  _tunnelFoot(abs) {
+    return this._tunnelT(abs) > 0 ? this.halfWidth + 1.4 + 17 + 44 * this._tunnelRise(abs) : 0;
+  }
+
   // Yumşaq tunel çəkisi: kənarlarda 0→1 tədricən — girişdə/çıxışda
   // yolun birdən diklənməsi olmasın
   _tunnelW(abs) {
@@ -600,7 +612,10 @@ export class EndlessRoad {
     if (this.placed.length > 1400) this.placed.splice(0, 500);
   }
 
-  _clearRoadCorridor(group, pts) {
+  _clearRoadCorridor(group, pts, absStart = 0, obstacles = null) {
+    // tunel nöqtələrində dəhliz dağın ətəyinə qədər genişlənir (dekor dağın içində qalmasın)
+    const foot = pts.map((_, i) => this._tunnelFoot(absStart + i));
+    const anyFoot = foot.some((f) => f > 0);
     const box = new THREE.Box3(), size = new THREE.Vector3();
     const kill = [];
     for (const o of group.children) {
@@ -617,15 +632,31 @@ export class EndlessRoad {
         continue;
       }
       const need = this.halfWidth + r + 1.5;
-      const need2 = need * need;
       for (let i = 0; i < pts.length; i++) {
         const dx = cx - pts[i].x, dz = cz - pts[i].z;
-        if (dx * dx + dz * dz < need2) { kill.push(o); break; }
+        const lim = Math.max(need, foot[i] + r * 0.5);
+        if (dx * dx + dz * dz < lim * lim) { kill.push(o); break; }
       }
     }
     for (const o of kill) {
       group.remove(o);
       o.traverse?.((n) => n.geometry?.dispose?.());
+    }
+    // dağın içində qalan dekorun toqquşması da silinir (görünməyən maneə qalmasın)
+    if (anyFoot && obstacles) {
+      const inside = (ob) => {
+        if (ob.kind === 'post') return false;
+        for (let i = 0; i < pts.length; i++) {
+          if (foot[i] > 0 && Math.hypot(ob.x - pts[i].x, ob.z - pts[i].z) < foot[i]) return true;
+        }
+        return false;
+      };
+      for (let q = obstacles.length - 1; q >= 0; q--) {
+        if (!inside(obstacles[q])) continue;
+        const gi = this.obstacles.indexOf(obstacles[q]);
+        if (gi >= 0) this.obstacles.splice(gi, 1);
+        obstacles.splice(q, 1);
+      }
     }
     // QALAN hər obyekt yayınma xəritəsinə yazılır: yol sonradan uzananda
     // ONLARIN ÜSTÜNDƏN KEÇMƏSİN. Əvvəl yalnız bir hissəsi yazılırdı və
@@ -723,6 +754,8 @@ export class EndlessRoad {
     // ————— TUNEL: relyef yolun üstündədirsə qabıq qur (tavan + divar + portal) —————
     {
       const inTun = (i) => this._tunnelT(absStart + i) > 0;
+      // i-ci nöqtə tunelin həqiqi ucudurmu (o tərəfdəki qonşu artıq tunel deyil)?
+      const tunEnd = (i, dir) => this._tunnelT(absStart + i + dir) === 0;
       const H = 5.6, W = hw + 1.4;
       const wallC = 0x767b8c, ceilC = 0x4a4e5a;
       let run = -1;
@@ -762,77 +795,88 @@ export class EndlessRoad {
           lamp.userData.roadPart = true;   // süpürgə tavan lampasını silməsin
           g.add(lamp);
         }
-        // ————— DAĞ SİLSİLƏSİ —————
-        // 1-ci cəhd (konuslar) portalı udurdu və yolun üstündən kütlə
-        // asılırdı (vizual audit: maşın 'qayanın içinə girirdi'). İndi qabığın
-        // üstünə oturan, yol boyu uzanan SİLSİLƏ prizması qurulur: en kəsiyi
-        // qabıqdan kənarda başlayır (±(W+0.9), H+0.5), zirvəsi mərkəzdə,
-        // ətəkləri terrainə enir. Portallardan 1 seqment içəridə başlayır —
-        // giriş üzü açıq qalır. Ucları qapaqla bağlanır (içi görünməsin).
+        // ————— TUNELİN DAĞI —————
+        // 1-ci cəhd (konuslar) portalı udurdu. 2-ci cəhd (±26 m enində, 9–17 m hündür
+        // prizma) düz çöldə duran çadıra oxşayırdı və HƏR CHUNK-da ayrıca qurulurdu:
+        // tikişlərdə 16 m boşluq qalır, boz tunel qabığı çöldən görünürdü (kadr:
+        // d-zen-tunel-yandan; istifadəçi rəyi: "tunelin üstündə dağ varmış kimidir").
+        // İndi dağ tunelin BÜTÜN uzunluğu boyu bütövdür: forması mütləq indeksdən
+        // hesablanır (qonşu chunk-ların tikiş sırası eyni təpələri verir), portaldan
+        // içəri getdikcə qalxır və enlənir (bax _tunnelRise), ətəkləri relyefin altına
+        // batır. Qapaq yalnız tunelin HƏQİQİ uclarında qoyulur və açıqlığı kəsmir.
         {
           const mCol = this.style.mountainColor ?? 0x8a6a4a;
           const mMat = new THREE.MeshStandardMaterial({
             color: mCol, roughness: 1, metalness: 0, flatShading: true,
           });
-          const a0 = 1, b0 = tp.length - 2;
-          if (b0 - a0 >= 2) {
-            const rnd = (i) => Math.sin(i * 12.9898 + 78.233) * 0.5 + 0.5;
-            const verts = [], idx = [];
-            const PROF = 5;   // profil nöqtəsi sayı
-            for (let i = a0; i <= b0; i++) {
-              const c = tp[i], n = tn[i];
-              // ucları alçalt — silsilə təbii şəkildə yerə enir
-              const k = Math.min(1, Math.min(i - a0, b0 - i) / 2.5);
-              const zirvə = c.y + H + (3 + 6.5 * k) + rnd(absStart + i) * 2.2 * k;
-              const çiyinY = c.y + H + 0.5;
-              const döşəmə = c.y - 3;   // göl/dərin çuxur ətəyi dartmasın
-              const solƏtəkY = Math.min(çiyinY, Math.max(terrainY(c.x - n.x * (W + 17), c.z - n.z * (W + 17)), döşəmə));
-              const sağƏtəkY = Math.min(çiyinY, Math.max(terrainY(c.x + n.x * (W + 17), c.z + n.z * (W + 17)), döşəmə));
-              const prof = [
-                [-(W + 17), solƏtəkY],
-                [-(W + 0.9), çiyinY],
-                [rnd(absStart + i + 7) * 2 - 1, zirvə],
-                [(W + 0.9), çiyinY],
-                [(W + 17), sağƏtəkY],
+          const rnd = (q) => { const v = Math.sin(q * 12.9898 + 78.233) * 43758.5453; return v - Math.floor(v); };
+          const verts = [], idx = [];
+          const PROF = 9;   // sol ətək → 3 yamac nöqtəsi → zirvə → 3 yamac nöqtəsi → sağ ətək
+          const rows = tp.length;
+          const s0s = [];
+          for (let i = 0; i < rows; i++) {
+            const c = tp[i], n = tn[i];
+            const abs = absStart + a + i;
+            const k = this._tunnelRise(abs);
+            const çiyinY = c.y + H + 0.5;                       // qabığın üstü — bundan aşağı düşmək olmaz
+            const P = c.y + H + 3 + (15 + 7 * rnd(abs)) * k;    // zirvə
+            const offs = [W + 0.9 + 2.5 * k, W + 9 + 9 * k, W + 15 + 26 * k, W + 17 + 44 * k];
+            s0s.push(offs[0]);
+            const side = (sd) => {
+              const q = abs * 4 + (sd > 0 ? 2 : 0);
+              const yer = (o) => Math.max(terrainY(c.x + n.x * o * sd, c.z + n.z * o * sd), c.y - 3);
+              const t1 = yer(offs[1]), t2 = yer(offs[2]);
+              const artım = 0.35 + 0.65 * k;
+              return [
+                [offs[0] * sd, çiyinY + (P - çiyinY) * (0.68 + 0.14 * rnd(q)) * k],
+                [offs[1] * sd, Math.max(t1, t1 + (P - t1) * (0.46 + 0.16 * rnd(q + 0.31)) * artım)],
+                [offs[2] * sd, Math.max(t2, t2 + (P - t2) * (0.18 + 0.12 * rnd(q + 0.67)) * artım)],
+                [offs[3] * sd, Math.min(çiyinY, yer(offs[3]) - 0.6)],   // ətək relyefin altında — aralıq görünmür
               ];
-              for (const [off, y] of prof) verts.push(c.x + n.x * off, y, c.z + n.z * off);
-            }
-            const rows = b0 - a0 + 1;
-            for (let i = 0; i < rows - 1; i++) {
-              for (let j = 0; j < PROF - 1; j++) {
-                const o = i * PROF + j;
-                idx.push(o, o + PROF, o + 1, o + 1, o + PROF, o + PROF + 1);
-              }
-            }
-            // UC QAPAQLARI. Əvvəl profil halqasından çiyin ortasına YELPİK idi: ətək → mərkəz
-            // tilləri tunelin AĞZININ içindən keçirdi və portala baxanda tağın altında
-            // narıncı üçbucaqlar görünürdü (kadr: d-zen-tunel-giris). İndi qapaq açıqlığı
-            // boş saxlayır: tağın üstündə bir üçbucaq (çiyin–zirvə–çiyin) və hər yanda
-            // çiyindən yerə enən bir üçbucaq (ətək–çiyin–çiyinin altı).
-            for (const ring of [0, rows - 1]) {
-              const base = ring * PROF;
-              const c = tp[a0 + ring], n = tn[a0 + ring];
-              const fL = verts.length / 3;
-              verts.push(c.x - n.x * (W + 0.9), c.y - 0.6, c.z - n.z * (W + 0.9));
-              verts.push(c.x + n.x * (W + 0.9), c.y - 0.6, c.z + n.z * (W + 0.9));
-              const tris = [[base + 1, base + 2, base + 3], [base, base + 1, fL], [base + 3, base + 4, fL + 1]];
-              for (const [p, q, r] of tris) idx.push(p, q, r, p, r, q); // hər iki üz
-            }
-            const geo = new THREE.BufferGeometry();
-            geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
-            geo.setIndex(idx);
-            geo.computeVertexNormals();
-            const silsilə = new THREE.Mesh(geo, mMat);
-            silsilə.userData.roadPart = true;   // dəhliz süpürgəsi toxunmasın
-            silsilə.castShadow = true;
-            silsilə.receiveShadow = true;
-            g.add(silsilə);
+            };
+            const L = side(-1), R = side(1);
+            const prof = [L[3], L[2], L[1], L[0], [(rnd(abs + 0.5) * 2 - 1) * 2.5 * k, P], R[0], R[1], R[2], R[3]];
+            for (const [off, y] of prof) verts.push(c.x + n.x * off, y, c.z + n.z * off);
           }
+          for (let i = 0; i < rows - 1; i++) {
+            for (let j = 0; j < PROF - 1; j++) {
+              const o = i * PROF + j;
+              idx.push(o, o + PROF, o + 1, o + 1, o + PROF, o + PROF + 1);
+            }
+          }
+          // UC QAPAQLARI — yalnız tunelin öz uclarında (chunk tikişində yox). Qapaq açıqlığı
+          // boş saxlayır: tağın üstündə bir üçbucaq (çiyin–zirvə–çiyin) və hər yanda
+          // çiyinin altındakı nöqtədən yamac nöqtələrinə yelpik.
+          for (const ring of [0, rows - 1]) {
+            if (!tunEnd(ring === 0 ? a : b, ring === 0 ? -1 : 1)) continue;
+            const base = ring * PROF;
+            const c = tp[ring], n = tn[ring], s0 = s0s[ring];
+            const fL = verts.length / 3;
+            verts.push(c.x - n.x * s0, c.y - 0.6, c.z - n.z * s0);
+            verts.push(c.x + n.x * s0, c.y - 0.6, c.z + n.z * s0);
+            const tris = [
+              [base + 3, base + 4, base + 5],
+              [base, base + 1, fL], [base + 1, base + 2, fL], [base + 2, base + 3, fL],
+              [base + 5, base + 6, fL + 1], [base + 6, base + 7, fL + 1], [base + 7, base + 8, fL + 1],
+            ];
+            for (const [p, q, r] of tris) idx.push(p, q, r, p, r, q); // hər iki üz
+          }
+          const geo = new THREE.BufferGeometry();
+          geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+          geo.setIndex(idx);
+          geo.computeVertexNormals();
+          const dağ = new THREE.Mesh(geo, mMat);
+          dağ.userData.roadPart = true;   // dəhliz süpürgəsi toxunmasın
+          dağ.castShadow = true;
+          dağ.receiveShadow = true;
+          g.add(dağ);
         }
 
         // Giriş/çıxış portalları — beton çərçivə
         const portMat = new THREE.MeshStandardMaterial({ color: 0x6a6e7c, roughness: 0.9, flatShading: true });
         for (const e of [0, tp.length - 1]) {
+          // yalnız tunelin öz ucunda: əvvəl hər chunk tikişində (tunelin ortasında) də çərçivə qurulurdu
+          if (!tunEnd(e === 0 ? a : b, e === 0 ? -1 : 1)) continue;
           const c = tp[e], n = tn[e];
           for (const sd of [-1, 1]) {
             const col = new THREE.Mesh(new THREE.BoxGeometry(1.5, H + 1.4, 1.6), portMat);
@@ -1495,7 +1539,7 @@ export class EndlessRoad {
     // yazılmır (dağ, bina, dirək, hasar…). Nəticədə yol sonradan onların
     // üstündən keçirdi. Bu keçid HƏR obyektin ÖZ ÖLÇÜSÜNÜ (bounding box)
     // yolun eni ilə müqayisə edir və dəhlizə girəni SİLİR.
-    this._clearRoadCorridor(g, pts);
+    this._clearRoadCorridor(g, pts, absStart, chunkObstacles);
 
     // bakeColors: düz rəngli dekor rəng başına ayrı mesh olmur (bax MergeUtils)
     const merged = mergeStaticGroup(g, { bakeColors: true });

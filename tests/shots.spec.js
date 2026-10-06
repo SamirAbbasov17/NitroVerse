@@ -144,6 +144,27 @@ test.describe('masaüstü oyun kadrları', () => {
         return d >= target && d < target + 60;
       }, m, { timeout: 120_000, polling: 50 });
       await shot(page, `d-zen-tunel-${name}`);
+      if (name !== 'yaxin') continue;
+      // tunelə KƏNARDAN baxış (üstündəki silsilə relyefə necə oturur): yandan, öndən-yuxarıdan
+      for (const [view, side, fwd, up] of [['yandan', 75, 0, 30], ['onden', 14, -150, 26], ['uzaqdan', 150, -60, 60]]) {
+        await page.evaluate(([sd, fw, h]) => {
+          const sc = window.__active, rd = sc.road;
+          const li = rd.getNearest(sc.playerCar.position, sc.playerCar.wpHint).index - rd.base;
+          const d = (((sc.playerCar.trackT * 8) % 2600) + 2600) % 2600;
+          const mid = Math.min(rd.points.length - 1, li + Math.round((1595 - d) / 8));
+          const at = Math.max(0, Math.min(rd.points.length - 1, mid + Math.round(fw / 8)));
+          const c = rd.points[mid], p = rd.points[at], n = rd.normals[at];
+          sc.__upd = sc.__upd || sc.update;
+          sc.update = (dt) => {
+            sc.__upd.call(sc, 0);   // dünya dayanır, yalnız kamera köçür
+            sc.camera.position.set(p.x + n.x * sd, c.y + h, p.z + n.z * sd);
+            sc.camera.lookAt(c.x, c.y + 5, c.z);
+          };
+        }, [side, fwd, up]);
+        await page.waitForTimeout(500);
+        await shot(page, `d-zen-tunel-${view}`);
+      }
+      await page.evaluate(() => { const sc = window.__active; sc.update = sc.__upd; delete sc.__upd; });
     }
   });
 
