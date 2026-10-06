@@ -22,7 +22,7 @@ Testlər Playwright-dır və repo-dadır: `tests/`. Dev serveri (5173) özləri 
 | `npm run test:hitch` | kadr donması: zen-də gün vaxtı/hava/biom keçidləri + yarış/futbol/arena 45 s; hər kadrın update+render xərci → `tests/out/hitch.json` | 33 ms-dən uzun kadr 0 | ~6 dəq |
 | `npm run test:errors` | avtomatik xəta bildirişi: klient tutur/təkrarlamır, server tək qeyddə sayır və e-poçt göndərmir | yaşıl | ~3 s |
 | `npm run test:collide` | maneələrin içindən keçmə: hər trekdə yola ən yaxın 14 bərk obyektə tam qazla sürülür | içindən keçilən 0 | ~3 dəq |
-| `npm run test:gameplay` | bonus götürmə/işlətmə · bot çətinlik sırası (3 trek, median irəliləyiş + yoldan kənar vaxt) · pauza · pəncərə ölçüsü (4 rejim) · sürətli rejim keçidi → `tests/out/gameplay.json` | yaşıl | ~8 dəq |
+| `npm run test:gameplay` | bonus götürmə/işlətmə · bot sürəti (3 trek: bonuslar sönülü, dövrə vaxtı asan > normal > çətin, yoldan kənar < 4%) · kamera şəffaflığı · pauza · pəncərə ölçüsü (4 rejim) · sürətli rejim keçidi → `tests/out/gameplay.json` | yaşıl | ~10 dəq |
 | `npm run test:mobile` | 844×390-da HUD düymələrinin örtüşməsi və ekrandan çıxması | 0 | ~30 s |
 
 Tək test: `npx playwright test tests/shots.spec.js -g "race-neon"`.

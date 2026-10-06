@@ -22,47 +22,58 @@ test('oynanış: bonus götürmə və işlətmə', async ({ page }) => {
   expect(usedOrCharged, `işlətmədən sonra slot: ${before} → ${after}`).toBe(true);
 });
 
-// ————— Bot çətinliyi —————
-// 40 s-də botların MEDİAN irəliləyişi və yoldan kənar vaxtı. ÖLÇMƏ testidir:
-// tək qaçışın səs-küyü (bonus zərbələri, botların bir-birinə dəyməsi) böyükdür,
-// ona görə yalnız ən möhkəm fərq tələb olunur (səhrada asan < çətin). Qalan
-// rəqəmlər tests/out/gameplay.json-a yazılır — bot davranışı Faza 2.8-də
-// (docs/UPGRADE-PLAN.md) nəzarətli ölçmə ilə tənzimlənəcək.
-test('oynanış: bot çətinlik sırası', async ({ page }) => {
-  test.setTimeout(400_000);
-  const out = {};
-  for (const trackId of ['desert', 'neon']) {
-    out[trackId] = {};
+// ————— Bot çətinliyi (nəzarətli ölçmə) —————
+// Bonuslar və imza gücləri SÖNDÜRÜLÜR, oyunçu kənara çəkilir — ölçülən yalnız
+// botların sürüşüdür. Hər botun 1 tam dövrə vaxtı və yoldan kənar vaxt payı
+// yazılır (tests/out/gameplay.json). Tələb: hər trekdə asan > normal > çətin
+// (median dövrə vaxtı) və çətin botlar vaxtının < 4%-ni yoldan kənarda keçirir.
+for (const trackId of ['desert', 'neon', 'canyon']) {
+  test(`oynanış: bot sürəti — ${trackId}`, async ({ page }) => {
+    test.setTimeout(420_000);
+    const out = {};
     for (const difficulty of ['easy', 'normal', 'hard']) {
       await boot(page);
       await startMode(page, race({ trackId, difficulty }));
       await racing(page);
-      out[trackId][difficulty] = await page.evaluate(async () => {
+      out[difficulty] = await page.evaluate(async () => {
         const sc = window.__active;
-        // Oyunçunun maşını startda dayanıb qalmasın: 1 dövrədən sonra botlar ona
-        // çırpılıb yoldan çıxır və ölçmə korlanır (ilk ölçmədə belə oldu).
         sc.playerCar.reset(sc.playerCar.position.clone().set(5000, 0, 5000), 0);
+        for (const b of sc.powerups.boxes) { b.active = false; b.timer = 1e9; }
         const bots = sc.racers.filter((r) => !r.isPlayer);
+        for (const r of bots) { r._sigWait = 1e9; r.items = []; }
+        const start = bots.map((r) => r.progress);
+        const lap = bots.map(() => null);
         let frames = 0;
         let off = 0;
         const t0 = performance.now();
         await new Promise((res) => {
           const tick = () => {
             frames++;
-            for (const b of bots) if (!b.car.onRoad) off++;
-            if (performance.now() - t0 < 40_000) requestAnimationFrame(tick); else res();
+            const now = (performance.now() - t0) / 1000;
+            bots.forEach((r, i) => {
+              if (!r.car.onRoad) off++;
+              if (lap[i] == null && r.progress - start[i] >= 1) lap[i] = now;
+            });
+            if (lap.every((x) => x != null) || now > 110) res(); else requestAnimationFrame(tick);
           };
           requestAnimationFrame(tick);
         });
-        const p = bots.map((r) => r.progress).sort((x, y) => x - y);
-        return { median: +p[Math.floor(p.length / 2)].toFixed(3), offRoadPct: +((off / (frames * bots.length)) * 100).toFixed(1) };
+        const done = lap.filter((x) => x != null).sort((x, y) => x - y);
+        return {
+          lapMedian: done.length ? +done[Math.floor(done.length / 2)].toFixed(1) : null,
+          lapBest: done.length ? +done[0].toFixed(1) : null,
+          finished: done.length,
+          offRoadPct: +((off / (frames * bots.length)) * 100).toFixed(1),
+        };
       });
     }
-    console.log(`bot (${trackId}, 40 s):`, JSON.stringify(out[trackId]));
-  }
-  mergeJson('gameplay.json', 'botPace40s', out);
-  expect(out.desert.easy.median, 'səhra: asan < çətin').toBeLessThan(out.desert.hard.median);
-});
+    mergeJson('gameplay.json', `botLap-${trackId}`, out);
+    console.log(`bot dövrə (${trackId}):`, JSON.stringify(out));
+    expect(out.easy.lapMedian, 'asan normaldan yavaş olmalıdır').toBeGreaterThan(out.normal.lapMedian);
+    expect(out.normal.lapMedian, 'normal çətindən yavaş olmalıdır').toBeGreaterThan(out.hard.lapMedian);
+    expect(out.hard.offRoadPct, 'çətin botların yoldan kənar vaxtı (%)').toBeLessThan(4);
+  });
+}
 
 // ————— Pauza: vaxt dayanır, davamda irəliləyir —————
 test('oynanış: pauza vaxtı və maşını dayandırır', async ({ page }) => {
