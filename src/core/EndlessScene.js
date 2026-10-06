@@ -12,6 +12,7 @@ import { sharedCity } from '../world/CityKit.js';
 import { disposeObject3D } from './MergeUtils.js';
 import { SkidMarks } from './SkidMarks.js';
 import { Effects } from './Effects.js';
+import { ImpactFeel } from './ImpactFeel.js';
 import { TouchControls, isTouchDevice } from './TouchControls.js';
 import { audio } from './AudioManager.js';
 import { auth } from '../net/Auth.js';
@@ -293,6 +294,7 @@ export class EndlessScene {
 
     this.skids = new SkidMarks(this.scene);
     this.effects = new Effects(this.scene);
+    this.impact = new ImpactFeel(this.effects);
 
     // ——— Biom / hava / gün vəziyyəti ———
     this._biomeIdx = 0;
@@ -725,11 +727,7 @@ export class EndlessScene {
           }
           // qabaqdakı maşın itələnir (yavaşıyır) — hiss real olur
           tt.spd = Math.max(6, tt.spd - Math.min(5, -vn * 0.18));
-          if (-vn > 11 && (this._scrapeT || 0) <= 0) {
-            this._scrapeT = 0.3;
-            this.effects.spawnSmoke({ x: car.position.x - nx, y: 0.4, z: car.position.z - nz });
-            audio.sfx('tick');
-          }
+          this.impact.hit(car, nx, nz, -vn); // səs, qığılcım, kamera — gücə görə
         }
       }
     }
@@ -1890,14 +1888,10 @@ export class EndlessScene {
           // güllə kimi geri atılırdı (istifadəçi rəyi). İndi yalnız divara
           // doğru olan komponent silinir (1.0) və divar boyu sürüşmə
           // yüngül sürtünmə ilə yavaşıyır — real "söykənib sürüşmə" hissi.
-          // GÜCLÜ zərbədə əks-əlaqə: toz + xəfif səs (cooldown _scrapeT ilə)
-          if (-vn > 9 && (this._scrapeT || 0) <= 0) {
-            this._scrapeT = 0.25;
-            this.effects.spawnSmoke({ x: car.position.x - nx, y: 0.4, z: car.position.z - nz });
-            audio.sfx('tick');
-          }
           car.velocity.x -= vn * nx;
           car.velocity.z -= vn * nz;
+          // Əks-əlaqə gücə görə: səs, qığılcım, toz, kamera itələnməsi (ImpactFeel)
+          this.impact.hit(car, nx, nz, -vn, Math.hypot(car.velocity.x, car.velocity.z));
           car.velocity.multiplyScalar(0.94);
         }
       }
@@ -1906,6 +1900,7 @@ export class EndlessScene {
     this._updateTraffic(dt);
     this._updateWorld(dt);
     this.effects.update(dt);
+    this.impact.update(dt);
     this.skids.update(dt);
     this._updateSkidsAndSmoke(dt);
     this._updateZenFx(dt);
@@ -2032,6 +2027,7 @@ export class EndlessScene {
       this._camTarget.lerp(look, 1 - Math.exp(-dt * 15));
     }
     this.camera.lookAt(this._camTarget);
+    this.impact.apply(this.camera); // zərbə istiqamətində itələnmə (ImpactFeel)
     this.camera.rotateZ(-(car._steerSmooth || 0) * 0.018 * lookBack);
     const fov = 58 + speedT * 11 + B.fov;
     if (Math.abs(this.camera.fov - fov) > 0.1) {

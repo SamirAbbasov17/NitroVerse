@@ -108,7 +108,8 @@ class AudioManagerImpl {
   }
 
   // ——— Səs effektləri ———
-  sfx(name) {
+  // k — güc (0..1), yalnız onu işlədən səslər üçün (zərbə)
+  sfx(name, k = 1) {
     if (!this._ensure() || this.muted) return;
     const t = this.ctx.currentTime;
     switch (name) {
@@ -208,6 +209,17 @@ class AudioManagerImpl {
         // Üçlü atəş — yumru "thump-pew"
         this._tone({ type: 'triangle', f0: 900, f1: 480, t, dur: 0.08, g: 0.13, attack: 0.002 });
         this._noise({ t, dur: 0.06, g: 0.06, type: 'bandpass', f0: 2000, q: 1.5 });
+        break;
+      case 'impact': {
+        // Toqquşma: gücə görə dərinləşən "thud" + qısa xırıltı; güclü zərbədə metal cingiltisi
+        const g = 0.35 + 0.65 * k;
+        this._tone({ type: 'sine', f0: 170 - 50 * k, f1: 46, t, dur: 0.16 + 0.12 * k, g: 0.26 * g, attack: 0.002 });
+        this._noise({ t, dur: 0.07 + 0.12 * k, g: 0.2 * g, f0: 900 + 1600 * k, f1: 180 });
+        if (k > 0.5) this._noise({ t: t + 0.012, dur: 0.16, g: 0.12 * k, type: 'bandpass', f0: 2600, f1: 900, q: 3 });
+        break;
+      }
+      case 'scrape':
+        this._noise({ t, dur: 0.09, g: 0.05, type: 'bandpass', f0: 3200, f1: 1800, q: 2 });
         break;
       case 'tick':
         // Zərbə — qısa, dolu "thud"

@@ -241,6 +241,22 @@ export class Effects {
     }
   }
 
+  // Zərbə qığılcımları: təmas nöqtəsindən normal (nx, nz) tərəfə yelpik kimi səpilir
+  spawnSparks(pos, nx, nz, count = 6, power = 1) {
+    for (let i = 0; i < count; i++) {
+      const m = this._spawnInst('spark', i % 3 ? 0xffc35a : 0xfff1c4);
+      if (!m) break;
+      m.position.set(pos.x, pos.y, pos.z);
+      const yan = (Math.random() - 0.5) * 2.2;          // normal ətrafında yayılma
+      const sp = (3 + Math.random() * 6) * power;
+      this.list.push({
+        mesh: m, kind: 'shard', t: 0, life: 0.22 + Math.random() * 0.22,
+        vel: new THREE.Vector3((nx - nz * yan) * sp, 1.5 + Math.random() * 4 * power, (nz + nx * yan) * sp),
+        spin: new THREE.Vector3(10, 10, 0),
+      });
+    }
+  }
+
   // İldırım zərbəsi — göydən ziqzaqla düşür (şimşək power-up-ı)
   spawnLightning(pos) {
     const g = new THREE.Group();

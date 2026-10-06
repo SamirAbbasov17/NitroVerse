@@ -16,6 +16,7 @@ import { PowerUpManager } from '../race/PowerUpManager.js';
 import { disposeObject3D } from './MergeUtils.js';
 import { playFinishFx } from './FinishFx.js';
 import { Effects } from './Effects.js';
+import { ImpactFeel } from './ImpactFeel.js';
 import { SpeedLines } from './SpeedLines.js';
 import { SkidMarks } from './SkidMarks.js';
 import { audio } from './AudioManager.js';
@@ -770,6 +771,7 @@ export class GameplayScene {
     const racingActive = this.isRace ? this.raceManager.state === 'racing' : true;
     this.powerups.update(dt, racingActive && this._state === 'run');
     this.effects.update(dt);
+    this.impact?.update(dt);
     if (this._finishFx) {
       this._finishFx.update(dt);
       if (this._finishFx.done) { this._finishFx.dispose(); this._finishFx = null; }
@@ -1124,9 +1126,24 @@ export class GameplayScene {
             const overlap = (min - d) / 2;
             a.position.x -= nx * overlap * ka; a.position.z -= nz * overlap * ka;
             b.position.x += nx * overlap * kb; b.position.z += nz * overlap * kb;
-            // İmpuls sönümü
-            a.velocity.x -= nx * overlap * 2 * ka; a.velocity.z -= nz * overlap * 2 * ka;
-            b.velocity.x += nx * overlap * 2 * kb; b.velocity.z += nz * overlap * 2 * kb;
+            // İMPULS: nisbi sürətin normal komponenti iki maşın arasında bölünür
+            // (bərabər kütlə, 0.15 elastiklik). Əvvəl yalnız örtüşmə qədər itələnirdi —
+            // arxadan vuran maşın sürətini saxlayıb rəqibin içinə girirdi (ölçüldü:
+            // 34 → 33.8 m/s, rəqib 20 → 20.2), zərbə "yumşaq yapışma" kimi hiss olunurdu.
+            const rvn = (b.velocity.x - a.velocity.x) * nx + (b.velocity.z - a.velocity.z) * nz;
+            if (rvn < 0) {
+              const imp = -rvn * 1.15 * 0.5;
+              a.velocity.x -= nx * imp * ka; a.velocity.z -= nz * imp * ka;
+              b.velocity.x += nx * imp * kb; b.velocity.z += nz * imp * kb;
+              const me = a === this.playerCar ? a : (b === this.playerCar ? b : null);
+              if (me) {
+                const sgn = me === a ? -1 : 1; // normal rəqibdən oyunçuya doğru olsun
+                const other = me === a ? b : a;
+                const s = this._impactFx().hit(me, nx * sgn, nz * sgn, -rvn);
+                if (s > 0) other.jolt(-nx * sgn, -nz * sgn, s);
+                if (s > 0.8) this._hitStop(0.6);
+              }
+            }
           }
         }
       }
@@ -1155,22 +1172,27 @@ export class GameplayScene {
           car.position.z = o.z + nz * min;
           const vn = car.velocity.x * nx + car.velocity.z * nz;
           if (vn < 0) {
-            car.velocity.x -= nx * vn * 1.5; // 0.5 elastik geri sıçrayış
-            car.velocity.z -= nz * vn * 1.5;
-            // Oyunçu üçün əks-əlaqə: bərk zərbədə toz + səs + yüngül silkələnmə.
-            // Əvvəl maneəyə çırpılma SƏSSİZ idi və hiss olunmurdu.
-            if (car === this.playerCar && -vn > 10 && (this._obsHitT || 0) <= 0) {
-              this._obsHitT = 0.3;
-              this.effects.spawnSmoke({ x: car.position.x - nx, y: 0.4, z: car.position.z - nz });
-              audio.sfx('tick');
-              this._shake = Math.max(this._shake || 0, 0.35);
+            // Maneəyə doğru komponent silinir + xəfif (0.12) geri sıçrayış. Əvvəl 0.5
+            // elastik idi: 30 m/s düz zərbədə maşın 15 m/s ilə geri atılırdı (ölçüldü) —
+            // sərt və idarəni əldən alan hiss; zen-də eyni şikayət artıq düzəldilmişdi.
+            // Səth boyu sürət ZƏRBƏNİN GÜCÜNƏ mütənasib sürtünmə ilə azalır (μ = 0.2):
+            // sərt sürtünmə sürət aparır, yüngül söykənib sürüşmə demək olar aparmır.
+            const tx = car.velocity.x - nx * vn, tz = car.velocity.z - nz * vn;
+            const slide = Math.hypot(tx, tz);
+            const keep = slide > 0.01 ? Math.max(0, slide + vn * 0.2) / slide : 0;
+            car.velocity.x = tx * keep - nx * vn * 0.12;
+            car.velocity.z = tz * keep - nz * vn * 0.12;
+            if (car === this.playerCar) {
+              const s = this._impactFx().hit(car, nx, nz, -vn, slide);
+              if (s > 0.8) this._hitStop(0.6);
             }
           }
         }
       }
     }
-    if ((this._obsHitT || 0) > 0) this._obsHitT -= 1 / 60;
   }
+
+  _impactFx() { return (this.impact ||= new ImpactFeel(this.effects)); }
 
   // ————— TOQQUŞMA TƏHLÜKƏSİZLİK TORU (səhnə səviyyəsində) —————
   // Dekor müxtəlif qurucudan gəlir (Environment, TrackBuilder, birləşdirilmiş
@@ -1342,6 +1364,8 @@ export class GameplayScene {
       this.camera.position.y += (Math.random() - 0.5) * s * 0.6;
       this.camera.position.z += (Math.random() - 0.5) * s;
     }
+
+    this.impact?.apply(this.camera); // zərbə istiqamətində itələnmə (ImpactFeel)
 
     // Döngədə incə kamera yatımı (roll) — sürüş hissi
     this.camera.rotateZ(-(car._steerSmooth || 0) * 0.02 * lookBack);

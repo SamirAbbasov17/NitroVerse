@@ -27,7 +27,8 @@
     "test:gameplay": "playwright test tests/gameplay.spec.js",
     "test:abilities": "playwright test tests/abilities.spec.js",
     "test:pace": "playwright test tests/pace.spec.js",
-    "test:postfx": "playwright test tests/postfx.spec.js"
+    "test:postfx": "playwright test tests/postfx.spec.js",
+    "test:impact": "playwright test tests/impact.spec.js"
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.10",

@@ -66,6 +66,9 @@ export class Car {
     this._steerSmooth = 0; // yumşaldılmış sükan girişi (axıcılıq üçün)
     this._lean = 0;
     this._pitch = 0;
+    // Zərbə silkələnməsi (yay): əyilməyə əlavə olunur
+    this._jLean = 0; this._jLeanV = 0;
+    this._jPitch = 0; this._jPitchV = 0;
 
     // Model
     const cos = carData.cosmetics || null; // {paint, rim, flame, smoke, fx} dəyərləri
@@ -424,8 +427,22 @@ export class Car {
     this._lean += (targetLean - this._lean) * Math.min(1, dt * 8);
     const targetPitch = THREE.MathUtils.clamp(-drive.throttle * 0.02, -0.03, 0.03);
     this._pitch += (targetPitch - this._pitch) * Math.min(1, dt * 6);
-    this.tilt.rotation.z = this._lean;
-    this.tilt.rotation.x = this._pitch;
+    // Zərbə silkələnməsi: az sönümlü yay — gövdə bir-iki dəfə yırğalanıb dayanır
+    this._jLeanV += (-260 * this._jLean - 14 * this._jLeanV) * dt;
+    this._jPitchV += (-260 * this._jPitch - 14 * this._jPitchV) * dt;
+    this._jLean += this._jLeanV * dt;
+    this._jPitch += this._jPitchV * dt;
+    this.tilt.rotation.z = this._lean + this._jLean;
+    this.tilt.rotation.x = this._pitch + this._jPitch;
+  }
+
+  // Zərbədən gövdənin silkələnməsi. (nx, nz) — maneədən maşına doğru normal, s — 0..1 güc.
+  jolt(nx, nz, s) {
+    const fx = Math.sin(this.heading), fz = Math.cos(this.heading);
+    const uzun = nx * fx + nz * fz;    // +1 = zərbə qabaqdan-arxaya itələyir (arxadan vurulub)
+    const yan = nx * fz - nz * fx;
+    this._jLeanV += yan * (0.6 + 1.6 * s);
+    this._jPitchV += -uzun * (0.5 + 1.3 * s);
   }
 
   // KAMERA ÖRTÜLMƏSİ: maşın kamera ilə oyunçunun arasına girəndə yarı-şəffaf olur.
