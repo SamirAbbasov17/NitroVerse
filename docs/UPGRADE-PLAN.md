@@ -168,6 +168,15 @@ Mənbə: Kenney Audio, Sonniss GDC, Freesound (CC0). Hər fayl `ASSETS-LICENSES.
 
 Prosedural hava səsi (`AudioManager.setWeather`, `thunder`): yağışda şırıltı + uğultu (≈ −43 dB), qarda sakit külək (≈ −47 dB), tuneldə boğuqlaşır (−15 dB), güclü yağışda 22–60 s-də bir uzaq göy gurultusu (əvvəl qısa işıq). Səviyyə musiqidən (≈ −40 dB) aşağıdır. Zen toqquşması yumşaqdır (`ImpactFeel soft`): boğuq `bump` səsi, qığılcım əvəzinə toz, kamera yarı güclə. Test: `npm run test:music`.
 
+### Zen buqları — yer və tunel 🔶 (2026-10-06)
+
+İstifadəçi: "zen-də bəzən nəsə iç-içə keçir (məs. tuneldə), hərdən maşın yerin dibinə girir". `npm run test:zen-ground` maşının fiziki hündürlüyünü görünən səthlə tutuşdurur.
+
+- **Maşın torpaqda batırdı:** hündürlük yer meshindən yox, düyünlərdən yenidən hesablanırdı (bixətti), mesh isə xana başına 2 üçbucaqdır. Ölçüldü: 1.2–1.6 m batma. İndi `_meshGroundY` görünən meshin öz təpələrindən oxuyur (600 təsadüfi nöqtədə fərq 0). Qalan: dik yamacda ≤ 0.3 m (nümunələrin 0.3–1.5 %-i).
+- **Çiyindən torpağa keçid:** 2 m → 0.7 m (kəsikdə maşın 0.4 m asılı qalırdı).
+- **Tunel portalı:** üst tir yol BOYU qoyulmuşdu (fırlanma səhvi) — zolağın ortasının üstündən tünd paz kimi sallanırdı; silsilənin uc qapağı tunelin ağzının içindən keçirdi (narıncı üçbucaqlar). Hər ikisi düzəldi (kadrlar: `d-zen-tunel-*`).
+- **Açıq:** zen overlap testi ~7 qaçışdan 1-də qırılır (bir dəfə 2 iç-içə obyekt, bir dəfə yolun üstündə 7) — təkrarlaya bilmədim; test indi nümunələri çap edir. Zen üçbucaq sayı 92–96 min (büdcə 90 min).
+
 ## Faza 5 — UI/UX 🔶
 
 | # | İş | Niyə | Ölçü |

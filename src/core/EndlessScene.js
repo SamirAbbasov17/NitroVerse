@@ -1145,6 +1145,31 @@ export class EndlessScene {
   // maşın torpağa batmış görünürdü. Burada meshin öz 4 vertexi hesablanıb
   // bilinear qarışdırılır → maşın ekrandakı səthlə üst-üstə düşür.
   _meshGroundY(x, z) {
+    // GÖRÜNƏN MESH-in özündən oxunur: təpə hündürlükləri + PlaneGeometry-nin eyni üçbucaq
+    // bölgüsü. Əvvəl hündürlük düyünlərdən YENİDƏN hesablanır və bixətti interpolyasiya
+    // olunurdu — mesh isə xana başına iki üçbucaqdır və kadrlara bölünərək yenilənir.
+    // Nəticədə maşın torpaqda görünən səthdən 0.4–1.2 m aşağı (batır) və ya 2 m-ə qədər
+    // yuxarı (asılı) otururdu (ölçüldü: tests/zen-ground.spec.js; istifadəçi rəyi:
+    // "hərdən maşın yerin dibinə girir").
+    const gm = this.ground;
+    const gpos = gm?.geometry?.attributes?.position;
+    if (gpos && this._gridStep) {
+      const st = GROUND_SIZE / GROUND_SEGS, half = GROUND_SIZE / 2, S = GROUND_SEGS;
+      const u = (x - gm.position.x + half) / st;
+      const v = (z - gm.position.z + half) / st;   // yerli y = −(dünya z); sətir 0 = yerli +y
+      if (u >= 0 && v >= 0 && u < S && v < S) {
+        const i0 = Math.floor(u), j0 = Math.floor(v);
+        const tu = u - i0, tv = v - j0;
+        const ia = j0 * (S + 1) + i0;
+        const ha = gpos.getZ(ia), hd = gpos.getZ(ia + 1);
+        const hb = gpos.getZ(ia + S + 1), hc = gpos.getZ(ia + S + 2);
+        // üçbucaqlar: (a, b, d) və (b, c, d) — a(0,0) b(0,1) c(1,1) d(1,0)
+        const h = tu + tv <= 1
+          ? ha + (hd - ha) * tu + (hb - ha) * tv
+          : hc + (hb - hc) * (1 - tu) + (hd - hc) * (1 - tv);
+        return h + gm.position.y;
+      }
+    }
     const step = this._gridStep;
     if (!step || !this._roadCells) return groundYAt(x, z);
     const CELL = this._cellSize;
@@ -1196,8 +1221,9 @@ export class EndlessScene {
     const g = Math.max(this._meshGroundY(car.position.x, car.position.z), WATER_LEVEL - 0.4);
     if (!v) return road;
     if (v.k >= 1) {
-      // zolaqdan kənarda: torpağa yumşaq keçid (2 m-lik zolaqda)
-      const artıq = Math.min(1, (off - 3.55) / 2);
+      // zolaqdan kənarda: torpağa qısa keçid. 2 m idi — kəsikdə torpaq çiyindən ~0.4 m
+      // aşağıdır və maşın bu zolaqda görünən səthdən 0.4 m yuxarıda "asılı" qalırdı (ölçüldü).
+      const artıq = Math.min(1, (off - 3.55) / 0.7);
       const e = artıq * artıq * (3 - 2 * artıq);
       return v.y * (1 - e) + g * e;
     }

@@ -87,6 +87,7 @@ test('overlap: zen (60 s sürüş, 12 nümunə)', async ({ page }) => {
   }
   mergeJson('overlap.json', 'zen', { deep, onRoad, examples });
   console.log(`zen           dərin kəsişmə (maks) ${deep} · yolun üstündə (maks) ${onRoad}`);
+  if (examples.length) console.log('nümunələr:', JSON.stringify(examples)); // təsadüfi qırılanda səbəbi görünsün
   expect.soft(deep, 'iç-içə keçən obyekt cütləri').toBe(0);
   expect.soft(onRoad, 'yolun üstündə obyekt').toBe(0);
 });

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { test } from '@playwright/test';
-import { MODES, OUT, boot, startMode, drive, ensureDir } from './helpers.js';
+import { MODES, OUT, boot, startMode, drive, autopilot, ensureDir } from './helpers.js';
 
 // Kadr toplayıcı — heç nə təsdiqləmir, yalnız baxmaq üçün material yaradır.
 // Kadrlara BAXMADAN vizual iş "hazır" sayılmır (docs/TESTING.md).
@@ -126,6 +126,24 @@ test.describe('masaüstü oyun kadrları', () => {
       await page.evaluate((k) => { window.__active._biomeOverride = k; }, i);
       await page.waitForTimeout(9000); // biom keçidi + yeni yol seqmentləri
       await shot(page, `d-zen-biome-${id}`);
+    }
+  });
+
+  // Zen tuneli: girişə yaxınlaşma, giriş, içəri, çıxış (iç-içə keçən hissələrə baxmaq üçün)
+  test('shots: zen tuneli', async ({ page }) => {
+    test.setTimeout(180_000);
+    await boot(page);
+    await startMode(page, MODES.find((m) => m.name === 'zen').config);
+    await page.evaluate(() => window.__active._setDayTime('day'));
+    await autopilot(page, true);
+    // tunel dövrü 2600 m, tunel 1480–1710 m; hər mərhələdə bir kadr
+    for (const [name, m] of [['yaxin', 1400], ['giris', 1470], ['iceri', 1590], ['cixis', 1700], ['sonra', 1760]]) {
+      await page.waitForFunction((target) => {
+        const sc = window.__active;
+        const d = (((sc.playerCar.trackT * 8) % 2600) + 2600) % 2600;
+        return d >= target && d < target + 60;
+      }, m, { timeout: 120_000, polling: 50 });
+      await shot(page, `d-zen-tunel-${name}`);
     }
   });
 

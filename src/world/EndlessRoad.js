@@ -804,19 +804,19 @@ export class EndlessRoad {
                 idx.push(o, o + PROF, o + 1, o + 1, o + PROF, o + PROF + 1);
               }
             }
-            // UC QAPAQLARI: profil halqasından çiyin ortasına yelpik
-            for (const [ring, çevir] of [[0, true], [rows - 1, false]]) {
+            // UC QAPAQLARI. Əvvəl profil halqasından çiyin ortasına YELPİK idi: ətək → mərkəz
+            // tilləri tunelin AĞZININ içindən keçirdi və portala baxanda tağın altında
+            // narıncı üçbucaqlar görünürdü (kadr: d-zen-tunel-giris). İndi qapaq açıqlığı
+            // boş saxlayır: tağın üstündə bir üçbucaq (çiyin–zirvə–çiyin) və hər yanda
+            // çiyindən yerə enən bir üçbucaq (ətək–çiyin–çiyinin altı).
+            for (const ring of [0, rows - 1]) {
               const base = ring * PROF;
-              const cIdx = verts.length / 3;
-              // mərkəz nöqtəsi: profilin orta hündürlüyündə
-              const cx = (verts[base * 3] + verts[(base + PROF - 1) * 3]) / 2;
-              const cy = verts[(base + 1) * 3 + 1];
-              const cz = (verts[base * 3 + 2] + verts[(base + PROF - 1) * 3 + 2]) / 2;
-              verts.push(cx, cy, cz);
-              for (let j = 0; j < PROF - 1; j++) {
-                if (çevir) idx.push(base + j, base + j + 1, cIdx);
-                else idx.push(base + j + 1, base + j, cIdx);
-              }
+              const c = tp[a0 + ring], n = tn[a0 + ring];
+              const fL = verts.length / 3;
+              verts.push(c.x - n.x * (W + 0.9), c.y - 0.6, c.z - n.z * (W + 0.9));
+              verts.push(c.x + n.x * (W + 0.9), c.y - 0.6, c.z + n.z * (W + 0.9));
+              const tris = [[base + 1, base + 2, base + 3], [base, base + 1, fL], [base + 3, base + 4, fL + 1]];
+              for (const [p, q, r] of tris) idx.push(p, q, r, p, r, q); // hər iki üz
             }
             const geo = new THREE.BufferGeometry();
             geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
@@ -843,7 +843,11 @@ export class EndlessRoad {
           }
           const lint = new THREE.Mesh(new THREE.BoxGeometry(W * 2 + 3.2, 1.5, 1.8), portMat);
           lint.position.set(c.x, c.y + H + 0.7, c.z);
-          lint.rotation.y = Math.atan2(n.x, n.z);
+          // Tirin UZUN oxu (yerli x) yolun ENİNƏ durmalıdır. Əvvəl `atan2(n.x, n.z)` idi —
+          // bu, yerli z-ni normala düzür, yəni 21 m-lik tir yol BOYU, zolağın ortasının
+          // üstündə asılı qalırdı: portala yaxınlaşanda ekranın yuxarı-ortasından tünd
+          // paz kimi sallanırdı (istifadəçi rəyi: "tuneldə nəsə iç-içə keçir").
+          lint.rotation.y = Math.atan2(-n.z, n.x);
           lint.userData.roadPart = true;
           g.add(lint);
         }
