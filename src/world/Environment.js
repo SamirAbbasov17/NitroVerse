@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { makeDecor, makeLamp, flatMat, makeTireStack, makeBarrier, cityBoxGeometry, cityMat, glowMat,
+import { makeDecor, makeLamp, flatMat, makeTireStack, makeBarrier, cityBoxGeometry, cityMat, glowMat, makeCityBuilding,
   makeGrandstand, makeFloodlight, makeMarshalPost, makeSponsorBoard, makeBunting } from '../core/AssetFactory.js';
 import { mergeStaticGroup } from '../core/MergeUtils.js';
 
@@ -185,7 +185,56 @@ export class Environment {
     this._tracksideProps(); // şin qüllələri + bariyerlər — peşəkar trek görkəmi
     this._scatterDecor();
     this._trackside();      // tribuna, projektor, marşal, sponsor, bayraq
+    if (this.data.id === 'neon') this._cityBlocks(); // küçə divarı — ən sonda, boş qalan yerə
     this._autoObstacles();   // təhlükəsizlik toru — bax aşağı
+  }
+
+  // NEON — KÜÇƏ DİVARI: yolun hər iki tərəfində bitişik bina cərgələri (ön cərgə
+  // alçaq, vitrinli; arxa cərgə hündür). Əvvəl 70 bina bütün xəritəyə səpilmişdi:
+  // yuxarıdan baxanda boş qaranlıq düzdə tək-tək qüllələr idi, yol "şəhərin içindən"
+  // keçmirdi (istifadəçi rəyi: "ətraf boşdur, binalar arası boşluqlar qəribədir").
+  // Hamısı iki paylaşılan materialdadır → birləşəndən sonra 1–5 draw call.
+  _cityBlocks() {
+    const g = new THREE.Group();
+    const tr = this.track;
+    const N = tr.N, half = tr.halfWidth;
+    const rows = [
+      { off: half + 17, low: true, gap: 1.5 },
+      { off: half + 31, low: false, gap: 3 },
+    ];
+    const box = new THREE.Box3(), size = new THREE.Vector3(), pos = new THREE.Vector3();
+    for (const row of rows) {
+      for (const side of [1, -1]) {
+        let acc = 1e9; // son binadan bəri yol boyu məsafə
+        let need = 0;
+        for (let i = 0; i < N; i++) {
+          const p = tr.points[i], q = tr.points[(i + 1) % N];
+          acc += Math.hypot(q.x - p.x, q.z - p.z);
+          if (acc < need) continue;
+          const n = tr.normals[i];
+          pos.set(p.x + n.x * row.off * side, 0, p.z + n.z * row.off * side);
+          const obj = makeCityBuilding(row.low ? { low: true } : { hMin: 18, hMax: 42 });
+          box.setFromObject(obj); box.getSize(size);
+          const r = Math.max(size.x, size.z) * 0.5;
+          // Döngənin içində cərgə yolun o biri hissəsinə düşə bilər — real məsafəni yoxla
+          if (Math.abs(tr.getNearest(pos).lateral) < half + r + 5) continue;
+          if (tr.branches?.length && tr.isOnBranch(pos, r + 4)) continue;
+          if (!this._free(pos.x, pos.z, r * 0.85, 0.4)) continue;
+          obj.position.copy(pos);
+          // Vitrin (+z üzü) yola baxsın
+          obj.rotation.y = Math.atan2(-n.x * side, -n.z * side);
+          obj.traverse((o) => { if (o.isMesh) o.castShadow = false; }); // gecə, yoldan uzaq
+          g.add(obj);
+          this.obstacles.push({ x: pos.x, z: pos.z, r: r * 0.85 });
+          acc = 0;
+          need = size.x + row.gap + Math.random() * 2;
+        }
+      }
+    }
+    const merged = mergeStaticGroup(g);
+    g.traverse((o) => { if (o.isMesh) o.geometry?.dispose?.(); });
+    this.scene.add(merged);
+    this._track(merged);
   }
 
   // Yol boyunca küçə lampaları (növbəli tərəflərdə)
@@ -233,15 +282,16 @@ export class Environment {
     const id = this.data.id;
     const base = this.track.maxRadius + 90; // trekdən kənarda
     if (id === 'neon') {
-      for (let i = 0; i < 70; i++) {
-        const a = (i / 70) * Math.PI * 2 + Math.random() * 0.06;
+      // 70 idi — üfüqdə binalar arası boşluqlar qalırdı (istifadəçi rəyi)
+      for (let i = 0; i < 120; i++) {
+        const a = (i / 120) * Math.PI * 2 + Math.random() * 0.06;
         const r = base + Math.random() * 150;
         const h = 30 + Math.random() * 110;
         const w = 12 + Math.random() * 22;
         const bx = Math.cos(a) * r, bz = Math.sin(a) * r;
         if (!this._free(bx, bz, w * 0.72)) continue;
         // Uzaq şəhər də pəncərəlidir (tutqun) — əvvəl qapqara siluet idi
-        const b = new THREE.Mesh(cityBoxGeometry(w, h, w), cityMat(true));
+        const b = new THREE.Mesh(cityBoxGeometry(w, h, w, true), cityMat(true));
         b.position.set(bx, h / 2 - 8, bz);
         g.add(b);
         this.obstacles.push({ x: b.position.x, z: b.position.z, r: w * 0.72 });
@@ -1092,7 +1142,7 @@ export class Environment {
         // Şaxə yollarının üstünə düşməsin
         if (this.track.branches?.length && this.track.isOnBranch(pos, objR + 3)) continue;
         // Zona meyli: 65% öz sektorunda
-        if (sectorOf(pos) !== homeSector && Math.random() > 0.35) continue;
+        if (this.data.id !== 'neon' && sectorOf(pos) !== homeSector && Math.random() > 0.35) continue;
 
         // İri obyektlər üçün yer tutma yoxlaması (kiçik ot/daş klasteri
         // təbii yaxınlıqdır — yalnız r≥3 yoxlanır)

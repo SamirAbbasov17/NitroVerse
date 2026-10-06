@@ -101,7 +101,10 @@ export function makeDune(color = 0xd99b57) {
 // UV-si teksturada təsadüfi sürüşdürülür, ona görə yanan pəncərələrin naxışı
 // təkrarlanmır. Pəncərə ölçüsü dünyada sabitdir (bina böyüdükcə pəncərə böyümür).
 const WIN_COLS = 16, WIN_ROWS = 32;   // teksturadakı pəncərə şəbəkəsi
-const WIN_W = 1.35, WIN_H = 1.9;       // bir pəncərə xanasının dünyadakı ölçüsü (m)
+// Bir pəncərə xanasının dünyadakı ölçüsü (m). 1.35×1.9 sınandı — istifadəçi: "çox
+// balacadır, orta olsun". Uzaq siluetdə xana 2.6× böyükdür (yoxsa nöqtəyə çevrilir).
+const WIN_W = 2.0, WIN_H = 2.7;
+const WIN_FAR = 2.6;
 let _winTex = null;
 function windowTexture() {
   if (_winTex) return _winTex;
@@ -153,7 +156,8 @@ export function cityMat(far = false) {
 }
 
 // Pəncərə UV-li qutu: yan üzlərdə pəncərə şəbəkəsi, dam və dib qaranlıq
-export function cityBoxGeometry(w, h, d) {
+export function cityBoxGeometry(w, h, d, far = false) {
+  const ww = far ? WIN_W * WIN_FAR : WIN_W, wh = far ? WIN_H * WIN_FAR : WIN_H;
   const geo = new THREE.BoxGeometry(w, h, d);
   const uv = geo.attributes.uv;
   const u0 = Math.floor(Math.random() * WIN_COLS) / WIN_COLS;
@@ -163,8 +167,8 @@ export function cityBoxGeometry(w, h, d) {
     const top = f === 2 || f === 3;
     const faceW = f < 2 ? d : w;
     // tam ədəd pəncərə: xana kəsilmir
-    const nu = Math.max(1, Math.round(faceW / WIN_W)) / WIN_COLS;
-    const nv = Math.max(1, Math.round(h / WIN_H)) / WIN_ROWS;
+    const nu = Math.max(1, Math.round(faceW / ww)) / WIN_COLS;
+    const nv = Math.max(1, Math.round(h / wh)) / WIN_ROWS;
     for (let i = f * 4; i < f * 4 + 4; i++) {
       // dam: xanalar arası qaranlıq künc nöqtəsi (bütün təpələr eyni texel)
       if (top) uv.setXY(i, u0, v0);
@@ -186,7 +190,7 @@ export function glowMat(color) {
 }
 
 // Üç forma: qüllə (tək blok), pilləli (yuxarı daralan 2–3 blok), enli (alçaq blok + üst qat)
-function makeCityBuilding(opts = {}) {
+export function makeCityBuilding(opts = {}) {
   const g = new THREE.Group();
   const mat = cityMat(false);
   const neonColors = [0x34e0ff, 0xff3d8a, 0xffd257, 0xb44bff];
@@ -201,7 +205,15 @@ function makeCityBuilding(opts = {}) {
   };
   let w = rand(4.5, 8), d = rand(4.5, 8);
   let top;
-  if (form < 0.4) {
+  if (opts.low) {
+    // Küçə səviyyəsi: alçaq blok + yola baxan işıqlı vitrin zolağı (+z üzü)
+    w = rand(7, 10); d = rand(6, 8);
+    top = block(w, rand(6, 11), d, 0);
+    const shop = new THREE.Mesh(new THREE.BoxGeometry(w * 0.86, 1.3, 0.2), glowMat(neon));
+    shop.position.set(0, 1.9, d / 2 + 0.06);
+    g.add(shop);
+    if (Math.random() < 0.45) { w *= 0.6; d *= 0.7; top = block(w, rand(3, 6), d, top); }
+  } else if (form < 0.4) {
     top = block(w, rand(opts.hMin ?? 14, opts.hMax ?? 36), d, 0);
   } else if (form < 0.75) {
     top = block(w, rand(8, 16), d, 0);
