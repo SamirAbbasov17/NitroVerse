@@ -4,8 +4,8 @@
 // qalır; `?cam=0` söndürür). Açıq olanda ekranda nişan çıxır — toxunmaq və ya F9
 // sürüş əsnasında kameranı dəyişir.
 //
-// Yeni variant (B): döngənin içinə baxır, sürətdə bir az geri çəkilib alçalır,
-// baxış bucağı sürətlə daha çox açılır. İstifadəçi seçəndən sonra bu fayl silinəcək.
+// Yeni variant (B): döngənin içinə baxır və sürətdə azca alçalır; məsafə köhnə ilə
+// eynidir. İstifadəçi seçəndən sonra bu fayl silinəcək.
 const KEY = 'apexCam'; // '' (sınaq bağlı) | '1' (köhnə) | '2' (yeni)
 
 // Ünvan parametri səhifə açılanda bir dəfə oxunur
@@ -28,9 +28,12 @@ export function camBTweak(car, speedT, lookBack = 1) {
   const st = (car._steerSmooth || 0) * lookBack;
   return {
     side: st * (1.3 + speedT * 1.3),
-    back: speedT * 0.9 + (car.isDrifting ? 0.5 : 0),
-    drop: speedT * 0.3,
-    fov: speedT * 3 - 2 + (car.driftBoostT > 0 ? 3 : 0),
+    // İstifadəçi rəyi (1-ci sınaq): tam sürətdə maşın kameradan çox uzaqlaşırdı
+    // (əlavə 0.9 m geri + daha geniş baxış bucağı). İndi məsafə və baxış bucağı
+    // köhnə kamera ilə EYNİDİR — fərq yalnız döngəyə baxış və azca alçaq rakursdur.
+    back: car.isDrifting ? 0.3 : 0,
+    drop: speedT * 0.2,
+    fov: car.driftBoostT > 0 ? 3 : 0,
   };
 }
 
