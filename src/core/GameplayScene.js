@@ -379,15 +379,16 @@ export class GameplayScene {
       // Onlayn: finişə çatan və ya yarışı bitirən oyunçu yerində qalıb digərlərini gözləyir
       if (online) {
         this.hud.setEndBanner({
+          n, frac: this._endT / END_WAIT,
           title: t(this._gaveUp ? 'end.gaveTitle' : 'end.waitTitle'),
-          sub: t('end.waitSub', { n }),
+          sub: t('end.waitSub'),
         });
       }
     } else {
       this.hud.setEndBanner({
-        lost: true,
+        lost: true, n, frac: this._endT / END_WAIT,
         title: t('end.lostTitle'),
-        sub: t('end.lostSub', { name: this._winnerName, n }),
+        sub: t('end.lostSub', { name: this._winnerName }),
         button: t('end.btn'),
         onButton: () => this._giveUp(),
       });
@@ -682,6 +683,8 @@ export class GameplayScene {
     this.input.bind('KeyE', () => this._useItem());
     this.input.bind('ShiftLeft', () => this._useItem());
     this.input.bind('KeyF', () => this._rescuePlayer());
+    // Enter — "Yarışı bitir" düyməsinin qısa yolu (yalnız uduzdun zolağı açıq olanda)
+    this.input.bind('Enter', () => { if (this._endT != null && this._state === 'run') this._giveUp(); });
     this.input.bind('KeyG', () => this._useSignature());
     this.input.bind('KeyX', () => this._discardItem());
     // Q = aktiv itemi ARXAYA at (S+E-dən rahat)

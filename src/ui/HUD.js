@@ -61,11 +61,13 @@ export class HUD {
           <span class="hud__rescue-warn">⚠</span> ${t('hud.offroad')} <kbd>F</kbd>
         </button>
         <div class="hud__end" id="hud-end">
+          <div class="hud__end-ring" id="hud-end-ring"><b id="hud-end-n">30</b></div>
           <div class="hud__end-text">
             <div class="hud__end-title" id="hud-end-title"></div>
             <div class="hud__end-sub" id="hud-end-sub"></div>
           </div>
-          <button class="hud__end-btn" id="hud-end-btn"></button>
+          <button class="hud__end-btn" id="hud-end-btn"><span id="hud-end-btn-t"></span> <kbd>Enter</kbd></button>
+          <i class="hud__end-bar" id="hud-end-bar"></i>
         </div>
         <div id="hud-overlay"></div>
       </div>`;
@@ -89,6 +91,10 @@ export class HUD {
       endTitle: this.root.querySelector('#hud-end-title'),
       endSub: this.root.querySelector('#hud-end-sub'),
       endBtn: this.root.querySelector('#hud-end-btn'),
+      endBtnT: this.root.querySelector('#hud-end-btn-t'),
+      endN: this.root.querySelector('#hud-end-n'),
+      endRing: this.root.querySelector('#hud-end-ring'),
+      endBar: this.root.querySelector('#hud-end-bar'),
     };
     this.el.rescue.onclick = () => this.onRescue?.();
     this.canvas = this.root.querySelector('#minimap');
@@ -184,17 +190,26 @@ export class HUD {
     this.el.rescue.classList.toggle('is-wrongway', visible && reason === 'wrongway');
   }
 
-  // Yarışın sonu bildirişi (uduzdun / digərləri gözlənilir) — geri sayımla.
-  // state = null gizlədir. Düymə yalnız `button` veriləndə görünür.
+  // Yarışın sonu zolağı (uduzdun / digərləri gözlənilir): solda geri sayım halqası,
+  // ortada mətn, sağda düymə (qısa yol: Enter). state = null gizlədir.
+  // state: { title, sub, n (qalan saniyə), frac (0..1 qalan pay), lost, button, onButton }
   setEndBanner(state) {
     const e = this.el;
     if (!e.end) return;
-    if (!state) { e.end.classList.remove('is-visible'); this._endSub = null; return; }
+    if (!state) { e.end.classList.remove('is-visible'); this._endSub = null; this._endN = null; return; }
     if (this._endTitle !== state.title) { this._endTitle = state.title; e.endTitle.textContent = state.title; }
     if (this._endSub !== state.sub) { this._endSub = state.sub; e.endSub.textContent = state.sub; }
+    if (this._endN !== state.n) { this._endN = state.n; e.endN.textContent = state.n; }
+    const pct = Math.round((state.frac ?? 1) * 100);
+    if (this._endPct !== pct) {
+      this._endPct = pct;
+      e.endRing.style.setProperty('--p', pct);
+      e.endBar.style.transform = `scaleX(${pct / 100})`;
+    }
     e.endBtn.style.display = state.button ? '' : 'none';
-    if (state.button) { e.endBtn.textContent = state.button; e.endBtn.onclick = state.onButton; }
+    if (state.button) { e.endBtnT.textContent = state.button; e.endBtn.onclick = state.onButton; }
     e.end.classList.toggle('is-lost', !!state.lost);
+    e.end.classList.toggle('is-urgent', state.n <= 5);
     e.end.classList.add('is-visible');
   }
 

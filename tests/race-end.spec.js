@@ -26,11 +26,11 @@ test('yarış sonu: bot qalib → bildiriş, geri sayım, düymə → nəticə e
   const banner = page.locator('#hud-end');
   await expect(banner).toHaveClass(/is-visible/);
   await expect(page.locator('#hud-end-title')).toHaveText('Yarışı uduzdun');
-  const sub1 = await page.locator('#hud-end-sub').textContent();
-  expect(sub1).toMatch(/30|29/);
-  await page.waitForTimeout(2200);
-  const sub2 = await page.locator('#hud-end-sub').textContent();
-  expect(sub2, 'geri sayım gedir').toMatch(/2[78]/);
+  const n1 = +(await page.locator('#hud-end-n').textContent());
+  expect(n1).toBeGreaterThanOrEqual(29);
+  await page.waitForTimeout(3400); // 3.4 s → ən azı 2 saniyə düşməlidir (sərhəd titrəməsinə ehtiyat)
+  const n2 = +(await page.locator('#hud-end-n').textContent());
+  expect(n2, 'geri sayım gedir').toBeLessThanOrEqual(n1 - 2);
   await page.screenshot({ path: path.join(OUT, 'race-end-desktop.png') });
   await page.locator('#hud-end-btn').click();
   await page.waitForFunction(() => window.__active?._state === 'done' || window.__active === window.__showcase, null, { timeout: 5000 });
@@ -39,6 +39,25 @@ test('yarış sonu: bot qalib → bildiriş, geri sayım, düymə → nəticə e
   // Nəticə ekranında oyunçu birinci deyil
   const txt = await page.locator('#ui-root').innerText();
   expect(txt.length).toBeGreaterThan(20);
+});
+
+test('yarış sonu: Enter düyməsi yarışı bitirir; zolaq yoxdursa heç nə etmir', async ({ page }) => {
+  await boot(page);
+  await startMode(page, CFG);
+  await page.waitForFunction(() => window.__active.raceManager?.state === 'racing', null, { timeout: 30_000 });
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => window.__active._state), 'zolaqsız Enter yarışı bitirmir').toBe('run');
+  await page.evaluate(() => {
+    const sc = window.__active;
+    const rm = sc.raceManager;
+    const bot = sc.racers.find((r) => !r.isPlayer);
+    bot.finished = true; bot.finishTime = rm.elapsed; bot.finishPos = ++rm._finishOrder;
+    rm.onFinish(bot, bot.finishPos);
+  });
+  await expect(page.locator('#hud-end')).toHaveClass(/is-visible/);
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => window.__active?._state === 'done' || window.__active === window.__showcase, null, { timeout: 5000 });
 });
 
 test('yarış sonu: 30 saniyə bitəndə nəticə özü açılır', async ({ page }) => {
