@@ -1453,16 +1453,6 @@ kbd {
   body.post-on #game-canvas { filter: none; }
 }
 
-/* Cila sınaq nişanı (yalnız ?post=1) — istifadəçi seçəndən sonra silinəcək */
-.post-chip {
-  position: fixed; left: 50%; bottom: 8px; transform: translateX(-50%);
-  z-index: 60; padding: 6px 12px; border-radius: 999px;
-  font: 700 12px/1 system-ui, sans-serif; letter-spacing: 0.04em;
-  color: #fff; background: rgba(20, 22, 34, 0.82); border: 1px solid rgba(255, 255, 255, 0.28);
-  cursor: pointer;
-}
-.post-chip.is-on { background: rgba(255, 138, 30, 0.9); border-color: transparent; }
-
 /* ============ HUD mövqe dəyişmə vurğusu ============ */
 #hud-pos.pos-up { animation: posFlash 0.7s ease; color: var(--good); }
 #hud-pos.pos-down { animation: posFlash 0.7s ease; color: #ff6d6d; }

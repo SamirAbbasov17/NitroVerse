@@ -29,7 +29,6 @@ export class Game {
     this.renderer.toneMappingExposure = 1.15;
     // Render sonrası cila (bloom + qradasiya) yalnız masaüstündə — mobil toxunulmur
     this.post = touch ? null : new PostFX(this.renderer);
-    this.post?.mountChip();
 
     this.active = null;
     this.clock = new THREE.Clock();

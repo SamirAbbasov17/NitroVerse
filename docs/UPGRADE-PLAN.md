@@ -110,7 +110,7 @@ Yoxlama: `test:feel` rəqəmləri (hədəf dəyərlər 2.1-dən əvvəl birlikd�
 
 Sıra bu fazanın daxilində: 3.1 (bibliya) → 3.11 + 3.12 (filtr və işıq — bütün treklərə dərhal təsir edir) → 3.8 (maşınlar) → 3.2 / 3.3 / 3.9 / 3.10 (mühit, trek-trek) → qalanı. Hər trek ayrıca göstərilir və təsdiqlənir.
 
-### 3.11 gedişatı — cila qatı 🔶 (2026-10-06, sənin seçimini gözləyir)
+### 3.11 gedişatı — cila qatı ✅ STANDART (2026-10-06, istifadəçi: "saxlayaq")
 
 `src/core/PostFX.js`: yalnız masaüstündə bloom + trek başına rəng qradasiyası (`tracks.js` → `grade`). Mobildə qat yaradılmır.
 
@@ -118,8 +118,8 @@ Sıra bu fazanın daxilində: 3.1 (bibliya) → 3.11 + 3.12 (filtr və işıq �
 - **İlk iki cəhd rədd edildi** (kadrda görünüb): HDR hədəf uzaq planı soldururdu (duman ton xəritəsindən sonra qarışır); 8-bit hədəfdə isə r160 duman rəngini xətti verir və dağlar tündləşirdi — kadr müddətinə rəng kompensasiya olunur.
 - **Xərc:** 9 rejimdə 60 FPS, p99 16.8 ms (cila bağlı ilə eyni); üstəlik 14 tam-ekran keçid (13 bloom + son keçid; səhnənin draw call sayına daxil deyil).
 - **Məhdudiyyət:** bloom ekran parlaqlığına görə seçir, ona görə işıq mənbəyi ilə ağ boyanı (zolaq, bordür) ayıra bilmir. Gündüz treklərində hədd 0.95-dir (səma ağarmasın) və təsir zəifdir; ən çox neon və zavodda görünür.
-- **Sınaq:** ünvana `?post=1` → ekranın altında "CİLA" nişanı (və ya F8) yandırıb-söndürür.
-- **Qalır:** sənin seçimin (saxla / gücünü dəyiş / sil), ayarlarda daimi açar, zen filtrlərinin render daxilinə köçürülməsi, vinyet.
+- **Sınaq keçidi silindi** (istifadəçi seçdi). Söndürmək: `localStorage.apexPost = '0'`.
+- **Qalır:** ayarlarda daimi açar (Faza 5), zen filtrlərinin render daxilinə köçürülməsi, vinyet, neon bordür parıltısının gücü (sənin rəyin).
 
 **Postprocessing (qərar verilib: bəli, yalnız masaüstündə).** İndiki qayda "heç vaxt" deyir (mobil FPS üçün). Masaüstündə kadr xərci 2–5 ms-dir, ehtiyat böyükdür. Təklif: **yalnız masaüstündə**, söndürülə bilən yüngül bloom + rəng qradasiyası; mobil olduğu kimi qalır. Bu, "professional görüntü" üçün ən ucuz böyük addımdır, amma qayda sənindir.
 

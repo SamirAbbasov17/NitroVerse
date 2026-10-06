@@ -20,16 +20,8 @@ import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
 // Three.js yenilənəndə bu yer yoxlanmalıdır (`npm run test:postfx`).
 // EffectComposer işlədilmir: iki tam ölçülü hədəf saxlayır, burada biri kifayətdir.
 //
-// SINAQ KEÇİDİ: ünvana `?post=1` yazılanda ekranda nişan çıxır — toxunmaq və ya
-// F8 cilanı yandırıb-söndürür (yan-yana müqayisə). `?post=0` nişanı gizlədir.
-const KEY = 'apexPost';     // '0' = oyunçu söndürüb
-const KEY_AB = 'apexPostAB'; // '1' = sınaq nişanı görünür
-
-try {
-  const q = new URLSearchParams(location.search).get('post');
-  if (q === '0') localStorage.removeItem(KEY_AB);
-  else if (q === '1') localStorage.setItem(KEY_AB, '1');
-} catch { /* gizli rejim */ }
+// Oyunçu söndürə bilər: localStorage `apexPost` = '0' (ayarlar düyməsi Faza 5-də).
+const KEY = 'apexPost';
 
 const read = (k) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } };
 
@@ -145,22 +137,6 @@ export class PostFX {
     if (this.bloom.strength > 0) this.bloom.render(r, null, this.target, 0, false);
     r.setRenderTarget(null);
     this.quad.render(r);
-  }
-
-  // Sınaq nişanı (yalnız `?post=1` ilə). Qaytarılan funksiya nişanı silir.
-  mountChip() {
-    if (read(KEY_AB) !== '1') return;
-    const chip = document.createElement('button');
-    chip.className = 'post-chip';
-    const paint = () => {
-      chip.textContent = this.enabled ? 'CİLA: AÇIQ ⇄' : 'CİLA: BAĞLI ⇄';
-      chip.classList.toggle('is-on', this.enabled);
-    };
-    const toggle = () => { this.setEnabled(!this.enabled); paint(); };
-    chip.onclick = toggle;
-    window.addEventListener('keydown', (e) => { if (e.code === 'F8') toggle(); });
-    paint();
-    document.body.appendChild(chip);
   }
 
   dispose() {
