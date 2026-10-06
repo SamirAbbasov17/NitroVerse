@@ -107,9 +107,9 @@ for (const m of MODES.filter((x) => x.config.mode === 'race')) {
           for (const s of [-1, 0, 1]) branch = Math.max(branch, h(p.x + n.x * b.halfWidth * s, p.z + n.z * b.halfWidth * s));
         }
       }
-      return { main: +main.toFixed(3), branch: +branch.toFixed(3), branches: (tr.branches || []).length };
+      return { main: +main.toFixed(3), branch: +branch.toFixed(3), branches: (tr.branches || []).length, lifted: sc.environment._decorLifted };
     });
-    console.log(`${m.name.padEnd(13)} yerin maks hündürlüyü: əsas yol ${r.main} m · şaxə ${r.branches ? r.branch : '—'} m`);
+    console.log(`${m.name.padEnd(13)} yerin maks hündürlüyü: əsas yol ${r.main} m · şaxə ${r.branches ? r.branch : '—'} m · relyefə oturdulan dekor (>15 sm fərq): ${r.lifted}`);
     // yol +0.02, şaxə yolu +0.012 hündürlükdədir; yer onlardan aşağı qalmalıdır
     expect(r.main, 'yer əsas yolun üstünə çıxmır').toBeLessThan(0.0);
     if (r.branches) expect(r.branch, 'yer şaxə yolunun üstünə çıxmır').toBeLessThan(0.0);

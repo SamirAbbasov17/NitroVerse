@@ -208,7 +208,10 @@ export const TRACKS = [
     sea: {},
     river: { t: 0.415, width: 12, color: 0x2fb8c8 },
     decor: [
-      { type: 'pine', count: 40 }, // Rivierada palma kimi qoyulur (bax Environment._scatterDecor)
+      // near: yol boyu (6–60 m) səpələnir — bax Environment._scatterDecor
+      { type: 'pine', count: 16, near: true },    // Rivierada palma kimi qoyulur
+      { type: 'cypress', count: 95, near: true },
+      { type: 'bush', count: 130, near: true },
       { type: 'lamp', count: 16 },
       { type: 'rock', count: 40 },
       { type: 'house', count: 18 },

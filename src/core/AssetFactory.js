@@ -437,8 +437,50 @@ function makeCheckerTexture() {
 }
 
 // Trek tipinə görə dekor yaradıcısı
+// ————— AKDƏNİZ BİTKİLƏRİ (Riviera) — ucuz və paylaşılan materiallı —————
+const _medMats = {};
+function medMat(name, color) {
+  if (!_medMats[name]) {
+    _medMats[name] = flatMat(color, { roughness: 1 });
+    _medMats[name].userData = { shared: true };
+  }
+  return _medMats[name];
+}
+
+// Sərv: nazik hündür konus (≈ 16 üçbucaq) — sahil qəsəbəsinin siluet ağacı
+export function makeCypress() {
+  const g = new THREE.Group();
+  const h = rand(5.5, 9.5);
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.9, 4), medMat('trunk', 0x5a4030));
+  trunk.position.y = 0.45;
+  g.add(trunk);
+  const crown = new THREE.Mesh(new THREE.ConeGeometry(rand(0.75, 1.05), h, 6), (Math.random() < 0.5 ? medMat('cyp1', 0x2f5d3a) : medMat('cyp2', 0x3a6b40)));
+  crown.position.y = 0.7 + h / 2;
+  crown.castShadow = true;
+  g.add(crown);
+  return g;
+}
+
+// Kol: yastılanmış ikosaedr (20 üçbucaq), bəzən yanında ikincisi
+export function makeBush() {
+  const g = new THREE.Group();
+  const n = Math.random() < 0.35 ? 2 : 1;
+  for (let i = 0; i < n; i++) {
+    const r = rand(0.7, 1.3);
+    const b = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), medMat(i ? 'bush2' : 'bush1', i ? 0x8f9d4a : 0x6f8b42));
+    b.scale.y = 0.62;
+    b.position.set(i * rand(0.8, 1.2), r * 0.42, i * rand(-0.5, 0.5));
+    b.rotation.y = rand(0, 6);
+    b.castShadow = true;
+    g.add(b);
+  }
+  return g;
+}
+
 export function makeDecor(type, opts = {}) {
   switch (type) {
+    case 'cypress': return makeCypress();
+    case 'bush': return makeBush();
     case 'pine': return makePine();
     case 'cactus': return makeCactus();
     case 'rock': return makeRock();

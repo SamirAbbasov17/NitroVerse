@@ -26,6 +26,19 @@ export class Environment {
       && !this._inWater(x, z, r);
   }
 
+  // Yerin (relyefli mesh-in) həmin nöqtədəki hündürlüyü. Trekdən uzaqda relyef ±1.7 m
+  // dalğalanır; dekor sabit y = 0-a qoyulanda ya havada qalır, ya torpağa batır.
+  _groundY(x, z) {
+    if (!this._groundMesh) return -0.04;
+    this._ray ||= new THREE.Raycaster();
+    this._rayO ||= new THREE.Vector3();
+    this._rayD ||= new THREE.Vector3(0, -1, 0);
+    this._groundMesh.updateMatrixWorld();
+    this._ray.set(this._rayO.set(x, 60, z), this._rayD);
+    const hit = this._ray.intersectObject(this._groundMesh, false)[0];
+    return hit ? hit.point.y : -0.04;
+  }
+
   // SU ZONASI: çay/göl səthi (körpü altı daxil). Toqquşma siyahısından AYRIDIR —
   // körpü zonasında toqquşma yoxdur (yol keçir), amma dekor yenə qoyula bilməz.
   // Əvvəl şin yığınları və daşlar suyun içinə düşürdü (istifadəçi rəyi).
@@ -186,6 +199,7 @@ export class Environment {
     this.scene.add(ground);
     this._track(ground);
     this._groundGeo = gGeo;
+    this._groundMesh = ground; // _groundY üçün
 
     // Dəniz sahili varsa, dağ halqası hesablamadan ƏVVƏL bilinməlidir
     // Sahil xətti trekin ƏN CƏNUB nöqtəsindən 24 m aralıdır. Əvvəl `maxRadius + 20`
@@ -215,6 +229,7 @@ export class Environment {
     this._scatterDecor();
     this._trackside();      // tribuna, projektor, marşal, sponsor, bayraq
     // Landmarklar küçə divarından ƏVVƏL: yerlərini tuturlar, binalar onlardan yan keçir
+    if (this.data.id === 'riviera') this._rivieraFields();
     if (this.data.id === 'neon') this._neonLandmarks();
     if (this.data.id === 'neon') this._cityBlocks(); // küçə divarı — ən sonda, boş qalan yerə
     this._autoObstacles();   // təhlükəsizlik toru — bax aşağı
@@ -292,6 +307,42 @@ export class Environment {
     put(new THREE.ConeGeometry(3.1, 4.4, 4), roof, cx, 6.4 + 16.2, cz, 0.4 + Math.PI / 4);
     this.obstacles.push({ x: cx, z: cz, r: R0 });   // bütün təpə bərkdir
 
+    const merged = mergeStaticGroup(g);
+    g.traverse((o) => { if (o.isMesh) o.geometry?.dispose?.(); });
+    this.scene.add(merged);
+    this._track(merged);
+  }
+
+  // RİVİERA — ÜZÜM BAĞLARI: yol kənarında paralel yaşıl cərgələr (orta plan boş qalmasın).
+  // Hər cərgə relyefə oturur; bütün bağlar bir materialda birləşir.
+  _rivieraFields() {
+    const tr = this.track;
+    const g = new THREE.Group();
+    const mat = flatMat(0x5f8f45, { roughness: 1 });
+    let made = 0;
+    for (let tries = 0; tries < 120 && made < 11; tries++) {
+      const i = Math.floor(Math.random() * tr.N);
+      const c = tr.points[i], n = tr.normals[i], t = tr.tangents[i];
+      const sd = Math.random() < 0.5 ? 1 : -1;
+      const off = tr.halfWidth + 26 + Math.random() * 30;
+      const cx = c.x + n.x * off * sd, cz = c.z + n.z * off * sd;
+      if (Math.abs(tr.getNearest(new THREE.Vector3(cx, 0, cz)).lateral) < tr.halfWidth + 20) continue;
+      if (tr.branches?.length && tr.isOnBranch(new THREE.Vector3(cx, 0, cz), 16)) continue;
+      if (!this._free(cx, cz, 13, 1)) continue;
+      const rows = 6 + Math.floor(Math.random() * 3), len = 16 + Math.random() * 8;
+      const yaw = Math.atan2(t.x, t.z); // cərgələr yola paralel
+      for (let r = 0; r < rows; r++) {
+        const lat = (r - (rows - 1) / 2) * 2.5;
+        const x = cx + n.x * lat, z = cz + n.z * lat;
+        const row = new THREE.Mesh(new THREE.BoxGeometry(0.95, 1.25, len), mat);
+        row.position.set(x, this._groundY(x, z) + 0.6, z);
+        row.rotation.y = yaw;
+        row.castShadow = true;
+        g.add(row);
+      }
+      this.obstacles.push({ x: cx, z: cz, r: 11 });
+      made++;
+    }
     const merged = mergeStaticGroup(g);
     g.traverse((o) => { if (o.isMesh) o.geometry?.dispose?.(); });
     this.scene.add(merged);
@@ -1428,9 +1479,19 @@ export class Environment {
       let attempts = 0;
       while (placed < rule.count && attempts < rule.count * 16) {
         attempts++;
-        const ang = Math.random() * Math.PI * 2;
-        const r = 18 + Math.random() * (this.track.maxRadius + 70);
-        const pos = new THREE.Vector3(Math.cos(ang) * r, 0, Math.sin(ang) * r);
+        let pos;
+        if (rule.near) {
+          // YOL BOYU səpələmə: oyunçunun gördüyü zolaq (yoldan 6–60 m) dolsun. Bərabər
+          // radiuslu səpələmədə obyektlərin çoxu trekdən uzaqda itir (Riviera: R = 353 m).
+          const i = Math.floor(Math.random() * this.track.N);
+          const c = this.track.points[i], nn = this.track.normals[i];
+          const off = (half + 6 + Math.pow(Math.random(), 1.6) * 54) * (Math.random() < 0.5 ? 1 : -1);
+          pos = new THREE.Vector3(c.x + nn.x * off, 0, c.z + nn.z * off);
+        } else {
+          const ang = Math.random() * Math.PI * 2;
+          const r = 18 + Math.random() * (this.track.maxRadius + 70);
+          pos = new THREE.Vector3(Math.cos(ang) * r, 0, Math.sin(ang) * r);
+        }
 
         // Neon: pəncərəli şəhər binaları (zavodun binaları ayrıca işdir — bədii bibliya)
         let obj = null;
@@ -1454,7 +1515,7 @@ export class Environment {
         // Şaxə yollarının üstünə düşməsin
         if (this.track.branches?.length && this.track.isOnBranch(pos, objR + 3)) continue;
         // Zona meyli: 65% öz sektorunda
-        if (this.data.id !== 'neon' && sectorOf(pos) !== homeSector && Math.random() > 0.35) continue;
+        if (this.data.id !== 'neon' && !rule.near && sectorOf(pos) !== homeSector && Math.random() > 0.35) continue;
 
         // İri obyektlər üçün yer tutma yoxlaması (kiçik ot/daş klasteri
         // təbii yaxınlıqdır — yalnız r≥3 yoxlanır)
@@ -1485,9 +1546,19 @@ export class Environment {
         placed++;
       }
     }
+    // Dekor relyefin üstünə oturur (əvvəl hamısı y = 0-da idi: trekdən uzaqda relyef
+    // ±1.7 m dalğalandığı üçün ağac/ev ya havada qalır, ya torpağa batırdı)
+    let düzəldi = 0;
+    for (const o of decorGroup.children) {
+      const gy = this._groundY(o.position.x, o.position.z) + 0.04;
+      if (Math.abs(gy) > 0.15) düzəldi++;
+      o.position.y += gy;
+    }
+    this._decorLifted = düzəldi; // test/ölçmə üçün
     // PERFORMANS: yüzlərlə dekor mesh-i material üzrə birləşdirilir
     const merged = mergeStaticGroup(decorGroup);
-    decorGroup.traverse((o) => o.geometry?.dispose?.());
+    // Paylaşılan (kit) modellərin həndəsəsi şablona məxsusdur — silinmir
+    decorGroup.traverse((o) => { if (o.isMesh && !o.material?.userData?.shared) o.geometry?.dispose?.(); });
     this.scene.add(merged);
     this._track(merged);
   }
