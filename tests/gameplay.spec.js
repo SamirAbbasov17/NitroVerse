@@ -258,3 +258,39 @@ for (const m of MODES.filter((x) => x.config.mode === 'race')) {
     expect(r.max + 20, 'uzaq fon görmə həddindən içəridədir (kamera maşından ~14 m geridədir)').toBeLessThan(r.far);
   });
 }
+
+// Qalxan lazer/maneə zərərini tutur (əvvəl yalnız raket/mina/şimşəkdən qoruyurdu), və "Təmir"
+// (can) qutusu təhlükəli trekdə daha tez-tez düşür.
+test('oynanış: qalxan lazer zərərini tutur; zavodda can qutusu daha çoxdur', async ({ page }) => {
+  await boot(page);
+  await startMode(page, MODES.find((m) => m.name === 'race-zavod').config);
+  await page.waitForFunction(() => window.__active.raceManager?.state === 'racing', null, { timeout: 30_000 });
+  const r = await page.evaluate(() => {
+    const sc = window.__active;
+    sc.update = () => {};
+    const car = sc.playerCar;
+    // Lazer şüası maşına dəyəndə məhz bu çağırış edilir (bax _updateHazards)
+    const fire = () => { car._dmgCd = 0; car._invuln = 0; sc._damage(car, sc.trackData.hazards.laserDamage, true); };
+    car.hp = 100; car.shieldTimer = 0;
+    fire();
+    const noShield = car.hp;
+    car.hp = 100; car.shieldTimer = 5;
+    fire();
+    const withShield = car.hp;
+    const repairPct = (sc.powerups._types.filter((t) => t.id === 'repair').length / sc.powerups._types.length) * 100;
+    return { noShield, withShield, repairPct: +repairPct.toFixed(1) };
+  });
+  console.log(`lazer: qalxansız can ${r.noShield} · qalxanla ${r.withShield} · zavodda can qutusu payı ${r.repairPct}%`);
+  expect(r.noShield, 'ssenari: qalxansız lazer can aparır').toBeLessThan(100);
+  expect(r.withShield, 'qalxan lazeri tutur').toBe(100);
+  expect(r.repairPct, 'zavodda can qutusu payı').toBeGreaterThan(8);
+
+  await startMode(page, MODES.find((m) => m.name === 'race-desert').config);
+  const d = await page.evaluate(() => {
+    const t = window.__active.powerups._types;
+    return +((t.filter((x) => x.id === 'repair').length / t.length) * 100).toFixed(1);
+  });
+  console.log(`səhrada can qutusu payı ${d}%`);
+  expect(d).toBeGreaterThan(4);
+  expect(d).toBeLessThan(r.repairPct);
+});

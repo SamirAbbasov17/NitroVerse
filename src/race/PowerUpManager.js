@@ -16,9 +16,14 @@ export const POWERUP_TYPES = [
   { id: 'repair', icon: '➕', name: 'Təmir' },
 ];
 
-// Çəkili tip cədvəli: hücum dördlüyü bərabər (~19%), sonra qalxan → şimşək → can
-const TYPE_WEIGHTS = { missile: 8, nitro: 8, mine: 8, trishot: 8, shield: 5, bolt: 3, repair: 1 };
-const WEIGHTED_TYPES = POWERUP_TYPES.flatMap((t) => Array(TYPE_WEIGHTS[t.id] || 4).fill(t));
+// Çəkili tip cədvəli: hücum dördlüyü bərabər (~19%), sonra qalxan → şimşək → can.
+// "Təmir" (can) çəkisi trekdən asılıdır: əvvəl hər yerdə 1/41 (2.4%) idi — oyunçu onu
+// heç görmürdü (istifadəçi rəyi). İndi adi trekdə 2/42 (4.8%), təhlükəli trekdə
+// (zavod: lazerlər, maneələr) 4/44 (9.1%). Cədvəl seed-li ruletin əsasıdır —
+// dəyişəndə onlayn PREFIX artırılır.
+const TYPE_WEIGHTS = { missile: 8, nitro: 8, mine: 8, trishot: 8, shield: 5, bolt: 3, repair: 2 };
+const weightedTypes = (repair) => POWERUP_TYPES.flatMap((t) =>
+  Array(t.id === 'repair' ? repair : (TYPE_WEIGHTS[t.id] || 4)).fill(t));
 
 const BOX_RESPAWN = TUNING.items.respawn;
 const PICKUP_R = TUNING.items.pickupR;
@@ -28,7 +33,8 @@ const MINE_SHIELD_T = 6;   // mina neçə saniyə "müdafiə" sayılır (raketi 
 
 // Mario Kart stili power-up sistemi: fırlanan item qutuları, nitro/raket/yağ.
 export class PowerUpManager {
-  constructor(scene, track, racers, { effects = null, onHit = null, onRemoteHit = null, seed = null } = {}) {
+  constructor(scene, track, racers, { effects = null, onHit = null, onRemoteHit = null, seed = null, repairWeight = TYPE_WEIGHTS.repair } = {}) {
+    this._types = weightedTypes(repairWeight);
     this.scene = scene;
     this.track = track;
     this.racers = racers;
@@ -69,7 +75,7 @@ export class PowerUpManager {
   }
 
   _rollType() {
-    return WEIGHTED_TYPES[Math.floor(Math.random() * WEIGHTED_TYPES.length)];
+    return this._types[Math.floor(Math.random() * this._types.length)];
   }
 
   // Qutu üçün deterministik tip: (seed, qutu indeksi, neçənci respawn) → eyni nəticə hamıda
@@ -79,7 +85,7 @@ export class PowerUpManager {
     h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) >>> 0;
     h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) >>> 0;
     h = (h ^ (h >>> 16)) >>> 0;
-    return WEIGHTED_TYPES[h % WEIGHTED_TYPES.length];
+    return this._types[h % this._types.length];
   }
 
   // BLUR ÜSLUBU: eyni cərgədəki 3 zolaqda 3 FƏRQLİ ability olsun —

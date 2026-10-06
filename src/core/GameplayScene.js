@@ -195,6 +195,7 @@ export class GameplayScene {
       this._warmFx();
       this._shake = 0;
       this.powerups = new PowerUpManager(this.scene, this.track, this.racers, {
+        repairWeight: this.trackData.hazards?.lasers ? 4 : 2, // təhlükəli trekdə can daha tez-tez düşür
         effects: this.effects,
         onHit: (racer) => {
           if (racer.isPlayer) { this._shake = 0.8; this._hitStop(1); }
@@ -325,6 +326,7 @@ export class GameplayScene {
     this._warmFx();
     this._shake = 0;
     this.powerups = new PowerUpManager(this.scene, this.track, this.racers, {
+        repairWeight: this.trackData.hazards?.lasers ? 4 : 2, // təhlükəli trekdə can daha tez-tez düşür
       effects: this.effects,
       onHit: (racer) => {
         if (racer.isPlayer) this._shake = 0.8;
@@ -1041,6 +1043,16 @@ export class GameplayScene {
   _damage(car, amount, silent = false) {
     if (car.isRemote) return;
     if ((car._dmgCd ?? 0) > 0 || (car._invuln ?? 0) > 0 || car.hp == null) return;
+    // QALXAN bütün zərəri tutur (lazer, maneə). Əvvəl yalnız raket/mina/şimşəkdən
+    // qoruyurdu: qalxanla lazerdən keçəndə can gedirdi (istifadəçi rəyi).
+    if (car.shieldTimer > 0) {
+      car._dmgCd = 0.5; // parıltı hər kadr təkrarlanmasın
+      if (this.effects && car.position.distanceTo(this.playerCar.position) < 70) {
+        this.effects.spawnSparkle(new THREE.Vector3(car.position.x, 1, car.position.z), 0x7fe9ff);
+      }
+      if (car.isPlayer && !silent) audio.sfx('shield');
+      return;
+    }
     car.hp -= amount;
     car._dmgCd = 0.5;
     // Zərbə qığılcımı — vizual geri bildirim (yalnız yaxınlıqda, ucuz)
