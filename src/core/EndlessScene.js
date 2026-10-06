@@ -302,7 +302,7 @@ export class EndlessScene {
 
     this.skids = new SkidMarks(this.scene);
     this.effects = new Effects(this.scene);
-    this.impact = new ImpactFeel(this.effects);
+    this.impact = new ImpactFeel(this.effects, { soft: true }); // zen: yumşaq əks-əlaqə
 
     // ——— Biom / hava / gün vəziyyəti ———
     this._biomeIdx = 0;
@@ -1680,6 +1680,25 @@ export class EndlessScene {
     // TUNELDƏ yağış/qar görünməməlidir — tavan var (əvvəl içəri yağırdı)
     const inTunnel = this.road?.tunnelAtPos?.(this.playerCar.position, this.playerCar.wpHint) > 0.35;
     rain.mesh.visible = rAmount > 0.04 && !inTunnel;
+    // HAVA SƏSİ: yağışda şırıltı, qarda sakit külək; tuneldə boğuqlaşır. Güclü yağışda
+    // hərdən uzaq göy gurultusu (əvvəl qısa işıq, 0.5–1.8 s sonra səs).
+    {
+      const fl = flakeNow ? 1 : 0;
+      audio.setWeather(fl ? 0 : rAmount, fl ? rAmount : 0, inTunnel);
+      if (!fl && rAmount > 0.55 && this._state === 'run') {
+        this._thunderT = (this._thunderT ?? (12 + Math.random() * 20)) - dt;
+        if (this._thunderT <= 0) {
+          this._thunderT = 22 + Math.random() * 38;
+          const uzaqlıq = Math.random();
+          this._flashT = 0.14;
+          setTimeout(() => { if (this._state === 'run') audio.thunder(uzaqlıq); }, 500 + uzaqlıq * 1300);
+        }
+      }
+      if ((this._flashT || 0) > 0) { // şimşək işığı: ətraf işığı bir anlıq qalxır (işıq sayı dəyişmir)
+        this._flashT -= dt;
+        this.amb.intensity += 0.9 * Math.max(0, this._flashT / 0.14);
+      }
+    }
     if (rain.mesh.visible) {
       // QAR seçimi biomdan asılı DEYİL: səhrada "qar" seçəndə yer ağarır, ona görə
       // göydən də qar düşməlidir (əvvəl damcı düşürdü — uyğunsuz görünürdü)
@@ -2062,6 +2081,7 @@ export class EndlessScene {
     this.road?.dispose();
     audio.stopEngine();
     audio.setZenMix(false); // adi miks bərpa olunsun
+    audio.setWeather(0, 0);  // hava səsləri sönsün
     this._fireflies?.geometry.dispose();
     this._ffMat?.dispose();
     this._glowTex?.dispose();

@@ -6,16 +6,7 @@ class AudioManagerImpl {
   constructor() {
     this.ctx = null;
     this.muted = localStorage.getItem('apexMuted') === '1';
-    // Menyu/yarış musiqisinin üslubu (müqayisə üçün ünvana ?music=… yaz; seçim yadda qalır):
-    //   classic — synthwave sintezi (STANDART: istifadəçi 2026-10-06-da üç variantı dinləyib bunu seçdi)
-    //   walk    — "Big Walk" tipli minimalist xor sintezi (sınaq, seçilmədi)
-    //   files   — yazılmış treklər: zen-in lofi siyahısı menyuda və yarışda da çalınır
-    try {
-      const q = new URLSearchParams(location.search).get('music');
-      if (['classic', 'walk', 'files'].includes(q)) localStorage.setItem('apexMusicStyle', q);
-      const st = localStorage.getItem('apexMusicStyle');
-      this.musicStyle = ['walk', 'files'].includes(st) ? st : 'classic';
-    } catch { this.musicStyle = 'classic'; }
+    try { localStorage.removeItem('apexMusicStyle'); } catch { /* gizli rejim */ } // köhnə sınaq seçimi
     this._musicMode = null;
     this._musicTimer = null;
     this._step = 0;
@@ -228,6 +219,13 @@ class AudioManagerImpl {
         if (k > 0.5) this._noise({ t: t + 0.012, dur: 0.16, g: 0.12 * k, type: 'bandpass', f0: 2600, f1: 900, q: 3 });
         break;
       }
+      case 'bump': {
+        // Zen: yumşaq, boğuq toxunuş — metal cingiltisi və kəskin küy yoxdur
+        const g = 0.3 + 0.5 * k;
+        this._tone({ type: 'sine', f0: 130 - 30 * k, f1: 52, t, dur: 0.2 + 0.1 * k, g: 0.2 * g, attack: 0.006 });
+        this._noise({ t, dur: 0.09 + 0.06 * k, g: 0.07 * g, f0: 520, f1: 160 });
+        break;
+      }
       case 'scrape':
         this._noise({ t, dur: 0.09, g: 0.05, type: 'bandpass', f0: 3200, f1: 1800, q: 2 });
         break;
@@ -273,6 +271,73 @@ class AudioManagerImpl {
   }
 
   // Zen miksi (sonsuz sürüş): musiqi önə çıxır, mühərrik arxa fona düşür
+  // ——— ZEN HAVA SƏSLƏRİ (prosedural, fayl yoxdur) ———
+  // rain / snow: 0..1 güc; muffled: tuneldə (səs boğuqlaşır və zəifləyir).
+  // Yağış: süzgəcli küy (şırıltı) + alçaq uğultu. Qar: sakit, yavaş dalğalanan külək.
+  // Düyünlər bir dəfə qurulur, sonra yalnız səs səviyyəsi dəyişir.
+  setWeather(rain = 0, snow = 0, muffled = false) {
+    if (!this.ctx || (!this._wx && rain < 0.02 && snow < 0.02)) return;
+    if (!this._ensure()) return;
+    const ctx = this.ctx;
+    if (!this._wx) {
+      const bus = ctx.createGain();
+      bus.gain.value = 1;
+      const tone = ctx.createBiquadFilter(); // tunel boğuqluğu
+      tone.type = 'lowpass'; tone.frequency.value = 12000;
+      bus.connect(tone); tone.connect(this.master);
+      const layer = (type, freq, q) => {
+        const src = ctx.createBufferSource();
+        src.buffer = this._noiseBuf; src.loop = true;
+        src.playbackRate.value = 0.9 + Math.random() * 0.2; // iki lay eyni naxışı təkrarlamasın
+        const f = ctx.createBiquadFilter();
+        f.type = type; f.frequency.value = freq; f.Q.value = q;
+        const g = ctx.createGain(); g.gain.value = 0;
+        src.connect(f); f.connect(g); g.connect(bus);
+        src.start();
+        return { f, g };
+      };
+      const hiss = layer('bandpass', 3200, 0.45);   // damcıların şırıltısı
+      const body = layer('lowpass', 420, 0.5);      // yerə düşən yağışın uğultusu
+      const wind = layer('bandpass', 420, 0.9);     // qar: sakit külək
+      // küləyin yavaş dalğalanması
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 0.11;
+      const lg = ctx.createGain(); lg.gain.value = 170;
+      lfo.connect(lg); lg.connect(wind.f.frequency); lfo.start();
+      this._wx = { tone, hiss, body, wind };
+    }
+    const W = this._wx, t = ctx.currentTime, k = muffled ? 0.35 : 1;
+    // Səviyyə musiqidən AŞAĞI saxlanır (ölçüldü: musiqi ≈ −40 dB; yağış ≈ −43, qar ≈ −47) —
+    // hava arxa fondur, mahnını örtmür.
+    W.hiss.g.gain.setTargetAtTime(rain * 0.02 * k, t, 0.4);
+    W.body.g.gain.setTargetAtTime(rain * 0.028 * k, t, 0.4);
+    W.wind.g.gain.setTargetAtTime(snow * 0.04 * k + rain * 0.006, t, 0.6);
+    W.tone.frequency.setTargetAtTime(muffled ? 700 : 12000, t, 0.25);
+  }
+
+  // Uzaq göy gurultusu: alçaq küy, bir neçə dalğa ilə sönür. dist 0 (yaxın) .. 1 (uzaq)
+  thunder(dist = 0.5) {
+    if (!this._ensure() || this.muted) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const dur = 2.6 + Math.random() * 2;
+    const src = ctx.createBufferSource();
+    src.buffer = this._noiseBuf; src.loop = true;
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowpass'; f.Q.value = 0.7;
+    f.frequency.setValueAtTime(420 - dist * 220, t);
+    f.frequency.exponentialRampToValueAtTime(55, t + dur);
+    const g = ctx.createGain();
+    const peak = 0.5 - dist * 0.3;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(peak, t + 0.08 + dist * 0.25);
+    // gurultunun "yuvarlanması": iki-üç zəifləyən dalğa
+    g.gain.exponentialRampToValueAtTime(peak * 0.35, t + dur * 0.3);
+    g.gain.linearRampToValueAtTime(peak * 0.6, t + dur * 0.42);
+    g.gain.exponentialRampToValueAtTime(peak * 0.15, t + dur * 0.7);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    src.connect(f); f.connect(g); g.connect(this.master);
+    src.start(t); src.stop(t + dur + 0.1);
+  }
+
   setZenMix(on) {
     this._zenMix = !!on;
     if (this.ctx) {
@@ -311,8 +376,6 @@ class AudioManagerImpl {
   // ——— Musiqi (prosedural sekvenser, lookahead planlaması) ———
   playMusic(mode) {
     if (!this._ensure()) return;
-    // 'files' üslubunda menyu və yarış da lofi fayl siyahısını çalır (keçiddə kəsilmir)
-    if (this.musicStyle === 'files') mode = 'lofi';
     if (this._musicMode === mode) return;
     this.stopMusic();
     this._musicMode = mode;
@@ -427,155 +490,13 @@ class AudioManagerImpl {
   _scheduleMusic() {
     if (!this._musicMode || !this.ctx) return;
     if (this._musicMode === 'lofi' && !this._lofiSynth) return; // fayl çalınır
-    const walk = this.musicStyle !== 'classic';
-    const bpm = this._musicMode === 'lofi' ? 74
-      : this._musicMode === 'race' ? (walk ? 86 : 118) : (walk ? 117 : 82);
+    const bpm = this._musicMode === 'race' ? 118 : this._musicMode === 'lofi' ? 74 : 82;
     const stepDur = 60 / bpm / 2; // 8-lik notlar
     while (this._nextT < this.ctx.currentTime + 0.3) {
       if (!this.muted) this._playStep(this._musicMode, this._step, this._nextT, stepDur);
       this._nextT += stepDur;
       this._step = (this._step + 1) % 64;
-      if (this._step === 0) this._loopN = (this._loopN || 0) + 1; // bölmə növbəsi üçün
     }
-  }
-
-  // ——— "SƏS" SİNTEZİ: sözsüz vokal parçası ("ba / da / u") ———
-  // Mişar dalğası iki formant süzgəcindən keçir (sait rəngi) + başlanğıcda qısa
-  // aşağıdan-yuxarı sürüşmə — insan səsinə oxşar qısa heca. Menyu/yarış mövzusundakı
-  // "tullanan səslər" bununla çalınır.
-  _voice({ f0, t, dur = 0.16, g = 0.1, vowel = 'a', dest = null, attack = 0.012, from = null }) {
-    const ctx = this.ctx;
-    const F = { a: [820, 1180], o: [460, 820], u: [330, 760], e: [520, 1750] }[vowel] || [820, 1180];
-    const env = ctx.createGain();
-    env.gain.setValueAtTime(0, t);
-    env.gain.linearRampToValueAtTime(g, t + attack);
-    env.gain.setValueAtTime(g, t + dur * 0.55);
-    env.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    // iki azca köksüz mənbə — tək səs yox, kiçik xor
-    for (const det of [-7, 7]) {
-      const o = ctx.createOscillator();
-      o.type = 'sawtooth';
-      o.detune.value = det;
-      // from: əvvəlki notdan sürüşərək gəlir; yoxdursa qısa aşağıdan giriş
-      o.frequency.setValueAtTime(from || f0 * 0.95, t);
-      o.frequency.exponentialRampToValueAtTime(f0, t + (from ? 0.06 : 0.03));
-      o.connect(env);
-      o.start(t);
-      o.stop(t + dur + 0.05);
-    }
-    for (const [k, fq] of F.entries()) {
-      const bp = ctx.createBiquadFilter();
-      bp.type = 'bandpass';
-      bp.frequency.value = fq;
-      bp.Q.value = 6;
-      const fg = ctx.createGain();
-      fg.gain.value = k ? 0.5 : 1;
-      env.connect(bp); bp.connect(fg); fg.connect(dest || this.musicGain);
-    }
-  }
-
-  // "Walk" mövzusunun çıxış zənciri: hər şey YUMŞAQ ALÇAQ-KEÇİD süzgəcdən (parlaq yuxarı
-  // tezliklər yoxdur) və qısa əks-sədadan keçir — isti, bir az boğuq, havalı.
-  _walkBus() {
-    if (this._wb) return this._wb;
-    const ctx = this.ctx;
-    const inp = ctx.createGain();
-    const lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass'; lp.frequency.value = 2300; lp.Q.value = 0.5;
-    const dl = ctx.createDelay(1);
-    dl.delayTime.value = 0.34;
-    const fb = ctx.createGain(); fb.gain.value = 0.36;
-    const wet = ctx.createGain(); wet.gain.value = 0.3;
-    inp.connect(lp); lp.connect(this.musicGain);
-    lp.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(this.musicGain);
-    this._wb = inp;
-    return inp;
-  }
-
-  // Menyu/yarış mövzusu — 3-cü variant (2026-10-06): istinad treklərinin ÖLÇÜLMÜŞ
-  // xüsusiyyətlərinə görə. İlk iki variant adına görə təxmin idi (1: oynaq/şən, 2: neo-soul)
-  // və rədd edildi. "Big Walk Theme (Jumping Voices)" və "Radio: Lobby" (aksfx) analiz
-  // olundu (librosa; yalnız ölçmə — səs/sempl/melodiya götürülməyib):
-  //   • tembr TÜND və İSTİDİR: enerjinin ~99%-i 2 kHz-dən aşağıdadır (hat/şeyker yoxdur);
-  //   • nəbz zərbdən yox, SƏSLƏRDƏN gəlir (perkussiv pay 0.21): ~117 bpm-də 8-lik
-  //     hecalar, minimalist — az not, çox təkrar, laylar tədricən əlavə olunur;
-  //   • ton major-dur (B / Eb), amma şən deyil: yavaş harmoniya, dərin sub bas;
-  //   • lobbi trekləri ~86 bpm, basın payı 34–52%, yumşaq dərin vuruş.
-  // mode: 'race' → lobbi tipli (86 bpm, sub bas + isti akkordlar + seyrək səs motivi);
-  //        digəri → mövzu tipli (117 bpm, pulslanan/tullanan xor səsləri, zərbsiz başlayır).
-  _playStepWalk(mode, s, t, dur) {
-    const M = this._walkBus();
-    const semis = (root, n) => root * Math.pow(2, n / 12);
-    const L = this._loopN || 0;      // 64 addımlıq dövrənin nömrəsi
-    const layer = L % 8;             // laylar 0→7 yığılır, sonra yenidən seyrəlir
-    const k8 = s % 8, k = s % 16;
-
-    if (mode === 'race') {
-      // ——— LOBBİ TİPİ: Eb major, 86 bpm ———
-      const roots = [77.78, 65.41, 103.83, 58.27];                   // Eb, C, Ab, Bb
-      const tones = [[0, 4, 7, 11], [0, 3, 7, 10], [0, 4, 7, 11], [0, 5, 7, 10]];
-      const ci = Math.floor(s / 16) % 4;
-      const root = roots[ci];
-      const sub = root > 70 ? root / 2 : root;
-      // sub bas: nöqtəli, dərin
-      if (k === 0) this._tone({ type: 'sine', f0: sub, t, dur: dur * 5, g: 0.13, dest: M, attack: 0.02 });
-      if (k === 6) this._tone({ type: 'sine', f0: sub, t, dur: dur * 1.6, g: 0.09, dest: M, attack: 0.02 });
-      if (k === 10) this._tone({ type: 'sine', f0: semis(sub, 7), t, dur: dur * 3, g: 0.085, dest: M, attack: 0.02 });
-      // yumşaq dərin vuruş + taxta toxunuşu (yuxarı tezlik yoxdur)
-      if (layer >= 1) {
-        if (k === 0 || k === 8) this._tone({ f0: 78, f1: 40, t, dur: 0.22, g: 0.13, dest: M });
-        if (k === 6 && layer >= 3) this._tone({ f0: 70, f1: 42, t, dur: 0.16, g: 0.07, dest: M });
-        if (k === 4 || k === 12) this._tone({ type: 'sine', f0: 310, f1: 210, t, dur: 0.05, g: 0.035, dest: M, attack: 0.002 });
-      }
-      // isti akkord layı (150–500 Hz), yavaş açılır
-      if (k === 0 || k === 8) {
-        for (const n of tones[ci]) {
-          this._tone({ type: 'triangle', f0: semis(root * 2, n), t, dur: dur * 8.5, g: k ? 0.075 : 0.1, dest: M, attack: 0.28 });
-          this._tone({ type: 'sine', f0: semis(root * 4, n), t, dur: dur * 9, g: 0.06, dest: M, attack: 0.4 });
-        }
-      }
-      // kəsilməyən fon (kök + kvinta): notlar arasında boşluq qalmasın
-      if (k === 0) for (const n of [0, 7]) this._tone({ type: 'sine', f0: semis(root * 2, n), t, dur: dur * 17, g: 0.05, dest: M, attack: 0.8 });
-      // seyrək səs motivi: kvinta → oktava → nona sıçrayışları, sürüşərək
-      if (layer >= 2) {
-        const line = [-1, -1, 7, -1, 12, -1, -1, -1, -1, 7, -1, 14, 12, -1, -1, -1];
-        const n = line[k];
-        if (n >= 0) {
-          const f = semis(root * 2, n);
-          this._voice({ f0: f, t, dur: dur * (k === 4 || k === 12 ? 2.4 : 1.2), g: 0.2, attack: 0.05, vowel: k % 3 ? 'o' : 'u', from: this._lastVoiceF || null, dest: M });
-          this._lastVoiceF = f;
-        }
-        if (k === 0) this._lastVoiceF = null;
-      }
-      return;
-    }
-
-    // ——— MÖVZU TİPİ: B major pentatonika, 117 bpm, pulslanan xor ———
-    const B = 123.47; // B2
-    // Hər səs öz qısa naxışını təkrarlayır; iki not arasında (kvinta/oktava) "tullanır".
-    // Laylar tədricən daxil olur — musiqi yavaş-yavaş dolur.
-    const V = [
-      { from: 0, vow: 'a', g: 0.17, pat: [16, -1, 16, 28, -1, 16, -1, 28] },   // D#4 ↔ D#5
-      { from: 1, vow: 'o', g: 0.15, pat: [-1, 19, -1, 19, 31, -1, 19, -1] },   // F#4 ↔ F#5
-      { from: 2, vow: 'a', g: 0.13, pat: [21, -1, -1, 21, -1, 26, -1, -1] },  // G#4, C#5
-      { from: 4, vow: 'o', g: 0.15, pat: [12, -1, -1, -1, 24, -1, -1, -1] },   // B3 ↔ B4
-      { from: 5, vow: 'u', g: 0.1, pat: [-1, -1, 33, -1, -1, -1, 28, -1] },  // yuxarı əks-səda
-    ];
-    for (const v of V) {
-      if (layer < v.from) continue;
-      const n = v.pat[k8];
-      if (n >= 0) this._voice({ f0: semis(B, n), t, dur: dur * 0.85, g: v.g, attack: 0.02, vowel: v.vow, dest: M });
-    }
-    // dərin bas: yavaş dəyişir (B – G# – E – F#), ilk dövrədən sonra girir
-    if (layer >= 1 && k === 0) {
-      const bass = [61.74, 51.91, 82.41, 92.5][Math.floor(s / 16) % 4];
-      this._tone({ type: 'sine', f0: bass, t, dur: dur * 14, g: 0.075, dest: M, attack: 0.08 });
-      this._tone({ type: 'sine', f0: bass * 2, t, dur: dur * 12, g: 0.05, dest: M, attack: 0.1 });
-    }
-    // sabit isti fon (B – F# – C#)
-    if (k === 0) for (const n of [12, 19, 26]) this._tone({ type: 'triangle', f0: semis(B, n), t, dur: dur * 16.5, g: 0.06, dest: M, attack: 1.0 });
-    // yumşaq dərin vuruş yalnız dolu hissədə
-    if (layer >= 3 && (k8 === 0)) this._tone({ f0: 74, f1: 40, t, dur: 0.2, g: 0.09, dest: M });
   }
 
   _playStep(mode, s, t, dur) {
@@ -642,7 +563,6 @@ class AudioManagerImpl {
       }
       return;
     }
-    if (this.musicStyle !== 'classic') { this._playStepWalk(mode, s, t, dur); return; }
     if (mode === 'race') {
       // (2026-10-06: istifadəçi dörd alternativi dinlədi və ORİJİNALI seçdi — "köhnəsi yaxşı idi".
       //  Bu mövzuya toxunma; dəyişiklik istənsə əvvəl yan-yana seçim ver.)

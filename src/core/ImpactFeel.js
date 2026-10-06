@@ -12,8 +12,11 @@ const FULL = 27;      // m/s — tam güc
 const OMEGA = 16;     // kamera yayının tezliyi (böyük = tez qayıdır)
 
 export class ImpactFeel {
-  constructor(effects) {
+  // soft: zen rejimi — sakit əhval pozulmasın: boğuq səs, qığılcım əvəzinə toz, kamera
+  // yarı güclə itələnir, telefon yalnız güclü zərbədə titrəyir.
+  constructor(effects, { soft = false } = {}) {
     this.effects = effects;
+    this.soft = soft;
     this.x = 0; this.z = 0;   // kameranın yerdəyişməsi (m)
     this.vx = 0; this.vz = 0;
     this._cool = 0;
@@ -29,7 +32,7 @@ export class ImpactFeel {
       // Söykənib sürüşmə: seyrək qığılcım + xəfif cızıltı
       if (slide > 12 && this._scrape <= 0) {
         this._scrape = 0.09;
-        this.effects.spawnSparks({ x: px, y: 0.45, z: pz }, nx, nz, 2, 0.5);
+        if (!this.soft) this.effects.spawnSparks({ x: px, y: 0.45, z: pz }, nx, nz, 2, 0.5);
         audio.sfx('scrape');
       }
       return 0;
@@ -37,15 +40,21 @@ export class ImpactFeel {
     if (this._cool > 0) return 0;
     this._cool = 0.14;
     const s = Math.min(1, (closing - MIN) / (FULL - MIN));
-    audio.sfx('impact', s);
-    this.effects.spawnSparks({ x: px, y: 0.5, z: pz }, nx, nz, 3 + Math.round(9 * s), 0.6 + s);
-    if (s > 0.35) this.effects.spawnSmoke({ x: px, y: 0.4, z: pz });
-    car.jolt?.(nx, nz, s);
+    if (this.soft) {
+      audio.sfx('bump', s);
+      this.effects.spawnSmoke({ x: px, y: 0.4, z: pz });
+      if (s > 0.6) this.effects.spawnSparks({ x: px, y: 0.5, z: pz }, nx, nz, 3, 0.6);
+    } else {
+      audio.sfx('impact', s);
+      this.effects.spawnSparks({ x: px, y: 0.5, z: pz }, nx, nz, 3 + Math.round(9 * s), 0.6 + s);
+      if (s > 0.35) this.effects.spawnSmoke({ x: px, y: 0.4, z: pz });
+    }
+    car.jolt?.(nx, nz, this.soft ? s * 0.6 : s);
     // Kamera maşının getdiyi tərəfə (maneəyə doğru) itələnir, sonra qayıdır
-    const k = 3 + 14 * s;
+    const k = (3 + 14 * s) * (this.soft ? 0.5 : 1);
     this.vx -= nx * k;
     this.vz -= nz * k;
-    if (s > 0.3) { try { navigator.vibrate?.(8 + Math.round(30 * s)); } catch { /* dəstək yoxdur */ } }
+    if (s > (this.soft ? 0.6 : 0.3)) { try { navigator.vibrate?.(8 + Math.round(30 * s)); } catch { /* dəstək yoxdur */ } }
     return s;
   }
 

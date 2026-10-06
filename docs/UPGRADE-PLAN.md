@@ -162,9 +162,11 @@ Mənbə: Kenney Audio, Sonniss GDC, Freesound (CC0). Hər fayl `ASSETS-LICENSES.
 - **Yarış mövzusu — "robotik/arkada olmasın" (2026-10-06):** çılpaq üçbucaq "pluck"lar və saat kimi dəqiq ritm çıxarıldı. Melodik səslər süzgəcli analoq-tipli sintezdir (`_synth`), əks-sədalı (`_raceBus`); melodiya leqatodur (sürüşmə + vibrato); vuruşların gücü/vaxtı azca dəyişir; hat çox zəifdir. Ölçüldü (əvvəl → indi): perkussiv pay 0.64 → 0.38, dinamika 21 → 10.6 dB, 500 Hz–2 kHz payı 4 → 17 %; temp 112, A minor dəyişmədi.
 - **Yarış mövzusu — yekun istiqamət (2026-10-06):** süzgəcli sintez variantı da rədd edildi ("çox elektrondur; menyudakı musiqi yaxşıdır"). İndi yarış **menyu mövzusunun eyni səs palitrası** ilə çalınır (isti pluck + exo, 7-li pad, yumşaq kik/snare, dəyirmi bas): temp 96, Am7–Fmaj7–Dm7–Em7, enən melodiya. `_synth` / `_raceBus` silindi. Dərs: istifadəçinin bəyəndiyi mövcud səsdən çıxış et, yeni tembr icad etmə.
 - **YEKUN (2026-10-06): yarış musiqisi ORİJİNALA qaytarıldı** ("classic-ə gətir, köhnəsi yaxşı idi"). Kod Faza 3-dən əvvəlki commit (`0981e6d`) ilə sətir-sətir eynidir (yoxlanıb): Am–F–C–G, 118 bpm. Menyu da orijinaldır. Bu fazadan musiqidə qalan yalnız: zen-ə 10 yeni lofi trek, `?music=walk|files` sınaq seçimləri.
-- **Ehtiyat (`?music=files`):** menyu və yarışda zen-in yazılmış lofi siyahısı (HoliznaCC0, CC0; 34 trek) çalınır.
-- **Köhnə (`?music=classic`):** synthwave sintezi.
-- İstinad "Big Walk" (aksfx) yalnız üslubdur: sempl/melodiya götürülməyib. `npm run test:music` yalnız səviyyəni ölçür. **Musiqini mən eşidə bilmirəm.**
+- **`walk` və `files` seçimləri silindi** (istifadəçi, 2026-10-06). Musiqi kodu orijinaldır + zen-in 10 yeni treki.
+
+### Zen səsləri ✅ (2026-10-06)
+
+Prosedural hava səsi (`AudioManager.setWeather`, `thunder`): yağışda şırıltı + uğultu (≈ −43 dB), qarda sakit külək (≈ −47 dB), tuneldə boğuqlaşır (−15 dB), güclü yağışda 22–60 s-də bir uzaq göy gurultusu (əvvəl qısa işıq). Səviyyə musiqidən (≈ −40 dB) aşağıdır. Zen toqquşması yumşaqdır (`ImpactFeel soft`): boğuq `bump` səsi, qığılcım əvəzinə toz, kamera yarı güclə. Test: `npm run test:music`.
 
 ## Faza 5 — UI/UX 🔶
 
