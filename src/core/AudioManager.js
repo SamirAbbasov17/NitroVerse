@@ -429,7 +429,7 @@ class AudioManagerImpl {
     if (this._musicMode === 'lofi' && !this._lofiSynth) return; // fayl çalınır
     const walk = this.musicStyle !== 'classic';
     const bpm = this._musicMode === 'lofi' ? 74
-      : this._musicMode === 'race' ? (walk ? 86 : 112) : (walk ? 117 : 82);
+      : this._musicMode === 'race' ? (walk ? 86 : 96) : (walk ? 117 : 82);
     const stepDur = 60 / bpm / 2; // 8-lik notlar
     while (this._nextT < this.ctx.currentTime + 0.3) {
       if (!this.muted) this._playStep(this._musicMode, this._step, this._nextT, stepDur);
@@ -472,70 +472,6 @@ class AudioManagerImpl {
       fg.gain.value = k ? 0.5 : 1;
       env.connect(bp); bp.connect(fg); fg.connect(dest || this.musicGain);
     }
-  }
-
-  // ——— "ANALOQ" SƏS: iki azca köksüz mişar dalğası → zərflə açılıb-bağlanan alçaq-keçid
-  // süzgəc → yumşaq atak/buraxılış. İstəyə görə vibrato və əvvəlki notdan sürüşmə (leqato).
-  // Çılpaq üçbucaq/kvadrat osilyatorun "8-bit / arkada" tembrinin əvəzi: yarış mövzusu
-  // bununla çalınır (istifadəçi rəyi: "robotik, arkada tipli olmasın").
-  _synth({ f0, t, dur, g = 0.08, cutoff = 1400, attack = 0.02, release = 0.25, vibrato = 0, from = null, dest = null }) {
-    const ctx = this.ctx;
-    const flt = ctx.createBiquadFilter();
-    flt.type = 'lowpass';
-    flt.Q.value = 0.9;
-    flt.frequency.setValueAtTime(cutoff * 2.4, t);
-    flt.frequency.exponentialRampToValueAtTime(cutoff, t + Math.max(0.05, dur * 0.4));
-    const env = ctx.createGain();
-    const end = t + dur;
-    env.gain.setValueAtTime(0, t);
-    env.gain.linearRampToValueAtTime(g, t + attack);
-    env.gain.setValueAtTime(g * 0.85, Math.max(t + attack, end - release * 0.4));
-    env.gain.exponentialRampToValueAtTime(0.0008, end + release);
-    flt.connect(env);
-    env.connect(dest || this.musicGain);
-    let lfoG = null;
-    if (vibrato > 0) {
-      const lfo = ctx.createOscillator();
-      lfo.frequency.value = 5.2;
-      lfoG = ctx.createGain();
-      lfoG.gain.setValueAtTime(0, t);
-      lfoG.gain.linearRampToValueAtTime(vibrato, t + Math.min(0.35, dur * 0.6)); // vibrato notun ortasında açılır
-      lfo.connect(lfoG);
-      lfo.start(t);
-      lfo.stop(end + release + 0.05);
-    }
-    for (const det of [-8, 8]) {
-      const o = ctx.createOscillator();
-      o.type = 'sawtooth';
-      o.detune.value = det;
-      if (from) {
-        o.frequency.setValueAtTime(from, t);
-        o.frequency.exponentialRampToValueAtTime(f0, t + 0.07);
-      } else o.frequency.setValueAtTime(f0, t);
-      if (lfoG) lfoG.connect(o.detune);
-      o.connect(flt);
-      o.start(t);
-      o.stop(end + release + 0.05);
-    }
-  }
-
-  // Yarış mövzusunun çıxış zənciri: yumşaq alçaq-keçid (kəskin yuxarılar yumşalır) + qısa
-  // əks-səda — notlar quru və "kompüter" kimi kəsilmir, havada qalır.
-  _raceBus() {
-    if (this._rb) return this._rb;
-    const ctx = this.ctx;
-    const inp = ctx.createGain();
-    const lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass'; lp.frequency.value = 5200; lp.Q.value = 0.4;
-    const dl = ctx.createDelay(1);
-    dl.delayTime.value = 0.268; // 112 bpm-də 8-lik nota
-    const fb = ctx.createGain(); fb.gain.value = 0.32;
-    const dlp = ctx.createBiquadFilter(); dlp.type = 'lowpass'; dlp.frequency.value = 2200;
-    const wet = ctx.createGain(); wet.gain.value = 0.24;
-    inp.connect(lp); lp.connect(this.musicGain);
-    lp.connect(dl); dl.connect(dlp); dlp.connect(fb); fb.connect(dl); dlp.connect(wet); wet.connect(this.musicGain);
-    this._rb = inp;
-    return inp;
   }
 
   // "Walk" mövzusunun çıxış zənciri: hər şey YUMŞAQ ALÇAQ-KEÇİD süzgəcdən (parlaq yuxarı
@@ -708,48 +644,35 @@ class AudioManagerImpl {
     }
     if (this.musicStyle !== 'classic') { this._playStepWalk(mode, s, t, dur); return; }
     if (mode === 'race') {
-      // ——— YARIŞ: həzin, isti, "canlı" (2026-10-06, 3-cü düzəliş) ———
-      // Gediş: Am9 – Fmaj7 – Dm7 – Em7, 112 bpm, sürücü dörd-vuruş kik qalır.
-      // Əvvəlki variant çılpaq üçbucaq/kvadrat "pluck"larla və saat kimi dəqiq ritmlə
-      // çalınırdı — istifadəçi: "robotik, arkada tipli olmasın". İndi:
-      //   • bütün melodik səslər süzgəcli "analoq" sintezdir (_synth), əks-sədalı;
-      //   • melodiya leqatodur: notdan-nota sürüşür, uzun notlarda vibrato açılır;
-      //   • vuruşların gücü və vaxtı azca dəyişir (insan ifası kimi), hat çox zəifdir.
-      const R = this._raceBus();
+      // ——— YARIŞ: MENYU MÖVZUSUNUN SƏS PALİTRASI ilə, həzin və bir az hərəkətli ———
+      // İstifadəçi (2026-10-06): yarış üçün üç variant rədd edildi (köhnə synthwave —
+      // "robotik/arkada"; süzgəcli sintez — "çox elektron"); "menyudakı musiqi yaxşıdır".
+      // Ona görə yarış mövzusu menyunun EYNİ alətləri ilə çalınır: isti üçbucaq "pluck" +
+      // exo, 7-li mişar pad, yumşaq kik/snare, dəyirmi bas. Fərq: temp 82 → 96, kik hər
+      // vuruşda (yumşaq), gediş daha qəmli (Am7 – Fmaj7 – Dm7 – Em7), melodiya enən.
       const rRoots = [110, 87.31, 73.42, 82.41];                       // A, F, D, E
-      const rCh = [[0, 3, 7, 10, 14], [0, 4, 7, 11], [0, 3, 7, 10], [0, 3, 7, 10]];
+      const rCh = [[0, 3, 7, 10], [0, 4, 7, 11], [0, 3, 7, 10], [0, 3, 7, 10]];
       const rRoot = rRoots[ci];
-      const hum = () => (Math.random() - 0.5) * 0.012;                 // ±6 ms
-      const vel = (v) => v * (0.88 + Math.random() * 0.24);            // ±12%
-      // Zərb: dəyirmi kik, yumşaq "fırça" snare, çox zəif hat
-      if (s % 4 === 0) this._tone({ f0: 118, f1: 42, t, dur: 0.2, g: vel(0.32), dest: M, attack: 0.004 });
-      if (s % 8 === 4) {
-        this._noise({ t: t + hum(), dur: 0.16, g: vel(0.05), type: 'bandpass', f0: 1100, q: 0.6, dest: R });
-        this._tone({ type: 'sine', f0: 170, f1: 120, t, dur: 0.12, g: vel(0.07), dest: R });
+      if (s % 4 === 0) this._tone({ f0: 120, f1: 46, t, dur: 0.2, g: s % 8 === 0 ? 0.36 : 0.24, dest: M }); // yumşaq kik
+      if (s % 16 === 8) { // menyudakı yumşaq snare/clap
+        this._noise({ t, dur: 0.12, g: 0.07, type: 'bandpass', f0: 1500, q: 0.8, dest: M });
+        this._tone({ type: 'sine', f0: 175, f1: 115, t, dur: 0.08, g: 0.06, dest: M });
       }
-      if (s % 16 === 14) this._noise({ t: t + hum(), dur: 0.07, g: 0.02, type: 'bandpass', f0: 1100, q: 0.6, dest: R }); // xəyal vuruşu
-      if (s % 2 === 1) this._noise({ t: t + hum(), dur: 0.04, g: vel(0.01), type: 'highpass', f0: 6000, dest: R });
-      // Bas: isti, uzun; hər taktda bir dəfə oktavaya toxunur
-      const bassPat = [0, -1, 0, -1, 0, -1, 12, 7];
-      const bn = bassPat[s % 8];
-      if (bn >= 0) {
-        const bf = semis(rRoot, bn);
-        this._tone({ type: 'sine', f0: bf, t, dur: dur * 1.9, g: vel(0.14), dest: M, attack: 0.012 });
-        this._synth({ f0: bf, t: t + hum(), dur: dur * 1.6, g: vel(0.038), cutoff: 320, attack: 0.012, release: 0.12, dest: R });
+      if (s % 4 === 2) this._noise({ t, dur: 0.05, g: 0.026, type: 'highpass', f0: 8500, dest: M }); // incə hat
+      // İsti bas + sub (menyudakı kimi), taktın sonunda oktavaya qısa çıxış
+      if (s % 4 === 0) {
+        this._tone({ type: 'triangle', f0: rRoot, t, dur: dur * 3.4, g: 0.2, dest: M, attack: 0.02 });
+        this._tone({ type: 'sine', f0: rRoot / 2, t, dur: dur * 3.0, g: 0.1, dest: M, attack: 0.02 });
       }
-      // Sürücü nəbz: boğuq, qısa notlar (kök/kvinta) — "arpecio" yox, gitara susdurması kimi
-      {
-        const acc = [1, 0.45, 0.7, 0.5][s % 4];
-        const pn = s % 8 === 6 ? 7 : 0;
-        this._synth({ f0: semis(rRoot * 2, pn), t: t + hum(), dur: dur * 0.5, g: vel(0.022 * acc), cutoff: 620, attack: 0.006, release: 0.08, dest: R });
-      }
-      // Pad: geniş, yavaş açılan akkord
+      if (s % 16 === 14) this._tone({ type: 'triangle', f0: rRoot * 2, t, dur: dur * 1.6, g: 0.1, dest: M, attack: 0.02 });
+      // 7-li pad — menyudakı kimi dərin, kinolu
       if (s % 16 === 0) {
         for (const n of rCh[ci]) {
-          this._synth({ f0: semis(rRoot * 2, n), t, dur: dur * 15, g: 0.017, cutoff: 780, attack: 0.9, release: 1.2, dest: R });
+          this._tone({ type: 'sawtooth', f0: semis(rRoot * 2, n), t, dur: dur * 15, g: 0.03, dest: M, attack: 0.7 });
+          this._tone({ type: 'sawtooth', f0: semis(rRoot * 2, n) * 1.007, t, dur: dur * 15, g: 0.02, dest: M, attack: 0.7 });
         }
       }
-      // Melodiya (A minor; A3 = 220 Hz-dən yarımtonla): enən, leqato, vibratolu
+      // Melodiya: pluck + zəif exo (menyu hook-u ilə eyni səs); A minor, enən xətt
       const MEL = [
         [19, -1, -1, 17, 15, -1, 12, -1],   // Am:  E  .  .  D  C  .  A  .
         [15, -1, -1, 12, -1, 10, 12, -1],   // F:   C  .  .  A  .  G  A  .
@@ -757,24 +680,16 @@ class AudioManagerImpl {
         [19, -1, 17, 14, -1, -1, -1, -1],   // Em:  E  .  D  B  (saxlanır)
       ];
       if (s % 2 === 0) {
-        const idx = (s / 2) % 8;
-        const n = MEL[ci][idx];
+        const n = MEL[ci][(s / 2) % 8];
         if (n >= 0) {
           const answer = (this._loopN || 0) % 2 === 1;                 // ikinci keçid: oktava aşağı, sakit
           const f = semis(220, n - (answer ? 12 : 0));
-          // notun uzunluğu: növbəti nota qədər (sükutlar da daxil) — aralar boş qalmır
-          let len = 1;
-          while (idx + len < 8 && MEL[ci][idx + len] === -1) len++;
-          this._synth({
-            f0: f, t: t + hum(), dur: dur * 2 * len * 0.96, g: vel(answer ? 0.045 : 0.06),
-            cutoff: answer ? 1100 : 1700, attack: 0.03, release: 0.3,
-            vibrato: len >= 2 ? 9 : 0, from: this._lastLeadF || null, dest: R,
-          });
-          this._lastLeadF = f;
+          pluck(f, t, dur * 2.2, answer ? 0.065 : 0.085);
+          pluck(f, t + dur * 3, dur * 1.6, 0.028);                     // exo
         }
-        if (idx === 0 && n < 0) this._lastLeadF = null;
       }
-      if (s === 0) this._lastLeadF = null; // hər 8 taktda ilk not təmiz girir
+      // Hər 4 taktda bir yüksək parıltı (menyudakı imza detalı)
+      if (s === 48) this._tone({ type: 'sine', f0: 880, t, dur: dur * 6, g: 0.03, dest: M, attack: 0.05 });
     } else {
       // ——— MENYU: imza mövzusu — half-time, isti pad, exo-lu pluck hook ———
       if (s % 8 === 0) this._tone({ f0: 120, f1: 46, t, dur: 0.2, g: 0.38, dest: M }); // yumşaq kick
