@@ -60,7 +60,15 @@ const SUN_SIZE = 56;      // günəş diskinin diametri (m) — ~600 m uzaqda �
 const NIGHT_SKY = new THREE.Color(0x080d26);
 const NIGHT_SKY_B = new THREE.Color(0x16204a);
 const NIGHT_FOG = new THREE.Color(0x101838);
-const NIGHT_GROUND = new THREE.Color(0x141a30);
+// Gecə yeri: tünd indiqo (qara yox, parlaq da yox). Əvvəl 0x141a30 idi — tekstura ilə tam qara çıxırdı.
+const _nightGround = new THREE.Color(0x35447e).multiplyScalar(2.4);
+
+// Yer teksturasının əsası bozdur (#909090 → xətti 0.28), ona görə biomun yer rəngi ~3.5×
+// tünd çıxırdı: səhrada açıq qum əvəzinə tünd qırmızı-qəhvəyi, gecə isə tam qara (yarış
+// treklərində eyni düzəliş: palette.groundGain). Əmsal rəngi biomun palitrasına yaxınlaşdırır.
+const GROUND_GAIN = 2.2;
+const NIGHT_AMB = new THREE.Color(0x8ea2e0); // ay işığı: gecə ətraf işığı soyuq mavidir
+const DAY_AMB = new THREE.Color(0xffffff);
 
 const GROUND_SIZE = 1300;  // yer torunun ölçüsü (m) — duman 620 m-də bağlayır
 const GROUND_SEGS = 130;   // 10 m-lik xanalar — yol kəsiyi təmiz görünür
@@ -1277,7 +1285,7 @@ export class EndlessScene {
     // obyektlərlə səma arasında görünən sərhəd yaranırdı.
     const fogC = this._envCol.fog.clone().multiplyScalar(0.35 + day.sky * 0.65)
       .lerp(this._envCol.skyB, 0.35);
-    const groundC = this._envCol.ground.clone().multiplyScalar(day.ground);
+    const groundC = this._envCol.ground.clone().multiplyScalar(day.ground * GROUND_GAIN);
 
     // ——— GECƏ QRADASİYASI ———
     // Əvvəl gecə sadəcə TÜNDLƏŞDİRMƏ idi: səhra narıncısı × 0.2 = palçıq
@@ -1287,7 +1295,7 @@ export class EndlessScene {
       skyC.lerp(NIGHT_SKY, day.night * 0.88);
       skyB.lerp(NIGHT_SKY_B, day.night * 0.80);
       fogC.lerp(NIGHT_FOG, day.night * 0.82);
-      groundC.lerp(NIGHT_GROUND, day.night * 0.62);
+      groundC.lerp(_nightGround, day.night * 0.85);
     }
 
     // ——— Hava yerə hopur: yağış → yaş/tünd parıltılı torpaq, qar → ağ örtük ———
@@ -1305,7 +1313,7 @@ export class EndlessScene {
     const snowT = Math.max(biomeSnowBase, flakeNow ? rainNow : 0);
     this._snow += (snowT - this._snow) * Math.min(1, dt * (snowT > this._snow ? 0.2 : 0.02));
     groundC.multiplyScalar(1 - this._wet * 0.45); // yaş → aydın tündləşmə
-    groundC.lerp(new THREE.Color(0xf0f4fa).multiplyScalar(Math.max(0.35, day.ground)), this._snow * 0.96); // qar → qalın ağ örtük
+    groundC.lerp(new THREE.Color(0xf0f4fa).multiplyScalar(Math.max(0.35, day.ground) * GROUND_GAIN * 1.15), this._snow * 0.96); // qar → qalın ağ örtük
     this._groundMat.roughness = 1 - this._wet * 0.68; // yaş → güclü parıltı
 
     this._groundMat.color.copy(groundC);
@@ -1342,6 +1350,10 @@ export class EndlessScene {
     // ƏVVƏL 0.26 idi — gecə yer qapqara olurdu və düz kölgələnmiş iri
     // üçbucaqlar sərt tünd ləkələr kimi oxunurdu (istifadəçi skrinşotu).
     this.amb.intensity = 0.32 * (0.5 + day.sky * 0.5) + day.night * 0.5;
+    // Gecə ətraf işığı AĞ idi: dağlar və qayalar gündüz rəngində (açıq sarı-qəhvəyi)
+    // parlayır, yer isə qara qalırdı — gecə səhnəsi bir-birinə uyğun gəlmirdi. İndi
+    // gecə işığı soyuq mavidir: bütün relyef eyni ay işığına bürünür.
+    this.amb.color.copy(DAY_AMB).lerp(NIGHT_AMB, day.night);
     // Gecə istiqamətli "ay" işığını zəiflədirik: kontrast azalır, üzlər
     // arasındakı kəskin sərhəd yumşalır
     this.sun.intensity *= (1 - day.night * 0.45);

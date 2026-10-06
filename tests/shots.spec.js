@@ -115,6 +115,20 @@ test.describe('masaüstü oyun kadrları', () => {
     }
   });
 
+  // Zen biomları: hər biom gündüz (əl ilə seçim — `_biomeOverride`)
+  test('shots: zen biomları', async ({ page }) => {
+    test.setTimeout(120_000);
+    await boot(page);
+    await startMode(page, MODES.find((m) => m.name === 'zen').config);
+    await page.evaluate(() => window.__active._setDayTime('day'));
+    await drive(page, 3000);
+    for (const [i, id] of ['desert', 'alpine', 'coast', 'canyon', 'snow'].entries()) {
+      await page.evaluate((k) => { window.__active._biomeOverride = k; }, i);
+      await page.waitForTimeout(9000); // biom keçidi + yeni yol seqmentləri
+      await shot(page, `d-zen-biome-${id}`);
+    }
+  });
+
   // Çay/göl olan treklər: körpü (hər iki tərəfə) və göl — su, sahil və relyefin
   // bir-birinin içindən çıxmadığına baxmaq üçün sabit baxış nöqtələri.
   for (const name of ['race-alpine', 'race-riviera']) {
