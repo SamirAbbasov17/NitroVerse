@@ -78,3 +78,40 @@ test('overlap: zen (60 s sürüş, 12 nümunə)', async ({ page }) => {
   expect.soft(deep, 'iç-içə keçən obyekt cütləri').toBe(0);
   expect.soft(onRoad, 'yolun üstündə obyekt').toBe(0);
 });
+
+// Yer relyefi yolun (əsas və şaxə) üstünə çıxmamalıdır. Rivierada şaxə yolu 0.6 m-ə qədər
+// torpağın altında qalırdı: relyefin "düz zona"sı yalnız əsas trekə görə hesablanırdı.
+for (const m of MODES.filter((x) => x.config.mode === 'race')) {
+  test(`relyef yolu örtmür: ${m.name}`, async ({ page }) => {
+    await boot(page);
+    await startMode(page, m.config);
+    const r = await page.evaluate(() => {
+      const sc = window.__active, T = window.__THREE, tr = sc.track;
+      let ground = null;
+      sc.scene.traverse((o) => { if (o.isMesh && o.geometry?.type === 'RingGeometry') ground = o; });
+      ground.updateMatrixWorld(true);
+      const rc = new T.Raycaster();
+      const h = (x, z) => {
+        rc.set(new T.Vector3(x, 50, z), new T.Vector3(0, -1, 0));
+        const hit = rc.intersectObject(ground, false)[0];
+        return hit ? hit.point.y : -1;
+      };
+      let main = -9, branch = -9;
+      for (let i = 0; i < tr.N; i += 2) {
+        const p = tr.points[i], n = tr.normals[i];
+        for (const s of [-1, 0, 1]) main = Math.max(main, h(p.x + n.x * tr.halfWidth * s, p.z + n.z * tr.halfWidth * s));
+      }
+      for (const b of tr.branches || []) {
+        for (let i = 0; i < b.points.length; i++) {
+          const p = b.points[i], n = b.normals[i];
+          for (const s of [-1, 0, 1]) branch = Math.max(branch, h(p.x + n.x * b.halfWidth * s, p.z + n.z * b.halfWidth * s));
+        }
+      }
+      return { main: +main.toFixed(3), branch: +branch.toFixed(3), branches: (tr.branches || []).length };
+    });
+    console.log(`${m.name.padEnd(13)} yerin maks hündürlüyü: əsas yol ${r.main} m · şaxə ${r.branches ? r.branch : '—'} m`);
+    // yol +0.02, şaxə yolu +0.012 hündürlükdədir; yer onlardan aşağı qalmalıdır
+    expect(r.main, 'yer əsas yolun üstünə çıxmır').toBeLessThan(0.0);
+    if (r.branches) expect(r.branch, 'yer şaxə yolunun üstünə çıxmır').toBeLessThan(0.0);
+  });
+}

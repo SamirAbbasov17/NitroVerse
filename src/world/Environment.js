@@ -143,7 +143,16 @@ export class Environment {
         const wx = x, wz = -y;                     // döndərmədən sonra dünya
         // Trekə yaxın hissə TAM DÜZ qalır (maşın kəsişməsin)
         tmp.set(wx, 0, wz);
-        const yan = Math.abs(this.track.getNearest(tmp).lateral);
+        let yan = Math.abs(this.track.getNearest(tmp).lateral);
+        // ŞAXƏ YOLLARI da "yol"dur: əvvəl yalnız əsas trekə baxılırdı və relyef dalğası
+        // şaxə yolunun üstünə çıxırdı — Rivierada yol 0.6 m-ə qədər torpağın altında
+        // qalırdı (ölçüldü; istifadəçi rəyi: "yol torpağın içinə girir").
+        for (const b of this.track.branches || []) {
+          for (let k = 0; k < b.points.length; k += 2) {
+            const d = Math.hypot(b.points[k].x - wx, b.points[k].z - wz);
+            if (d < yan) yan = d;
+          }
+        }
         const uzaq = Math.max(0, Math.min(1, (yan - 34) / 90));
         const dalğa = Math.sin(wx * 0.011 + 1.3) * Math.cos(wz * 0.009 - 0.7)
           + Math.sin((wx + wz) * 0.021 + 2.1) * 0.5;
