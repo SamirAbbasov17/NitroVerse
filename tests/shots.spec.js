@@ -38,7 +38,7 @@ test.describe('masaüstü oyun kadrları', () => {
   });
 
   // Yol üstü landmarklar: neon — estakada və nəhəng ekran; zavod — portal kran və boru estakadaları; səhra — qaya tağı
-  for (const lm of ['race-neon', 'race-zavod', 'race-desert']) test(`shots: ${lm.replace('race-', '')} landmarkları`, async ({ page }) => {
+  for (const lm of ['race-neon', 'race-zavod', 'race-desert', 'race-alpine']) test(`shots: ${lm.replace('race-', '')} landmarkları`, async ({ page }) => {
     await boot(page);
     await startMode(page, MODES.find((m) => m.name === lm).config);
     await page.waitForTimeout(1500);

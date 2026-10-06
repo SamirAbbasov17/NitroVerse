@@ -95,6 +95,10 @@ export const TRACKS = [
     grade: { bloom: 0.2, bloomThreshold: 0.96, saturation: 1.12, contrast: 1.05, shadows: 0xf0f6ff, highlights: 0xfffaf0 },
     palette: {
       exposure: 1.12,
+      // Səhər günəşi bir az alçaqda — ağaclar uzun kölgə salır; çəmən açıq təzə yaşıl
+      sunDir: [80, 78, 45],
+      ambientIntensity: 0.42,
+      groundGain: 2.1, // tekstura rəngi ~3.5× tündləşdirir — çəmən tünd, demək olar qara-yaşıl idi
       sky: 0x8fd4ff,
       skyBottom: 0xd8f1ff,
       ground: 0x3f8f4e,
@@ -114,8 +118,10 @@ export const TRACKS = [
     ],
     river: { t: 0.60, width: 13, color: 0x4fa8d8 },
     decor: [
-      { type: 'pine', count: 115 },
-      { type: 'rock', count: 46 },
+      // near: yol boyu (6–60 m) səpələnir — bax Environment._scatterDecor
+      { type: 'pine', count: 110, near: true },
+      { type: 'rock', count: 46, near: true },
+      { type: 'bush', count: 45, near: true },
       { type: 'house', count: 14 },
       { type: 'windmill', count: 2 },
     ],

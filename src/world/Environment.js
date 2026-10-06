@@ -244,6 +244,7 @@ export class Environment {
     if (this.data.id === 'neon') this._neonLandmarks();
     if (this.data.id === 'zavod') this._zavodLandmarks();
     if (this.data.id === 'desert') this._desertLandmarks();
+    if (this.data.id === 'alpine') this._alpineLandmarks();
     if (this.data.id === 'neon') this._cityBlocks(); // küçə divarı — ən sonda, boş qalan yerə
     this._autoObstacles();   // təhlükəsizlik toru — bax aşağı
   }
@@ -585,6 +586,146 @@ export class Environment {
     }
   }
 
+  // ALP — LANDMARKLAR və MEŞƏ (bədii bibliya): yolun üstündə taxta piyada körpüsü, göl
+  // kənarında kilsə, sıx şam massivləri ("meşə" hissi) və çəməndə çiçək ləkələri.
+  _alpineLandmarks() {
+    const tr = this.track, half = tr.halfWidth, N = tr.N;
+    const wood = flatMat(0x8a5a36, { roughness: 1 }), woodD = flatMat(0x6a4226, { roughness: 1 });
+    // ——— TAXTA PİYADA KÖRPÜSÜ ———
+    const reach = half + 6.5;
+    const g = new THREE.Group();
+    const used = [];
+    for (const s of this._overRoadSpots(1, reach)) {
+      used.push(s.i);
+      const { p, n, t, legs } = s;
+      const yaw = Math.atan2(n.x, n.z);
+      const add = (geo, mat, x, y, z, ry = yaw) => {
+        const m = new THREE.Mesh(geo, mat);
+        m.position.set(x, y, z);
+        m.rotation.y = ry;
+        m.castShadow = true;
+        g.add(m);
+        return m;
+      };
+      const H = 8.4, len = reach * 2 + 4;
+      add(new THREE.BoxGeometry(3.4, 0.4, len), wood, p.x, H, p.z);                       // göyərtə
+      for (const sd of [1, -1]) {
+        add(new THREE.BoxGeometry(0.18, 0.18, len), woodD, p.x + t.x * 1.6 * sd, H + 1.25, p.z + t.z * 1.6 * sd); // tutacaq
+        for (let k = -3; k <= 3; k++) {
+          add(new THREE.BoxGeometry(0.16, 1.2, 0.16), woodD,
+            p.x + t.x * 1.6 * sd + n.x * (len / 7) * k, H + 0.7, p.z + t.z * 1.6 * sd + n.z * (len / 7) * k);
+        }
+      }
+      for (const l of legs) {
+        // çarpaz dayaqlı qüllə + damcıq
+        for (const sd of [1, -1]) add(new THREE.BoxGeometry(0.5, H, 0.5), woodD, l.x + t.x * 1.3 * sd, H / 2, l.z + t.z * 1.3 * sd);
+        add(new THREE.BoxGeometry(3.2, 0.3, 0.4), woodD, l.x, H * 0.45, l.z, yaw + Math.PI / 2);
+        add(new THREE.ConeGeometry(3, 1.8, 4), flatMat(0x7a3b2a, { roughness: 1 }), l.x, H + 3.3, l.z, yaw + Math.PI / 4);
+        for (const sd of [1, -1]) add(new THREE.BoxGeometry(0.3, 2.4, 0.3), woodD, l.x + t.x * 1.3 * sd, H + 1.3, l.z + t.z * 1.3 * sd);
+        this.obstacles.push({ x: l.x, z: l.z, r: 1.6 });
+      }
+    }
+
+    // ——— KİLSƏ: göl kənarında (yoxdursa yol kənarında) ———
+    const lake = this.keepOut.find((o) => o.r > 18);
+    let spot = null;
+    for (let tries = 0; tries < 90 && !spot; tries++) {
+      let x, z;
+      if (lake && tries < 50) {
+        const a = Math.random() * Math.PI * 2;
+        x = lake.x + Math.cos(a) * (lake.r + 9); z = lake.z + Math.sin(a) * (lake.r + 9);
+      } else {
+        const i = Math.floor(Math.random() * N), sd = Math.random() < 0.5 ? 1 : -1;
+        x = tr.points[i].x + tr.normals[i].x * (half + 20) * sd; z = tr.points[i].z + tr.normals[i].z * (half + 20) * sd;
+      }
+      if (Math.abs(tr.getNearest(new THREE.Vector3(x, 0, z)).lateral) < half + 13) continue;
+      if (!this._free(x, z, 8, 1)) continue;
+      spot = { x, z };
+    }
+    if (spot) {
+      const near = tr.getNearest(new THREE.Vector3(spot.x, 0, spot.z));
+      const c = tr.points[near.index];
+      const yaw = Math.atan2(c.x - spot.x, c.z - spot.z); // qapı yola baxır
+      const cg = new THREE.Group();
+      const put = (geo, mat, x, y, z, ry = 0) => {
+        const m = new THREE.Mesh(geo, mat);
+        m.position.set(x, y, z);
+        m.rotation.y = ry;
+        m.castShadow = true;
+        cg.add(m);
+        return m;
+      };
+      const white = flatMat(0xf4efe4, { roughness: 1 }), roofM = flatMat(0x5a3a30, { roughness: 1 });
+      put(new THREE.BoxGeometry(6, 5, 10), white, 0, 2.5, 0);                       // nef
+      const rf = put(new THREE.CylinderGeometry(4.6, 4.6, 10.6, 3), roofM, 0, 6.15, 0); // ikiyamaclı dam
+      rf.rotation.set(Math.PI / 2, 0, 0); rf.scale.set(1, 1, 0.62);
+      put(new THREE.BoxGeometry(3.2, 11, 3.2), white, 0, 5.5, 6);                   // qüllə
+      put(new THREE.ConeGeometry(2.7, 6.5, 4), roofM, 0, 14.2, 6, Math.PI / 4);     // şiş dam
+      put(new THREE.BoxGeometry(1.3, 2.4, 0.14), woodD, 0, 1.2, 7.62);              // qapı
+      put(new THREE.BoxGeometry(0.9, 1.4, 0.14), glowMat(0xffd9a0, 1.1), 0, 8.4, 7.62); // zəng pəncərəsi
+      for (const zz of [-3, 0, 3]) for (const sx of [-1, 1]) put(new THREE.BoxGeometry(0.14, 1.6, 0.9), glowMat(0xffd9a0, 1.1), sx * 3.02, 3.0, zz);
+      cg.position.set(spot.x, this._groundY(spot.x, spot.z) + 0.04, spot.z);
+      cg.rotation.y = yaw;
+      const cm = mergeStaticGroup(cg);
+      cg.traverse((o) => { if (o.isMesh) o.geometry?.dispose?.(); });
+      this.scene.add(cm);
+      this._track(cm);
+      this.obstacles.push({ x: spot.x, z: spot.z, r: 7.5 });
+    }
+
+    // ——— MEŞƏ MASSİVLƏRİ: sıx şam dəstələri (hər biri bir toqquşma dairəsi) ———
+    const greens = [flatMat(0x2f7d43, { roughness: 1 }), flatMat(0x276a3a, { roughness: 1 }), flatMat(0x3a8a4c, { roughness: 1 })];
+    const trunkM = flatMat(0x6b4b2a, { roughness: 1 });
+    let clumps = 0;
+    for (let tries = 0; tries < 160 && clumps < 10; tries++) {
+      const i = Math.floor(Math.random() * N), sd = Math.random() < 0.5 ? 1 : -1;
+      const R = 11 + Math.random() * 8;
+      const off = half + R + 9 + Math.random() * 34;
+      const cx = tr.points[i].x + tr.normals[i].x * off * sd, cz = tr.points[i].z + tr.normals[i].z * off * sd;
+      if (Math.abs(tr.getNearest(new THREE.Vector3(cx, 0, cz)).lateral) < half + R + 6) continue;
+      if (!this._free(cx, cz, R, 1)) continue;
+      const count = Math.round(R * 1.35); // sıxlıq üçbucaq büdcəsinə görə (alp 90 minə yaxındır)
+      for (let k = 0; k < count; k++) {
+        const a = Math.random() * Math.PI * 2, rr = Math.sqrt(Math.random()) * R;
+        const x = cx + Math.cos(a) * rr, z = cz + Math.sin(a) * rr;
+        const h = 5.5 + Math.random() * 5.5, y0 = this._groundY(x, z);
+        const tk = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, h * 0.3, 4), trunkM);
+        tk.position.set(x, y0 + h * 0.15, z);
+        g.add(tk);
+        const gm = greens[Math.floor(Math.random() * 3)];
+        for (let c = 0; c < 2; c++) { // iki pilləli çətir (səpələnən şamdan ucuz: 20 üçbucaq)
+          const cone = new THREE.Mesh(new THREE.ConeGeometry((1.9 - c * 0.6) * (h / 7), h * 0.5, 5), gm);
+          cone.position.set(x, y0 + h * (0.42 + c * 0.3), z);
+          cone.castShadow = true;
+          g.add(cone);
+        }
+      }
+      this.obstacles.push({ x: cx, z: cz, r: R * 0.9 });
+      clumps++;
+    }
+
+    // ——— ÇİÇƏK LƏKƏLƏRİ: yol kənarı çəməndə (toqquşmasız, 4 üçbucaqlı tetraedr) ———
+    const petals = [flatMat(0xffe066), flatMat(0xffffff), flatMat(0xff8fb3), flatMat(0xc59bff)];
+    for (let patch = 0; patch < 46; patch++) {
+      const i = Math.floor(Math.random() * N), sd = Math.random() < 0.5 ? 1 : -1;
+      const off = half + 4 + Math.random() * 24;
+      const px = tr.points[i].x + tr.normals[i].x * off * sd, pz = tr.points[i].z + tr.normals[i].z * off * sd;
+      if (Math.abs(tr.getNearest(new THREE.Vector3(px, 0, pz)).lateral) < half + 3 || this._inWater(px, pz, 3) || this._onBranch(px, pz, 3)) continue;
+      const mat = petals[patch % petals.length];
+      for (let k = 0; k < 9; k++) {
+        const x = px + (Math.random() - 0.5) * 6, z = pz + (Math.random() - 0.5) * 6;
+        const f = new THREE.Mesh(new THREE.TetrahedronGeometry(0.2 + Math.random() * 0.12, 0), mat);
+        f.position.set(x, this._groundY(x, z) + 0.22, z);
+        f.rotation.set(Math.random() * 3, Math.random() * 3, 0);
+        g.add(f);
+      }
+    }
+    const merged = mergeStaticGroup(g);
+    g.traverse((o) => { if (o.isMesh) o.geometry?.dispose?.(); });
+    this.scene.add(merged);
+    this._track(merged);
+  }
+
   // NEON — LANDMARKLAR (bədii bibliya): yolun üstündən keçən işıqlı estakadalar və
   // ən uzun düzün sonunda sürücüyə baxan nəhəng ekran. Dövrədə "harada olduğunu"
   // tanıdan nöqtələr — əvvəl trekin hər yeri eyni görünürdü.
@@ -830,6 +971,61 @@ export class Environment {
           strip.position.set(Math.cos(a) * r, h / 2 - 8, Math.sin(a) * r + w / 2);
           g.add(strip);
         }
+      }
+    } else if (id === 'alpine') {
+      // ALP: tək-tək eyni konuslar yox — KƏLƏ-KÖTÜR SİLSİLƏ. Hər massiv 2–4 iti zirvədən
+      // ibarətdir (müxtəlif hündürlük, 4–5 üzlü), qar xətti sabit hündürlükdədir; ön planda
+      // tünd meşəli dağətəyi zolağı dərinlik verir (bədii bibliya).
+      const fogC = new THREE.Color(this.data.palette.fog);
+      const tiers = [0.2, 0.44, 0.64].map((k) => ({
+        rock: flatMat(new THREE.Color(0x56697a).lerp(fogC, k).getHex(), { roughness: 1 }),
+        snow: flatMat(new THREE.Color(0xf4f8ff).lerp(fogC, k * 0.7).getHex(), { roughness: 1 }),
+      }));
+      const SNOW = 66; // qar xətti (m)
+      for (let i = 0; i < 34; i++) {
+        const a = (i / 34) * Math.PI * 2 + Math.random() * 0.1;
+        const tier = i % 3;
+        const r = base + 40 + tier * 85 + Math.random() * 50;
+        const cx = Math.cos(a) * r, cz = Math.sin(a) * r;
+        const peaks = 2 + Math.floor(Math.random() * 3);
+        let maxR = 0;
+        for (let k = 0; k < peaks; k++) {
+          const main = k === 0;
+          const h = (main ? 110 : 70) + tier * 18 + Math.random() * 60;
+          const rad = (main ? 62 : 44) + Math.random() * 26;
+          // yan zirvələr massivin kənarına, halqa boyu düzülür
+          const off = main ? 0 : (k % 2 ? 1 : -1) * (38 + Math.random() * 30);
+          const x = cx - Math.sin(a) * off, z = cz + Math.cos(a) * off;
+          const sides = 4 + Math.floor(Math.random() * 2);
+          const rot = Math.random() * 6;
+          const m = new THREE.Mesh(new THREE.ConeGeometry(rad, h, sides), tiers[tier].rock);
+          m.position.set(x, h / 2 - 14, z);
+          m.rotation.y = rot;
+          g.add(m);
+          const top = h - 14;
+          if (top > SNOW + 12) {
+            // qar papağı: zirvədən qar xəttinə qədər olan hissə (eyni yamac bucağı)
+            const sh = top - SNOW;
+            const cap = new THREE.Mesh(new THREE.ConeGeometry(rad * (sh / h) * 1.04, sh, sides), tiers[tier].snow);
+            cap.position.set(x, SNOW + sh / 2 + 0.3, z);
+            cap.rotation.y = rot;
+            g.add(cap);
+          }
+          maxR = Math.max(maxR, Math.abs(off) + rad * 0.6);
+        }
+        this.obstacles.push({ x: cx, z: cz, r: maxR });
+      }
+      // Dağətəyi: alçaq, enli, tünd meşə rəngli təpələr (dağların önündə)
+      const foot = [0.12, 0.3].map((k) => flatMat(new THREE.Color(0x2f6a48).lerp(fogC, k).getHex(), { roughness: 1 }));
+      for (let i = 0; i < 26; i++) {
+        const a = (i / 26) * Math.PI * 2 + Math.random() * 0.2;
+        const r = base - 20 + Math.random() * 45;
+        const rad = 40 + Math.random() * 35, h = 16 + Math.random() * 16;
+        const m = new THREE.Mesh(new THREE.ConeGeometry(rad, h, 7), foot[i % 2]);
+        m.position.set(Math.cos(a) * r, h / 2 - 5, Math.sin(a) * r);
+        m.rotation.y = Math.random() * 6;
+        g.add(m);
+        this.obstacles.push({ x: m.position.x, z: m.position.z, r: rad * 0.7 });
       }
     } else if (id === 'desert') {
       // SƏHRA: konus dağ yox — MESA və qaya sütunları (yastı zirvə, laylı gövdə). Əvvəl
@@ -1434,7 +1630,11 @@ export class Environment {
       emissive: waterC, emissiveIntensity: 0.18,
     });
     const bankMat = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(p.groundEdge ?? p.ground).multiplyScalar(0.8),
+      // Sahil yerin faktiki tonundan bir az tünddür. `groundGain` olan treklərdə yer açılıb,
+      // köhnə sabit ton (kənar rəngi × 0.8) onun yanında qara həlqə kimi görünürdü.
+      color: p.groundGain
+        ? new THREE.Color(p.ground).multiplyScalar(0.28 * p.groundGain * 0.78)
+        : new THREE.Color(p.groundEdge ?? p.ground).multiplyScalar(0.8),
       roughness: 1,
     });
     const g = new THREE.Group();
@@ -1447,7 +1647,7 @@ export class Environment {
     // (körpü zonası açıq qalır) + sahildə TƏBİİ maneə kimi daşlar
     const bridgeClear = this.track.halfWidth + half + 6;
     const rockMat = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(p.groundEdge ?? 0x888888).multiplyScalar(0.7),
+      color: p.groundGain ? new THREE.Color(0x8b8f9a) : new THREE.Color(p.groundEdge ?? 0x888888).multiplyScalar(0.7),
       roughness: 1, flatShading: true,
     });
     const rockGeo = new THREE.DodecahedronGeometry(1, 0);
