@@ -274,8 +274,93 @@ export function makeCityBuilding(opts = {}) {
   return g;
 }
 
+// ————— ZAVOD: sənaye tikililəri (Faza 3.2) —————
+// Üç forma: mişar damlı sex, çən dəstəsi, ikiyamaclı anbar. Rənglər məhduddur və
+// materiallar paylaşılır (birləşəndən sonra bütün zavod ~8 draw call).
+const _indMats = {};
+function indMat(name, color, rough = 0.9) {
+  if (!_indMats[name]) {
+    _indMats[name] = flatMat(color, { roughness: rough });
+    _indMats[name].userData = { shared: true };
+  }
+  return _indMats[name];
+}
+// Üçbucaq prizma (dam dişi / ikiyamaclı dam): en w (x), hündürlük h, dərinlik d (z).
+// peak: zirvənin x-dəki yeri 0..1 (0 = sol kənar — mişar dişi, 0.5 = ikiyamaclı)
+function roofPrism(w, h, d, peak) {
+  const sh = new THREE.Shape();
+  sh.moveTo(-w / 2, 0); sh.lineTo(w / 2, 0); sh.lineTo(-w / 2 + w * peak, h); sh.closePath();
+  const g = new THREE.ExtrudeGeometry(sh, { depth: d, bevelEnabled: false });
+  g.translate(0, 0, -d / 2);
+  return g;
+}
+
+export function makeFactoryBuilding() {
+  const g = new THREE.Group();
+  const add = (geo, mat, x, y, z, shadow = true) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.castShadow = shadow;
+    g.add(m);
+    return m;
+  };
+  const wallMats = [indMat('concrete', 0x8a8c92), indMat('steel', 0x66707c), indMat('brick', 0x8a5646)];
+  const wall = wallMats[Math.floor(rand(0, wallMats.length))];
+  const roof = indMat('roof', 0x3f444d);
+  const dark = indMat('dark', 0x24272e);
+  const glow = glowMat(0xffd9a0, 1.1);
+  const form = Math.random();
+  if (form < 0.45) {
+    // MİŞAR DAMLI SEX
+    const w = rand(14, 20), d = rand(9, 13), h = rand(6, 8);
+    add(new THREE.BoxGeometry(w, h, d), wall, 0, h / 2, 0);
+    const n = Math.max(3, Math.round(w / 4.6));
+    const tw = w / n;
+    for (let k = 0; k < n; k++) {
+      const x = -w / 2 + tw * (k + 0.5);
+      add(roofPrism(tw, 2.3, d, 0), roof, x, h, 0);
+      // dişin şaquli üzü şüşədir — içəridən işıq
+      add(new THREE.BoxGeometry(0.12, 1.5, d * 0.82), glow, x - tw / 2 + 0.07, h + 1.05, 0, false);
+    }
+    // ön fasad: pəncərə cərgəsi + iri qapı
+    const m = Math.max(3, Math.round(w / 3.4));
+    for (let k = 0; k < m; k++) {
+      if (k === Math.floor(m / 2)) continue; // qapının yeri
+      add(new THREE.BoxGeometry(1.5, 1.0, 0.12), glow, -w / 2 + (w / m) * (k + 0.5), h * 0.68, d / 2 + 0.04, false);
+    }
+    add(new THREE.BoxGeometry(3.4, 4.2, 0.16), dark, -w / 2 + (w / m) * (Math.floor(m / 2) + 0.5), 2.1, d / 2 + 0.05, false);
+  } else if (form < 0.7) {
+    // ÇƏN DƏSTƏSİ
+    const n = 1 + Math.floor(rand(0, 3));
+    const tank = Math.random() < 0.5 ? indMat('tank', 0xb9bcc2) : indMat('rust', 0x9a5f3c);
+    for (let k = 0; k < n; k++) {
+      const r = rand(2.6, 4), h = rand(6, 10);
+      const x = (k - (n - 1) / 2) * 8.4;
+      add(new THREE.CylinderGeometry(r, r, h, 12), tank, x, h / 2, 0);
+      add(new THREE.ConeGeometry(r * 1.02, 1.4, 12), roof, x, h + 0.7, 0);
+      add(new THREE.CylinderGeometry(r + 0.08, r + 0.08, 0.5, 12), indMat('hazard', 0xf5c518), x, h * 0.72, 0, false);
+    }
+    // çənləri birləşdirən boru
+    if (n > 1) {
+      const pipe = add(new THREE.CylinderGeometry(0.35, 0.35, (n - 1) * 8.4, 6), indMat('rust', 0x9a5f3c), 0, 2.2, 0, false);
+      pipe.rotation.z = Math.PI / 2;
+    }
+  } else {
+    // İKİYAMACLI ANBAR
+    const w = rand(11, 16), d = rand(12, 17), h = rand(5, 7);
+    add(new THREE.BoxGeometry(w, h, d), wall, 0, h / 2, 0);
+    add(roofPrism(w + 0.6, 2.4, d + 0.6, 0.5), roof, 0, h, 0);
+    add(new THREE.BoxGeometry(w * 0.5, h * 0.72, 0.16), dark, 0, h * 0.36, d / 2 + 0.05, false);
+    // qapının üstündə xəbərdarlıq zolağı + iki işıq
+    add(new THREE.BoxGeometry(w * 0.56, 0.45, 0.18), indMat('hazard', 0xf5c518), 0, h * 0.72 + 0.3, d / 2 + 0.06, false);
+    for (const sx of [-1, 1]) add(new THREE.BoxGeometry(1.2, 0.8, 0.12), glow, sx * w * 0.38, h * 0.6, d / 2 + 0.04, false);
+  }
+  return g;
+}
+
 export function makeBuilding(opts = {}) {
   if (opts.city) return makeCityBuilding(opts);
+  if (opts.factory) return makeFactoryBuilding();
   const g = new THREE.Group();
   const w = rand(4, 8);
   const d = rand(4, 8);

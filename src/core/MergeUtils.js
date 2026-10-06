@@ -44,6 +44,12 @@ export function mergeStaticGroup(group) {
 
   const out = new THREE.Group();
   for (const b of buckets.values()) {
+    // İndeksli və indekssiz həndəsə (məs. BoxGeometry + ExtrudeGeometry) bir yerdə
+    // birləşmir: mergeGeometries null qaytarır və bütün dəstə SƏSSİZ itirdi (zavod
+    // sexlərinin damı). Qarışıqdırsa hamısı indekssizə çevrilir.
+    if (b.geos.some((g) => g.index) && b.geos.some((g) => !g.index)) {
+      b.geos = b.geos.map((g) => { if (!g.index) return g; const n = g.toNonIndexed(); g.dispose(); return n; });
+    }
     const merged = mergeGeometries(b.geos, false);
     b.geos.forEach((g) => g.dispose());
     if (!merged) continue;

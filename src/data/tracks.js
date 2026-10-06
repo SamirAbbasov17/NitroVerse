@@ -258,7 +258,8 @@ export const TRACKS = [
       ambient: 0x5a5a62,
       hemiIntensity: 1.05,
       sunIntensity: 1.0,
-      ambientIntensity: 0.45,
+      ambientIntensity: 0.62, // 0.45 idi: kölgə tərəfdəki tikililər qapqara çıxırdı
+      groundGain: 4.5,        // beton meydança — əvvəl demək olar qara idi (palitra rəngi özü tünddür)
     },
     controlPoints: [
       [120, 0], [130, 60], [95, 95], [40, 90], [10, 130],
@@ -267,9 +268,10 @@ export const TRACKS = [
       [110, -95], [125, -40],
     ],
     decor: [
-      { type: 'container', count: 26 },
-      { type: 'chimney', count: 12 },
-      { type: 'building', count: 30 },
+      // near: yol boyu (6–60 m) səpələnir — bax Environment._scatterDecor
+      { type: 'container', count: 34, near: true },
+      { type: 'chimney', count: 14, near: true },
+      { type: 'building', count: 30, near: true }, // zavodda sex / çən / anbar (makeFactoryBuilding)
       { type: 'lamp', count: 14 },
     ],
   },

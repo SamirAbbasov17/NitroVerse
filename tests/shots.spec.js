@@ -37,10 +37,10 @@ test.describe('masaüstü oyun kadrları', () => {
     }
   });
 
-  // Neon landmarkları: estakada (yoldan baxış) və nəhəng ekran (düzün sonundan baxış)
-  test('shots: neon landmarkları', async ({ page }) => {
+  // Yol üstü landmarklar: neon — estakada və nəhəng ekran; zavod — portal kran və boru estakadaları
+  for (const lm of ['race-neon', 'race-zavod']) test(`shots: ${lm.replace('race-', '')} landmarkları`, async ({ page }) => {
     await boot(page);
-    await startMode(page, MODES.find((m) => m.name === 'race-neon').config);
+    await startMode(page, MODES.find((m) => m.name === lm).config);
     await page.waitForTimeout(1500);
     const views = await page.evaluate(() => {
       const sc = window.__active;
@@ -72,7 +72,7 @@ test.describe('masaüstü oyun kadrları', () => {
         cam.lookAt(c.lx, c.ly, c.lz);
       }, v);
       await page.waitForTimeout(300);
-      await shot(page, `d-race-neon-landmark${i}`);
+      await shot(page, `d-${lm}-landmark${i}`);
     }
   });
 

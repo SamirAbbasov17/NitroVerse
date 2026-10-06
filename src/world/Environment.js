@@ -242,6 +242,7 @@ export class Environment {
     // Landmarklar küçə divarından ƏVVƏL: yerlərini tuturlar, binalar onlardan yan keçir
     if (this.data.id === 'riviera') this._rivieraFields();
     if (this.data.id === 'neon') this._neonLandmarks();
+    if (this.data.id === 'zavod') this._zavodLandmarks();
     if (this.data.id === 'neon') this._cityBlocks(); // küçə divarı — ən sonda, boş qalan yerə
     this._autoObstacles();   // təhlükəsizlik toru — bax aşağı
   }
@@ -358,6 +359,140 @@ export class Environment {
     g.traverse((o) => { if (o.isMesh) o.geometry?.dispose?.(); });
     this.scene.add(merged);
     this._track(merged);
+  }
+
+  // Yolun üstündən keçən qurğu üçün yerlər: ən düz hissələr, startdan və bir-birindən
+  // uzaq; hər iki dayağın yeri boş və yolun başqa hissəsindən kənar olmalıdır.
+  _overRoadSpots(count, reach) {
+    const tr = this.track;
+    const N = tr.N, half = tr.halfWidth;
+    const span = Math.max(4, Math.round(N * 0.035));
+    const turn = (i) => {
+      const a = tr.tangents[(i - span + N) % N], b = tr.tangents[(i + span) % N];
+      return Math.acos(Math.max(-1, Math.min(1, a.x * b.x + a.z * b.z)));
+    };
+    const startI = tr.getNearest(tr.getGridSlots(1)[0].position).index;
+    const cands = [];
+    for (let i = 0; i < N; i += 2) {
+      if (Math.min((i - startI + N) % N, (startI - i + N) % N) > N * 0.07) cands.push({ i, k: turn(i) });
+    }
+    cands.sort((p, q) => p.k - q.k);
+    const out = [];
+    for (const c of cands) {
+      if (out.length >= count) break;
+      if (out.some((o) => Math.min((c.i - o.i + N) % N, (o.i - c.i + N) % N) < N / (count + 1.5))) continue;
+      const p = tr.points[c.i], n = tr.normals[c.i], t = tr.tangents[c.i];
+      const legs = [1, -1].map((sd) => ({ x: p.x + n.x * reach * sd, z: p.z + n.z * reach * sd }));
+      if (!legs.every((l) => this._free(l.x, l.z, 1.6, 0.6)
+        && Math.abs(tr.getNearest(new THREE.Vector3(l.x, 0, l.z)).lateral) > half + 3)) continue;
+      out.push({ i: c.i, p, n, t, legs });
+    }
+    return out;
+  }
+
+  // ZAVOD — LANDMARKLAR (bədii bibliya): yolun üstündən keçən boru estakadaları və
+  // portal kran; yol kənarında əritmə sexi (narıncı parıltı). Dövrədə oriyentir.
+  _zavodLandmarks() {
+    const half = this.track.halfWidth;
+    const g = new THREE.Group();
+    const steel = flatMat(0x565c66, { roughness: 0.8 });
+    const rust = flatMat(0x9a5f3c, { roughness: 0.9 });
+    const yellow = flatMat(0xe0b020, { roughness: 0.7 });
+    const dark = flatMat(0x2a2d34, { roughness: 0.9 });
+    const add = (geo, mat, x, y, z, yaw = 0) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x, y, z);
+      m.rotation.y = yaw;
+      g.add(m);
+      return m;
+    };
+    const reach = half + 6.5;
+    const spots = this._overRoadSpots(4, reach);
+    spots.forEach((s, k) => {
+      const { p, n, t, legs } = s;
+      const yaw = Math.atan2(n.x, n.z); // uzun ox (z) yolun eninə
+      const len = reach * 2 + 3;
+      if (k === 0) {
+        // PORTAL KRAN: sarı çərçivə, üst tir, asılı konteyner
+        const H = 13.5;
+        for (const l of legs) {
+          add(new THREE.BoxGeometry(1.5, H, 2.2), yellow, l.x, H / 2, l.z, yaw);
+          add(new THREE.BoxGeometry(2.6, 0.9, 5.2), dark, l.x, 0.45, l.z, yaw); // təkər arabası
+          this.obstacles.push({ x: l.x, z: l.z, r: 1.6 });
+        }
+        add(new THREE.BoxGeometry(2.6, 1.6, len + 2), yellow, p.x, H + 0.8, p.z, yaw);
+        // araba + tros + konteyner: dibi 7.4 m-dədir — maşın və arxa kamera (≈ 6 m) altından keçir
+        const cx = p.x + n.x * half * 0.6, cz = p.z + n.z * half * 0.6;
+        add(new THREE.BoxGeometry(3.2, 1.0, 3.0), dark, cx, H - 0.5, cz, yaw);
+        add(new THREE.BoxGeometry(0.16, 2.6, 0.16), dark, cx, H - 2.3, cz, yaw);
+        add(new THREE.BoxGeometry(2.4, 2.5, 5.6), rust, cx, H - 4.85, cz, yaw + Math.PI / 2);
+        // xəbərdarlıq işıqları
+        for (const l of legs) add(new THREE.BoxGeometry(0.6, 0.6, 0.6), glowMat(0xff8a1e, 1.6), l.x, H + 1.9, l.z, yaw);
+      } else {
+        // BORU ESTAKADASI: şəbəkə dayaqlar + 3 paralel boru (müxtəlif rəng/diametr)
+        const H = 8.6;
+        for (const l of legs) {
+          add(new THREE.BoxGeometry(0.5, H, 0.5), steel, l.x + t.x * 1.4, H / 2, l.z + t.z * 1.4, yaw);
+          add(new THREE.BoxGeometry(0.5, H, 0.5), steel, l.x - t.x * 1.4, H / 2, l.z - t.z * 1.4, yaw);
+          add(new THREE.BoxGeometry(3.4, 0.4, 0.5), steel, l.x, H * 0.5, l.z, yaw + Math.PI / 2);
+          this.obstacles.push({ x: l.x, z: l.z, r: 1.6 });
+        }
+        add(new THREE.BoxGeometry(3.6, 0.45, len), steel, p.x, H, p.z, yaw); // daşıyıcı tir
+        const pipes = [[-1.1, 0.5, rust], [0.1, 0.36, yellow], [1.05, 0.44, steel]];
+        for (const [off, r, mat] of pipes) {
+          const pm = add(new THREE.CylinderGeometry(r, r, len + 5, 8), mat, p.x + t.x * off, H + 0.25 + r, p.z + t.z * off, yaw);
+          pm.rotation.order = 'YXZ'; // əvvəl yatır (x), sonra yolun eninə dönür (y)
+          pm.rotation.x = Math.PI / 2;
+        }
+      }
+    });
+    const merged = mergeStaticGroup(g);
+    merged.traverse((o) => { if (o.isMesh) o.castShadow = false; });
+    g.traverse((o) => { if (o.isMesh) o.geometry?.dispose?.(); });
+    this.scene.add(merged);
+    this._track(merged);
+
+    // ƏRİTMƏ SEXİ: yolun yanında iri sex — açıq qapılardan narıncı parıltı, hündür baca
+    const tr = this.track, N = tr.N;
+    const used = spots.map((s) => s.i);
+    for (let tries = 0; tries < 60; tries++) {
+      const i = Math.floor(Math.random() * N);
+      if (used.some((u) => Math.min((i - u + N) % N, (u - i + N) % N) < N * 0.06)) continue;
+      const c = tr.points[i], n = tr.normals[i], t = tr.tangents[i];
+      const sd = Math.random() < 0.5 ? 1 : -1;
+      const off = half + 24;
+      const x = c.x + n.x * off * sd, z = c.z + n.z * off * sd;
+      if (Math.abs(tr.getNearest(new THREE.Vector3(x, 0, z)).lateral) < half + 20) continue;
+      if (!this._free(x, z, 17, 1)) continue;
+      const sg = new THREE.Group();
+      const yaw = Math.atan2(-n.x * sd, -n.z * sd); // ön üz (+z) yola baxır
+      const W = 30, D = 16, Hh = 11;
+      const put = (geo, mat, lx, y, lz) => {
+        const m = new THREE.Mesh(geo, mat);
+        m.position.set(lx, y, lz);
+        sg.add(m);
+        return m;
+      };
+      put(new THREE.BoxGeometry(W, Hh, D), flatMat(0x4a4f58, { roughness: 0.9 }), 0, Hh / 2, 0);
+      put(new THREE.BoxGeometry(W * 0.5, 4, D * 0.8), dark, 0, Hh + 2, 0);            // üst fənər qat
+      for (const lx of [-9.5, 0, 9.5]) {                                               // ərimiş metalın parıltısı
+        put(new THREE.BoxGeometry(5, 5.2, 0.2), glowMat(0xff6a1a, 1.5), lx, 2.7, D / 2 + 0.06);
+        put(new THREE.BoxGeometry(5.6, 0.5, 0.3), yellow, lx, 5.6, D / 2 + 0.1);
+      }
+      put(new THREE.BoxGeometry(W * 0.44, 0.7, 0.2), glowMat(0xff6a1a, 1.5), 0, Hh + 2.6, D * 0.4 + 0.06);
+      const stack = put(new THREE.CylinderGeometry(1.5, 2.3, 30, 9), flatMat(0x7a4636, { roughness: 0.9 }), W / 2 - 4, 15, -D / 2 + 3);
+      void stack;
+      put(new THREE.CylinderGeometry(1.62, 1.62, 1.6, 9), flatMat(0xd8d4c8), W / 2 - 4, 27.5, -D / 2 + 3);
+      sg.position.set(x, 0, z);
+      sg.rotation.y = yaw;
+      const sm = mergeStaticGroup(sg);
+      sg.traverse((o) => { if (o.isMesh) o.geometry?.dispose?.(); });
+      this.scene.add(sm);
+      this._track(sm);
+      // toqquşma: uzun binanı üç dairə örtür
+      for (const lx of [-10, 0, 10]) this.obstacles.push({ x: x + t.x * lx, z: z + t.z * lx, r: 9 });
+      break;
+    }
   }
 
   // NEON — LANDMARKLAR (bədii bibliya): yolun üstündən keçən işıqlı estakadalar və
@@ -605,6 +740,52 @@ export class Environment {
           strip.position.set(Math.cos(a) * r, h / 2 - 8, Math.sin(a) * r + w / 2);
           g.add(strip);
         }
+      }
+    } else if (id === 'zavod') {
+      // ZAVOD: dağ yox — SƏNAYE SİLUETİ (soyutma qüllələri, bacalar, iri sexlər). Əvvəl
+      // burada alp/səhradakı eyni boz konus dağlar idi; zavodun arxasında yad görünürdü.
+      const fogC = new THREE.Color(this.data.palette.fog);
+      const tiers = [0.25, 0.5, 0.7].map((k) => flatMat(new THREE.Color(0x4d5058).lerp(fogC, k).getHex(), { roughness: 1 }));
+      const put = (geo, tier, x, y, z) => {
+        const m = new THREE.Mesh(geo, tiers[tier]);
+        m.position.set(x, y, z);
+        g.add(m);
+      };
+      for (let i = 0; i < 46; i++) {
+        const a = (i / 46) * Math.PI * 2 + Math.random() * 0.09;
+        const tier = i % 3;
+        const r = base + 10 + tier * 70 + Math.random() * 50;
+        const x = Math.cos(a) * r, z = Math.sin(a) * r;
+        const kind = Math.random();
+        let rad;
+        if (kind < 0.3) {
+          // soyutma qülləsi: aşağı enli, beldə daralan, yuxarı azca açılan (iki kəsik konus)
+          const h = 46 + Math.random() * 30, rb = 20 + Math.random() * 8;
+          put(new THREE.CylinderGeometry(rb * 0.58, rb, h * 0.62, 12, 1, true), tier, x, h * 0.31 - 6, z);
+          put(new THREE.CylinderGeometry(rb * 0.66, rb * 0.58, h * 0.38, 12, 1, true), tier, x, h * 0.81 - 6, z);
+          rad = rb;
+        } else if (kind < 0.62) {
+          // baca dəstəsi: 1–3 hündür nazik baca
+          const n = 1 + Math.floor(Math.random() * 3);
+          for (let k = 0; k < n; k++) {
+            const h = 60 + Math.random() * 55;
+            put(new THREE.CylinderGeometry(2.2, 3.6, h, 7), tier, x + (k - (n - 1) / 2) * 13, h / 2 - 6, z);
+          }
+          rad = 8 + n * 5;
+        } else {
+          // iri sex: uzun qutu + pilləli üst hissə
+          const w = 50 + Math.random() * 50, h = 16 + Math.random() * 14;
+          const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 30), tiers[tier]);
+          m.position.set(x, h / 2 - 6, z);
+          m.rotation.y = -a + Math.PI / 2; // uzun tərəfi trekə baxsın
+          g.add(m);
+          const top = new THREE.Mesh(new THREE.BoxGeometry(w * 0.4, h * 0.5, 24), tiers[tier]);
+          top.position.set(x, h + h * 0.25 - 6, z);
+          top.rotation.y = m.rotation.y;
+          g.add(top);
+          rad = w * 0.5;
+        }
+        this.obstacles.push({ x, z, r: rad });
       }
     } else {
       // Trekə uyğun dağ silueti rəngi
@@ -1513,9 +1694,12 @@ export class Environment {
           // tək model: 190 üçbucaq ("Detailed" variantı 336 — 100 palma büdcəni aşırdı)
           obj = sharedNature().get('tree_palmTall');
         }
-        obj ||= makeDecor(rule.type, rule.type === 'building' && this.data.id === 'neon' ? { city: true } : undefined);
+        // Bina: neonda pəncərəli şəhər binası, zavodda sənaye tikilisi (sex, çən, anbar)
+        const bOpts = rule.type !== 'building' ? undefined
+          : this.data.id === 'neon' ? { city: true } : this.data.id === 'zavod' ? { factory: true } : undefined;
+        obj ||= makeDecor(rule.type, bOpts);
         // Şəhər binası miqyaslanmır: pəncərə ölçüsü bütün binalarda eyni qalsın
-        const s = rule.type === 'building' && this.data.id === 'neon' ? 1 : 0.8 + Math.random() * 0.7;
+        const s = rule.type === 'building' && (this.data.id === 'neon' || this.data.id === 'zavod') ? 1 : 0.8 + Math.random() * 0.7;
         obj.scale.setScalar(s);
         // Obyektin üfüqi radiusu
         box.setFromObject(obj);
