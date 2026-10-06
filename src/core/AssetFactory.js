@@ -178,13 +178,17 @@ export function cityBoxGeometry(w, h, d, far = false) {
   return geo;
 }
 
+// Parıldayan material — rəng və güc başına bir nüsxə (paylaşılır). İri səthlərdə
+// (vitrin, estakada kənarı) güc aşağı götürülür: 2.2-də ton xəritəsi rəngi ağa
+// çevirir və bloom onu ağ ləkə edir (kadrda çəhrayı/mavi əvəzinə ağ zolaq görünürdü).
 const _glowMats = new Map();
-export function glowMat(color) {
-  let m = _glowMats.get(color);
+export function glowMat(color, intensity = 2.2) {
+  const key = `${color}|${intensity}`;
+  let m = _glowMats.get(key);
   if (!m) {
-    m = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 2.2, flatShading: true });
+    m = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: intensity, flatShading: true });
     m.userData = { shared: true };
-    _glowMats.set(color, m);
+    _glowMats.set(key, m);
   }
   return m;
 }
@@ -209,7 +213,7 @@ export function makeCityBuilding(opts = {}) {
     // Küçə səviyyəsi: alçaq blok + yola baxan işıqlı vitrin zolağı (+z üzü)
     w = rand(7, 10); d = rand(6, 8);
     top = block(w, rand(6, 11), d, 0);
-    const shop = new THREE.Mesh(new THREE.BoxGeometry(w * 0.86, 1.3, 0.2), glowMat(neon));
+    const shop = new THREE.Mesh(new THREE.BoxGeometry(w * 0.86, 1.3, 0.2), glowMat(neon, 1.1));
     shop.position.set(0, 1.9, d / 2 + 0.06);
     g.add(shop);
     if (Math.random() < 0.45) { w *= 0.6; d *= 0.7; top = block(w, rand(3, 6), d, top); }
@@ -228,7 +232,7 @@ export function makeCityBuilding(opts = {}) {
   }
   // Dam kənarı neon haşiyə (üst blokun perimetri boyu nazik zolaq)
   if (Math.random() < 0.6) {
-    const trim = new THREE.Mesh(new THREE.BoxGeometry(w + 0.3, 0.3, d + 0.3), glowMat(neon));
+    const trim = new THREE.Mesh(new THREE.BoxGeometry(w + 0.3, 0.3, d + 0.3), glowMat(neon, 1.1));
     trim.position.y = top - 0.5;
     g.add(trim);
   }

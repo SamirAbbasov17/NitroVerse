@@ -185,8 +185,140 @@ export class Environment {
     this._tracksideProps(); // şin qüllələri + bariyerlər — peşəkar trek görkəmi
     this._scatterDecor();
     this._trackside();      // tribuna, projektor, marşal, sponsor, bayraq
+    // Landmarklar küçə divarından ƏVVƏL: yerlərini tuturlar, binalar onlardan yan keçir
+    if (this.data.id === 'neon') this._neonLandmarks();
     if (this.data.id === 'neon') this._cityBlocks(); // küçə divarı — ən sonda, boş qalan yerə
     this._autoObstacles();   // təhlükəsizlik toru — bax aşağı
+  }
+
+  // NEON — LANDMARKLAR (bədii bibliya): yolun üstündən keçən işıqlı estakadalar və
+  // ən uzun düzün sonunda sürücüyə baxan nəhəng ekran. Dövrədə "harada olduğunu"
+  // tanıdan nöqtələr — əvvəl trekin hər yeri eyni görünürdü.
+  _neonLandmarks() {
+    const tr = this.track;
+    const N = tr.N, half = tr.halfWidth;
+    // Yolun düzlüyü: i nöqtəsindən əvvəlki `back` nöqtə boyunca istiqamət nə qədər dəyişir
+    const turn = (i, span) => {
+      const a = tr.tangents[(i - span + N) % N], b = tr.tangents[i % N];
+      return Math.acos(Math.max(-1, Math.min(1, a.x * b.x + a.z * b.z)));
+    };
+    const span = Math.max(4, Math.round(N * 0.035));
+    const startI = tr.getNearest(tr.getGridSlots(1)[0].position).index;
+    const farFromStart = (i) => Math.min((i - startI + N) % N, (startI - i + N) % N) > N * 0.08;
+
+    // ——— ESTAKADA: 2 ədəd, ən düz yerlərdə, bir-birindən uzaq ———
+    const g = new THREE.Group();
+    const dark = flatMat(0x161c3a, { roughness: 0.8 });
+    const picked = [];
+    const cands = [];
+    for (let i = 0; i < N; i += 2) if (farFromStart(i)) cands.push({ i, k: turn(i, span) + turn(i + span, span) });
+    cands.sort((p, q) => p.k - q.k);
+    for (const c of cands) {
+      if (picked.length >= 2) break;
+      if (picked.some((j) => Math.min((c.i - j + N) % N, (j - c.i + N) % N) < N * 0.3)) continue;
+      const p = tr.points[c.i], n = tr.normals[c.i], t = tr.tangents[c.i];
+      const reach = half + 6.5;
+      const legs = [1, -1].map((sd) => ({ x: p.x + n.x * reach * sd, z: p.z + n.z * reach * sd }));
+      // Dayaqlar boş yerdə və yolun başqa hissəsindən uzaq olmalıdır
+      if (!legs.every((l) => this._free(l.x, l.z, 1.6, 0.6)
+        && Math.abs(tr.getNearest(new THREE.Vector3(l.x, 0, l.z)).lateral) > half + 3)) continue;
+      picked.push(c.i);
+      const yaw = Math.atan2(n.x, n.z); // qutunun uzun oxu (z) yolun eninə
+      const add = (geo, mat, x, y, z) => {
+        const m = new THREE.Mesh(geo, mat);
+        m.position.set(x, y, z);
+        m.rotation.y = yaw;
+        g.add(m);
+        return m;
+      };
+      const H = 9.5, len = reach * 2 + 3.5, wid = 7; // dayaqlardan azca kənara — binaya girməsin
+      const neon = picked.length === 1 ? 0x34e0ff : 0xff3d8a;
+      add(new THREE.BoxGeometry(wid, 1.1, len), dark, p.x, H, p.z);                       // göyərtə
+      for (const sd of [1, -1]) {
+        // kənar neon xətləri (gələn və gedən tərəf) + altda işıq zolağı
+        add(new THREE.BoxGeometry(0.25, 0.45, len), glowMat(neon, 1.1), p.x + t.x * (wid / 2) * sd, H + 0.1, p.z + t.z * (wid / 2) * sd);
+        add(new THREE.BoxGeometry(0.2, 1.0, len), dark, p.x + t.x * (wid / 2 - 0.2) * sd, H + 1.0, p.z + t.z * (wid / 2 - 0.2) * sd); // məhəccər
+        const l = legs[sd > 0 ? 0 : 1];
+        add(new THREE.BoxGeometry(1.6, H, 2.6), dark, l.x, H / 2, l.z);                  // dayaq
+        add(new THREE.BoxGeometry(1.75, 0.35, 2.75), glowMat(neon, 1.1), l.x, 2.2, l.z);       // dayaqda işıq halqası
+        this.obstacles.push({ x: l.x, z: l.z, r: 1.6 });
+      }
+      add(new THREE.BoxGeometry(0.5, 0.18, half * 2), glowMat(0xffd257, 1.1), p.x, H - 0.62, p.z); // alt işıq
+    }
+    const merged = mergeStaticGroup(g);
+    merged.traverse((o) => { if (o.isMesh) o.castShadow = false; });
+    g.traverse((o) => { if (o.isMesh) o.geometry?.dispose?.(); });
+    this.scene.add(merged);
+    this._track(merged);
+
+    // ——— NƏHƏNG EKRAN: ən uzun düzün sonunda, düz boyu gələn sürücüyə baxır ———
+    let best = null;
+    for (let i = 0; i < N; i += 2) {
+      if (!farFromStart(i)) continue;
+      // arxada düz, qabaqda döngə: düzün sonu
+      const k = turn(i + span * 2, span * 2) - turn(i, span * 3) * 2;
+      if (!best || k > best.k) best = { i, k };
+    }
+    if (!best) return;
+    const p = tr.points[best.i], t = tr.tangents[best.i];
+    const W = 30, Hs = 13, lift = 9;
+    let pos = null;
+    for (const d of [60, 72, 50, 85]) {
+      const c = new THREE.Vector3(p.x + t.x * d, 0, p.z + t.z * d);
+      if (Math.abs(tr.getNearest(c).lateral) < half + 12) continue;
+      if (!this._free(c.x, c.z, 10, 0.5)) continue;
+      pos = c; break;
+    }
+    if (!pos) return;
+    const cv = document.createElement('canvas');
+    cv.width = 512; cv.height = 224;
+    const ctx = cv.getContext('2d');
+    const grd = ctx.createLinearGradient(0, 0, 512, 224);
+    grd.addColorStop(0, '#2a0b52'); grd.addColorStop(0.5, '#0b1b4a'); grd.addColorStop(1, '#3a0a3c');
+    ctx.fillStyle = grd; ctx.fillRect(0, 0, 512, 224);
+    // günəş + üfüq zolaqları (retro)
+    const sun = ctx.createLinearGradient(0, 30, 0, 170);
+    sun.addColorStop(0, '#ffd257'); sun.addColorStop(1, '#ff3d8a');
+    ctx.fillStyle = sun; ctx.beginPath(); ctx.arc(256, 118, 78, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0b1b4a';
+    for (let y = 118; y < 200; y += 14) ctx.fillRect(160, y, 192, 5);
+    ctx.font = '900 64px Rajdhani, Arial Black, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 8; ctx.strokeStyle = '#0a0d1c'; ctx.strokeText('NITROVERSE', 256, 120);
+    ctx.fillStyle = '#ffffff'; ctx.fillText('NITROVERSE', 256, 120);
+    ctx.strokeStyle = '#34e0ff'; ctx.lineWidth = 8; ctx.strokeRect(4, 4, 504, 216);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 4;
+    const yaw = Math.atan2(-t.x, -t.z); // +z üzü gələn sürücüyə baxır
+    const screen = new THREE.Mesh(
+      new THREE.BoxGeometry(W, Hs, 0.8),
+      new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.95, roughness: 0.6 })
+    );
+    screen.position.set(pos.x, lift + Hs / 2, pos.z);
+    screen.rotation.y = yaw;
+    this.scene.add(screen);
+    this._track(screen);
+    const fr = new THREE.Group();
+    const rx = Math.cos(yaw), rz = -Math.sin(yaw); // ekranın sağ oxu
+    for (const sd of [1, -1]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(1.4, lift + Hs, 1.4), dark);
+      leg.position.set(pos.x + rx * (W / 2 - 2) * sd - t.x * -1.1, (lift + Hs) / 2, pos.z + rz * (W / 2 - 2) * sd - t.z * -1.1);
+      fr.add(leg);
+      this.obstacles.push({ x: leg.position.x, z: leg.position.z, r: 1.4 });
+    }
+    const back = new THREE.Mesh(new THREE.BoxGeometry(W + 0.8, Hs + 0.8, 0.5), dark);
+    back.position.set(pos.x + t.x * 0.55, lift + Hs / 2, pos.z + t.z * 0.55);
+    back.rotation.y = yaw;
+    fr.add(back);
+    const mergedFr = mergeStaticGroup(fr);
+    mergedFr.traverse((o) => { if (o.isMesh) o.castShadow = false; });
+    fr.traverse((o) => { if (o.isMesh) o.geometry?.dispose?.(); });
+    this.scene.add(mergedFr);
+    this._track(mergedFr);
+    // Ekranın önü (meydan) boş qalsın — binalar görüntünü tutmasın
+    // (toqquşma siyahısına YAZILMIR: görünməz divar olmasın; yalnız _cityBlocks baxır)
+    this._clearZones = [0, 14, 28].map((d) => ({ x: pos.x - t.x * d, z: pos.z - t.z * d, r: 10 }));
   }
 
   // NEON — KÜÇƏ DİVARI: yolun hər iki tərəfində bitişik bina cərgələri (ön cərgə
@@ -220,6 +352,7 @@ export class Environment {
           if (Math.abs(tr.getNearest(pos).lateral) < half + r + 5) continue;
           if (tr.branches?.length && tr.isOnBranch(pos, r + 4)) continue;
           if (!this._free(pos.x, pos.z, r * 0.85, 0.4)) continue;
+          if ((this._clearZones || []).some((c) => Math.hypot(c.x - pos.x, c.z - pos.z) < c.r + r)) continue;
           obj.position.copy(pos);
           // Vitrin (+z üzü) yola baxsın
           obj.rotation.y = Math.atan2(-n.x * side, -n.z * side);

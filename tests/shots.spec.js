@@ -37,6 +37,45 @@ test.describe('masaüstü oyun kadrları', () => {
     }
   });
 
+  // Neon landmarkları: estakada (yoldan baxış) və nəhəng ekran (düzün sonundan baxış)
+  test('shots: neon landmarkları', async ({ page }) => {
+    await boot(page);
+    await startMode(page, MODES.find((m) => m.name === 'race-neon').config);
+    await page.waitForTimeout(1500);
+    const views = await page.evaluate(() => {
+      const sc = window.__active;
+      sc._updateCamera = () => {};
+      sc.update = () => {};
+      document.querySelector('#ui-root').style.display = 'none';
+      const tr = sc.track;
+      const out = [];
+      // Estakada dayaqları toqquşma siyahısında r = 1.6 ilə yazılır
+      const legs = sc._obstacles.filter((o) => Math.abs(o.r - 1.6) < 1e-6);
+      for (let k = 0; k < legs.length; k += 2) {
+        const i = tr.getNearest(new window.__THREE.Vector3(legs[k].x, 0, legs[k].z)).index;
+        const p = tr.points[(i - 16 + tr.N) % tr.N], q = tr.points[i];
+        out.push({ px: p.x, py: 4.2, pz: p.z, lx: q.x, ly: 5, lz: q.z });
+      }
+      let screen = null;
+      sc.scene.traverse((o) => { if (o.isMesh && o.geometry?.parameters?.width === 30) screen = o; });
+      if (screen) {
+        const fx = Math.sin(screen.rotation.y), fz = Math.cos(screen.rotation.y);
+        out.push({ px: screen.position.x + fx * 75, py: 5, pz: screen.position.z + fz * 75,
+          lx: screen.position.x, ly: 12, lz: screen.position.z });
+      }
+      return out;
+    });
+    for (const [i, v] of views.entries()) {
+      await page.evaluate((c) => {
+        const cam = window.__active.camera;
+        cam.position.set(c.px, c.py, c.pz);
+        cam.lookAt(c.lx, c.ly, c.lz);
+      }, v);
+      await page.waitForTimeout(300);
+      await shot(page, `d-race-neon-landmark${i}`);
+    }
+  });
+
   // Çay/göl olan treklər: körpü (hər iki tərəfə) və göl — su, sahil və relyefin
   // bir-birinin içindən çıxmadığına baxmaq üçün sabit baxış nöqtələri.
   for (const name of ['race-alpine', 'race-riviera']) {
