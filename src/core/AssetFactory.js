@@ -104,7 +104,7 @@ const WIN_COLS = 16, WIN_ROWS = 32;   // teksturadakı pəncərə şəbəkəsi
 // Bir pəncərə xanasının dünyadakı ölçüsü (m). 1.35×1.9 sınandı — istifadəçi: "çox
 // balacadır, orta olsun". Uzaq siluetdə xana 2.6× böyükdür (yoxsa nöqtəyə çevrilir).
 const WIN_W = 2.0, WIN_H = 2.7;
-const WIN_FAR = 2.6;
+const WIN_FAR = 2.0;
 let _winTex = null;
 function windowTexture() {
   if (_winTex) return _winTex;
@@ -114,18 +114,23 @@ function windowTexture() {
   const ctx = cv.getContext('2d');
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, cv.width, cv.height);
-  // İsti sarı üstünlük təşkil edir; mavi/çəhrayı trekin neon vurğularıdır
-  const cols = ['#ffd98a', '#ffd98a', '#ffe9c0', '#ffc46b', '#7fe9ff', '#ff7ab8', '#dfe8ff'];
+  // NİZAM: hər mərtəbə TƏK rəngdədir və pəncərələr eyni parlaqlıqdadır; yanan
+  // pəncərələr tək-tək səpilmir, 2–5-lik ardıcıl dəstələrlə gəlir (otaq/ofis bloku).
+  // İlk variantda hər pəncərənin rəngi və şəffaflığı təsadüfi idi — fasad "sırasız"
+  // və dağınıq oxunurdu (istifadəçi rəyi).
+  const cols = ['#ffd98a', '#ffd98a', '#ffe9c0', '#ffc46b', '#ffd98a', '#7fe9ff', '#ff7ab8'];
   for (let r = 0; r < WIN_ROWS; r++) {
-    // Bəzi mərtəbələr tam qaranlıqdır, bəziləri demək olar tam işıqlı (ofis mərtəbəsi)
     const floor = Math.random();
-    const p = floor < 0.18 ? 0.04 : floor > 0.86 ? 0.85 : 0.34;
-    const floorCol = cols[Math.floor(Math.random() * cols.length)];
-    for (let c = 0; c < WIN_COLS; c++) {
-      if (Math.random() > p) continue;
-      ctx.globalAlpha = 0.55 + Math.random() * 0.45;
-      ctx.fillStyle = Math.random() < 0.7 ? floorCol : cols[Math.floor(Math.random() * cols.length)];
-      ctx.fillRect(c * cw + 3, r * ch + 4, cw - 6, ch - 8);
+    if (floor < 0.14) continue;                       // tam qaranlıq mərtəbə
+    const full = floor > 0.84;                        // tam işıqlı mərtəbə
+    ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
+    ctx.globalAlpha = 0.8 + Math.random() * 0.2;      // mərtəbə başına bir parlaqlıq
+    let c = 0;
+    while (c < WIN_COLS) {
+      const run = 2 + Math.floor(Math.random() * 4);  // yanan dəstə
+      const gap = full ? 0 : 1 + Math.floor(Math.random() * 4);
+      for (let k = 0; k < run && c < WIN_COLS; k++, c++) ctx.fillRect(c * cw + 3, r * ch + 4, cw - 6, ch - 8);
+      c += gap;
     }
   }
   ctx.globalAlpha = 1;
@@ -212,10 +217,30 @@ export function makeCityBuilding(opts = {}) {
   if (opts.low) {
     // Küçə səviyyəsi: alçaq blok + yola baxan işıqlı vitrin zolağı (+z üzü)
     w = rand(7, 10); d = rand(6, 8);
-    top = block(w, rand(6, 11), d, 0);
-    const shop = new THREE.Mesh(new THREE.BoxGeometry(w * 0.86, 1.3, 0.2), glowMat(neon, 1.1));
-    shop.position.set(0, 1.9, d / 2 + 0.06);
-    g.add(shop);
+    // Birinci mərtəbə pəncərə teksturasız tünd qutudur (vitrinlər ayrıca qoyulur),
+    // pəncərə şəbəkəsi ikinci mərtəbədən başlayır
+    const base = new THREE.Mesh(new THREE.BoxGeometry(w, 3.3, d), mat);
+    base.geometry.attributes.uv.array.fill(0);
+    base.position.y = 1.65;
+    g.add(base);
+    top = block(w, rand(4.5, 9), d, 3.3);
+    // BİRİNCİ MƏRTƏBƏ: ayrı-ayrı vitrinlər (aralarında dirək) + üstündə nazik lövhə.
+    // Əvvəl bütün eni tutan tək parlaq zolaq idi — bina sanki işıqlı pillənin üstündə
+    // dururdu və bütün küçə boyu düz xətt kimi görünürdü (istifadəçi rəyi).
+    const n = Math.max(2, Math.round(w / 2.6));
+    const cell = (w * 0.9) / n;
+    const warm = glowMat(0xffd9a0, 1.1);
+    for (let k = 0; k < n; k++) {
+      if (Math.random() < 0.18) continue; // bağlı dükan
+      const pane = new THREE.Mesh(new THREE.BoxGeometry(cell - 0.55, 1.9, 0.12), Math.random() < 0.7 ? warm : glowMat(neon, 1.1));
+      pane.position.set(-w * 0.45 + cell * (k + 0.5), 1.25, d / 2 + 0.04);
+      g.add(pane);
+    }
+    if (Math.random() < 0.7) {
+      const sign = new THREE.Mesh(new THREE.BoxGeometry(w * (0.3 + Math.random() * 0.3), 0.5, 0.18), glowMat(neon, 1.1));
+      sign.position.set((Math.random() - 0.5) * w * 0.3, 2.85, d / 2 + 0.08);
+      g.add(sign);
+    }
     if (Math.random() < 0.45) { w *= 0.6; d *= 0.7; top = block(w, rand(3, 6), d, top); }
   } else if (form < 0.4) {
     top = block(w, rand(opts.hMin ?? 14, opts.hMax ?? 36), d, 0);

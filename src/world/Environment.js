@@ -1262,7 +1262,8 @@ export class Environment {
 
         // Neon: pəncərəli şəhər binaları (zavodun binaları ayrıca işdir — bədii bibliya)
         const obj = makeDecor(rule.type, rule.type === 'building' && this.data.id === 'neon' ? { city: true } : undefined);
-        const s = 0.8 + Math.random() * 0.7;
+        // Şəhər binası miqyaslanmır: pəncərə ölçüsü bütün binalarda eyni qalsın
+        const s = rule.type === 'building' && this.data.id === 'neon' ? 1 : 0.8 + Math.random() * 0.7;
         obj.scale.setScalar(s);
         // Obyektin üfüqi radiusu
         box.setFromObject(obj);
