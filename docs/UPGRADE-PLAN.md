@@ -158,6 +158,7 @@ Mənbə: Kenney Audio, Sonniss GDC, Freesound (CC0). Hər fayl `ASSETS-LICENSES.
   | Bizim: yarış | 86 | Eb major | 12 / 78 / 9 % | 20 dB |
 
   Ölçülən oxşarlıq **eşidilən oxşarlıq demək deyil** — sintez olunmuş "xor" real səs yazısı kimi səslənmir. `RECORD=1 npx playwright test tests/music.spec.js -g yazı` mövzunu fayla yazır.
+- **QƏRAR (2026-10-06): standart `classic`-dir.** İstifadəçi üç variantı dinlədi: "classic yaxşıdır, amma yarışdakı mahnını bir az dəyişdir — daha həzin, amma yarışa uyğun". Yarış mövzusu yenidən yazıldı: 118 → 112 bpm, Am–F–C–G → Am9–Fmaj7–Dm7–Em7, yumşaq snare, açıq hat yoxdur, enən uzun notlu melodiya + oktava aşağı "cavab". Ölçüldü: 112 bpm, A minor (r = 0.83). Menyu mövzusu dəyişmədi. `walk` sınaq kimi qalır (`?music=walk`).
 - **Ehtiyat (`?music=files`):** menyu və yarışda zen-in yazılmış lofi siyahısı (HoliznaCC0, CC0; 34 trek) çalınır.
 - **Köhnə (`?music=classic`):** synthwave sintezi.
 - İstinad "Big Walk" (aksfx) yalnız üslubdur: sempl/melodiya götürülməyib. `npm run test:music` yalnız səviyyəni ölçür. **Musiqini mən eşidə bilmirəm.**

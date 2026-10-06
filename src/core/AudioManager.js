@@ -7,15 +7,15 @@ class AudioManagerImpl {
     this.ctx = null;
     this.muted = localStorage.getItem('apexMuted') === '1';
     // Menyu/yarış musiqisinin üslubu (müqayisə üçün ünvana ?music=… yaz; seçim yadda qalır):
-    //   walk    — sakit, soul çalarlı sintez (standart)
+    //   classic — synthwave sintezi (STANDART: istifadəçi 2026-10-06-da üç variantı dinləyib bunu seçdi)
+    //   walk    — "Big Walk" tipli minimalist xor sintezi (sınaq, seçilmədi)
     //   files   — yazılmış treklər: zen-in lofi siyahısı menyuda və yarışda da çalınır
-    //   classic — köhnə synthwave sintezi
     try {
       const q = new URLSearchParams(location.search).get('music');
       if (['classic', 'walk', 'files'].includes(q)) localStorage.setItem('apexMusicStyle', q);
       const st = localStorage.getItem('apexMusicStyle');
-      this.musicStyle = ['classic', 'files'].includes(st) ? st : 'walk';
-    } catch { this.musicStyle = 'walk'; }
+      this.musicStyle = ['walk', 'files'].includes(st) ? st : 'classic';
+    } catch { this.musicStyle = 'classic'; }
     this._musicMode = null;
     this._musicTimer = null;
     this._step = 0;
@@ -429,7 +429,7 @@ class AudioManagerImpl {
     if (this._musicMode === 'lofi' && !this._lofiSynth) return; // fayl çalınır
     const walk = this.musicStyle !== 'classic';
     const bpm = this._musicMode === 'lofi' ? 74
-      : this._musicMode === 'race' ? (walk ? 86 : 118) : (walk ? 117 : 82);
+      : this._musicMode === 'race' ? (walk ? 86 : 112) : (walk ? 117 : 82);
     const stepDur = 60 / bpm / 2; // 8-lik notlar
     while (this._nextT < this.ctx.currentTime + 0.3) {
       if (!this.muted) this._playStep(this._musicMode, this._step, this._nextT, stepDur);
@@ -644,36 +644,56 @@ class AudioManagerImpl {
     }
     if (this.musicStyle !== 'classic') { this._playStepWalk(mode, s, t, dur); return; }
     if (mode === 'race') {
-      // ——— YARIŞ: sürüşkən synthwave — dolu kick, backbeat snare, oktava bası, hook lead ———
-      if (s % 4 === 0) this._tone({ f0: 140, f1: 44, t, dur: 0.16, g: 0.46, dest: M }); // dərin kick
-      if (s % 8 === 4) { // snare (backbeat) — küy + gövdə
-        this._noise({ t, dur: 0.13, g: 0.14, type: 'bandpass', f0: 1800, q: 0.9, dest: M });
-        this._tone({ type: 'sine', f0: 190, f1: 120, t, dur: 0.09, g: 0.1, dest: M });
+      // ——— YARIŞ: həzin synthwave (2026-10-06, istifadəçi: "daha həzin, amma yarışa uyğun") ———
+      // Sürücü ritm qalır (dörd-vuruş kik, oktava bası), amma harmoniya və melodiya
+      // qəmlidir: Am9 – Fmaj7 – Dm7 – Em7 (major akkorda "qalib" qayıdış yoxdur), enən
+      // melodiya uzun notlarla, hər ikinci keçiddə bir oktava aşağı sakit "cavab".
+      // Əvvəl: Am–F–C–G, 118 bpm, sərt snare və açıq hat — daha şən/qəhrəmani idi.
+      const rRoots = [110, 87.31, 73.42, 82.41];                       // A, F, D, E
+      const rCh = [[0, 3, 7, 10, 14], [0, 4, 7, 11], [0, 3, 7, 10], [0, 3, 7, 10]];
+      const rRoot = rRoots[ci];
+      if (s % 4 === 0) this._tone({ f0: 132, f1: 44, t, dur: 0.17, g: 0.4, dest: M }); // kik (sürücü)
+      if (s % 8 === 4) { // yumşaq snare: az küy, çox gövdə
+        this._noise({ t, dur: 0.11, g: 0.075, type: 'bandpass', f0: 1500, q: 0.9, dest: M });
+        this._tone({ type: 'sine', f0: 180, f1: 118, t, dur: 0.1, g: 0.09, dest: M });
       }
-      if (s % 4 === 2) this._noise({ t, dur: 0.07, g: 0.055, type: 'highpass', f0: 7500, dest: M }); // açıq hat
-      else if (s % 2 === 0) this._noise({ t, dur: 0.025, g: 0.02, type: 'highpass', f0: 9000, dest: M }); // qapalı hat
-      // Yuvarlanan oktava bası — triangle+saw qarışığı (isti amma sürücü)
-      const bassPat = [0, 12, 0, 12, 0, 12, 10, 12];
-      const bf = semis(root, bassPat[s % 8]);
-      this._tone({ type: 'triangle', f0: bf, t, dur: dur * 0.85, g: 0.2, dest: M, attack: 0.004 });
-      this._tone({ type: 'sawtooth', f0: bf, t, dur: dur * 0.85, g: 0.05, dest: M, attack: 0.004 });
-      // Pad — hər taktda yumşaq akkord fonu
+      if (s % 2 === 1) this._noise({ t, dur: 0.03, g: 0.022, type: 'highpass', f0: 8500, dest: M }); // qapalı hat (zəif vuruş)
+      // Bas: kök üstündə dayanır, oktava və kvintaya qısa çıxış
+      const bassPat = [0, 0, 12, 0, -1, 0, 7, 12];
+      const bn = bassPat[s % 8];
+      if (bn >= 0) {
+        const bf = semis(rRoot, bn);
+        this._tone({ type: 'triangle', f0: bf, t, dur: dur * 0.95, g: 0.21, dest: M, attack: 0.005 });
+        this._tone({ type: 'sawtooth', f0: bf, t, dur: dur * 0.7, g: 0.03, dest: M, attack: 0.005 });
+      }
+      // Pad: 7/9-lu akkordlar, yumşaq (üçbucaq + azca köksüz cüt)
       if (s % 16 === 0) {
-        for (const n of chordQ[ci]) {
-          this._tone({ type: 'sawtooth', f0: semis(root * 2, n), t, dur: dur * 15, g: 0.026, dest: M, attack: 0.6 });
-          this._tone({ type: 'sawtooth', f0: semis(root * 2, n) * 1.006, t, dur: dur * 15, g: 0.018, dest: M, attack: 0.6 });
+        for (const n of rCh[ci]) {
+          this._tone({ type: 'triangle', f0: semis(rRoot * 2, n), t, dur: dur * 15.5, g: 0.034, dest: M, attack: 0.7 });
+          this._tone({ type: 'sawtooth', f0: semis(rRoot * 2, n) * 1.006, t, dur: dur * 15, g: 0.012, dest: M, attack: 0.9 });
         }
       }
-      // HOOK: 2 taktlıq çağırış + 2 taktlıq cavab (yadda qalan riff)
+      // Melodiya (A minor, mütləq notlar — A3 = 220 Hz-dən yarımtonla): enən, uzun notlu
+      const MEL = [
+        [19, -1, -1, 17, 15, -1, 12, -1],   // Am:  E  .  .  D  C  .  A  .
+        [15, -1, -1, 12, -1, 10, 12, -1],   // F:   C  .  .  A  .  G  A  .
+        [20, -1, 19, 17, -1, -1, 12, -1],   // Dm:  F  .  E  D  .  .  A  .
+        [19, -1, 17, 14, -1, -1, -1, -1],   // Em:  E  .  D  B  (saxlanır)
+      ];
       if (s % 2 === 0) {
-        const call = [12, -1, 15, 17, -1, 15, 12, -1];
-        const resp = [19, 17, 15, 12, 10, -1, 12, -1];
-        const line = (ci % 2 === 0) ? call : resp;
-        const n = line[(s / 2) % 8];
-        if (n >= 0) pluck(semis(root * 2, n), t, dur * 1.6, 0.075, 0.006);
+        const n = MEL[ci][(s / 2) % 8];
+        if (n >= 0) {
+          const answer = (this._loopN || 0) % 2 === 1;           // ikinci keçid: oktava aşağı, sakit
+          const f = semis(220, n - (answer ? 12 : 0));
+          const nx = MEL[ci][((s / 2) % 8) + 1];
+          const long = nx === -1 || nx === undefined;
+          pluck(f, t, dur * (long ? 3.4 : 1.7), answer ? 0.055 : 0.075, 0.008);
+          pluck(f, t + dur * 3, dur * 1.4, 0.02);                // exo
+          if (long) this._tone({ type: 'sine', f0: f, t, dur: dur * 3.6, g: 0.03, dest: M, attack: 0.12 }); // uzun notda "nəfəs"
+        }
       }
-      // 4 taktın sonunda qalxan keçid (riser)
-      if (s >= 60) this._noise({ t, dur: dur, g: 0.015 + (s - 60) * 0.012, type: 'highpass', f0: 3000 + (s - 60) * 800, dest: M });
+      // 8 taktın sonunda yumşaq qalxma (əvvəlkindən zəif)
+      if (s >= 60) this._noise({ t, dur: dur, g: 0.008 + (s - 60) * 0.006, type: 'highpass', f0: 3000 + (s - 60) * 700, dest: M });
     } else {
       // ——— MENYU: imza mövzusu — half-time, isti pad, exo-lu pluck hook ———
       if (s % 8 === 0) this._tone({ f0: 120, f1: 46, t, dur: 0.2, g: 0.38, dest: M }); // yumşaq kick

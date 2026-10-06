@@ -53,7 +53,7 @@ test('musiqi: yeni üslub səs verir, kəsilmir, köhnə ilə eyni səviyyədəd
   }
 });
 
-// RECORD=1: yeni mövzunu fayla yazır (tests/out/music/*.webm) — istinad treklərlə eyni
+// RECORD=1: mövzunu fayla yazır (tests/out/music/<rejim>-<üslub>.webm; STYLE=classic|walk) — istinad treklərlə eyni
 // alətlə (librosa) ölçüb müqayisə etmək üçün. Adi qaçışda işləmir.
 test('musiqi: yazı (RECORD=1)', async ({ page }) => {
   test.skip(process.env.RECORD !== '1', 'yalnız RECORD=1 ilə');
@@ -65,10 +65,11 @@ test('musiqi: yazı (RECORD=1)', async ({ page }) => {
   await page.waitForFunction(() => !!window.__audio && !!window.__menu, null, { timeout: 60_000 });
   await page.mouse.click(700, 400);
   fs.mkdirSync('tests/out/music', { recursive: true });
+  const STYLE = process.env.STYLE || 'classic'; // STYLE=walk ilə digər üslub
   for (const mode of ['menu', 'race']) {
-    const b64 = await page.evaluate(async (m) => {
+    const b64 = await page.evaluate(async ({ m, st }) => {
       const a = window.__audio;
-      a.muted = false; a.musicStyle = 'walk'; a.stopMusic(); a._ensure();
+      a.muted = false; a.musicStyle = st; a.stopMusic(); a._ensure();
       await a.ctx.resume();
       const dst = a.ctx.createMediaStreamDestination();
       a.musicGain.connect(dst);
@@ -87,7 +88,7 @@ test('musiqi: yazı (RECORD=1)', async ({ page }) => {
       let s = '';
       for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode(...buf.subarray(i, i + 0x8000));
       return btoa(s);
-    }, mode);
-    fs.writeFileSync(path.join('tests/out/music', `${mode}-walk.webm`), Buffer.from(b64, 'base64'));
+    }, { m: mode, st: STYLE });
+    fs.writeFileSync(path.join('tests/out/music', `${mode}-${STYLE}.webm`), Buffer.from(b64, 'base64'));
   }
 });
