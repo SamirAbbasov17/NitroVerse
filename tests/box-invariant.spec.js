@@ -19,6 +19,10 @@ test('bonus qutusu: maqnit ikonla işığı ayırmır, sonra qutular yerinə qay
     const filler = sc.powerups.boxes[0].type;
     me.items = [{ ...filler }, { ...filler }];
     sc.signature.used = true;
+    // Botların imza gücü söndürülür: "Qızıl axını" olan bot öz maqniti ilə qutuları
+    // arxasınca sürükləyir (12 s) və test təsadüfi qırılırdı (bot heyəti təsadüfidir:
+    // 11.8 m və 115 m sürüşmə ölçülüb). Burada yalnız oyunçunun maqniti yoxlanır.
+    for (const r of sc.racers) if (!r.isPlayer && r.signature) r.signature.used = true;
     sc.signature._magnetT = 60; // test özü söndürür
     sc.signature._magnetR = 26;
     return sc.powerups.boxes.map((b) => ({ x: b.mesh.position.x, z: b.mesh.position.z }));
