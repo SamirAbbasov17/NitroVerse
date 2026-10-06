@@ -60,6 +60,13 @@ export class HUD {
         <button class="hud__rescue" id="hud-rescue">
           <span class="hud__rescue-warn">⚠</span> ${t('hud.offroad')} <kbd>F</kbd>
         </button>
+        <div class="hud__end" id="hud-end">
+          <div class="hud__end-text">
+            <div class="hud__end-title" id="hud-end-title"></div>
+            <div class="hud__end-sub" id="hud-end-sub"></div>
+          </div>
+          <button class="hud__end-btn" id="hud-end-btn"></button>
+        </div>
         <div id="hud-overlay"></div>
       </div>`;
 
@@ -78,6 +85,10 @@ export class HUD {
       item2: this.root.querySelector('#hud-item2'),
       item2Icon: this.root.querySelector('#hud-item2-icon'),
       rescue: this.root.querySelector('#hud-rescue'),
+      end: this.root.querySelector('#hud-end'),
+      endTitle: this.root.querySelector('#hud-end-title'),
+      endSub: this.root.querySelector('#hud-end-sub'),
+      endBtn: this.root.querySelector('#hud-end-btn'),
     };
     this.el.rescue.onclick = () => this.onRescue?.();
     this.canvas = this.root.querySelector('#minimap');
@@ -171,6 +182,20 @@ export class HUD {
     }
     this.el.rescue.classList.toggle('is-visible', visible);
     this.el.rescue.classList.toggle('is-wrongway', visible && reason === 'wrongway');
+  }
+
+  // Yarışın sonu bildirişi (uduzdun / digərləri gözlənilir) — geri sayımla.
+  // state = null gizlədir. Düymə yalnız `button` veriləndə görünür.
+  setEndBanner(state) {
+    const e = this.el;
+    if (!e.end) return;
+    if (!state) { e.end.classList.remove('is-visible'); this._endSub = null; return; }
+    if (this._endTitle !== state.title) { this._endTitle = state.title; e.endTitle.textContent = state.title; }
+    if (this._endSub !== state.sub) { this._endSub = state.sub; e.endSub.textContent = state.sub; }
+    e.endBtn.style.display = state.button ? '' : 'none';
+    if (state.button) { e.endBtn.textContent = state.button; e.endBtn.onclick = state.onButton; }
+    e.end.classList.toggle('is-lost', !!state.lost);
+    e.end.classList.add('is-visible');
   }
 
   _computeMap(points) {

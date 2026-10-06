@@ -27,6 +27,7 @@ Testlər Playwright-dır və repo-dadır: `tests/`. Dev serveri (5173) özləri 
 | `npm run test:pace` | maşın sürəti balansı: eyni sürücü 8 maşını sürür (`CARS=…` ilə dəyişir), dövrənin 60%-i → `tests/out/pace.json` | ən sürətli/ən yavaş fərqi < 10% | ~10 dəq |
 | `npm run test:postfx` | render sonrası cila (masaüstü): hər rejimdə eyni dondurulmuş kadr cila bağlı/açıq → `tests/out/postfx/*-{off,on,nobloom}.png`; kadr vaxtı → `tests/out/postfx.json` | cila əsas görüntünü dəyişmir (orta piksel fərqi < 1.5); p99 < 22 ms; mobildə qat yoxdur | ~3.5 dəq |
 | `npm run test:impact` | toqquşma hissi (yarış): maneəyə düz/sürtünərək zərbə, arxadan və yandan rəqibə təmas — qalan sürət, geri sıçrayış, ötürülən sürət; əks-əlaqə (hissəcik, kamera itələnməsi və qayıtma vaxtı) → `tests/out/impact.json` | geri sıçrayış < 6 m/s; sürtünmədə sürətin > 85%-i qalır; zəif toxunuş effektsiz; kamera < 0.7 s-də qayıdır | ~10 s |
+| `npm run test:race-end` | yarışın sonu (oflayn): bot qalib → bildiriş və geri sayım, düymə → nəticə ekranı, vaxt bitəndə özü açılır, oyunçu qalibdirsə çıxmır, telefonda HUD-u örtmür → `tests/out/race-end-*.png` | 4 test yaşıl | ~20 s |
 | `npm run test:mobile` | 844×390-da HUD düymələrinin örtüşməsi və ekrandan çıxması | 0 | ~30 s |
 
 Tək test: `npx playwright test tests/shots.spec.js -g "race-neon"`.

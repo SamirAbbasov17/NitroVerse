@@ -154,9 +154,16 @@ export class SignatureAbility {
     // BUQ İDİ: tarixçə ən YENİDƏN köhnəyə düzülüb və `find(h.t <= sec)` həmişə
     // ilk elementi — cari mövqeyi — qaytarırdı: güc maşını yerindən tərpətmirdi
     // (ölçüldü: 0.4 m). Lazım olan `sec` saniyə əvvəlki (və ya ən köhnə) qeyddir.
-    const want = this._hist.find((h) => h.t >= sec) || this._hist[this._hist.length - 1];
+    let want = this._hist.find((h) => h.t >= sec) || this._hist[this._hist.length - 1];
     if (!want) return;
+    // Qayıdış nöqtəsində başqa maşın varsa (7 m) tarixçədə bir az daha əvvəlki boş
+    // nöqtə götürülür — maşın kiminsə üstünə/burnunun dibinə düşməsin.
+    const others = (this.scene?.cars || []).filter((c) => c !== car);
+    const boş = (h) => others.every((c) => Math.hypot(c.position.x - h.x, c.position.z - h.z) > 7);
+    if (!boş(want)) want = this._hist.slice(this._hist.indexOf(want)).find(boş) || want;
     this.scene?.effects?.spawnExplosion?.({ ...car.position });
+    // Gəliş nöqtəsi də işarələnir — maşının haradan çıxdığı oxunsun
+    this.scene?.effects?.spawnRangeRing?.({ x: want.x, y: 0, z: want.z }, 5.5, this.data?.color ?? 0x8a3df0);
     car.position.set(want.x, 0, want.z);
     car.heading = want.h;
     car.velocity.set(Math.sin(want.h) * want.v, 0, Math.cos(want.h) * want.v);

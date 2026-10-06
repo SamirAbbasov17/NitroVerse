@@ -129,13 +129,16 @@ export class RaceManager {
     return this.racers.find((r) => r.isPlayer);
   }
 
-  forceFinishRemaining() {
+  // dnf = true: yarış vaxtından əvvəl bitirildi (oyunçu uduzub bitirdi) — qalanların
+  // vaxtı təxmini hesablanır (sıra üçün), amma nəticədə göstərilmir.
+  forceFinishRemaining(dnf = false) {
     // Oyunçu bitəndən sonra qalan AI-ları avtomatik bitir (nəticə üçün)
     const unfinished = this.racers.filter((r) => !r.finished)
       .sort((a, b) => b.progress - a.progress);
     for (const r of unfinished) {
       r.finished = true;
       r.finishTime = this.elapsed + (this.totalLaps - r.progress) * 8;
+      r.dnf = dnf;
       r.finishPos = ++this._finishOrder;
     }
     this._updateStandings();

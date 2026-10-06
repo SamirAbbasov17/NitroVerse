@@ -202,3 +202,29 @@ for (const name of ['race-desert', 'zen']) {
     expect(deg, 'həddən artıq olmamalıdır (°)').toBeLessThan(25);
   });
 }
+
+// Bot "Vaxtı Geri Al" gücünü yalnız bəlaya düşəndə işlədir. Əvvəl düz yolda tam sürətdə
+// işlədib 3 saniyə geriyə — oyunçunun qabağına — teleport olurdu (istifadəçi rəyi).
+test('oynanış: bot geri-qayıtma gücünü sağlam vəziyyətdə işlətmir', async ({ page }) => {
+  await boot(page);
+  await startMode(page, MODES.find((m) => m.name === 'race-desert').config);
+  await page.waitForFunction(() => window.__active.raceManager?.state === 'racing', null, { timeout: 30_000 });
+  await page.waitForTimeout(5000); // botlar sürət yığsın, tarixçə dolsun
+  const arm = () => page.evaluate(() => {
+    const sc = window.__active;
+    const bot = sc.racers.find((r) => !r.isPlayer && r.signature);
+    for (const r of sc.racers) if (!r.isPlayer && r !== bot && r.signature) r.signature.used = true;
+    bot.signature.data = { ...bot.signature.data, rewind: 3.0 };
+    bot.signature.used = false;
+    bot._sigWait = 0;
+    window.__bot = bot;
+    return { speedPct: bot.car.velocity.length() / bot.car.maxSpeed, onRoad: bot.car.onRoad };
+  });
+  const st = await arm();
+  expect(st.onRoad, 'ssenari: bot yoldadır').toBe(true);
+  await page.waitForTimeout(3000);
+  expect(await page.evaluate(() => window.__bot.signature.used), 'sağlam bot gücü işlətmir').toBe(false);
+  // Vurulanda işlətməlidir
+  await page.evaluate(() => { window.__bot.car.hitTimer = 1.2; window.__bot._sigWait = 0; });
+  await page.waitForFunction(() => window.__bot.signature.used === true, null, { timeout: 4000 });
+});

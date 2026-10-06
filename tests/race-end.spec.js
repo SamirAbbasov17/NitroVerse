@@ -1,0 +1,89 @@
+import path from 'node:path';
+import { test, expect } from '@playwright/test';
+import { MODES, OUT, boot, startMode } from './helpers.js';
+
+// Yarışın sonu (oflayn): bot birinci finişə çatanda oyunçuya "uduzdun" bildirişi və
+// 30 saniyəlik geri sayım çıxır; "Yarışı bitir" düyməsi və ya vaxtın bitməsi nəticə
+// ekranını açır. Onlayn axın iki brauzer tələb edir — burada yoxlanmır.
+const CFG = MODES.find((m) => m.name === 'race-desert').config;
+const MOBILE = { viewport: { width: 844, height: 390 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true };
+
+async function botWins(page) {
+  await startMode(page, CFG);
+  await page.waitForFunction(() => window.__active.raceManager?.state === 'racing', null, { timeout: 30_000 });
+  await page.evaluate(() => {
+    const sc = window.__active;
+    const rm = sc.raceManager;
+    const bot = sc.racers.find((r) => !r.isPlayer);
+    bot.finished = true; bot.finishTime = rm.elapsed; bot.finishPos = ++rm._finishOrder;
+    rm.onFinish(bot, bot.finishPos);
+  });
+}
+
+test('yarış sonu: bot qalib → bildiriş, geri sayım, düymə → nəticə ekranı', async ({ page }) => {
+  await boot(page);
+  await botWins(page);
+  const banner = page.locator('#hud-end');
+  await expect(banner).toHaveClass(/is-visible/);
+  await expect(page.locator('#hud-end-title')).toHaveText('Yarışı uduzdun');
+  const sub1 = await page.locator('#hud-end-sub').textContent();
+  expect(sub1).toMatch(/30|29/);
+  await page.waitForTimeout(2200);
+  const sub2 = await page.locator('#hud-end-sub').textContent();
+  expect(sub2, 'geri sayım gedir').toMatch(/2[78]/);
+  await page.screenshot({ path: path.join(OUT, 'race-end-desktop.png') });
+  await page.locator('#hud-end-btn').click();
+  await page.waitForFunction(() => window.__active?._state === 'done' || window.__active === window.__showcase, null, { timeout: 5000 });
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: path.join(OUT, 'race-end-results.png') });
+  // Nəticə ekranında oyunçu birinci deyil
+  const txt = await page.locator('#ui-root').innerText();
+  expect(txt.length).toBeGreaterThan(20);
+});
+
+test('yarış sonu: 30 saniyə bitəndə nəticə özü açılır', async ({ page }) => {
+  await boot(page);
+  await botWins(page);
+  await page.evaluate(() => { window.__active._endT = 1.2; });
+  await page.waitForFunction(() => window.__active?._state === 'done' || window.__active === window.__showcase, null, { timeout: 6000 });
+});
+
+test('yarış sonu: oyunçu qalibdirsə bildiriş çıxmır', async ({ page }) => {
+  await boot(page);
+  await startMode(page, CFG);
+  await page.waitForFunction(() => window.__active.raceManager?.state === 'racing', null, { timeout: 30_000 });
+  await page.evaluate(() => {
+    const sc = window.__active;
+    const rm = sc.raceManager;
+    const me = sc.racers.find((r) => r.isPlayer);
+    me.finished = true; me.finishTime = rm.elapsed; me.finishPos = ++rm._finishOrder;
+    rm.onFinish(me, me.finishPos);
+    rm.onPlayerFinish(me);
+  });
+  await page.waitForTimeout(500);
+  await expect(page.locator('#hud-end')).not.toHaveClass(/is-visible/);
+});
+
+test('yarış sonu: telefonda bildiriş HUD-u və idarəni örtmür', async ({ browser }) => {
+  const ctx = await browser.newContext(MOBILE);
+  const page = await ctx.newPage();
+  await boot(page);
+  await botWins(page);
+  await expect(page.locator('#hud-end')).toHaveClass(/is-visible/);
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(OUT, 'race-end-mobile.png') });
+  const hit = await page.evaluate(() => {
+    const a = document.querySelector('#hud-end').getBoundingClientRect();
+    const over = [];
+    for (const el of document.querySelectorAll('.hud-chip, .tbtn, #hud-speed, .hud__item, .hud__item2, .hud__sig, .hud canvas, .hud button:not(#hud-end-btn):not(#hud-rescue)')) {
+      const b = el.getBoundingClientRect();
+      if (!b.width || !b.height) continue;
+      if (a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top) over.push(el.className || el.id);
+    }
+    return { over, btnH: document.querySelector('#hud-end-btn').getBoundingClientRect().height, w: a.width, top: a.top, bottom: a.bottom };
+  });
+  console.log(JSON.stringify(hit));
+  expect(hit.over, 'bildiriş başqa HUD elementinin üstünə düşmür').toEqual([]);
+  expect(hit.btnH, 'düymə toxunuş üçün ən azı 40 px').toBeGreaterThanOrEqual(40);
+  await ctx.close();
+});

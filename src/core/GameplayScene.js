@@ -30,6 +30,7 @@ const RACE_CARS = 6;      // yarışda ümumi maşın sayı
 // Dəymə xalları (Blur stili)
 const HIT_SCORE = { missile: 100, mine: 80, bolt: 60, trishot: 25 };
 const CAR_RADIUS = 1.5;   // toqquşma üçün
+const END_WAIT = 30;     // ilk finişdən sonra yarışın bitməsinə qədər saniyə
 // Bot çətinliyi → AI bacarıq aralığı [baza, yayılma]
 // [bacarıq bazası, yayılma, sürət əmsalı, döngə cəsarəti]
 // ÇƏTİN əvvəl 0.92 qaz idi — praktikada asan idi. İndi botlar daha
@@ -357,7 +358,78 @@ export class GameplayScene {
       // Finişdən sonra idarə bağlanır (yavaş-yavaş dayanır)
       if (pr?.controller) pr.controller.active = false;
     };
+    // İLK FİNİŞ: kimsə (bot və ya başqa oyunçu) birinci gələndə qalanlar üçün yarış
+    // 30 saniyəyə bitir. Əvvəl oflayn yarış oyunçu finişə çatana qədər sonsuz davam
+    // edirdi və uduzduğu heç yerdə bildirilmirdi (istifadəçi rəyi).
+    rm.onFinish = (r, pos) => {
+      if (pos !== 1 || this._endT != null) return;
+      this._endT = END_WAIT;
+      this._winnerName = r.name;
+    };
     rm.onComplete = () => this._sendResults();
+  }
+
+  // Yarışın sonu: geri sayım, bildiriş və "Yarışı bitir" düyməsi. Hər kadr çağırılır.
+  _updateRaceEnd(dt) {
+    if (this._endT == null || this._state === 'done') return;
+    this._endT = Math.max(0, this._endT - dt);
+    const n = Math.ceil(this._endT);
+    const online = !!this.online;
+    if (this._playerDone || this._gaveUp) {
+      // Onlayn: finişə çatan və ya yarışı bitirən oyunçu yerində qalıb digərlərini gözləyir
+      if (online) {
+        this.hud.setEndBanner({
+          title: t(this._gaveUp ? 'end.gaveTitle' : 'end.waitTitle'),
+          sub: t('end.waitSub', { n }),
+        });
+      }
+    } else {
+      this.hud.setEndBanner({
+        lost: true,
+        title: t('end.lostTitle'),
+        sub: t('end.lostSub', { name: this._winnerName, n }),
+        button: t('end.btn'),
+        onButton: () => this._giveUp(),
+      });
+      if (this._endT <= 0) this._giveUp(); // vaxt bitdi — düymə basılmış kimi
+    }
+  }
+
+  // Oyunçu yarışı bitirir (düymə və ya 30 saniyə). Oflayn: dərhal nəticə ekranı.
+  // Onlayn: maşın yerində qalır, host-a bildirilir; nəticəni host göndərir.
+  _giveUp() {
+    if (this._gaveUp || this._playerDone || this._state === 'done') return;
+    this._gaveUp = true;
+    const pr = this.racers.find((r) => r.isPlayer);
+    if (pr?.controller) pr.controller.active = false;
+    this.playerCar.velocity.set(0, 0, 0);
+    if (!this.online) {
+      this.hud.setEndBanner(null);
+      this.raceManager.forceFinishRemaining(true); // → onComplete → nəticə ekranı
+      return;
+    }
+    this.touchControls?.setVisible(false);
+    this._net.sendEvent({ kind: 'giveup' });
+    this._onGiveUp(this._net.selfId); // öz hadisəmiz bizə qayıtmır
+  }
+
+  // Onlayn: kimsə yarışı bitirdi. Host hamının bitib-bitmədiyini yoxlayır.
+  _onGiveUp(id) {
+    const r = this.racers.find((x) => x.netId === id);
+    if (!r || r.gaveUp) return;
+    r.gaveUp = true;
+    if (!r.isPlayer) this.hud.showToast(t('end.gaveUp', { name: r.name }));
+    if (this._net.isHost) {
+      if (!this._hostResultsTimer) this._hostResultsTimer = END_WAIT;
+      this._hostCheckAllDone();
+    }
+  }
+
+  // Host: hamı finişə çatıb, yarışı bitirib və ya ayrılıbsa nəticəni dərhal göndər
+  _hostCheckAllDone() {
+    const done = this.racers.every((r) =>
+      this._netFinishes.has(r.netId) || r.gaveUp || r.finishTime === Infinity);
+    if (done) this._hostSendResults();
   }
 
   // Oyunçunun aldığı finiş animasiyasını oynadır (yoxdursa heç nə etmir)
@@ -393,7 +465,10 @@ export class GameplayScene {
         this.hud.showToast(r.name + note);
       }
     };
-    net.on('left', (id) => dropRacer(id, ' ayrıldı'));
+    net.on('left', (id) => {
+      dropRacer(id, ' ayrıldı');
+      if (net.isHost && this._hostResultsTimer) this._hostCheckAllDone();
+    });
     this._dropRacer = dropRacer; // gleave hadisəsi _onNetEvent-də işlənir
 
     net.on('results', (rows) => this._showNetResults(rows));
@@ -409,9 +484,8 @@ export class GameplayScene {
     if (net.isHost) {
       net.on('finish', ({ id, time }) => {
         this._netFinishes.set(id, time);
-        if (!this._hostResultsTimer) this._hostResultsTimer = 25; // ilk finişdən sonra max gözləmə
-        // Hamı bitibsə dərhal göndər
-        if (this._netFinishes.size >= this.racers.length) this._hostSendResults();
+        if (!this._hostResultsTimer) this._hostResultsTimer = END_WAIT; // ilk finişdən sonra max gözləmə
+        this._hostCheckAllDone();
       });
     }
   }
@@ -430,6 +504,9 @@ export class GameplayScene {
   _onNetEvent(m) {
     if (m.kind === 'gleave') {
       this._dropRacer?.(m.id, ' otağa qayıtdı');
+      if (this._net.isHost && this._hostResultsTimer) this._hostCheckAllDone();
+    } else if (m.kind === 'giveup') {
+      this._onGiveUp(m.id);
     } else if (m.kind === 'mine') {
       const owner = this.racers.find((x) => x.netId === m.id) || null;
       this.powerups.spawnNetMine(m.mid, m.x, m.z, owner);
@@ -520,6 +597,7 @@ export class GameplayScene {
     if (this._resultsShown) return;
     this._resultsShown = true;
     this._state = 'done';
+    this.hud.setEndBanner(null);
     // Nəticə gələn kimi hamının idarəsi bağlanır (uduzan da daxil)
     const pr = this.racers.find((r) => r.isPlayer);
     if (pr?.controller) pr.controller.active = false;
@@ -741,6 +819,7 @@ export class GameplayScene {
     }
     if (this._state === 'paused') return;
     this._time += dt;
+    if (this.isRace) this._updateRaceEnd(dt);
 
     if (this.isRace) {
       this._updateWaitGate(dt);
@@ -762,8 +841,15 @@ export class GameplayScene {
         const sürət = r.car.velocity.length();
         const düzHissə = sürət > r.car.maxSpeed * 0.72;
         const geridə = (r.position || 0) > (this.raceManager?.getPlayer()?.position || 0);
-        if (düzHissə || geridə) r.signature.activate();
-        else r._sigWait = 1.5;   // uyğun an deyil — bir az sonra yenidən bax
+        // "VAXTI GERİ AL" ayrıca şərtlə: bot onu düz yolda tam sürətdə işlədəndə 3 saniyə
+        // geriyə — arxadan gələn oyunçunun düz QABAĞINA — teleport olurdu (istifadəçi
+        // rəyi: "start düzündə birdən qabağımda maşın peyda oldu"), üstəlik özünə ziyan
+        // edirdi. İndi yalnız bəlaya düşəndə işlədir: vurulub, sürüşür, yoldan çıxıb.
+        const uyğun = r.signature.data.rewind
+          ? (r.car.hitTimer > 0 || r.car.slipTimer > 0 || !r.car.onRoad)
+          : (düzHissə || geridə);
+        if (uyğun) r.signature.activate();
+        else r._sigWait = r.signature.data.rewind ? 0.3 : 1.5; // uyğun an deyil — sonra yenidən bax
       }
     }
     this._resolveCollisions();
@@ -1439,11 +1525,12 @@ export class GameplayScene {
     if (this._resultsSent) return;
     this._resultsSent = true;
     this._state = 'done';
+    this.hud.setEndBanner(null);
     this.touchControls?.setVisible(false);
     const standings = this.raceManager.standings || this.racers;
     this.onFinish?.(standings.map((r) => ({
       name: r.name, isPlayer: r.isPlayer, color: r.color, model: carSkin(r.car.data),
-      position: r.position, finishTime: r.finishTime,
+      position: r.position, finishTime: r.dnf ? null : r.finishTime, // bitirməyənə uydurma vaxt yazılmır
       score: r.isPlayer ? this.score : undefined, // dəymə xalları nəticədə görünsün
     })), this.config);
   }
