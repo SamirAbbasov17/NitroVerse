@@ -130,3 +130,33 @@ test('oynanış: rejimlər arasında sürətli keçid', async ({ page }) => {
   await racing(page);
   expect(errors, errors.join('\n')).toEqual([]);
 });
+
+// ————— Kamera: önü tutan rəqib yarı-şəffaf olur, uzaqlaşanda bərpa olunur —————
+test('oynanış: kameranın önünü tutan rəqib şəffaflaşır', async ({ page }) => {
+  await boot(page);
+  await startMode(page, race());
+  await racing(page);
+  await page.waitForTimeout(600);
+  const probe = (where) => page.evaluate(async (w) => {
+    const sc = window.__active;
+    const me = sc.playerCar;
+    const bot = sc.cars.find((c) => c !== me);
+    for (const c of sc.controllers) if (c.car !== me) { c.active = false; if (c.car !== bot) c.car.reset(me.position.clone().set(9000, 0, 9000), 0); }
+    const cam = sc.camera.position;
+    const p = me.position.clone();
+    if (w === 'between') p.set((cam.x + me.position.x) / 2, 0, (cam.z + me.position.z) / 2);
+    else p.set(me.position.x + Math.sin(me.heading) * 30, 0, me.position.z + Math.cos(me.heading) * 30); // 30 m qabaqda
+    bot.reset(p, me.heading);
+    await new Promise((r) => setTimeout(r, 250));
+    let transparent = 0;
+    let solid = 0;
+    bot._model.traverse((o) => { if (o.isMesh) { if (o.material.transparent && o.material.opacity < 0.5) transparent++; else solid++; } });
+    return { ghost: !!bot._ghost, transparent, solid };
+  }, where);
+  const a = await probe('between');
+  expect(a.ghost, 'kamera ilə oyunçu arasında').toBe(true);
+  expect(a.solid).toBe(0);
+  const b = await probe('ahead');
+  expect(b.ghost, '30 m qabaqda').toBe(false);
+  expect(b.transparent).toBe(0);
+});

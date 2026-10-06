@@ -78,6 +78,7 @@ export class Car {
     this.tilt = new THREE.Group();
     this.tilt.add(inst.root);
     this.root.add(this.tilt);
+    this._model = inst.root;   // yalnız maşının öz gövdəsi (alov/qalxan daxil deyil) — bax setGhost
 
     // ————— NİTRO ALOVU —————
     // İki egzozdan arxaya uzanan alov: içəridə ağ-isti nüvə, üstündə rəngli
@@ -413,17 +414,53 @@ export class Car {
     this.tilt.rotation.x = this._pitch;
   }
 
+  // KAMERA ÖRTÜLMƏSİ: maşın kamera ilə oyunçunun arasına girəndə yarı-şəffaf olur.
+  // Materiallar bütün maşınlar arasında PAYLAŞILIR, ona görə şəffaflıq üçün bu maşına
+  // məxsus nüsxələr (ilk çağırışda, bir dəfə) yaradılır və əsl materiallarla dəyişdirilir.
+  setGhost(on) {
+    if (!!this._ghost === on) return;
+    this._ghost = on;
+    if (!this._ghostMats) this._ghostMats = new Map();
+    this._model.traverse((o) => {
+      if (!o.isMesh) return;
+      if (on) {
+        o.userData.solidMat = o.material;
+        let g = this._ghostMats.get(o.material);
+        if (!g) {
+          g = o.material.clone();
+          g.transparent = true;
+          g.opacity = 0.22;
+          g.depthWrite = false;
+          g.userData = {};            // paylaşılan DEYİL — Car.dispose silir
+          this._ghostMats.set(o.material, g);
+        }
+        o.material = g;
+        o.castShadow = false;
+      } else if (o.userData.solidMat) {
+        o.material = o.userData.solidMat;
+        o.castShadow = true;
+      }
+    });
+  }
+
   get speedKmh() {
     return Math.max(0, Math.round(this.velocity.length() * TUNING.car.kmhFactor));
   }
 
   get isDrifting() {
     const vR = this.velocity.dot(tmpR.set(-Math.cos(this.heading), 0, Math.sin(this.heading)));
+    // v2: drift SÜRÜŞMƏ BUCAĞI ilə təyin olunur (> ~20°). Adi dönmədə bucaq ~16°-dir,
+    // real driftdə ~30° — köhnə hədd (yan sürət > 2.2) hər döngədə tüstü və iz verirdi.
+    if (this.feel) return Math.abs(this.vF) > 8 && Math.abs(vR) > Math.abs(this.vF) * 0.36;
     return Math.abs(vR) > 2.2 && Math.abs(this.vF) > 8;
   }
 
   dispose() {
     // Materiallar/geometriyalar ModelLibrary şablonları ilə paylaşılır — burada silinmir
+    // (kamera şəffaflığı üçün yaradılmış nüsxələr istisna — onlar bu maşına məxsusdur)
+    this.setGhost(false);
+    for (const g of this._ghostMats?.values() || []) g.dispose();
+    this._ghostMats = null;
     this.root.clear();
   }
 }

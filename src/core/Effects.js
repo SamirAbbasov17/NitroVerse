@@ -11,7 +11,7 @@ export class Effects {
 
     this._shardGeo = new THREE.TetrahedronGeometry(0.34);
     this._sparkGeo = new THREE.TetrahedronGeometry(0.18);
-    this._puffGeo = new THREE.IcosahedronGeometry(0.4, 0);
+    this._puffGeo = new THREE.PlaneGeometry(1, 1);
     this._flashGeo = new THREE.SphereGeometry(1, 10, 8);
 
     // İNSTANS HOVUZLARI: tüstü, qəlpə, qığılcım və konfeti hər növü TƏK çəkimlə
@@ -19,7 +19,9 @@ export class Effects {
     // tüstü 85 draw call, futbolda qol anı 392-yə çatırdı (ölçüldü).
     this._confettiGeo = new THREE.PlaneGeometry(0.3, 0.2);
     this._inst = {
-      puff: this._makeInst(this._puffGeo, 220, { emissive: 0 }),
+      // Tüstü/toz: kameraya baxan yumşaq buludcuq (billboard). ƏVVƏL düz üzlü
+      // ikosaedr idi — maşının arxasında uçan iri boz "daşlar" kimi oxunurdu.
+      puff: this._makeInst(this._puffGeo, 220, { billboard: true, map: puffTexture(), emissive: 0.2 }),
       shard: this._makeInst(this._shardGeo, 140, { emissive: 0.6 }),
       spark: this._makeInst(this._sparkGeo, 140, { emissive: 1.6 }),
       confetti: this._makeInst(this._confettiGeo, 240, { basic: true }),
@@ -40,10 +42,13 @@ export class Effects {
   // slotların matrisi sıfırdır (görünmür). Hər slotun daimi "proxy" Object3D-si
   // var: effekt kodu əvvəlki kimi position/rotation/scale/material.opacity
   // yazır, update() onu instans buferinə köçürür.
-  _makeInst(geo, cap, { emissive = 0, basic = false } = {}) {
+  _makeInst(geo, cap, { emissive = 0, basic = false, billboard = false, map = null } = {}) {
     const mat = basic
       ? new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, side: THREE.DoubleSide })
-      : new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, flatShading: true });
+      : new THREE.MeshStandardMaterial({
+        color: 0xffffff, transparent: true, flatShading: !billboard, map,
+        roughness: 1, metalness: 0, depthWrite: !billboard,
+      });
     const uEmis = { value: emissive };
     mat.onBeforeCompile = (sh) => {
       sh.uniforms.uEmis = uEmis;
@@ -57,8 +62,21 @@ export class Effects {
         sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>',
           '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vColor * uEmis;');
       }
+      if (billboard) {
+        // Kameraya baxan lövhə: instansın MƏRKƏZİ görünüş fəzasına keçirilir, künclər
+        // ekran müstəvisində açılır (instansın fırlanması nəzərə alınmır, miqyası alınır).
+        // Normal da kameraya baxır ki, işıqlanma düz lövhə kimi yox, buludcuq kimi olsun.
+        sh.vertexShader = sh.vertexShader
+          .replace('#include <defaultnormal_vertex>', '#include <defaultnormal_vertex>\ntransformedNormal = vec3(0.0, 0.0, 1.0);')
+          .replace('#include <project_vertex>', [
+            'vec4 bbCenter = modelViewMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);',
+            'float bbScale = length(instanceMatrix[0].xyz);',
+            'vec4 mvPosition = bbCenter + vec4(transformed.xy * bbScale, 0.0, 0.0);',
+            'gl_Position = projectionMatrix * mvPosition;',
+          ].join('\n'));
+      }
     };
-    mat.customProgramCacheKey = () => `fxinst-${basic ? 'b' : 's'}`;
+    mat.customProgramCacheKey = () => `fxinst-${basic ? 'b' : 's'}${billboard ? 'bb' : ''}`;
     const mesh = new THREE.InstancedMesh(geo, mat, cap);
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     mesh.frustumCulled = false;
@@ -313,16 +331,20 @@ export class Effects {
       const c = new THREE.Color(color);
       const hsl = { h: 0, s: 0, l: 0 };
       c.getHSL(hsl);
-      c.setHSL(hsl.h, Math.min(hsl.s, 0.42), Math.min(0.86, Math.max(0.62, hsl.l * 0.55 + 0.42)));
+      c.setHSL(hsl.h, Math.min(hsl.s, 0.3), Math.min(0.9, Math.max(0.74, hsl.l * 0.5 + 0.5)));
       col = c;
       opacity = 0.58;
     }
     const m = this._spawnInst('puff', col, opacity);
     if (!m) return;
-    if (scale !== 1) m.scale.setScalar(scale);
-    m.position.set(pos.x + (Math.random() - 0.5), pos.y + 0.4, pos.z + (Math.random() - 0.5));
-    m.rotation.set(Math.random() * 3, Math.random() * 3, 0);
-    this.list.push({ mesh: m, kind: 'smoke', t: 0, life: 0.7 + Math.random() * 0.3 });
+    m.position.set(pos.x + (Math.random() - 0.5) * 0.6, pos.y + 0.35, pos.z + (Math.random() - 0.5) * 0.6);
+    // `scale` və başlanğıc şəffaflıq ömür boyu saxlanılır (əvvəl update() hər ikisini
+    // sabit dəyərlə əvəz edirdi — çağıranın verdiyi ölçü yalnız ilk kadrda işləyirdi)
+    this.list.push({
+      mesh: m, kind: 'smoke', t: 0, life: 0.75 + Math.random() * 0.35,
+      s0: scale * (0.85 + Math.random() * 0.3), a0: opacity,
+      drift: (Math.random() - 0.5) * 0.8,
+    });
   }
 
   update(dt) {
@@ -365,9 +387,11 @@ export class Effects {
           e.mesh.material.opacity = 1 - k * k;
           break;
         case 'smoke':
-          e.mesh.position.y += 1.6 * dt;
-          e.mesh.scale.setScalar(0.7 + k * 1.8);
-          e.mesh.material.opacity = 0.75 * (1 - k);
+          // Yavaş qalxır, genişlənir və sönür: tez böyüyüb yavaşlayan əyri (ease-out)
+          e.mesh.position.y += 0.9 * dt;
+          e.mesh.position.x += e.drift * dt;
+          e.mesh.scale.setScalar(e.s0 * (1.0 + (1 - (1 - k) * (1 - k)) * 2.2));
+          e.mesh.material.opacity = e.a0 * 0.95 * (1 - k) * (1 - k * 0.6);
           break;
         case 'lightning': {
           // Titrəyən parlaqlıq + sönmə
@@ -442,4 +466,29 @@ export class Effects {
     this._puffGeo.dispose();
     this._flashGeo.dispose();
   }
+}
+
+// Tüstü buludcuğu: bir neçə üst-üstə yumşaq dairə — kənarı qeyri-müntəzəm, mərkəzi dolğun.
+// Bir dəfə çəkilir, bütün səhnələr paylaşır.
+let _puffTex = null;
+function puffTexture() {
+  if (_puffTex) return _puffTex;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 128;
+  const cx = cv.getContext('2d');
+  const blobs = [[64, 66, 40], [44, 58, 26], [84, 56, 28], [56, 84, 24], [80, 82, 22], [64, 42, 22]];
+  for (const [x, y, r] of blobs) {
+    const g = cx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, 'rgba(255,255,255,0.85)');
+    g.addColorStop(0.55, 'rgba(255,255,255,0.5)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    cx.fillStyle = g;
+    cx.beginPath();
+    cx.arc(x, y, r, 0, Math.PI * 2);
+    cx.fill();
+  }
+  _puffTex = new THREE.CanvasTexture(cv);
+  _puffTex.colorSpace = THREE.SRGBColorSpace;
+  _puffTex.userData = { shared: true };   // səhnə təmizləməsi silməsin
+  return _puffTex;
 }

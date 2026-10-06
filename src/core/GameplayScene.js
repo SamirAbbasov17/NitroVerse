@@ -700,6 +700,11 @@ export class GameplayScene {
     this.effects.spawnSmoke({ x: 0, y: -140, z: 0 });
     this.effects.spawnSparkle(uzaq);
     try { this.renderer.compile(this.scene, this.camera); } catch { /* boş */ }
+    // Şəffaf ("ghost") maşın materialı ayrı şeyder variantıdır — ilk dəfə yarışın
+    // ortasında kompilyasiya olunmasın deyə indi isidilir
+    for (const c of this.cars) if (c !== this.playerCar) c.setGhost(true);
+    try { this.renderer.compile(this.scene, this.camera); } catch { /* boş */ }
+    for (const c of this.cars) c.setGhost(false);
   }
 
   _place(car, slot) {
@@ -1188,6 +1193,28 @@ export class GameplayScene {
     return added;
   }
 
+  // Kameranın önünü tutan rəqib maşınlar yarı-şəffaf olur (yalnız arxa görünüşdə).
+  // ƏVVƏL arxadan yanaşan bot kadrın böyük hissəsini örtür, oyunçu öz maşınını və
+  // yolu görmürdü (baseline kadrları: alp, kanyon, zavod).
+  // Şərt: maşın kamera→oyunçu xəttinin üstündədir (yandan < 2.4 m) və ya kameraya
+  // 4.2 m-dən yaxındır. Histerezis: şəffaflıqdan çıxış həddi bir az genişdir ki,
+  // sərhəddə yanıb-sönməsin.
+  _ghostOccluders() {
+    const cam = this.camera.position;
+    const me = this.playerCar.position;
+    const sx = me.x - cam.x, sz = me.z - cam.z;
+    const L = Math.hypot(sx, sz) || 1;
+    for (const c of this.cars) {
+      if (c === this.playerCar) continue;
+      const px = c.position.x - cam.x, pz = c.position.z - cam.z;
+      const along = (px * sx + pz * sz) / (L * L);        // 0 = kamera, 1 = oyunçu
+      const perp = Math.abs(px * sz - pz * sx) / L;
+      const k = c._ghost ? 1.25 : 1;                      // histerezis
+      const want = (along > -0.3 * k && along < 0.9 && perp < 2.4 * k) || Math.hypot(px, pz) < 4.2 * k;
+      if (want !== !!c._ghost) c.setGhost(want);
+    }
+  }
+
   _updateCamera(dt) {
     const car = this.playerCar;
     // FİNİŞ ORBİTİ: yarış bitəndə kamera maşının ətrafında yavaş dövr edir
@@ -1235,6 +1262,7 @@ export class GameplayScene {
 
     // 🎥 FPS: sükan arxası görünüş — sərt bağlı kamera
     if (this._camMode !== 'tps') {
+      for (const c of this.cars) if (c._ghost) c.setGhost(false); // sükan arxası görünüşdə şəffaflıq yoxdur
       const hood = this._camMode === 'hood';
       if (hood && this._carH == null) {
         // Modelin hündürlüyü — yalnız GÖRÜNƏN mesh-lərdən (qalxan/alov sayılmasın)
@@ -1289,6 +1317,7 @@ export class GameplayScene {
       1 - Math.exp(-dt * 8)
     );
     this.camera.lookAt(this._camTarget);
+    this._ghostOccluders();
 
     // Raket dəyəndə kamera silkələnməsi
     if (this._shake > 0) {
