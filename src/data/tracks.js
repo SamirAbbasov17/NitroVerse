@@ -12,6 +12,13 @@ export const TRACKS = [
     grade: { bloom: 0.2, bloomThreshold: 0.95, saturation: 1.12, contrast: 1.06, shadows: 0xf2f4ff, highlights: 0xfff6e8 },
     palette: {
       exposure: 1.18,
+      // Gün batımı: günəş qərbdə, alçaqda (uzun kölgələr); disk narıncı və kiçik
+      sunDir: [-120, 50, 35],
+      sunSize: 0.5,
+      sunDisc: 0xffc070,
+      ambientIntensity: 0.55,
+      hemiIntensity: 1.1,
+      groundGain: 2.3, // açıq isti qum (tekstura rəngi ~3.5× tündləşdirir — əvvəl tünd qırmızı-qəhvəyi idi)
       sky: 0xf7b26a,
       skyBottom: 0xffd9a0,
       ground: 0xd99b57,
@@ -29,8 +36,10 @@ export const TRACKS = [
       [-100, 74], [-116, 12], [-84, -58], [-22, -96], [44, -100], [102, -62],
     ],
     decor: [
-      { type: 'cactus', count: 64 },
-      { type: 'rock', count: 50 },
+      // near: yol boyu (6–60 m) səpələnir — bax Environment._scatterDecor
+      { type: 'cactus', count: 70, near: true },
+      { type: 'rock', count: 55, near: true },
+      { type: 'drybush', count: 110, near: true },
       { type: 'dune', count: 18 },
       { type: 'house', count: 8 },
       { type: 'windmill', count: 1 },

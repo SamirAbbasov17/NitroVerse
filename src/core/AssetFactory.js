@@ -562,8 +562,20 @@ export function makeBush() {
   return g;
 }
 
+// Quru kol (səhra): solğun sarı-boz yastı ikosaedr — yaşıl kolun səhra variantı
+export function makeDryBush() {
+  const r = rand(0.5, 1.0);
+  const b = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), medMat(Math.random() < 0.5 ? 'dry1' : 'dry2', 0xb39a5c));
+  b.scale.y = 0.55;
+  b.position.y = r * 0.4;
+  b.rotation.y = rand(0, 6);
+  b.castShadow = true;
+  return b;
+}
+
 export function makeDecor(type, opts = {}) {
   switch (type) {
+    case 'drybush': return makeDryBush();
     case 'cypress': return makeCypress();
     case 'bush': return makeBush();
     case 'pine': return makePine();

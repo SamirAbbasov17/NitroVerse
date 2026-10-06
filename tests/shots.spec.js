@@ -37,8 +37,8 @@ test.describe('masaüstü oyun kadrları', () => {
     }
   });
 
-  // Yol üstü landmarklar: neon — estakada və nəhəng ekran; zavod — portal kran və boru estakadaları
-  for (const lm of ['race-neon', 'race-zavod']) test(`shots: ${lm.replace('race-', '')} landmarkları`, async ({ page }) => {
+  // Yol üstü landmarklar: neon — estakada və nəhəng ekran; zavod — portal kran və boru estakadaları; səhra — qaya tağı
+  for (const lm of ['race-neon', 'race-zavod', 'race-desert']) test(`shots: ${lm.replace('race-', '')} landmarkları`, async ({ page }) => {
     await boot(page);
     await startMode(page, MODES.find((m) => m.name === lm).config);
     await page.waitForTimeout(1500);
@@ -50,7 +50,7 @@ test.describe('masaüstü oyun kadrları', () => {
       const tr = sc.track;
       const out = [];
       // Estakada dayaqları toqquşma siyahısında r = 1.6 ilə yazılır
-      const legs = sc._obstacles.filter((o) => Math.abs(o.r - 1.6) < 1e-6);
+      const legs = sc._obstacles.filter((o) => Math.abs(o.r - 1.6) < 1e-6 || Math.abs(o.r - 3.4) < 1e-6); // 3.4: səhra qaya tağı
       for (let k = 0; k < legs.length; k += 2) {
         const i = tr.getNearest(new window.__THREE.Vector3(legs[k].x, 0, legs[k].z)).index;
         const p = tr.points[(i - 16 + tr.N) % tr.N], q = tr.points[i];
