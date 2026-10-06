@@ -159,6 +159,7 @@ Mənbə: Kenney Audio, Sonniss GDC, Freesound (CC0). Hər fayl `ASSETS-LICENSES.
 
   Ölçülən oxşarlıq **eşidilən oxşarlıq demək deyil** — sintez olunmuş "xor" real səs yazısı kimi səslənmir. `RECORD=1 npx playwright test tests/music.spec.js -g yazı` mövzunu fayla yazır.
 - **QƏRAR (2026-10-06): standart `classic`-dir.** İstifadəçi üç variantı dinlədi: "classic yaxşıdır, amma yarışdakı mahnını bir az dəyişdir — daha həzin, amma yarışa uyğun". Yarış mövzusu yenidən yazıldı: 118 → 112 bpm, Am–F–C–G → Am9–Fmaj7–Dm7–Em7, yumşaq snare, açıq hat yoxdur, enən uzun notlu melodiya + oktava aşağı "cavab". Ölçüldü: 112 bpm, A minor (r = 0.83). Menyu mövzusu dəyişmədi. `walk` sınaq kimi qalır (`?music=walk`).
+- **Yarış mövzusu — "robotik/arkada olmasın" (2026-10-06):** çılpaq üçbucaq "pluck"lar və saat kimi dəqiq ritm çıxarıldı. Melodik səslər süzgəcli analoq-tipli sintezdir (`_synth`), əks-sədalı (`_raceBus`); melodiya leqatodur (sürüşmə + vibrato); vuruşların gücü/vaxtı azca dəyişir; hat çox zəifdir. Ölçüldü (əvvəl → indi): perkussiv pay 0.64 → 0.38, dinamika 21 → 10.6 dB, 500 Hz–2 kHz payı 4 → 17 %; temp 112, A minor dəyişmədi.
 - **Ehtiyat (`?music=files`):** menyu və yarışda zen-in yazılmış lofi siyahısı (HoliznaCC0, CC0; 34 trek) çalınır.
 - **Köhnə (`?music=classic`):** synthwave sintezi.
 - İstinad "Big Walk" (aksfx) yalnız üslubdur: sempl/melodiya götürülməyib. `npm run test:music` yalnız səviyyəni ölçür. **Musiqini mən eşidə bilmirəm.**
