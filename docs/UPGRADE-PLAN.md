@@ -144,9 +144,13 @@ Sıra bu fazanın daxilində: 3.1 (bibliya) → 3.11 + 3.12 (filtr və işıq �
 
 Mənbə: Kenney Audio, Sonniss GDC, Freesound (CC0). Hər fayl `ASSETS-LICENSES.md`-ə.
 
-### Musiqi — yeni üslub 🔶 (2026-10-06, istifadəçi dinləyib qərar verəcək)
+### Musiqi — yeni üslub 🔶 (istifadəçi dinləyib qərar verəcək)
 
-Menyu və yarış musiqisi yeni prosedural üslubda (`AudioManager._playStepWalk`): nəbz vuran yumşaq akkordlar, marimba arpeciosu, notdan-nota tullanan sözsüz səslər (formant sintezi). İstinad: "Big Walk" oyununun musiqisi (aksfx) — yalnız üslub, sempl/melodiya götürülməyib. Köhnə synthwave qalır: `?music=classic` / `?music=walk`. Zen-ə 10 yeni CC0 lofi treki əlavə olundu (cəmi 34). `npm run test:music` yalnız səviyyəni ölçür (kəsilmə yoxdur, köhnə ilə ±3 dB). **Musiqini mən eşidə bilmirəm — keyfiyyəti yalnız dinləməklə qiymətləndirmək olar.**
+- **1-ci variant rədd edildi (2026-10-06):** oynaq/şən sintez (major, 104–122 bpm, marimba). İstifadəçi: "şən olmasını yox, rahatladıcı, soul tipli istəyirəm; istinad mahnıları qətiyyən şən deyil".
+- **2-ci variant (standart, `?music=walk`):** sakit, soul çalarlı sintez — 76/92 bpm, Fmaj9–Em7–Dm9–Am9, elektrik piano, dəyirmi bas, geri çəkilmiş ritm, notdan-nota sürüşən nəfəsli səslər (`AudioManager._playStepWalk`, `_voice`).
+- **Ehtiyat (`?music=files`):** menyu və yarışda zen-in yazılmış lofi siyahısı (HoliznaCC0, CC0; 34 trek) çalınır.
+- **Köhnə (`?music=classic`):** synthwave sintezi.
+- İstinad "Big Walk" (aksfx) yalnız üslubdur: sempl/melodiya götürülməyib. `npm run test:music` yalnız səviyyəni ölçür. **Musiqini mən eşidə bilmirəm.**
 
 ## Faza 5 — UI/UX 🔶
 
