@@ -27,7 +27,9 @@ const scan = () => {
     }
   }
   const onRoad = [];
-  for (const o of obs) {
+  // Yol yoxlaması iri obyektləri də əhatə edir (məs. Riviera təpə-qəsəbəsi, r = 31)
+  const big = (sc.environment?.obstacles || sc.road?.obstacles || []).filter((o) => o && o.r > 0 && o.r <= 60);
+  for (const o of big) {
     const n = tr.getNearest({ x: o.x, z: o.z }, null);
     // Zen: yol pəncərəsinin ucundakı obyektlər üçün "ən yaxın nöqtə" pəncərənin
     // kənarıdır və yan məsafə saxta kiçik çıxır (yol arxada silinib) — yoxlanmır
@@ -38,6 +40,16 @@ const scan = () => {
     const edge = Math.abs(n.lateral) - o.r; // obyektin yola ən yaxın kənarı
     if (edge < tr.halfWidth - 1.0) { // körpü məhəccəri kimi kənar maneələr (0.5 m içəri) normaldır
       onRoad.push({ x: Math.round(o.x), z: Math.round(o.z), r: +o.r.toFixed(1), lateral: +n.lateral.toFixed(1), half: tr.halfWidth, kind: o.kind });
+    }
+  }
+  // Şaxə (yan) yollar: obyektin kənarı şaxə asfaltının içinə girməməlidir
+  for (const b of tr.branches || []) {
+    for (const o of big) {
+      let d = Infinity;
+      for (const p of b.points) d = Math.min(d, Math.hypot(p.x - o.x, p.z - o.z));
+      if (d - o.r < b.halfWidth - 1.0) {
+        onRoad.push({ x: Math.round(o.x), z: Math.round(o.z), r: +o.r.toFixed(1), lateral: +d.toFixed(1), half: b.halfWidth, kind: 'şaxə yolunda' });
+      }
     }
   }
   return { count: obs.length, deep, onRoad };

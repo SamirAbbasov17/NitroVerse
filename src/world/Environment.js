@@ -23,7 +23,18 @@ export class Environment {
   // çıxırdı (istifadəçi rəyi: şəhər trekində tribunalar üst-üstə düşür).
   _free(x, z, r, pad = 1.2) {
     return !this.obstacles.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + r + pad)
-      && !this._inWater(x, z, r);
+      && !this._inWater(x, z, r)
+      && !this._onBranch(x, z, r);
+  }
+
+  // ŞAXƏ YOLU: əsas yola görə yerləşdirilən qurğular (sponsor lövhəsi, tribuna, şin
+  // yığını, fənər) şaxə yolunu yoxlamırdı və bəzən onun DÜZ ORTASINA düşürdü
+  // (Riviera: 2.7 m radiuslu lövhə şaxənin mərkəzində — istifadəçi rəyi: "döngədə
+  // yolun ortasında maneə var, dönmək olmur"). İndi bütün yerləşdirmələr buradan keçir.
+  _onBranch(x, z, r = 0) {
+    if (!this.track.branches?.length) return false;
+    this._tmpV ||= new THREE.Vector3();
+    return this.track.isOnBranch(this._tmpV.set(x, 0, z), r + 1);
   }
 
   // Yerin (relyefli mesh-in) həmin nöqtədəki hündürlüyü. Trekdən uzaqda relyef ±1.7 m
@@ -550,7 +561,7 @@ export class Environment {
         const q = this.track.points[(i + d + N) % N], m = this.track.normals[(i + d + N) % N];
         lx = q.x + m.x * off * side; lz = q.z + m.z * off * side;
       }
-      if (this._inWater(lx, lz, 1)) { side *= -1; ci++; continue; }
+      if (this._inWater(lx, lz, 1) || this._onBranch(lx, lz, 0.6)) { side *= -1; ci++; continue; }
       lamp.position.set(lx, 0, lz);
       g.add(lamp);
       this.obstacles.push({ x: lx, z: lz, r: 0.55 });   // dirək bərkdir
@@ -1234,7 +1245,7 @@ export class Environment {
         this.obstacles.push({
           x: c.x + nrm.x * (this.track.halfWidth + 0.55) * side + tg.x * s,
           z: c.z + nrm.z * (this.track.halfWidth + 0.55) * side + tg.z * s,
-          r: 1.0,
+          r: 0.55, // 1.0 idi — yolun içinə 0.8 m-ə qədər girirdi (ölçüldü), məhəccər isə 0.3 m qalınlıqdadır
         });
       }
     }
@@ -1306,7 +1317,8 @@ export class Environment {
     const boşdur = (x, z, r) => !tutulan.some((o) =>
       Math.hypot(o.x - x, o.z - z) < o.r + r + 2)
       && !this.obstacles.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + r + 1.5)
-      && !this._inWater(x, z, r);
+      && !this._inWater(x, z, r)
+      && !this._onBranch(x, z, r);
     const put = (obj, i, off, side, faceRoad = true, r = 2.5) => {
       const c = this.track.points[i], n = this.track.normals[i], t = this.track.tangents[i];
       const x = c.x + n.x * off * side, z = c.z + n.z * off * side;
