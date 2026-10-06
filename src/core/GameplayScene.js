@@ -9,6 +9,7 @@ import { Environment } from '../world/Environment.js';
 import { Car } from '../entities/Car.js';
 import { PlayerController } from '../entities/PlayerController.js';
 import { AIController } from '../entities/AIController.js';
+import { camBTweak, mountCamTest } from './CamTest.js';
 import { NetworkController } from '../entities/NetworkController.js';
 import { RaceManager } from '../race/RaceManager.js';
 import { PowerUpManager } from '../race/PowerUpManager.js';
@@ -99,6 +100,7 @@ export class GameplayScene {
     this._buildHUD();
     this.hud.setHP(this.hz.hp, this.hz.hp);
     this._bindKeys();
+    this._camTestOff = mountCamTest(this.uiRoot, this.input); // Faza 2 sınağı: kamera keçidi
 
     // Kamera rejimi (yadda saxlanır): tps = arxadan, fps = sükan arxası
     this._camMode = ['fps', 'hood'].includes(localStorage.getItem('apexCamMode')) ? localStorage.getItem('apexCamMode') : 'tps';
@@ -640,10 +642,12 @@ export class GameplayScene {
     }
   }
 
-  // İmza gücündə "İkinci nəfəs" — zədəni tam təmizləyir
-  repairPlayer() {
-    const r = this.racers?.find((x) => x.isPlayer);
-    if (r?.car && this.hz?.hp) { r.car.hp = this.hz.hp; this.hud?.setHP?.(r.car.hp, this.hz.hp); }
+  // İmza gücündə "İkinci nəfəs" — gücü işlədən MAŞININ zədəsini tam təmizləyir.
+  // (Əvvəl `repairPlayer` idi və bot bu gücü işlədəndə oyunçunun canı dolurdu.)
+  repairCar(car) {
+    if (!car || !this.hz?.hp) return;
+    car.hp = this.hz.hp;
+    if (car === this.playerCar) this.hud?.setHP?.(car.hp, this.hz.hp);
   }
 
   _useItem() {
@@ -1096,6 +1100,7 @@ export class GameplayScene {
       for (let j = i + 1; j < n; j++) {
         const a = this.cars[i], b = this.cars[j];
         if (a.isRemote && b.isRemote) continue; // uzaqlar öz müştərilərində həll olunur
+        if ((a._airT || 0) > 0 || (b._airT || 0) > 0) continue; // tullanan maşın rəqibin üstündən keçir
         const dx = b.position.x - a.position.x;
         const dz = b.position.z - a.position.z;
         let d = Math.hypot(dx, dz);
@@ -1131,7 +1136,11 @@ export class GameplayScene {
     const obstacles = this._obstacles;
     for (let i = 0; i < n; i++) {
       const car = this.cars[i];
+      const havada = (car._airT || 0) > 0;
       for (const o of obstacles) {
+        // Tullanış: alçaq/kiçik maneələrin (şin, bariyer, post, konteyner) üstündən keçir;
+        // iri obyektlər (bina, təpə, tribuna) yenə bərkdir
+        if (havada && o.r <= 3.5) continue;
         const dx = car.position.x - o.x;
         const dz = car.position.z - o.z;
         const min = o.r + CAR_RADIUS;
@@ -1300,10 +1309,15 @@ export class GameplayScene {
 
     // Sürət kompensasiyası: eksponensial izləmənin ləngiməsini qabaqcadan ödəyir —
     // yüksək sürətdə maşın "qaçıb uzaqlaşmır", kamera yalnız bir az geri çəkilir
+    // Kamera B (sınaq): döngənin içinə baxış + sürətdə geri/aşağı — bax CamTest.js
+    const B = camBTweak(car, speedT, lookBack);
+    if (B) { back += B.back; height -= B.drop; }
+    const rx = -Math.cos(h) * lookBack, rz = Math.sin(h) * lookBack;   // sağ tərəf
+    const sideCam = B ? -B.side * 0.35 : 0;   // kamera döngənin bayırına azca çəkilir
     const desired = new THREE.Vector3(
-      car.position.x - fx * back + car.velocity.x * 0.11,
+      car.position.x - fx * back + car.velocity.x * 0.11 + rx * sideCam,
       height,
-      car.position.z - fz * back + car.velocity.z * 0.11
+      car.position.z - fz * back + car.velocity.z * 0.11 + rz * sideCam
     );
     const k = 1 - Math.exp(-dt * 8);
     this.camera.position.lerp(desired, k);
@@ -1312,8 +1326,9 @@ export class GameplayScene {
     this.speedLines?.update(dt, speedT, car.velocity.length());
     audio.setEngine(speedT, car.boostTimer > 0);
 
+    const sideLook = B ? B.side : 0;
     this._camTarget.lerp(
-      new THREE.Vector3(car.position.x + fx * 7, 1.1, car.position.z + fz * 7),
+      new THREE.Vector3(car.position.x + fx * 7 + rx * sideLook, 1.1, car.position.z + fz * 7 + rz * sideLook),
       1 - Math.exp(-dt * 8)
     );
     this.camera.lookAt(this._camTarget);
@@ -1335,7 +1350,7 @@ export class GameplayScene {
     this._fovKick = this._fovKick ?? 0;
     const kickTarget = car.boostTimer > 0 ? 6.5 : 0;
     this._fovKick += (kickTarget - this._fovKick) * Math.min(1, dt * 5);
-    const fov = 58 + speedT * 12 + this._fovKick;
+    const fov = 58 + speedT * 12 + this._fovKick + (B ? B.fov : 0);
     if (Math.abs(this.camera.fov - fov) > 0.1) {
       this.camera.fov = fov;
       this.camera.updateProjectionMatrix();
@@ -1453,6 +1468,7 @@ export class GameplayScene {
   }
 
   dispose() {
+    this._camTestOff?.();
     // Ekran siniflərini TƏMİZLƏ — əvvəl 'fast' sinfi yarışdan sonra qalırdı
     // və statik şüalar zen-də də görünürdü (istifadəçi rəyi)
     document.getElementById('app')?.classList.remove('fast', 'boosting', 'impact');

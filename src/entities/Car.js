@@ -41,7 +41,10 @@ export class Car {
     this.cornerScrub2 = F2.cornerScrub - ((s.grip - 70) / 100) * F2.scrubPerGrip;
     this.brake2 = F2.brake - ((s.armor ?? 55) - 55) * F2.brakePerArmor;
     this.offRoadCut2 = carData.class === 'Offroad' ? F2.offRoadCutOffroad : F2.offRoadCut;
-    if (!legacyFeel) this.turnRate *= 1 + ((s.handling - 76) / 100) * F2.turnSpread;
+    if (!legacyFeel) {
+      this.turnRate *= 1 + ((s.handling - 76) / 100) * F2.turnSpread;
+      this.maxSpeed = F2.speedPivot + (s.topSpeed - 82) * F2.speedPer;
+    }
     this.driftT = 0;       // cari driftin müddəti (s)
     this.driftBoostT = 0;  // drift çıxışı təkanının qalan vaxtı (s)
 
@@ -166,7 +169,7 @@ export class Car {
     // 1) Yan tutum: sürüşmə bucağı β = atan2(vR, vF) eksponensial sönür
     let g = drifting ? this.driftGrip2 : this.grip2;
     if (this.slipTimer > 0) g = 0.4;                 // yağ: demək olar tutum yoxdur
-    else if (this._sigGrip > 0) g = Math.max(g, 9);  // "mükəmməl tutum" imza gücü
+    else if (this._sigGrip > 0) g = Math.max(g, 14); // "mükəmməl tutum" imza gücü: demək olar sürüşmür
     let S = Math.hypot(vF, vR);
     if (vF > 0.5) {
       const beta = Math.atan2(vR, vF) * Math.exp(-g * dt);
@@ -205,7 +208,10 @@ export class Car {
       if (v > vAllow) v -= ((v - vAllow) / F.tauDown) * dt;
     }
     // Döngədə sürət itkisi (driftdə YOX — drift məhz bundan qaçmağın yoludur)
-    if (!drifting && v > 0) {
+    // "Mükəmməl tutum" imza gücü aktivdirsə itki YOXDUR — döngə tam sürətlə keçilir.
+    // (Yeni modeldə döngə sürətini tutum yox, bu itki müəyyən edir: gücün əvvəlki
+    // həyata keçirilməsi burada heç nə qazandırmırdı — ölçüldü: −1.1 m.)
+    if (!drifting && v > 0 && this._sigGrip <= 0) {
       const s2 = this._steerSmooth * this._steerSmooth;
       v -= v * (this.cornerScrub2 / this.tau) * s2 * Math.min(v / this.maxSpeed, 1) * dt;
     }
@@ -256,6 +262,7 @@ export class Car {
     this._sigPowerT = Math.max(0, (this._sigPowerT || 0) - dt);
     this._sigGrip = Math.max(0, (this._sigGrip || 0) - dt);
     this._sigOffroad = Math.max(0, (this._sigOffroad || 0) - dt);
+    this._airT = Math.max(0, (this._airT || 0) - dt);
     const sigPow = this._sigPowerT > 0 ? (this._sigPower || 1) : 1;
     const boosting = this.boostTimer > 0;
     const engine = this.engineForce * (boosting ? TUNING.boost.engineMul : 1) * sigPow;

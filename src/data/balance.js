@@ -73,6 +73,13 @@ export const TUNING = {
     boostMax: 1.1,
     boostSpeed: 1.12,
     boostAccel: 3,
+    // ————— MAKSİMUM SÜRƏT ARALIĞI —————
+    // ÖLÇÜLDÜ (eyni sürücü, bonussuz): köhnə aralıqla (stat 62→95 ⇒ 36.3→43.9 m/s, 21%)
+    // dövrə sürəti maşınlar arasında 17–20% fərqlənirdi — ən yavaş maşın 3 dövrədə
+    // ~18 s geri qalırdı və bunu heç bir güc/üstünlük bağlamırdı. Aralıq sıxılıb:
+    // v = speedPivot + (stat − 82)·speedPer ⇒ 62→38.9, 95→42.2 m/s (~8%). Blaze GT dəyişmir.
+    speedPivot: 40.86,
+    speedPer: 0.10,
     // ————— MAŞIN ŞƏXSİYYƏTİ: statların v2-də yaratdığı fərq —————
     // Dəyərlər "orta" maşına (Blaze GT) görə sıfırlanıb — onun davranışı dəyişmir.
     turnSpread: 0.6,      // idarə: 60 → dönmə ×0.90, 82 → ×1.04

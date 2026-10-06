@@ -1,3 +1,4 @@
+import { camBTweak, mountCamTest } from './CamTest.js';
 import * as THREE from 'three';
 import { playerCarData } from '../data/playerCar.js';
 import { t } from './i18n.js';
@@ -305,6 +306,7 @@ export class EndlessScene {
     this._buildZenFx(); // zen-ə xas atmosfer: atəşböcəkləri, axan ulduz, quşlar
     this._buildHUD();
     this._bindKeys();
+    this._camTestOff = mountCamTest(this.uiRoot, this.input); // Faza 2 sınağı: kamera keçidi
     audio.playMusic('lofi');
     audio.setZenMix(true); // musiqi önə, mühərrik arxa fona
 
@@ -2006,13 +2008,18 @@ export class EndlessScene {
       }
       return;
     }
-    const back = 6.6 + speedT * 0.9;
+    // Kamera B (sınaq): döngənin içinə baxış + sürətdə geri/aşağı — bax CamTest.js
+    const B = camBTweak(car, speedT, lookBack);
+    const back = 6.6 + speedT * 0.9 + (B ? B.back : 0);
+    const rx = -Math.cos(h) * lookBack, rz = Math.sin(h) * lookBack;   // sağ tərəf
+    const sideCam = B ? -B.side * 0.35 : 0;
+    const sideLook = B ? B.side : 0;
     // Sürət qabaqlaması 0.11 → 0.075: driftdə kamera yana yellənirdi
     const desired = new THREE.Vector3(
-      car.position.x - fx * back + car.velocity.x * 0.075, 3.2 + car.position.y,
-      car.position.z - fz * back + car.velocity.z * 0.075
+      car.position.x - fx * back + car.velocity.x * 0.075 + rx * sideCam, 3.2 - (B ? B.drop : 0) + car.position.y,
+      car.position.z - fz * back + car.velocity.z * 0.075 + rz * sideCam
     );
-    const look = new THREE.Vector3(car.position.x + fx * 7, 1.1 + car.position.y, car.position.z + fz * 7);
+    const look = new THREE.Vector3(car.position.x + fx * 7 + rx * sideLook, 1.1 + car.position.y, car.position.z + fz * 7 + rz * sideLook);
     // İLK KADR: kamera (0,0,0)-dan lerp edirdi, relyef isə ~25 m hündürdədir
     // → oyun başlayanda kamera YERİN İÇİNDƏN çıxırdı. İndi dərhal yerinə oturur.
     if (!this._camInit) {
@@ -2027,7 +2034,7 @@ export class EndlessScene {
     }
     this.camera.lookAt(this._camTarget);
     this.camera.rotateZ(-(car._steerSmooth || 0) * 0.018 * lookBack);
-    const fov = 58 + speedT * 11;
+    const fov = 58 + speedT * 11 + (B ? B.fov : 0);
     if (Math.abs(this.camera.fov - fov) > 0.1) {
       this.camera.fov = fov;
       this.camera.updateProjectionMatrix();
@@ -2035,6 +2042,7 @@ export class EndlessScene {
   }
 
   dispose() {
+    this._camTestOff?.();
     for (const s of this._trafPool || []) this.scene.remove(s.root);
     this._trafPool = [];
     this._traffic = [];

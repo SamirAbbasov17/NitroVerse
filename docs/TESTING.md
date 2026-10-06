@@ -23,6 +23,8 @@ Testlər Playwright-dır və repo-dadır: `tests/`. Dev serveri (5173) özləri 
 | `npm run test:errors` | avtomatik xəta bildirişi: klient tutur/təkrarlamır, server tək qeyddə sayır və e-poçt göndərmir | yaşıl | ~3 s |
 | `npm run test:collide` | maneələrin içindən keçmə: hər trekdə yola ən yaxın 14 bərk obyektə tam qazla sürülür | içindən keçilən 0 | ~3 dəq |
 | `npm run test:gameplay` | bonus götürmə/işlətmə · bot sürəti (3 trek: bonuslar sönülü, dövrə vaxtı asan > normal > çətin, yoldan kənar < 4%) · kamera şəffaflığı · pauza · pəncərə ölçüsü (4 rejim) · sürətli rejim keçidi → `tests/out/gameplay.json` | yaşıl | ~10 dəq |
+| `npm run test:abilities` | 18 imza gücünün auditi: işə düşür, bir dəfə işləyir və vəd etdiyi təsir ölçülür (sürət/döngə/yoldan-kənar qazancı, qalxan, lövbər, kölgə, geri qayıdış, iz, dalğa, maqnit, tullanış) → `tests/out/abilities.json` | hər güc öz təsirini verir | ~2.5 dəq |
+| `npm run test:pace` | maşın sürəti balansı: eyni sürücü 8 maşını sürür (`CARS=…` ilə dəyişir), dövrənin 60%-i → `tests/out/pace.json` | ən sürətli/ən yavaş fərqi < 10% | ~10 dəq |
 | `npm run test:mobile` | 844×390-da HUD düymələrinin örtüşməsi və ekrandan çıxması | 0 | ~30 s |
 
 Tək test: `npx playwright test tests/shots.spec.js -g "race-neon"`.

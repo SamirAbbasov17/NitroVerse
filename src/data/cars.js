@@ -124,7 +124,7 @@ CARS.push(
     id: 'crimson', name: 'Crimson Van', class: 'Van', model: 'van',
     tint: 0xc21f3a, bodyColor: 0xc21f3a, accentColor: 0x3d0a12,
     kit: { rails: true, skirt: true },
-    stats: { topSpeed: 62, accel: 58, handling: 60, grip: 84, armor: 88 },
+    stats: { topSpeed: 62, accel: 62, handling: 68, grip: 84, armor: 88 },
   },
   {
     id: 'midnight', name: 'Midnight LX', class: 'Lüks', model: 'suv-luxury',

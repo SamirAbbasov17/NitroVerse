@@ -171,3 +171,49 @@ test('oynanış: kameranın önünü tutan rəqib şəffaflaşır', async ({ pag
   expect(b.ghost, '30 m qabaqda').toBe(false);
   expect(b.transparent).toBe(0);
 });
+
+// ————— Faza 2 sınağı: kamera keçidi —————
+// Standartda nişan yoxdur; `?cam=2` ilə nişan çıxır və F9 / toxunma kameranı dəyişir.
+// B variantı döngədə baxış nöqtəsini içəri çəkir (ölçülür: baxış istiqaməti burundan
+// döngə tərəfə sapır).
+for (const name of ['race-desert', 'zen']) {
+  test(`kamera sınağı: keçid — ${name}`, async ({ page }) => {
+    const cfg = MODES.find((m) => m.name === name).config;
+    await boot(page);
+    await startMode(page, cfg);
+    expect(await page.evaluate(() => !!document.querySelector('.cam-chip'))).toBe(false);
+    await page.goto('/?cam=2');
+    await page.waitForFunction(() => !!window.__menu && !!window.__showcase);
+    await startMode(page, cfg);
+    if (cfg.mode === 'race') await racing(page);
+    // tam sürətdə sağa dön və baxış istiqamətinin burundan sapmasını ölç
+    const lookOffset = () => page.evaluate(async () => {
+      const sc = window.__active;
+      const car = sc.playerCar;
+      car._sigOffroad = 9;
+      sc.input.touch.throttle = 1; sc.input.touch.steer = 0;
+      await new Promise((r) => setTimeout(r, 1800));
+      sc.input.touch.steer = 1;
+      await new Promise((r) => setTimeout(r, 700));
+      const cam = sc.camera;
+      const dir = cam.getWorldDirection(cam.position.clone());
+      const yaw = Math.atan2(dir.x, dir.z);
+      let d = car.heading - yaw; // sağa dönmə = heading azalır; kamera içəri baxırsa yaw daha kiçikdir
+      while (d > Math.PI) d -= 2 * Math.PI;
+      while (d < -Math.PI) d += 2 * Math.PI;
+      sc.input.touch.steer = 0;
+      return +(d * 57.3).toFixed(1);
+    });
+    expect(await page.evaluate(() => document.querySelector('.cam-chip')?.textContent)).toContain('YENİ');
+    const b = await lookOffset();
+    await page.keyboard.press('F9');
+    expect(await page.evaluate(() => document.querySelector('.cam-chip')?.textContent)).toContain('KÖHNƏ');
+    const a = await lookOffset();
+    console.log(`${name}: baxışın burundan döngə tərəfə sapması — köhnə ${a}°, yeni ${b}°`);
+    expect(b, 'yeni kamera döngənin içinə daha çox baxmalıdır').toBeGreaterThan(a + 3);
+    await page.goto('/?cam=0');
+    await page.waitForFunction(() => !!window.__menu && !!window.__showcase);
+    await startMode(page, cfg);
+    expect(await page.evaluate(() => !!document.querySelector('.cam-chip'))).toBe(false);
+  });
+}

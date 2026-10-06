@@ -24,7 +24,9 @@
     "test:hitch": "playwright test tests/hitch.spec.js",
     "test:errors": "playwright test tests/error-report.spec.js",
     "test:collide": "playwright test tests/collide.spec.js",
-    "test:gameplay": "playwright test tests/gameplay.spec.js"
+    "test:gameplay": "playwright test tests/gameplay.spec.js",
+    "test:abilities": "playwright test tests/abilities.spec.js",
+    "test:pace": "playwright test tests/pace.spec.js"
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.10",

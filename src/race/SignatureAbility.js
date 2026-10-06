@@ -51,7 +51,9 @@ export class SignatureAbility {
       let pow = a.power || 1.2;
       if (a.comeback) {
         // Nə qədər geridəsə, bir o qədər güclü (bərabərləşdirici)
-        const me = sc?.racers?.find((r) => r.isPlayer);
+        // Gücü işə salan YARIŞÇININ mövqeyi (əvvəl həmişə oyunçununku götürülürdü —
+        // bot bu gücü işlədəndə oyunçunun yerinə görə güclənirdi)
+        const me = sc?.racers?.find((r) => r.car === car);
         const pos = me?.position || 1;
         const n = sc?.racers?.length || 6;
         pow += a.comeback * ((pos - 1) / Math.max(1, n - 1));
@@ -68,10 +70,12 @@ export class SignatureAbility {
     if (a.grip) car._sigGrip = a.grip;
     if (a.offroad) car._sigOffroad = a.offroad;
     // — bərpa —
-    if (a.repair) { car.hitTimer = 0; car.slipTimer = 0; sc?.repairPlayer?.(); }
+    if (a.repair) { car.hitTimer = 0; car.slipTimer = 0; sc?.repairCar?.(car); }
     if (a.rewind) this._doRewind(a.rewind);
     // — manevr —
-    if (a.leap) { this._hopT = 0.78; car.shieldTimer = Math.max(car.shieldTimer, 0.9); }
+    // Tullanış: `_airT` müddətində maşın alçaq maneələrin və rəqiblərin ÜSTÜNDƏN keçir
+    // (bax GameplayScene._resolveCollisions). Əvvəl tullanış yalnız görüntü idi.
+    if (a.leap) { this._hopT = 0.78; car._airT = 0.78; car.shieldTimer = Math.max(car.shieldTimer, 0.9); }
     if (a.dash) {
       // XƏTA İDİ: xam sürət əlavə olunurdu, amma Car.update dərhal `vMax`-a
       // kəsirdi → sıçrayış itirdi (ölçüldü: −15 m … +11 m, yəni gücün dəyəri
@@ -147,7 +151,10 @@ export class SignatureAbility {
   // 3 saniyə əvvəlki mövqeyə qayıt
   _doRewind(sec) {
     const car = this.car;
-    const want = this._hist.find((h) => h.t <= sec) || this._hist[this._hist.length - 1];
+    // BUQ İDİ: tarixçə ən YENİDƏN köhnəyə düzülüb və `find(h.t <= sec)` həmişə
+    // ilk elementi — cari mövqeyi — qaytarırdı: güc maşını yerindən tərpətmirdi
+    // (ölçüldü: 0.4 m). Lazım olan `sec` saniyə əvvəlki (və ya ən köhnə) qeyddir.
+    const want = this._hist.find((h) => h.t >= sec) || this._hist[this._hist.length - 1];
     if (!want) return;
     this.scene?.effects?.spawnExplosion?.({ ...car.position });
     car.position.set(want.x, 0, want.z);
@@ -158,7 +165,7 @@ export class SignatureAbility {
   }
 
   // Ətrafdakıları kənara itələ
-  _doWave({ radius, force }) {
+  _doWave({ radius, force, slip = 0.5 }) {
     const car = this.car;
     for (const o of this.scene?.cars || []) {
       if (o === car) continue;
@@ -168,7 +175,7 @@ export class SignatureAbility {
       const k = (1 - d / radius) * force;
       o.velocity.x += (dx / d) * k;
       o.velocity.z += (dz / d) * k;
-      o.slipTimer = Math.max(o.slipTimer, 0.5);
+      o.slipTimer = Math.max(o.slipTimer, slip);
       this.scene?.effects?.spawnSmoke?.(o.position, false, this.data.color, 0.7);
     }
   }

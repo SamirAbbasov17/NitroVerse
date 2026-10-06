@@ -60,31 +60,31 @@ export const ABILITIES = {
   frost: {
     name: 'Buz Cığırı', icon: 'icetrail', color: 0x7fd4ff,
     desc: 'Buz cığırı qoyur və özü sürüşmədən keçir',
-    mech: 'trail', trail: { life: 8.0, slip: 1.6, color: 0x7fd4ff, wide: 1.2, look: 'ice' }, grip: 7,
+    mech: 'trail', trail: { life: 8.0, slip: 1.6, color: 0x7fd4ff, wide: 1.2, look: 'ice' }, grip: 4,
   },
 
   // ——— QORUNMA ———
   sequoia: {
     name: 'Kök Salma', icon: 'root', color: 0x2e8b3a,
     desc: 'Uzun müddət raket, yağ və şimşəkdən toxunulmaz',
-    mech: 'guard', guard: 5,
+    mech: 'guard', guard: 8,
   },
   cargo: {
     name: 'Ağır Yük', icon: 'anchor', color: 0x3f63d2,
     desc: 'Kütlə artır — heç kim səni itələyə və çevirə bilmir',
-    mech: 'guard', anchor: 11, guard: 2.0,
+    mech: 'guard', anchor: 14, guard: 3.5,
   },
   midnight: {
     name: 'Kölgə Rejimi', icon: 'cloak', color: 0x38466e,
     desc: 'Raketlər səni hədəf ala bilmir — radardan itirsən',
-    mech: 'guard', cloak: 14.0,
+    mech: 'guard', cloak: 18.0, guard: 2.0,
   },
 
   // ——— İDARƏ ———
   lagoon: {
     name: 'Dalğa Sürüşü', icon: 'wave', color: 0x21c9a8,
     desc: 'Mükəmməl yol tutumu — dönüşlərdə heç sürüşmürsən',
-    mech: 'handling', grip: 8.5, boost: 1.5, power: 1.13,
+    mech: 'handling', grip: 6, boost: 0.9, power: 1.08,
   },
   ranger: {
     name: 'Hər Yerdə Yol', icon: 'allterrain', color: 0x2e8f62,
@@ -96,7 +96,7 @@ export const ABILITIES = {
   cruiser: {
     name: 'İkinci Nəfəs', icon: 'secondwind', color: 0xd6452c,
     desc: 'Zədəni tam təmizləyir və qısa sürət verir',
-    mech: 'recover', repair: true, boost: 1.0, power: 1.07,
+    mech: 'recover', repair: true, boost: 1.5, power: 1.07, guard: 1.5,
   },
   violetta: {
     name: 'Vaxtı Geri Al', icon: 'rewind', color: 0x8a3df0,
@@ -114,21 +114,21 @@ export const ABILITIES = {
     name: 'Qısa Yol', icon: 'shortcut', color: 0xf7b32b,
     desc: 'Ani irəli sıçrayış — sıxlıqdan bir anda çıxırsan',
     // dash impulsu + qısa tavan qaldırması (yoxsa impuls dərhal kəsilir)
-    mech: 'agility', dash: 18, boost: 0.7, power: 1.09, guard: 1.8,
+    mech: 'agility', dash: 24, boost: 1.1, power: 1.09, guard: 1.8,
   },
 
   // ——— KÖMƏKÇİ ———
   goldrush: {
     name: 'Qızıl Toxunuş', icon: 'magnet', color: 0xf5a53a,
     desc: 'Yaxındakı bonusları özünə çəkir',
-    mech: 'utility', magnet: { time: 9, radius: 26 },
+    mech: 'utility', magnet: { time: 12, radius: 26 },
   },
 
   // ——— DALĞA ———
   inferno: {
     name: 'Partlayış Dalğası', icon: 'shockwave', color: 0xe8442e,
     desc: 'Ətrafdakı rəqibləri kənara itələyir — yol açır',
-    mech: 'wave', wave: { radius: 19, force: 44 },
+    mech: 'wave', wave: { radius: 19, force: 70, slip: 0.9 }, boost: 0.8, power: 1.06,
   },
 };
 
