@@ -34,7 +34,8 @@
     "test:damage": "playwright test tests/damage.spec.js",
     "test:music": "playwright test tests/music.spec.js",
     "test:zen-ground": "playwright test tests/zen-ground.spec.js",
-    "test:zen-contact": "playwright test tests/zen-contact.spec.js"
+    "test:zen-contact": "playwright test tests/zen-contact.spec.js",
+    "test:cars-sheet": "playwright test tests/cars-sheet.spec.js"
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.10",
