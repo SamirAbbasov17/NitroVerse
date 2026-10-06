@@ -112,6 +112,18 @@ export class GameplayScene {
     if (typeof window !== 'undefined') window.__scene = this;
   }
 
+  // Finiş sonrası "şərəf dövrəsi": oyunçunun maşınını sakit avtopilot aparır
+  _cruiseAfterFinish() {
+    const idx = this.controllers.findIndex((c) => c.car === this.playerCar);
+    if (idx < 0) return;
+    const ai = new AIController(this.playerCar, { skill: 0.5, brave: 0.8 });
+    ai._startDelay = 0;
+    this.playerCar.maxSpeed *= 0.6; // yarış bitib — sakit templə (ölçüldü: məhdudiyyətsiz 40 m/s gedirdi)
+    this.controllers[idx] = ai;
+    const racer = this.racers?.find((r) => r.isPlayer);
+    if (racer) racer.controller = ai;
+  }
+
   // Test/nümayiş: oyunçunu AI idarə etsin
   enableAutopilot() {
     const idx = this.controllers.findIndex((c) => c.car === this.playerCar);
@@ -355,8 +367,10 @@ export class GameplayScene {
       if (first) setTimeout(() => this.effects?.spawnConfetti(this.playerCar.position, true), 500);
       // Mağazadan alınmış FİNİŞ ANİMASİYASI (bax data/cosmetics.js → FINISHES)
       this._playFinishFx();
-      // Finişdən sonra idarə bağlanır (yavaş-yavaş dayanır)
-      if (pr?.controller) pr.controller.active = false;
+      // Finişdən sonra idarə oyunçudan alınır, maşını avtopilot YOL BOYU sakit sürür.
+      // Əvvəl idarə sadəcə söndürülürdü: maşın əl əyləci ilə dümdüz gedib ilk
+      // döngədə yoldan çıxırdı (istifadəçi rəyi).
+      this._cruiseAfterFinish();
     };
     // İLK FİNİŞ: kimsə (bot və ya başqa oyunçu) birinci gələndə qalanlar üçün yarış
     // 30 saniyəyə bitir. Əvvəl oflayn yarış oyunçu finişə çatana qədər sonsuz davam

@@ -106,3 +106,43 @@ test('yarış sonu: telefonda bildiriş HUD-u və idarəni örtmür', async ({ b
   expect(hit.btnH, 'düymə toxunuş üçün ən azı 40 px').toBeGreaterThanOrEqual(40);
   await ctx.close();
 });
+
+// Finişdən sonra maşın yol boyu özü gedir (əvvəl dümdüz gedib yoldan çıxırdı), oyunçu idarə edə bilmir.
+// Oflayn nəticə ekranı 2.6 s-dən sonra açılır; burada o gecikdirilir ki, 10 saniyə izləyə bilək.
+test('yarış sonu: finişdən sonra maşın yol boyu gedir, idarə bağlıdır', async ({ page }) => {
+  await boot(page);
+  await startMode(page, CFG);
+  await page.waitForFunction(() => window.__active.raceManager?.state === 'racing', null, { timeout: 30_000 });
+  await page.evaluate(() => { window.__active.enableAutopilot(); });
+  await page.waitForTimeout(6000); // sürət yığsın və döngəyə yaxınlaşsın
+  await page.evaluate(() => {
+    const sc = window.__active;
+    const rm = sc.raceManager;
+    const me = rm.getPlayer();
+    me.finished = true; me.finishTime = rm.elapsed; me.finishPos = ++rm._finishOrder;
+    rm.onFinish(me, me.finishPos);
+    rm.onPlayerFinish(me);
+    sc._finishTimer = 60; // nəticə ekranını gecikdir
+    // oyunçu sükanı tam sola basır — təsir etməməlidir
+    sc.input.touch = { throttle: 1, steer: -1 };
+  });
+  let off = 0;
+  let minSpeed = 99;
+  let dist = 0;
+  let last = null;
+  for (let i = 0; i < 50; i++) {
+    await page.waitForTimeout(200);
+    const s = await page.evaluate(() => {
+      const c = window.__active.playerCar;
+      return { on: c.onRoad, v: c.velocity.length(), x: c.position.x, z: c.position.z };
+    });
+    if (!s.on) off++;
+    if (i > 5) minSpeed = Math.min(minSpeed, s.v);
+    if (last) dist += Math.hypot(s.x - last.x, s.z - last.z);
+    last = s;
+  }
+  console.log(`finişdən sonra 10 s: yoldan kənar nümunə ${off}/50 · min sürət ${minSpeed.toFixed(1)} m/s · məsafə ${dist.toFixed(0)} m`);
+  expect(off, 'maşın yoldan çıxmır').toBe(0);
+  expect(minSpeed, 'maşın getməyə davam edir').toBeGreaterThan(4);
+  expect(dist, 'yol boyu irəliləyir').toBeGreaterThan(120);
+});
