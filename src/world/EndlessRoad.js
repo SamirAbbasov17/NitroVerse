@@ -5,6 +5,10 @@ import { CITY_ROWS } from './CityKit.js';
 
 // Sonsuz prosedural yol: qabaqda chunk-lar yaranır, arxadakılar silinir.
 // Car.update üçün TrackBuilder-uyğun interfeys verir (getNearest, halfWidth, maxRadius).
+const _fpBox = new THREE.Box3();
+const _lv = new THREE.Vector3();
+const _lowCache = new Map();   // Kenney modelləri: ad|həndəsə → aşağı oturacaq (model fəzası)
+const LOW_Y = 1.4;             // maşının çatdığı hündürlük (model vahidi)
 const SEG = 8;         // nöqtələr arası (m)
 // Chunk qurulması ƏSAS AXINDA işləyir — 36 seqmentlik parça kadrı 11-21 ms
 // yeyirdi və hər ~7 saniyədə bir 36-40 ms-lik kadr donması verirdi (ölçülüb:
@@ -240,17 +244,91 @@ export class EndlessRoad {
     const oz = c.z + n.z * sd * (hw + 4.2);
     const çölY = Math.min(içY, Math.max(terrainY(ox, oz), WATER_LEVEL - 0.5));
     const t = Math.min(1, off / 3.55);
-    return { y: içY + (çölY - içY) * t, k: t };
+    return { y: içY + (çölY - içY) * t, k: t, off };
+  }
+
+  // Obyektin YERLİ oturacaq düzbucaqlısı (yalnız y ətrafında dönən obyektlər üçün).
+  // Dairə uzun/dördkünc gövdəni təsvir etmir: binanın künclərinə girmək olurdu, hasarın
+  // yanında isə görünməz divar yaranırdı. Toqquşma bu qutu ilə hesablanır (EndlessScene).
+  _footprint(obj) {
+    const ry = obj.rotation.y;
+    obj.rotation.y = 0;
+    obj.updateMatrixWorld(true);
+    const bb = _fpBox.setFromObject(obj);
+    obj.rotation.y = ry;
+    obj.updateMatrixWorld(true);
+    const lx = (bb.min.x + bb.max.x) / 2 - obj.position.x;
+    const lz = (bb.min.z + bb.max.z) / 2 - obj.position.z;
+    const hx = (bb.max.x - bb.min.x) / 2, hz = (bb.max.z - bb.min.z) / 2;
+    const c = Math.cos(ry), sn = Math.sin(ry);
+    return {
+      cx: obj.position.x + lx * c + lz * sn, cz: obj.position.z - lx * sn + lz * c,
+      hx, hz, c, s: sn, reach: Math.hypot(hx, hz),
+    };
+  }
+
+  // TƏBİƏT OBYEKTİNİN TOQQUŞMA FORMASI — modelin yalnız AŞAĞI hissəsindən (maşının çatdığı
+  // hündürlük) çıxarılır. Əvvəl radius bütün modelin dönmüş qutusunun 0.42-si idi: yayılmış
+  // qaya yığınında maşın 1.2 m içəri girirdi (ölçüldü: tests/zen-contact.spec.js), ağacda isə
+  // çətirin eni qədər görünməz divar vardı. Uzunsov oturacaq → yönlü düzbucaqlı (`box`),
+  // dairəvi oturacaq → öz mərkəzli dairə (`cx`, `cz`, `cr`). `r` yerləşdirmə üçün qalır.
+  _lowCollider(ob, obj, key = null) {
+    const first = key && obj.isObject3D ? (obj.isMesh ? obj : obj.getObjectByProperty('isMesh', true)) : null;
+    const ck = first ? key + '|' + first.geometry.uuid : null;
+    let f = ck ? _lowCache.get(ck) : undefined;
+    if (f === undefined) {
+      // model fəzasında ölç: miqyas 1, dönməsiz, başlanğıcda
+      const kp = obj.position.clone(), ks = obj.scale.x, kr = obj.rotation.y;
+      obj.position.set(0, 0, 0); obj.scale.setScalar(1); obj.rotation.y = 0;
+      obj.updateMatrixWorld(true);
+      let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      obj.traverse((m) => {
+        const pa = m.isMesh && m.geometry?.attributes?.position;
+        if (!pa) return;
+        for (let i = 0; i < pa.count; i++) {
+          _lv.fromBufferAttribute(pa, i).applyMatrix4(m.matrixWorld);
+          if (_lv.y > LOW_Y) continue;
+          if (_lv.x < x0) x0 = _lv.x; if (_lv.x > x1) x1 = _lv.x;
+          if (_lv.z < z0) z0 = _lv.z; if (_lv.z > z1) z1 = _lv.z;
+        }
+      });
+      obj.position.copy(kp); obj.scale.setScalar(ks); obj.rotation.y = kr;
+      obj.updateMatrixWorld(true);
+      f = x1 >= x0 ? { lx: (x0 + x1) / 2, lz: (z0 + z1) / 2, hx: (x1 - x0) / 2, hz: (z1 - z0) / 2 } : null;
+      if (ck) _lowCache.set(ck, f);
+    }
+    if (!f) return ob;
+    const k = obj.scale.x, c = Math.cos(obj.rotation.y), sn = Math.sin(obj.rotation.y);
+    const cx = obj.position.x + (f.lx * c + f.lz * sn) * k;
+    const cz = obj.position.z + (-f.lx * sn + f.lz * c) * k;
+    const hx = Math.max(0.3, f.hx * k), hz = Math.max(0.3, f.hz * k);
+    const shift = Math.hypot(cx - ob.x, cz - ob.z);
+    if (Math.max(hx, hz) > Math.min(hx, hz) * 1.4) {
+      ob.box = { cx, cz, hx, hz, c, s: sn, reach: Math.hypot(hx, hz) };
+      ob.reach = shift + ob.box.reach;
+    } else {
+      // dairəvi oturacaq: künclər boşdur (qaya, kol, gövdə) — qutunun daxili dairəsindən bir az iri
+      ob.cx = cx; ob.cz = cz; ob.cr = Math.max(0.4, (hx + hz) * 0.5 * 1.06);
+      ob.reach = shift + ob.cr;
+    }
+    return ob;
   }
 
   heightAtPos(position, hint = null) {
     const near = this.getNearest(position, hint);
-    const li = Math.max(0, Math.min(this.points.length - 2, near.index - this.base));
-    const p0 = this.points[li], p1 = this.points[li + 1];
-    const dx = p1.x - p0.x, dz = p1.z - p0.z;
-    const len2 = dx * dx + dz * dz || 1;
-    let tt = ((position.x - p0.x) * dx + (position.z - p0.z) * dz) / len2;
+    let li = Math.max(0, Math.min(this.points.length - 2, near.index - this.base));
+    const proj = (i) => {
+      const p0 = this.points[i], p1 = this.points[i + 1];
+      const dx = p1.x - p0.x, dz = p1.z - p0.z;
+      return ((position.x - p0.x) * dx + (position.z - p0.z) * dz) / (dx * dx + dz * dz || 1);
+    };
+    let tt = proj(li);
+    // `getNearest` ən yaxın NÖQTƏNİ verir: mövqe o nöqtədən geridədirsə, səth ƏVVƏLKİ
+    // seqmentdədir. Əvvəl növbəti seqmentin meyli geriyə uzadılırdı — təpə/çökək
+    // qırığında (meyl dəyişən nöqtədən 4 m-ə qədər geridə) hündürlük səhv çıxırdı.
+    if (tt < 0 && li > 0) { li--; tt = proj(li); }
     tt = Math.max(-1, Math.min(2, tt)); // qonşu seqmentə yüngül ekstrapolyasiya
+    const p0 = this.points[li], p1 = this.points[li + 1];
     return p0.y + (p1.y - p0.y) * tt;
   }
 
@@ -1085,7 +1163,8 @@ export class EndlessRoad {
               // KayKit modellərinin eni fərqlidir (8–15 m): sabit şəbəkə
               // addımı ilə qonşu binalar bir-birinin içinə girirdi
               if (!this._spotFree(b.position.x, b.position.z, br, 2.5)) { g.remove(b); continue; }
-              const ob = { x: b.position.x, z: b.position.z, r: br, kind: 'city' };
+              const ob = { x: b.position.x, z: b.position.z, r: br, kind: 'city', box: this._footprint(b) };
+              ob.reach = Math.hypot(ob.box.cx - ob.x, ob.box.cz - ob.z) + ob.box.reach;
               chunkObstacles.push(ob);
               this.obstacles.push(ob);
             }
@@ -1173,7 +1252,8 @@ export class EndlessRoad {
           const hs = hb.getSize(new THREE.Vector3());
           const hr = Math.max(2.4, Math.max(hs.x, hs.z) * 0.46);
           if (!this._spotFree(hx, hz, hr, 1.2)) { g.remove(h); continue; }
-          const ob = { x: hx, z: hz, r: hr, kind: 'village' };
+          const ob = { x: hx, z: hz, r: hr, kind: 'village', box: this._footprint(h) };
+          ob.reach = Math.hypot(ob.box.cx - ob.x, ob.box.cz - ob.z) + ob.box.reach;
           chunkObstacles.push(ob);
           this.obstacles.push(ob);
         }
@@ -1256,7 +1336,7 @@ export class EndlessRoad {
           const br = brÖn;
           this._mark(bx, bz, br, 'companion');
           if (br >= 0.9 && bDist < 60) {
-            const bob = { x: bx, z: bz, r: br, kind: 'companion' };
+            const bob = this._lowCollider({ x: bx, z: bz, r: br, kind: 'companion' }, bo, bt.startsWith('nk:') ? bt : null);
             chunkObstacles.push(bob);
             this.obstacles.push(bob);
           }
@@ -1268,7 +1348,7 @@ export class EndlessRoad {
       // 34 m çox dar idi: oyunçu zen-də 50 m-ə qədər gəzir və oradakı
       // ağacların içindən keçirdi
       if (off < 60 && Math.abs(gy - pts[i].y) < 6) {
-        const ob = { x: px, z: pz, r: rr2, kind: 'decor' };
+        const ob = this._lowCollider({ x: px, z: pz, r: rr2, kind: 'decor' }, obj, type.startsWith('nk:') ? type : null);
         chunkObstacles.push(ob);
         this.obstacles.push(ob);
       }
@@ -1346,10 +1426,12 @@ export class EndlessRoad {
           // düşürdü (üst-üstə model + z-döyüşü). Yaxında hasar varsa keç.
           if (!this._spotFree(px, pz, 1.2, 0)) continue;
           const fe = makeFence(8.4);
-          { const ob = { x: px, z: pz, r: 3.4, kind: 'fence' }; chunkObstacles.push(ob); this.obstacles.push(ob); }
           fe.position.set(px, gy, pz);
           const nx2 = pts[Math.min(i + 1, pts.length - 1)];
           fe.rotation.y = Math.atan2(nx2.x - pts[i].x, nx2.z - pts[i].z);
+          // Toqquşma hasarın öz düzbucaqlısıdır — əvvəl 3.4 m radiuslu dairə idi (nazik
+          // hasarın hər yanında 3 m görünməz divar, ucları isə dairədən kənarda)
+          { const ob = { x: px, z: pz, r: 3.4, kind: 'fence', box: this._footprint(fe) }; ob.reach = ob.box.reach; chunkObstacles.push(ob); this.obstacles.push(ob); }
           g.add(fe);
         }
       }

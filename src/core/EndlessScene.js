@@ -17,7 +17,52 @@ import { TouchControls, isTouchDevice } from './TouchControls.js';
 import { audio } from './AudioManager.js';
 import { auth } from '../net/Auth.js';
 
-const CAR_RADIUS = 1.5;
+// Maşının toqquşma gövdəsi (model 4.4 × 2.24 m): ortada iki iri dairə, dörd küncdə kiçik
+// dairə — [yan, irəli, radius]. Tək dairə nə burnu, nə də küncləri örtür.
+const BODY = [
+  [0, 0.55, 1.1], [0, -0.55, 1.1],
+  [0.52, 1.6, 0.6], [-0.52, 1.6, 0.6], [0.52, -1.6, 0.6], [-0.52, -1.6, 0.6],
+];
+const BODY_REACH = 2.3;   // mərkəzdən ən uzaq nöqtə
+// Trafik maşını: uzunluğu boyu üç dairə
+const TRAFFIC_R = 1.05;
+const TRAFFIC_OFF = [1.15, 0, -1.15];
+const _push = { x: 0, z: 0 };
+// Dairənin (cx, cz, r) maneəyə girmə dərinliyi; itələmə istiqaməti `out`-a yazılır.
+// Maneə ya dairədir ({x, z, r}), ya da yönlü düzbucaqlı (`box` — bax EndlessRoad._footprint).
+function obstaclePush(o, cx, cz, r, out) {
+  const b = o.box;
+  if (!b) {
+    const dx = cx - (o.cx ?? o.x), dz = cz - (o.cz ?? o.z);
+    const d2 = dx * dx + dz * dz, min = (o.cr ?? o.r) + r;
+    if (d2 >= min * min) return 0;
+    const d = Math.sqrt(d2);
+    if (d > 1e-3) { out.x = dx / d; out.z = dz / d; } else { out.x = 1; out.z = 0; } // mərkəzdə qalma halı
+    return min - d;
+  }
+  const rx = cx - b.cx, rz = cz - b.cz;
+  const lx = rx * b.c - rz * b.s, lz = rx * b.s + rz * b.c;
+  const qx = Math.max(-b.hx, Math.min(b.hx, lx)), qz = Math.max(-b.hz, Math.min(b.hz, lz));
+  let nx = lx - qx, nz = lz - qz, pen;
+  const d2 = nx * nx + nz * nz;
+  if (d2 >= r * r) return 0;
+  if (d2 > 1e-8) {
+    const d = Math.sqrt(d2);
+    nx /= d; nz /= d; pen = r - d;
+  } else {
+    // mərkəz qutunun içindədir — ən yaxın üzdən çıxar
+    const ex = b.hx - Math.abs(lx), ez = b.hz - Math.abs(lz);
+    if (ex < ez) { nx = Math.sign(lx) || 1; nz = 0; pen = ex + r; } else { nx = 0; nz = Math.sign(lz) || 1; pen = ez + r; }
+  }
+  out.x = nx * b.c + nz * b.s; out.z = -nx * b.s + nz * b.c;
+  return pen;
+}
+// Təkərlərin maşın mərkəzindən yerli məsafəsi (yan, irəli) — model 4.4 m-ə normallaşdırılıb
+const WHEEL_X = 0.82, WHEEL_Z = 1.32;
+// Asfalt yol nöqtələrindən bu qədər yuxarı çəkilir (EndlessRoad: `_ribbon(…, 0.08)`) — əvvəl
+// maşın yol nöqtəsinin hündürlüyündə otururdu və təkərlər asfalta ~11 sm batırdı (ölçüldü)
+const ROAD_TOP = 0.08;
+const _seatBox = new THREE.Box3();
 
 // Biomlar — landşaftlar bir-birinə axıcı keçir
 const BIOMES = [
@@ -699,13 +744,26 @@ export class EndlessScene {
       // sürüşdürülür — sıçrayış yoxdur.
       const car = this.playerCar;
       const dx = car.position.x - x, dz = car.position.z - z;
-      const min = 3.3;
-      const d2 = dx * dx + dz * dz;
-      if (d2 < min * min) {
-        const d = Math.sqrt(d2) || 0.001;
-        const nx = dx / d, nz = dz / d;
+      // GÖVDƏ–GÖVDƏ: əvvəl mərkəzlər arası sabit 3.3 m idi — maşınlar isə 4.4 m uzundur:
+      // arxadan dəyəndə burun qabaqdakının içinə 1.1 m girirdi, yan-yana isə 1.1 m
+      // görünməz boşluq qalırdı. İndi oyunçunun gövdə dairələri (BODY) trafik maşınının
+      // uzunluğu boyu üç dairəsi ilə tutuşdurulur və ən dərin təmas götürülür.
+      let örtüşmə = 0, nx = 0, nz = 0;
+      if (dx * dx + dz * dz < 5.8 * 5.8) {
+        const fs = Math.sin(car.heading), fc = Math.cos(car.heading);
+        const ts = Math.sin(tt.root.rotation.y), tc = Math.cos(tt.root.rotation.y);
+        for (const [bx, bz, br] of BODY) {
+          const px = car.position.x + fc * bx + fs * bz, pz = car.position.z - fs * bx + fc * bz;
+          for (const to of TRAFFIC_OFF) {
+            const ex = px - (x + ts * to), ez = pz - (z + tc * to);
+            const d = Math.hypot(ex, ez) || 0.001;
+            const pen = br + TRAFFIC_R - d;
+            if (pen > örtüşmə) { örtüşmə = pen; nx = ex / d; nz = ez / d; }
+          }
+        }
+      }
+      if (örtüşmə > 0) {
         // Sıxışdırma YUMŞAQ: bir kadrda tam yox, örtüşmənin 45%-i
-        const örtüşmə = min - d;
         car.position.x += nx * örtüşmə * 0.45;
         car.position.z += nz * örtüşmə * 0.45;
         // Trafik maşınının öz sürəti (istiqamət × sürət) — NİSBİ sürətlə işlə
@@ -1030,7 +1088,6 @@ export class EndlessScene {
     c.reset(spot.point, spot.heading);
     this._rescueMark = (this._rescueMark || 0) + 1;   // testlər ayırd etsin
     this._onDeck = false;   // yola qayıtdı — körpü vəziyyəti yenidən qiymətləndirilsin
-    this._latSm = 0;
     audio.sfx('rescue');
   }
 
@@ -1204,30 +1261,72 @@ export class EndlessScene {
   // meshi ilə eyni groundYAt() funksiyasından oxunur. Əvvəl kənarda 8 m-lik
   // süni keçid vardı və torpaq düz terrainY sayılırdı → yol qazma içində
   // olanda maşın təpənin içinə girirdi, körpü yanında havada qalırdı.
-  _groundYFor(car, dt = 0.016) {
-    const road = this.road.heightAtPos(car.position, car.wpHint);
-    const hw = this.road.halfWidth;
-    const raw = Math.max(0, Math.abs(car.lateral || 0) - (hw + 0.65));
-    // `lateral` hər kadr yola yenidən proyeksiya olunur və bir az titrəyir —
-    // yüngül alçaq keçid filtri (gecikmə yaratmayacaq qədər cəld)
-    const a = 1 - Math.exp(-dt * 25);
-    this._latSm = (this._latSm ?? raw) + (raw - (this._latSm ?? raw)) * a;
-    const off = this._latSm;
-    if (off <= 0.02) return road;
-    // ÇİYİN ZOLAĞI: hündürlük artıq HƏNDƏSƏDƏN gəlir (xətti rampa) — əvvəl
+  _groundYFor(car) {
+    return this._surfaceY(car.position, car.wpHint);
+  }
+
+  // İxtiyari nöqtədə görünən səth (vəziyyətsiz) — maşının hər təkəri üçün ayrıca çağırılır.
+  _surfaceY(pos, hint) {
+    const v = this.road.vergeYAt(pos, hint);
+    if (!v) return this.road.heightAtPos(pos, hint) + ROAD_TOP;
+    if (v.k <= 0) return v.y + ROAD_TOP;
+    // ÇİYİN ZOLAĞI: hündürlük HƏNDƏSƏDƏN gəlir (xətti rampa) — əvvəl
     // burada smoothstep vardı və maşın zolağın ortasında 0.3–0.37 m səthin
     // altına düşürdü (ölçülüb, istifadəçi rəyi: "yerin içinə girir").
-    const v = this.road.vergeYAt(car.position, car.wpHint);
-    const g = Math.max(this._meshGroundY(car.position.x, car.position.z), WATER_LEVEL - 0.4);
-    if (!v) return road;
-    if (v.k >= 1) {
-      // zolaqdan kənarda: torpağa qısa keçid. 2 m idi — kəsikdə torpaq çiyindən ~0.4 m
-      // aşağıdır və maşın bu zolaqda görünən səthdən 0.4 m yuxarıda "asılı" qalırdı (ölçüldü).
-      const artıq = Math.min(1, (off - 3.55) / 0.7);
-      const e = artıq * artıq * (3 - 2 * artıq);
-      return v.y * (1 - e) + g * e;
+    if (v.k < 1) return v.y;
+    // zolaqdan kənarda: torpağa qısa keçid. 2 m idi — kəsikdə torpaq çiyindən ~0.4 m
+    // aşağıdır və maşın bu zolaqda görünən səthdən 0.4 m yuxarıda "asılı" qalırdı (ölçüldü).
+    const g = Math.max(this._meshGroundY(pos.x, pos.z), WATER_LEVEL - 0.4);
+    const artıq = Math.min(1, (v.off - 3.55) / 0.7);
+    const e = artıq * artıq * (3 - 2 * artıq);
+    return v.y * (1 - e) + g * e;
+  }
+
+  // MAŞINI SƏTHƏ OTURT: hündürlük və əyilmə DÖRD TƏKƏRİN altındakı səthdən hesablanır.
+  // Əvvəl (1) yalnız mərkəz nöqtəsi oxunurdu və maşın yan meyldə düz saxlanırdı — yamacda
+  // aşağı tərəfdəki təkərlər havada, yuxarı tərəfdəkilər torpağın içində qalırdı (ölçüldü:
+  // yoldan kənarda təkər 0.35 m-ə qədər batır, tests/zen-contact.spec.js); (2) burun əyilməsi
+  // `rotation.x`-ə standart 'XYZ' sırası ilə yazılırdı, yəni DÜNYA x oxu ətrafında: yol
+  // şərqə/qərbə gedəndə yoxuşda burun qalxmaq əvəzinə maşın yana yatırdı.
+  _seatCar(dt) {
+    const car = this.playerCar;
+    const root = car.root;
+    if (root.rotation.order !== 'YXZ') root.rotation.order = 'YXZ'; // əvvəl istiqamət, sonra öz oxlarında əyilmə
+    const s = Math.sin(car.heading), c = Math.cos(car.heading);
+    const P = this._seatP || (this._seatP = { x: 0, y: 0, z: 0 });
+    const at = (lx, lz) => {
+      P.x = car.position.x + c * lx + s * lz;
+      P.z = car.position.z - s * lx + c * lz;
+      return this._surfaceY(P, car.wpHint);
+    };
+    const hFp = at(WHEEL_X, WHEEL_Z), hFm = at(-WHEEL_X, WHEEL_Z);
+    const hRp = at(WHEEL_X, -WHEEL_Z), hRm = at(-WHEEL_X, -WHEEL_Z);
+    // dörd nöqtədən müstəvi; qalıq burulma qədər qaldırılır ki, heç bir təkər batmasın
+    const twist = Math.abs(hFp - hFm - hRp + hRm) / 4;
+    // `_wheelDrop`: təkərin alt nöqtəsi maşının başlanğıcından nə qədər aşağıdadır (modeldən)
+    if (this._wheelDrop == null) {
+      root.updateMatrixWorld(true);
+      let low = Infinity;
+      for (const w of car.wheels) low = Math.min(low, _seatBox.setFromObject(w).min.y);
+      this._wheelDrop = Number.isFinite(low) ? Math.max(-0.1, Math.min(0.2, root.position.y - low)) : 0;
     }
-    return v.y;
+    const gy = (hFp + hFm + hRp + hRm) / 4 + twist + this._wheelDrop;
+    const lim = (v) => Math.max(-0.5, Math.min(0.5, v));
+    const pitch = lim(-Math.atan2((hFp + hFm) - (hRp + hRm), 4 * WHEEL_Z));
+    const roll = lim(Math.atan2((hFp + hRp) - (hFm + hRm), 4 * WHEEL_X));
+    if (this._carGy == null) { this._carGy = gy; this._carPitch = pitch; this._carRoll = roll; }
+    const rate = car.onRoad ? 30 : 20; // torpaqda bir az yumşaq, amma gecikməsiz asqı
+    this._carGy += (gy - this._carGy) * Math.min(1, dt * rate);
+    // Təkərlər yerin İÇİNƏ girə bilməz: qalxanda asqı gecikməsi yoxdur,
+    // enəndə hamarlama qalır (əks halda maşın təpəyə çıxanda torpağa batırdı)
+    this._carGy = Math.max(this._carGy, gy - 0.03);
+    const k = Math.min(1, dt * 14);
+    this._carPitch += (pitch - this._carPitch) * k;
+    this._carRoll += (roll - this._carRoll) * k;
+    car.position.y = this._carGy;
+    root.position.y = this._carGy;
+    root.rotation.x = this._carPitch;
+    root.rotation.z = this._carRoll;
   }
 
   _buildRain() {
@@ -1258,26 +1357,8 @@ export class EndlessScene {
     // Yol dəhlizi: kənara maksimum ~13 m — sonsuz çölə getmək olmur
     const car = this.playerCar;
     const near = this.road.getNearest(car.position, car.wpHint);
-    // Təpə/körpü: maşın yol hündürlüyünə oturur, burnu meylə uyğun əyilir
-    {
-      const gy = this._groundYFor(car, dt);
-      const ahead = this.road.heightAt(near.index + 2);
-      const behind = this.road.heightAt(near.index - 2);
-      // Dəqiq interpolyasiya var — hamarlama yalnız chunk tikişləri üçün, çox cəld
-      const rate = car.onRoad ? 30 : 20; // torpaqda bir az yumşaq, amma gecikməsiz asqı
-      this._carGy = (this._carGy ?? gy) + (gy - (this._carGy ?? gy)) * Math.min(1, dt * rate);
-      // Təkərlər yerin İÇİNƏ girə bilməz: qalxanda asqı gecikməsi yoxdur,
-      // enəndə hamarlama qalır (əks halda maşın təpəyə çıxanda torpağa batırdı)
-      this._carGy = Math.max(this._carGy, gy - 0.03);
-      car.position.y = this._carGy;
-      const slope = Math.atan2(ahead - behind, 4 * 8); // 4 nöqtə × SEG(8m)
-      // İrəli gedəndə yoxuş = burun yuxarı; heading yolla üst-üstə düşməyə bilər
-      const fwd = Math.sin(car.heading) * this.road.tangents[Math.min(Math.max(near.index - this.road.base, 0), this.road.tangents.length - 1)].x
-        + Math.cos(car.heading) * this.road.tangents[Math.min(Math.max(near.index - this.road.base, 0), this.road.tangents.length - 1)].z;
-      this._carPitch = (this._carPitch ?? 0) + ((-slope * Math.sign(fwd || 1)) - (this._carPitch ?? 0)) * Math.min(1, dt * 7);
-      car.root.rotation.x = this._carPitch;
-      // Körpüdə dəhliz daralır (sürahilər) — havada üzmək olmaz
-    }
+    // Təpə/körpü/yamac: maşın görünən səthə oturur və dörd təkərə görə əyilir
+    this._seatCar(dt);
     this._updateFreeRoam(dt, near);
 
     // Biom qarışığı
@@ -1916,29 +1997,30 @@ export class EndlessScene {
       this.controller.update(dt, this.road);
     }
     const car = this.playerCar;
-    // Təpə/körpü: fizika hər kadr y-i sıfırlayır — yol hündürlüyü HƏR İKİ
-    // rejimdə (əl ilə sürüş + avtopilot) fizikadan SONRA tətbiq olunur
+    // Fizika hər kadr y-i sıfırlayır; toqquşma effektləri (qığılcım, toz) üçün əvvəlki
+    // kadrın hündürlüyü qaytarılır — tam oturtma toqquşmalardan SONRA (_updateWorld → _seatCar)
+    car.position.y = this._carGy ?? 0;
+    car.root.position.y = car.position.y;
+    // Maneə toqquşması. Maşın bir dairə deyil, gövdəni örtən altı dairədir (bax BODY): əvvəl
+    // tək 1.5 m-lik dairə idi, maşının burnu isə mərkəzdən 2.2 m irəlidədir — dirəyə düz
+    // dəyəndə burun 0.4–0.5 m içəri girirdi (ölçüldü: tests/zen-contact.spec.js), yandan
+    // isə 0.4 m görünməz boşluq qalırdı.
     {
-      const gy = this._groundYFor(car, dt);
-      const rate = car.onRoad ? 30 : 20;
-      this._carGy = (this._carGy ?? gy) + (gy - (this._carGy ?? gy)) * Math.min(1, dt * rate);
-      // Təkərlər yerin İÇİNƏ girə bilməz: qalxanda asqı gecikməsi yoxdur,
-      // enəndə hamarlama qalır (əks halda maşın təpəyə çıxanda torpağa batırdı)
-      this._carGy = Math.max(this._carGy, gy - 0.03);
-      car.position.y = this._carGy;
-      car.root.position.y = this._carGy;
-    }
-    // Maneə toqquşması (yalnız yaxın pəncərə)
-    for (const o of this.road.obstacles) {
-      const dx = car.position.x - o.x;
-      const dz = car.position.z - o.z;
-      const min = o.r + CAR_RADIUS;
-      const d2 = dx * dx + dz * dz;
-      if (d2 < min * min) {
-        const d = Math.sqrt(d2) || 0.001;   // mərkəzdə qalma halı (bax GameplayScene)
-        const nx = d2 > 1e-6 ? dx / d : 1, nz = d2 > 1e-6 ? dz / d : 0;
-        car.position.x = o.x + nx * min;
-        car.position.z = o.z + nz * min;
+      const fs = Math.sin(car.heading), fc = Math.cos(car.heading);
+      for (const o of this.road.obstacles) {
+        const dx = car.position.x - o.x, dz = car.position.z - o.z;
+        const reach = (o.reach ?? o.r) + BODY_REACH;
+        if (dx * dx + dz * dz > reach * reach) continue;
+        let sx = 0, sz = 0;
+        for (const [bx, bz, br] of BODY) {
+          const pen = obstaclePush(o, car.position.x + fc * bx + fs * bz, car.position.z - fs * bx + fc * bz, br, _push);
+          if (pen <= 0) continue;
+          car.position.x += _push.x * pen; car.position.z += _push.z * pen;
+          sx += _push.x * pen; sz += _push.z * pen;
+        }
+        const sl = Math.hypot(sx, sz);
+        if (sl < 1e-6) continue;
+        const nx = sx / sl, nz = sz / sl;
         const vn = car.velocity.x * nx + car.velocity.z * nz;
         if (vn < 0) {
           // ƏVVƏL 1.4 idi — bu, ƏKS SIÇRAYIŞ deməkdir: maşın divardan
