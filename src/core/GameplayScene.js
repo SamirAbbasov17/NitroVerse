@@ -9,7 +9,7 @@ import { Environment } from '../world/Environment.js';
 import { Car } from '../entities/Car.js';
 import { PlayerController } from '../entities/PlayerController.js';
 import { AIController } from '../entities/AIController.js';
-import { camBTweak, mountCamTest } from './CamTest.js';
+import { chaseCamTweak } from './ChaseCam.js';
 import { NetworkController } from '../entities/NetworkController.js';
 import { RaceManager } from '../race/RaceManager.js';
 import { PowerUpManager } from '../race/PowerUpManager.js';
@@ -100,7 +100,6 @@ export class GameplayScene {
     this._buildHUD();
     this.hud.setHP(this.hz.hp, this.hz.hp);
     this._bindKeys();
-    this._camTestOff = mountCamTest(this.uiRoot, this.input); // Faza 2 sınağı: kamera keçidi
 
     // Kamera rejimi (yadda saxlanır): tps = arxadan, fps = sükan arxası
     this._camMode = ['fps', 'hood'].includes(localStorage.getItem('apexCamMode')) ? localStorage.getItem('apexCamMode') : 'tps';
@@ -1309,11 +1308,11 @@ export class GameplayScene {
 
     // Sürət kompensasiyası: eksponensial izləmənin ləngiməsini qabaqcadan ödəyir —
     // yüksək sürətdə maşın "qaçıb uzaqlaşmır", kamera yalnız bir az geri çəkilir
-    // Kamera B (sınaq): döngənin içinə baxış + sürətdə geri/aşağı — bax CamTest.js
-    const B = camBTweak(car, speedT, lookBack);
-    if (B) { back += B.back; height -= B.drop; }
+    // Döngənin içinə baxış + sürətdə azca alçaq rakurs — bax ChaseCam.js
+    const B = chaseCamTweak(car, speedT, lookBack);
+    back += B.back; height -= B.drop;
     const rx = -Math.cos(h) * lookBack, rz = Math.sin(h) * lookBack;   // sağ tərəf
-    const sideCam = B ? -B.side * 0.35 : 0;   // kamera döngənin bayırına azca çəkilir
+    const sideCam = -B.side * 0.35;   // kamera döngənin bayırına azca çəkilir
     const desired = new THREE.Vector3(
       car.position.x - fx * back + car.velocity.x * 0.11 + rx * sideCam,
       height,
@@ -1326,7 +1325,7 @@ export class GameplayScene {
     this.speedLines?.update(dt, speedT, car.velocity.length());
     audio.setEngine(speedT, car.boostTimer > 0);
 
-    const sideLook = B ? B.side : 0;
+    const sideLook = B.side;
     this._camTarget.lerp(
       new THREE.Vector3(car.position.x + fx * 7 + rx * sideLook, 1.1, car.position.z + fz * 7 + rz * sideLook),
       1 - Math.exp(-dt * 8)
@@ -1350,7 +1349,7 @@ export class GameplayScene {
     this._fovKick = this._fovKick ?? 0;
     const kickTarget = car.boostTimer > 0 ? 6.5 : 0;
     this._fovKick += (kickTarget - this._fovKick) * Math.min(1, dt * 5);
-    const fov = 58 + speedT * 12 + this._fovKick + (B ? B.fov : 0);
+    const fov = 58 + speedT * 12 + this._fovKick + B.fov;
     if (Math.abs(this.camera.fov - fov) > 0.1) {
       this.camera.fov = fov;
       this.camera.updateProjectionMatrix();
@@ -1468,7 +1467,6 @@ export class GameplayScene {
   }
 
   dispose() {
-    this._camTestOff?.();
     // Ekran siniflərini TƏMİZLƏ — əvvəl 'fast' sinfi yarışdan sonra qalırdı
     // və statik şüalar zen-də də görünürdü (istifadəçi rəyi)
     document.getElementById('app')?.classList.remove('fast', 'boosting', 'impact');
