@@ -24,6 +24,7 @@ export function mergeStaticGroup(group) {
       o.receiveShadow ? 'rs' : '-',          // kölgə qəbulu bucket-i bölür
       o.userData?.flat ? 'flat' : '-',       // yastı səth (asfalt, zolaq) kölgə SALMIR
       m.map?.uuid || '-',
+      m.emissiveMap?.uuid || '-',
       m.color?.getHexString(),
       m.emissive?.getHexString(),
       m.emissiveIntensity,

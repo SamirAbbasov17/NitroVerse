@@ -45,7 +45,7 @@ export const TRACKS = [
     scale: 1.55,
     roadLamps: true,
     // Render sonrası rəng qradasiyası (yalnız masaüstü) — bax core/PostFX.js
-    grade: { bloom: 0.45, bloomThreshold: 0.72, saturation: 1.2, contrast: 1.08, shadows: 0xf0f0ff, highlights: 0xfff2fb },
+    grade: { bloom: 0.38, bloomThreshold: 0.8, saturation: 1.2, contrast: 1.08, shadows: 0xf0f0ff, highlights: 0xfff2fb },
     palette: {
       exposure: 1.25,
       night: true,

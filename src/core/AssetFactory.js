@@ -95,7 +95,146 @@ export function makeDune(color = 0xd99b57) {
 // ————— Neon şəhər binası —————
 // opts.hMin/hMax — sıraya görə hündürlük diapazonu (şəhər rayonunda yola
 // yaxın sıra alçaq, arxa sıralar göydələn olur). Verilməsə köhnə davranış.
+// ————— NEON ŞƏHƏRİ: pəncərəli binalar (Faza 3.2) —————
+// Bütün binalar BİR pəncərə teksturasını (emissiveMap) və iki materialı (yaxın /
+// uzaq) paylaşır — birləşdirmədən sonra bütün şəhər 2 draw call-dur. Hər binanın
+// UV-si teksturada təsadüfi sürüşdürülür, ona görə yanan pəncərələrin naxışı
+// təkrarlanmır. Pəncərə ölçüsü dünyada sabitdir (bina böyüdükcə pəncərə böyümür).
+const WIN_COLS = 16, WIN_ROWS = 32;   // teksturadakı pəncərə şəbəkəsi
+const WIN_W = 1.35, WIN_H = 1.9;       // bir pəncərə xanasının dünyadakı ölçüsü (m)
+let _winTex = null;
+function windowTexture() {
+  if (_winTex) return _winTex;
+  const cw = 16, ch = 16; // xana (piksel)
+  const cv = document.createElement('canvas');
+  cv.width = WIN_COLS * cw; cv.height = WIN_ROWS * ch;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  // İsti sarı üstünlük təşkil edir; mavi/çəhrayı trekin neon vurğularıdır
+  const cols = ['#ffd98a', '#ffd98a', '#ffe9c0', '#ffc46b', '#7fe9ff', '#ff7ab8', '#dfe8ff'];
+  for (let r = 0; r < WIN_ROWS; r++) {
+    // Bəzi mərtəbələr tam qaranlıqdır, bəziləri demək olar tam işıqlı (ofis mərtəbəsi)
+    const floor = Math.random();
+    const p = floor < 0.18 ? 0.04 : floor > 0.86 ? 0.85 : 0.34;
+    const floorCol = cols[Math.floor(Math.random() * cols.length)];
+    for (let c = 0; c < WIN_COLS; c++) {
+      if (Math.random() > p) continue;
+      ctx.globalAlpha = 0.55 + Math.random() * 0.45;
+      ctx.fillStyle = Math.random() < 0.7 ? floorCol : cols[Math.floor(Math.random() * cols.length)];
+      ctx.fillRect(c * cw + 3, r * ch + 4, cw - 6, ch - 8);
+    }
+  }
+  ctx.globalAlpha = 1;
+  _winTex = new THREE.CanvasTexture(cv);
+  _winTex.wrapS = _winTex.wrapT = THREE.RepeatWrapping;
+  _winTex.colorSpace = THREE.SRGBColorSpace;
+  _winTex.anisotropy = 4;
+  _winTex.userData = { shared: true };
+  return _winTex;
+}
+
+const _cityMats = {};
+export function cityMat(far = false) {
+  const k = far ? 'far' : 'near';
+  if (!_cityMats[k]) {
+    const m = new THREE.MeshStandardMaterial({
+      color: far ? 0x0a0f22 : 0x1a2142,
+      roughness: far ? 0.9 : 0.7,
+      flatShading: true,
+      emissive: 0xffffff,
+      emissiveMap: windowTexture(),
+      emissiveIntensity: far ? 0.9 : 1.5,
+    });
+    m.userData = { shared: true };
+    _cityMats[k] = m;
+  }
+  return _cityMats[k];
+}
+
+// Pəncərə UV-li qutu: yan üzlərdə pəncərə şəbəkəsi, dam və dib qaranlıq
+export function cityBoxGeometry(w, h, d) {
+  const geo = new THREE.BoxGeometry(w, h, d);
+  const uv = geo.attributes.uv;
+  const u0 = Math.floor(Math.random() * WIN_COLS) / WIN_COLS;
+  const v0 = Math.floor(Math.random() * WIN_ROWS) / WIN_ROWS;
+  // BoxGeometry üz sırası: +x, −x, +y, −y, +z, −z (hər üz 4 təpə)
+  for (let f = 0; f < 6; f++) {
+    const top = f === 2 || f === 3;
+    const faceW = f < 2 ? d : w;
+    // tam ədəd pəncərə: xana kəsilmir
+    const nu = Math.max(1, Math.round(faceW / WIN_W)) / WIN_COLS;
+    const nv = Math.max(1, Math.round(h / WIN_H)) / WIN_ROWS;
+    for (let i = f * 4; i < f * 4 + 4; i++) {
+      // dam: xanalar arası qaranlıq künc nöqtəsi (bütün təpələr eyni texel)
+      if (top) uv.setXY(i, u0, v0);
+      else uv.setXY(i, u0 + uv.getX(i) * nu + f * 3 / WIN_COLS, v0 + uv.getY(i) * nv);
+    }
+  }
+  return geo;
+}
+
+const _glowMats = new Map();
+export function glowMat(color) {
+  let m = _glowMats.get(color);
+  if (!m) {
+    m = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 2.2, flatShading: true });
+    m.userData = { shared: true };
+    _glowMats.set(color, m);
+  }
+  return m;
+}
+
+// Üç forma: qüllə (tək blok), pilləli (yuxarı daralan 2–3 blok), enli (alçaq blok + üst qat)
+function makeCityBuilding(opts = {}) {
+  const g = new THREE.Group();
+  const mat = cityMat(false);
+  const neonColors = [0x34e0ff, 0xff3d8a, 0xffd257, 0xb44bff];
+  const neon = neonColors[Math.floor(rand(0, neonColors.length))];
+  const form = Math.random();
+  const block = (w, h, d, y) => {
+    const m = new THREE.Mesh(cityBoxGeometry(w, h, d), mat);
+    m.position.y = y + h / 2;
+    m.castShadow = true;
+    g.add(m);
+    return y + h;
+  };
+  let w = rand(4.5, 8), d = rand(4.5, 8);
+  let top;
+  if (form < 0.4) {
+    top = block(w, rand(opts.hMin ?? 14, opts.hMax ?? 36), d, 0);
+  } else if (form < 0.75) {
+    top = block(w, rand(8, 16), d, 0);
+    w *= 0.74; d *= 0.74;
+    top = block(w, rand(7, 13), d, top);
+    if (Math.random() < 0.5) { w *= 0.7; d *= 0.7; top = block(w, rand(4, 9), d, top); }
+  } else {
+    w = rand(7, 8); d = rand(4.5, 6);
+    top = block(w, rand(7, 12), d, 0);
+    w *= 0.5; d *= 0.8;
+    top = block(w, rand(4, 9), d, top);
+  }
+  // Dam kənarı neon haşiyə (üst blokun perimetri boyu nazik zolaq)
+  if (Math.random() < 0.6) {
+    const trim = new THREE.Mesh(new THREE.BoxGeometry(w + 0.3, 0.3, d + 0.3), glowMat(neon));
+    trim.position.y = top - 0.5;
+    g.add(trim);
+  }
+  // Antena + qırmızı siqnal işığı (yalnız hündür binalarda)
+  if (top > 22) {
+    const mast = new THREE.Mesh(new THREE.BoxGeometry(0.22, 4, 0.22), mat);
+    mast.geometry.attributes.uv.array.fill(0);
+    mast.position.y = top + 2;
+    g.add(mast);
+    const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), glowMat(0xff3b30));
+    lamp.position.y = top + 4.2;
+    g.add(lamp);
+  }
+  return g;
+}
+
 export function makeBuilding(opts = {}) {
+  if (opts.city) return makeCityBuilding(opts);
   const g = new THREE.Group();
   const w = rand(4, 8);
   const d = rand(4, 8);

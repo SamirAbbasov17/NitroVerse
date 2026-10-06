@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { makeDecor, makeLamp, flatMat, makeTireStack, makeBarrier,
+import { makeDecor, makeLamp, flatMat, makeTireStack, makeBarrier, cityBoxGeometry, cityMat, glowMat,
   makeGrandstand, makeFloodlight, makeMarshalPost, makeSponsorBoard, makeBunting } from '../core/AssetFactory.js';
 import { mergeStaticGroup } from '../core/MergeUtils.js';
 
@@ -240,17 +240,16 @@ export class Environment {
         const w = 12 + Math.random() * 22;
         const bx = Math.cos(a) * r, bz = Math.sin(a) * r;
         if (!this._free(bx, bz, w * 0.72)) continue;
-        const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), flatMat(0x0a0f22, { roughness: 0.9 }));
+        // Uzaq şəhər də pəncərəlidir (tutqun) — əvvəl qapqara siluet idi
+        const b = new THREE.Mesh(cityBoxGeometry(w, h, w), cityMat(true));
         b.position.set(bx, h / 2 - 8, bz);
         g.add(b);
         this.obstacles.push({ x: b.position.x, z: b.position.z, r: w * 0.72 });
-        // bəzi binalarda neon zolaq
+        // bəzi binalarda şaquli neon xətt. Əvvəl enli lövhə idi (0.8w × 0.5h) — bloomla
+        // ağ ləkəyə çevrilirdi və pəncərələri örtürdü; material rəng başına paylaşılır.
         if (Math.random() < 0.5) {
           const neon = [0x34e0ff, 0xff3d8a, 0xffd257][Math.floor(Math.random() * 3)];
-          const strip = new THREE.Mesh(
-            new THREE.BoxGeometry(w * 0.8, h * 0.5, 0.4),
-            new THREE.MeshStandardMaterial({ color: neon, emissive: neon, emissiveIntensity: 2.0, flatShading: true })
-          );
+          const strip = new THREE.Mesh(new THREE.BoxGeometry(w * 0.08, h * 0.7, 0.4), glowMat(neon));
           strip.position.set(Math.cos(a) * r, h / 2 - 8, Math.sin(a) * r + w / 2);
           g.add(strip);
         }
@@ -1078,7 +1077,8 @@ export class Environment {
         const r = 18 + Math.random() * (this.track.maxRadius + 70);
         const pos = new THREE.Vector3(Math.cos(ang) * r, 0, Math.sin(ang) * r);
 
-        const obj = makeDecor(rule.type);
+        // Neon: pəncərəli şəhər binaları (zavodun binaları ayrıca işdir — bədii bibliya)
+        const obj = makeDecor(rule.type, rule.type === 'building' && this.data.id === 'neon' ? { city: true } : undefined);
         const s = 0.8 + Math.random() * 0.7;
         obj.scale.setScalar(s);
         // Obyektin üfüqi radiusu
