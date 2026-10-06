@@ -85,6 +85,8 @@ uiRoot.addEventListener('click', (e) => {
 if (import.meta.env.DEV) {
   window.__audio = audio;
   window.__game = game;
+  // Onlayn testlər (tests/online.spec.js): menyudan keçmədən otaq qurub yarış başlatmaq üçün
+  import('./net/NetRoom.js').then((m) => { window.__online = { NetRoom: m.NetRoom, start: (net, msg) => startOnlineGame(net, msg) }; });
   window.__social = social;
   window.__auth = auth;
   // Vizual testlər üçün (kosmetika yoxlanışı) — yalnız DEV

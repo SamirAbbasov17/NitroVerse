@@ -29,7 +29,8 @@
     "test:pace": "playwright test tests/pace.spec.js",
     "test:postfx": "playwright test tests/postfx.spec.js",
     "test:impact": "playwright test tests/impact.spec.js",
-    "test:race-end": "playwright test tests/race-end.spec.js"
+    "test:race-end": "playwright test tests/race-end.spec.js",
+    "test:online": "playwright test tests/online.spec.js"
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.10",

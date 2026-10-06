@@ -18,3 +18,7 @@ paths:
 - Onlayn test: iki ayrı brauzer prosesi. Eyni brauzerdə iki tab işləmir (gizli tabda `requestAnimationFrame` donur).
 - Prod build-də DEV qarmaqları yoxdur — server testində UI seçiciləri işlət (`[data-mode="online"]`).
 - Canlı serverə toxunan hər şey (ssh, deploy, miqrasiya) yalnız istifadəçi deyəndə.
+
+## Avtomatik onlayn test
+
+`npm run test:online` — iki brauzer konteksti + yerli broker (`peerserver/`, port 9123). DEV qarmağı `window.__online` (`NetRoom`, `start`) menyudan keçmədən otaq qurur. Onlayn axına toxunan hər dəyişiklikdən sonra işlət; yeni ssenarini `tests/online.spec.js`-ə əlavə et.

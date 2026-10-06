@@ -508,6 +508,12 @@ export class GameplayScene {
       if (this._net.isHost && this._hostResultsTimer) this._hostCheckAllDone();
     } else if (m.kind === 'giveup') {
       this._onGiveUp(m.id);
+    } else if (m.kind === 'done') {
+      // Başqa oyunçu finişə çatdı — geri sayım hələ başlamayıbsa indi başlayır
+      if (this._endT == null) {
+        this._endT = END_WAIT;
+        this._winnerName = this.racers.find((x) => x.netId === m.id)?.name || '';
+      }
     } else if (m.kind === 'mine') {
       const owner = this.racers.find((x) => x.netId === m.id) || null;
       this.powerups.spawnNetMine(m.mid, m.x, m.z, owner);
@@ -923,6 +929,9 @@ export class GameplayScene {
         this._localFinSent = true;
         const me = this.raceManager.getPlayer();
         this._net.sendFinish(me.finishTime);
+        // Hamıya bildir: geri sayım uzaq maşının yerli interpolyasiyasından asılı
+        // qalmasın (gecikmə/itki olanda qonaq finişi görməyə bilərdi)
+        this._net.sendEvent({ kind: 'done' });
       }
       // Host: ilk finişdən sonra maksimum gözləmə
       if (this._net.isHost && this._hostResultsTimer) {
