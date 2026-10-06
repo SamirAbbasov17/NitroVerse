@@ -228,3 +228,33 @@ test('oynanış: bot geri-qayıtma gücünü sağlam vəziyyətdə işlətmir', 
   await page.evaluate(() => { window.__bot.car.hitTimer = 1.2; window.__bot._sigWait = 0; });
   await page.waitForFunction(() => window.__bot.signature.used === true, null, { timeout: 4000 });
 });
+
+// Uzaq fon (dağ halqası / şəhər silueti) trekin hər nöqtəsindən kameranın görmə həddinin
+// içində olmalıdır. Rivierada 1000 m hədd çatmırdı: kamera dönəndə üfüqdəki dağlar ekranın
+// mərkəzində itib kənarında peyda olurdu (istifadəçi rəyi: "üfüqdə nəsə hərəkət edir").
+for (const m of MODES.filter((x) => x.config.mode === 'race')) {
+  test(`oynanış: uzaq fon görmə həddindədir — ${m.name}`, async ({ page }) => {
+    await boot(page);
+    await startMode(page, m.config);
+    const r = await page.evaluate(() => {
+      const sc = window.__active, tr = sc.track;
+      const pos = [];
+      sc.environment.distant.traverse((o) => {
+        if (!o.isMesh) return;
+        const a = o.geometry.attributes.position;
+        for (let i = 0; i < a.count; i += 2) pos.push(a.getX(i), a.getZ(i));
+      });
+      let max = 0;
+      for (let k = 0; k < tr.N; k += 4) {
+        const p = tr.points[k];
+        for (let i = 0; i < pos.length; i += 2) {
+          const d = Math.hypot(pos[i] - p.x, pos[i + 1] - p.z);
+          if (d > max) max = d;
+        }
+      }
+      return { max: Math.round(max), far: Math.round(sc.camera.far) };
+    });
+    console.log(`${m.name.padEnd(13)} ən uzaq fon nöqtəsi ${r.max} m · görmə həddi ${r.far} m`);
+    expect(r.max + 20, 'uzaq fon görmə həddindən içəridədir (kamera maşından ~14 m geridədir)').toBeLessThan(r.far);
+  });
+}

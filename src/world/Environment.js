@@ -631,6 +631,7 @@ export class Environment {
     g.traverse((o) => o.geometry?.dispose?.());
     this.scene.add(merged);
     this._track(merged);
+    this.distant = merged; // kameranın görmə həddi bundan hesablanır (GameplayScene)
   }
 
   // Buludlar: TƏK InstancedMesh (1 draw call), çox yavaş orbit dreyfi

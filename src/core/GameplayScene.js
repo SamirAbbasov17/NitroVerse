@@ -138,6 +138,24 @@ export class GameplayScene {
     this.track = new TrackBuilder(this.trackData);
     this.scene.add(this.track.build());
     this.environment = new Environment(this.scene, this.trackData, this.track, this.renderer);
+    this._fitCameraFar();
+  }
+
+  // Kameranın görmə həddi uzaq relyefi (dağ halqası / şəhər silueti) trekin HƏR
+  // nöqtəsindən əhatə etməlidir. Sabit 1000 m iri trekdə (Riviera, R = 353) çatmırdı:
+  // qarşı tərəfdəki dağlar 1100 m-dən uzaqdadır və kəsilirdi. Kəsmə müstəvi üzrə
+  // olduğundan dağ ekranın kənarında görünür, mərkəzində itir — kamera dönəndə üfüqdə
+  // "nəsə hərəkət edir" (istifadəçi rəyi).
+  _fitCameraFar() {
+    const d = this.environment.distant;
+    if (!d) return;
+    const box = new THREE.Box3().setFromObject(d);
+    // ən uzaq künc + trekin radiusu (maşın əks tərəfdə ola bilər) + kameranın geri məsafəsi
+    const reach = Math.max(
+      Math.hypot(box.min.x, box.min.z), Math.hypot(box.max.x, box.max.z),
+      Math.hypot(box.min.x, box.max.z), Math.hypot(box.max.x, box.min.z));
+    this.camera.far = Math.max(1000, Math.ceil(reach + this.track.maxRadius + 40));
+    this.camera.updateProjectionMatrix();
   }
 
   _buildCars() {
