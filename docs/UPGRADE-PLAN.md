@@ -74,11 +74,11 @@ Təklif olunan istiqamət (hər biri ayrıca göstəriləcək və sən seçəcə
 | 2.3 | ✅ **Drift yenidən**: idarə olunan sürüşmə (25–40°), sürətin 85–90%-i qalır, düz çıxışda kiçik təkan — arcade yarışların əsas "feel" mexanikası | M |
 | 2.4 | ✅ Qaz buraxma və əyləc: daha uzun süzmə, daha yumşaq əyləc | S |
 | 2.5 | ✅ Yoldan kənar cəzası: daha yumşaq giriş (~1.5 s), eyni tarazlıq | S |
-| 2.6 | 🔶 **Maşın şəxsiyyəti**: statların real fərq yaratması (sürətlənmə, tutum, drift meyli) — 5 sinif fərqli sürülsün | M |
-| 2.7 | 🔶 **Kamera**: döngəyə qabaqcadan baxış; rəqib maşın kameranın önünü tutanda şəffaflaşma (4 trekdə kadrı örtür); divara girməmə | M |
+| 2.6 | ✅ **Maşın şəxsiyyəti** — statlar v2-də real fərq yaradır (`TUNING.feel2` "MAŞIN ŞƏXSİYYƏTİ"). Ölçmə (Blaze / Titan / Venom / Ranger / Cargo): 0→99% 4.05 / 3.58 / 3.65 / 4.87 / 4.87 s · dönmə radiusu 20 / 26 / 18 / 20 / 21 m · döngədə sürət 83 / 82 / 82 / 88 / 88% · drift bucağı 33 / 27 / 36 / 26 / 24° · yoldan kənar 47 / 47 / 47 / **79** / 47% (Offroad sinfi) · əyləc 27.5 / 29.3 / 25.1 / 26.1 / 28.1 m | — |
+| 2.7 | ✅ **Kamera** — önü tutan rəqib yarı-şəffaf olur (test: `oynanış: kameranın önünü tutan rəqib şəffaflaşır`). Döngəyə qabaqcadan baxış **edilmədi**: yeni driftdə kadrlara baxıldı — kamera burun və hərəkət istiqamətinin arasında durur, maşın və yol görünür; istifadəçinin əvvəl tənzimlətdiyi davranışa toxunulmadı | — |
 | 2.8 | 🔶 **AI** — ilkin ölçmə (40 s, botların median irəliləyişi; yoldan kənar vaxt), oyunçu maşını kənara çəkilmiş: Səhra asan 0.86 / normal 1.12 / çətin 1.16 (çətin 7.5% kənarda) · Neon 0.65 / 0.97 / 1.00 (çətin 13.6% kənarda) · Kanyon 0.49 / 0.61 / 0.70 (çətin 10.1% kənarda). Yəni "çətin" normaldan cəmi 3–14% sürətlidir və vaxtının ~10%-ni yoldan kənarda keçirir. **Sınanıb və geri götürülüb:** əyriliyə görə döngə sürəti + əyləc — tək qaçışlarda nəticə səs-küydən ayrılmadı (bonus zərbələri və botların toqquşması yoldan çıxmanın əsas səbəbi ola bilər). Düzgün yol: əvvəl nəzarətli ölçmə (bonuslar sönülü, hər səviyyədən 5 qaçış, dövrə vaxtı), sonra dəyişiklik | M |
 | 2.10 | 🔶 **Arena və futbol** — hələ köhnə sürüş modelindədir. v2-yə keçid ayrıca tənzim tələb edir (kiçik meydan, top fizikası, istifadəçinin tənzimlətdiyi futbol kamerası) | M |
-| 2.9 | Toz/tüstü: iri "daş" çoxüzlülər əvəzinə yumşaq sprite hissəciklər; sürət hissi (yol kənarı axını, FOV) | S–M |
+| 2.9 | ✅ **Toz/tüstü** — düz üzlü "daşlar" əvəzinə yumşaq buludcuq; tüstü və təkər izi yalnız real driftdə (sürüşmə > ~20°) çıxır | — |
 
 Yoxlama: `test:feel` rəqəmləri (hədəf dəyərlər 2.1-dən əvvəl birlikdə təsbit olunur) + sənin oynaman. Onlayn protokola toxunarsa `PREFIX` artır.
 

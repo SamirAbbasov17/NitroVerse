@@ -7,7 +7,8 @@ import { boot, startMode, mergeJson } from './helpers.js';
 // Üsul: oyunun real Car obyekti sinxron, sabit addımla (1/60 s) irəlilədilir —
 // boş, maneəsiz, sonsuz enli "yol" üzərində. Yəni trekin forması, maneələr və
 // kadr sürəti nəticəyə qarışmır; ölçülən yalnız Car.update modelidir.
-const CARS = ['blaze', 'titan', 'cargo'];
+// Sinif nümayəndələri: Formula, Hyper, Hot Hatch, Offroad, Van
+const CARS = ['blaze', 'titan', 'venom', 'ranger', 'cargo'];
 
 // Hər maşın iki modeldə ölçülür: 'v2' (standart — yarış və zen) və 'old'
 // (köhnə model — arena və futbol hələ onu işlədir).

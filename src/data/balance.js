@@ -46,8 +46,9 @@ export const TUNING = {
     // Sürətlənmə: v → vmax-a eksponensial yaxınlaşma, τ = tauMax − (accel/100)·tauRange.
     // Hədəf vmax-dan 2% yuxarı götürülür ki, tavana sonlu vaxtda çatılsın.
     // τ≈1.2 s → 50% ~0.8 s, 90% ~2.6 s, 99% ~4.2 s (köhnə: 99% 1.75 s)
-    tauMax: 2.0,
-    tauRange: 1.1,
+    // (aralıq genişdir ki, sürətlənmə statı hiss olunsun: stat 58 → 1.50 s, 86 → 0.97 s)
+    tauMax: 2.6,
+    tauRange: 1.9,
     overshoot: 1.02,
     tauDown: 1.15,      // icazə verilən sürətdən yuxarıdaykən enmə (yoldan kənar, nitro sonu)
     coast: 0.18,        // qaz buraxılanda: 2 s-də sürətin ~70%-i qalır (köhnə: 37%)
@@ -72,6 +73,13 @@ export const TUNING = {
     boostMax: 1.1,
     boostSpeed: 1.12,
     boostAccel: 3,
+    // ————— MAŞIN ŞƏXSİYYƏTİ: statların v2-də yaratdığı fərq —————
+    // Dəyərlər "orta" maşına (Blaze GT) görə sıfırlanıb — onun davranışı dəyişmir.
+    turnSpread: 0.6,      // idarə: 60 → dönmə ×0.90, 82 → ×1.04
+    driftGripPer: 1.4,    // tutum +30 → driftdə düzlənmə +1.4 (az sürüşür, sabit gedir)
+    scrubPerGrip: 0.35,   // tutum +30 → döngədə itki −0.105 (sürətin daha çoxu qalır)
+    brakePerArmor: 0.12,  // zireh (çəki) +40 → əyləc −4.8 m/s² (ağır maşın gec dayanır)
+    offRoadCutOffroad: 0.22, // "Offroad" sinfi yoldan kənarda sürətin ~78%-ni saxlayır (digərləri 45%)
   },
 
   // ————— ARENA PROFİLİ —————

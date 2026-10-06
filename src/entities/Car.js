@@ -33,8 +33,15 @@ export class Car {
     // Sürüş modeli. Standart: arcade-drift (TUNING.feel2, bax _driveV2) — yarış və zen.
     // `legacyFeel` → köhnə model: arena və futbol hələ onunla tənzimlənib.
     this.feel = legacyFeel ? null : TUNING.feel2;
-    this.tau = TUNING.feel2.tauMax - (s.accel / 100) * TUNING.feel2.tauRange;
-    this.grip2 = TUNING.feel2.gripMin + (s.grip / 100) * TUNING.feel2.gripRange;
+    // Maşına məxsus v2 əmsalları (statlardan) — bax TUNING.feel2 "MAŞIN ŞƏXSİYYƏTİ"
+    const F2 = TUNING.feel2;
+    this.tau = F2.tauMax - (s.accel / 100) * F2.tauRange;
+    this.grip2 = F2.gripMin + (s.grip / 100) * F2.gripRange;
+    this.driftGrip2 = F2.driftGrip + ((s.grip - 70) / 30) * F2.driftGripPer;
+    this.cornerScrub2 = F2.cornerScrub - ((s.grip - 70) / 100) * F2.scrubPerGrip;
+    this.brake2 = F2.brake - ((s.armor ?? 55) - 55) * F2.brakePerArmor;
+    this.offRoadCut2 = carData.class === 'Offroad' ? F2.offRoadCutOffroad : F2.offRoadCut;
+    if (!legacyFeel) this.turnRate *= 1 + ((s.handling - 76) / 100) * F2.turnSpread;
     this.driftT = 0;       // cari driftin müddəti (s)
     this.driftBoostT = 0;  // drift çıxışı təkanının qalan vaxtı (s)
 
@@ -157,7 +164,7 @@ export class Car {
     }
 
     // 1) Yan tutum: sürüşmə bucağı β = atan2(vR, vF) eksponensial sönür
-    let g = drifting ? F.driftGrip : this.grip2;
+    let g = drifting ? this.driftGrip2 : this.grip2;
     if (this.slipTimer > 0) g = 0.4;                 // yağ: demək olar tutum yoxdur
     else if (this._sigGrip > 0) g = Math.max(g, 9);  // "mükəmməl tutum" imza gücü
     let S = Math.hypot(vF, vR);
@@ -171,7 +178,7 @@ export class Car {
 
     // 2) İcazə verilən sürət
     let vAllow = vMaxBase;
-    if (this.offRoad > 0 && this._sigOffroad <= 0) vAllow *= 1 - F.offRoadCut * this.offRoad;
+    if (this.offRoad > 0 && this._sigOffroad <= 0) vAllow *= 1 - this.offRoadCut2 * this.offRoad;
     if (this.driftBoostT > 0) vAllow *= F.boostSpeed;
     if (drifting) vAllow *= F.driftTarget;
     let tau = this.tau / sigPow;
@@ -191,7 +198,7 @@ export class Car {
       if (v < target) v = Math.min(target, v + ((target * F.overshoot - v) / tau) * (this.isPlayer ? th : 1) * dt);
       else v -= ((v - target) / F.tauDown) * dt;
     } else if (th < 0) {
-      if (v > 0.5) v -= F.brake * dt;                            // əyləc
+      if (v > 0.5) v -= this.brake2 * dt;                        // əyləc
       else v += this.engineForce * 0.6 * th * dt;                // geri
     } else {
       v -= v * F.coast * dt;                                     // süzmə
@@ -200,7 +207,7 @@ export class Car {
     // Döngədə sürət itkisi (driftdə YOX — drift məhz bundan qaçmağın yoludur)
     if (!drifting && v > 0) {
       const s2 = this._steerSmooth * this._steerSmooth;
-      v -= v * (F.cornerScrub / this.tau) * s2 * Math.min(v / this.maxSpeed, 1) * dt;
+      v -= v * (this.cornerScrub2 / this.tau) * s2 * Math.min(v / this.maxSpeed, 1) * dt;
     }
 
     if (drifting && S > 0.01) {
