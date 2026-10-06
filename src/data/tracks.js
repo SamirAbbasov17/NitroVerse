@@ -137,6 +137,13 @@ export const TRACKS = [
     grade: { bloom: 0.22, bloomThreshold: 0.95, saturation: 1.1, contrast: 1.07, shadows: 0xf6eeff, highlights: 0xfff3e4 },
     palette: {
       exposure: 1.18,
+      // Axşam: günəş alçaqda, dərə divarları yola uzun kölgə salır
+      sunDir: [-95, 46, -70],
+      sunSize: 0.5,
+      sunDisc: 0xffb868,
+      ambientIntensity: 0.8, // kölgə tərəfdəki divar qapqara çıxmasın
+      hemiIntensity: 1.2,
+      groundGain: 2.3, // yer tünd tünd-qırmızı idi (tekstura rəngi ~3.5× tündləşdirir)
       sky: 0x86385e,
       skyBottom: 0xf29a5c,
       ground: 0xa85a3e,
@@ -166,8 +173,10 @@ export const TRACKS = [
       { t0: 0.548, t1: 0.707, via: [[-90, -95]] },
     ],
     decor: [
-      { type: 'rock', count: 110 },
-      { type: 'cactus', count: 40 },
+      // near: yol boyu (6–60 m) səpələnir — bax Environment._scatterDecor
+      { type: 'rock', count: 60, near: true },
+      { type: 'cactus', count: 40, near: true },
+      { type: 'drybush', count: 80, near: true },
       { type: 'dune', count: 10 },
       { type: 'house', count: 6 },
     ],

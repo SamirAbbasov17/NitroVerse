@@ -1027,21 +1027,23 @@ export class Environment {
         g.add(m);
         this.obstacles.push({ x: m.position.x, z: m.position.z, r: rad * 0.7 });
       }
-    } else if (id === 'desert') {
-      // SƏHRA: konus dağ yox — MESA və qaya sütunları (yastı zirvə, laylı gövdə). Əvvəl
-      // bütün treklərdə eyni konus idi, yalnız rəngi dəyişirdi (bədii bibliya).
+    } else if (id === 'desert' || id === 'canyon') {
+      // SƏHRA / KANYON: konus dağ yox — MESA və qaya sütunları (yastı zirvə, laylı gövdə).
+      // Əvvəl bütün treklərdə eyni konus idi, yalnız rəngi dəyişirdi (bədii bibliya).
+      // Kanyonda yaylalar daha enli və tünd-qırmızıdır, sütun azdır.
       const fogC = new THREE.Color(this.data.palette.fog);
+      const cany = id === 'canyon';
       const tiers = [0.14, 0.4, 0.62].map((k) => ({
-        body: flatMat(new THREE.Color(0xc46a38).lerp(fogC, k).getHex(), { roughness: 1 }),
-        cap: flatMat(new THREE.Color(0xdc8a4c).lerp(fogC, k).getHex(), { roughness: 1 }),
+        body: flatMat(new THREE.Color(cany ? 0x9c4638 : 0xc46a38).lerp(fogC, k).getHex(), { roughness: 1 }),
+        cap: flatMat(new THREE.Color(cany ? 0xc4683f : 0xdc8a4c).lerp(fogC, k).getHex(), { roughness: 1 }),
       }));
       for (let i = 0; i < 44; i++) {
         const a = (i / 44) * Math.PI * 2 + Math.random() * 0.1;
         const tier = i % 3;
         const r = base + 20 + tier * 80 + Math.random() * 55;
         const x = Math.cos(a) * r, z = Math.sin(a) * r;
-        const spire = Math.random() < 0.3;
-        const rb = spire ? 14 + Math.random() * 10 : 40 + Math.random() * 45;
+        const spire = Math.random() < (cany ? 0.12 : 0.3);
+        const rb = spire ? 14 + Math.random() * 10 : (cany ? 55 : 40) + Math.random() * (cany ? 60 : 45);
         const h = spire ? 70 + Math.random() * 50 : 38 + tier * 12 + Math.random() * 40;
         const sides = 6 + Math.floor(Math.random() * 3);
         const rot = Math.random() * 6;
@@ -1350,50 +1352,129 @@ export class Environment {
 
   // Kanyon dərə divarları: yolu "sıxan" mesa cütlükləri + qaya tağı
   _canyonWalls() {
+    // KANYON: yol hər iki tərəfdən laylı qaya divarları arasında gedir (dərə hissi).
+    // Əvvəl burada cəmi 5 cüt tək qaya və nazik bir tağ var idi — trek açıq düzdə
+    // qalırdı, "kanyon" oxunmurdu (bədii bibliya). Sıra: əvvəl landmarklar (asma körpü,
+    // mədən qülləsi) yerlərini tutur, sonra divarlar boş qalan yerə düzülür.
+    const tr = this.track, N = tr.N, half = tr.halfWidth;
     const g = new THREE.Group();
-    const rockGeo = new THREE.DodecahedronGeometry(1, 0);
-    const wallMats = [flatMat(0x8a4a34, { roughness: 1 }), flatMat(0x7a3e2c, { roughness: 1 })];
-    const N = this.track.N;
-    // Şaxə zonalarından (0.055-0.262, 0.548-0.707) və startdan kənar nöqtələr
-    for (const [wi, t] of [0.33, 0.40, 0.46, 0.80, 0.90].entries()) {
-      const i = Math.round(t * N) % N;
-      const c = this.track.points[i];
-      const n = this.track.normals[i];
-      for (const side of [-1, 1]) {
-        const off = this.track.halfWidth + 10 + Math.random() * 5;
-        const sx = 6 + Math.random() * 3.5;
-        const sy = 9 + Math.random() * 6;
-        const mesa = new THREE.Mesh(rockGeo, wallMats[(wi + (side > 0 ? 1 : 0)) % 2]);
-        mesa.scale.set(sx, sy, sx * 0.8);
-        mesa.position.set(c.x + n.x * off * side, sy * 0.35, c.z + n.z * off * side);
-        mesa.rotation.y = Math.random() * 6;
-        if (!this._free(mesa.position.x, mesa.position.z, sx * 0.85)) continue;
-        g.add(mesa);
-        this.obstacles.push({ x: mesa.position.x, z: mesa.position.z, r: sx * 0.85 });
+    const rockA = flatMat(0x8f4232, { roughness: 1 }), rockB = flatMat(0xad5733, { roughness: 1 });
+    const rockC = flatMat(0xcc7d4c, { roughness: 1 });
+    const wood = flatMat(0x8a5a36, { roughness: 1 }), woodD = flatMat(0x5f3d24, { roughness: 1 });
+    const add = (geo, mat, x, y, z, ry = 0) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x, y, z);
+      m.rotation.y = ry;
+      m.castShadow = true;
+      g.add(m);
+      return m;
+    };
+
+    // ——— ASMA KÖRPÜ: iki qaya qülləsi arasında, yolun üstündən sallanan taxta körpü ———
+    const reach = half + 9;
+    const used = [];
+    for (const s of this._overRoadSpots(1, reach)) {
+      used.push(s.i);
+      const { p, n, t, legs } = s;
+      const yaw = Math.atan2(n.x, n.z);
+      for (const l of legs) {
+        const b1 = add(new THREE.DodecahedronGeometry(1, 0), rockA, l.x, 4, l.z, yaw + 0.4);
+        b1.scale.set(4.6, 6, 4.6);
+        const b2 = add(new THREE.DodecahedronGeometry(1, 0), rockB, l.x, 9.6, l.z, yaw - 0.3);
+        b2.scale.set(3.6, 3.4, 3.6);
+        for (const sd of [1, -1]) add(new THREE.BoxGeometry(0.3, 2.4, 0.3), woodD, l.x + t.x * 1.2 * sd, 13.2, l.z + t.z * 1.2 * sd, yaw);
+        this.obstacles.push({ x: l.x, z: l.z, r: 3.9 });
+      }
+      const K = 11; // taxtalar: ortada 1.4 m sallanır (ən alçaq nöqtə 10 m — maşın və kamera altından keçir)
+      for (let k = 0; k < K; k++) {
+        const u = (k + 0.5) / K, f = (u * 2 - 1);
+        const y = 12.2 - 1.4 * (1 - f * f) - 0.8;
+        const x = p.x + n.x * reach * f, z = p.z + n.z * reach * f;
+        add(new THREE.BoxGeometry(2.6, 0.18, (reach * 2 / K) * 0.86), wood, x, y, z, yaw);
+        for (const sd of [1, -1]) add(new THREE.BoxGeometry(0.08, 1.1, 0.08), woodD, x + t.x * 1.25 * sd, y + 0.6, z + t.z * 1.25 * sd, yaw);
+      }
+      // ip tutacaqlar: iki yarı (ortaya doğru enir)
+      for (const sd of [1, -1]) for (const hf of [1, -1]) {
+        const r = add(new THREE.BoxGeometry(0.1, 0.1, reach), woodD,
+          p.x + t.x * 1.25 * sd + n.x * reach * 0.5 * hf, 11.75, p.z + t.z * 1.25 * sd + n.z * reach * 0.5 * hf, yaw);
+        r.rotation.order = 'YXZ';
+        r.rotation.x = -hf * Math.atan2(1.4, reach) * 0.9;
       }
     }
-    // QAYA TAĞI — yol tağın altından keçir (landmark)
-    const ti = Math.round(0.86 * N) % N;
-    const c = this.track.points[ti];
-    const n = this.track.normals[ti];
-    for (const side of [-1, 1]) {
-      const pillar = new THREE.Mesh(rockGeo, wallMats[0]);
-      pillar.scale.set(3.2, 9.5, 3.2);
-      pillar.position.set(
-        c.x + n.x * (this.track.halfWidth + 3.2) * side, 3.4,
-        c.z + n.z * (this.track.halfWidth + 3.2) * side
-      );
-      g.add(pillar);
-      if (this._free(pillar.position.x, pillar.position.z, 2.8, 0.5)) {
-        this.obstacles.push({ x: pillar.position.x, z: pillar.position.z, r: 2.8 });
+
+    // ——— KÖHNƏ MƏDƏN: taxta qüllə (təkərli), anbar, relsdə vaqonet ———
+    for (let tries = 0; tries < 90; tries++) {
+      const i = Math.floor(Math.random() * N);
+      if (used.some((u) => Math.min((i - u + N) % N, (u - i + N) % N) < N * 0.08)) continue;
+      const c = tr.points[i], n = tr.normals[i], t = tr.tangents[i];
+      const sd = Math.random() < 0.5 ? 1 : -1;
+      const off = half + 15;
+      const x = c.x + n.x * off * sd, z = c.z + n.z * off * sd;
+      if (Math.abs(tr.getNearest(new THREE.Vector3(x, 0, z)).lateral) < half + 12) continue;
+      if (!this._free(x, z, 9, 1)) continue;
+      const yaw = Math.atan2(t.x, t.z);
+      const H = 11;
+      for (const [ax, az] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        const leg = add(new THREE.BoxGeometry(0.45, H + 0.6, 0.45), woodD,
+          x + t.x * ax * 1.9 + n.x * az * 1.9, H / 2, z + t.z * ax * 1.9 + n.z * az * 1.9, yaw);
+        leg.rotation.order = 'YXZ';
+        leg.rotation.x = -ax * 0.13; leg.rotation.z = az * 0.13 * sd;
+      }
+      add(new THREE.BoxGeometry(4.2, 0.35, 4.2), wood, x, H, z, yaw);
+      add(new THREE.BoxGeometry(3.4, 0.3, 3.4), wood, x, H * 0.5, z, yaw);
+      const wheel = add(new THREE.CylinderGeometry(1.5, 1.5, 0.3, 10), woodD, x, H + 1.9, z, yaw);
+      wheel.rotation.order = 'YXZ'; wheel.rotation.z = Math.PI / 2;
+      for (const sx of [1, -1]) add(new THREE.BoxGeometry(0.3, 2.2, 0.3), woodD, x + t.x * 0.6 * sx, H + 1.2, z + t.z * 0.6 * sx, yaw);
+      // anbar + vaqonet
+      const bx = x + t.x * 6.5, bz = z + t.z * 6.5;
+      add(new THREE.BoxGeometry(4.6, 3.2, 5.4), wood, bx, 1.6, bz, yaw);
+      add(new THREE.BoxGeometry(5.2, 0.35, 6), woodD, bx, 3.4, bz, yaw);
+      add(new THREE.BoxGeometry(1.2, 2, 0.14), glowMat(0xffb060, 1.1), bx - n.x * sd * 2.72, 1.3, bz - n.z * sd * 2.72, yaw + Math.PI / 2);
+      const cx = x - t.x * 5, cz = z - t.z * 5;
+      add(new THREE.BoxGeometry(1.5, 1.0, 2.2), flatMat(0x5a5f66, { roughness: 0.8 }), cx, 0.85, cz, yaw);
+      add(new THREE.BoxGeometry(1.3, 0.5, 2.0), rockC, cx, 1.5, cz, yaw);
+      for (const sx of [1, -1]) add(new THREE.BoxGeometry(0.12, 0.1, 13), woodD, x + n.x * 0.55 * sx - t.x * 1, 0.06, z + n.z * 0.55 * sx - t.z * 1, yaw);
+      this.obstacles.push({ x, z, r: 3.4 }, { x: bx, z: bz, r: 3.8 }, { x: cx, z: cz, r: 1.6 });
+      break;
+    }
+
+    // ——— DİVARLAR ———
+    const pre = this.obstacles.slice(); // divar seqmentləri bir-birinə toxunur — yalnız əvvəlkilərə baxılır
+    const tmp = new THREE.Vector3();
+    const walls = [];
+    const STEP = 17; // seqment uzunluğu — üçbucaq büdcəsinə görə (kanyon 90 minə yaxındır)
+    for (const side of [1, -1]) {
+      let acc = STEP, arc = 0;
+      const ph = side > 0 ? 0.7 : 3.9;
+      for (let i = 0; i < N; i++) {
+        const p = tr.points[i], q = tr.points[(i + 1) % N];
+        const d = Math.hypot(q.x - p.x, q.z - p.z);
+        acc += d; arc += d;
+        if (acc < STEP) continue;
+        acc = 0;
+        // açıqlıqlar: divar trekin ~2/3-ni tutur, aradan uzaq yaylalar görünür
+        if (Math.sin(arc * 0.0052 + ph) + Math.sin(arc * 0.013 + ph * 2) * 0.35 < -0.42) continue;
+        const n = tr.normals[i], t = tr.tangents[i];
+        const off = half + 21 + Math.sin(arc * 0.021 + ph) * 3.5;
+        const x = p.x + n.x * off * side, z = p.z + n.z * off * side;
+        tmp.set(x, 0, z);
+        if (Math.abs(tr.getNearest(tmp).lateral) < half + 15) continue; // yolun başqa hissəsinə yaxındır
+        if (this._onBranch(x, z, 13) || this._inWater(x, z, 8)) continue;
+        if (pre.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + 8.5)) continue;
+        // döngənin içində seqmentlər sıxlaşır — bir-birinin içinə girməsin (≥ 9.5 m)
+        if (walls.some((w) => Math.hypot(w.x - x, w.z - z) < 9.5)) continue;
+        walls.push({ x, z });
+        const yaw = Math.atan2(t.x, t.z);
+        const ox = n.x * side, oz = n.z * side; // çölə (yoldan uzağa)
+        const h1 = 9 + Math.random() * 5, h2 = 8 + Math.random() * 6, h3 = 3 + Math.random() * 4;
+        const jit = () => (Math.random() - 0.5) * 0.24;
+        // üç lay: aşağı tünd (yola ən yaxın), orta narıncı (geri çəkilmiş), üst açıq papaq
+        add(new THREE.BoxGeometry(13, h1, STEP + 3), rockA, x, h1 / 2 - 0.4, z, yaw + jit());
+        add(new THREE.BoxGeometry(11, h2, STEP + 2), rockB, x + ox * 2.6, h1 + h2 / 2 - 0.6, z + oz * 2.6, yaw + jit());
+        add(new THREE.BoxGeometry(9, h3, STEP + 1), rockC, x + ox * 4.6, h1 + h2 + h3 / 2 - 0.8, z + oz * 4.6, yaw + jit());
+        this.obstacles.push({ x, z, r: 8 });
       }
     }
-    const lintel = new THREE.Mesh(rockGeo, wallMats[1]);
-    lintel.scale.set(this.track.halfWidth + 6.5, 2.6, 4.2);
-    lintel.position.set(c.x, 9.6, c.z);
-    lintel.rotation.z = 0.06;
-    lintel.rotation.y = Math.atan2(this.track.tangents[ti].x, this.track.tangents[ti].z) + Math.PI / 2;
-    g.add(lintel);
     const merged = mergeStaticGroup(g);
     g.traverse((o) => o.geometry?.dispose?.());
     this.scene.add(merged);
