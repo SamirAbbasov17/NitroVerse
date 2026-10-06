@@ -1493,7 +1493,8 @@ export class EndlessRoad {
     // yolun eni ilə müqayisə edir və dəhlizə girəni SİLİR.
     this._clearRoadCorridor(g, pts);
 
-    const merged = mergeStaticGroup(g);
+    // bakeColors: düz rəngli dekor rəng başına ayrı mesh olmur (bax MergeUtils)
+    const merged = mergeStaticGroup(g, { bakeColors: true });
     g.traverse((o) => o.geometry?.dispose?.());
     return { merged, obstacles: chunkObstacles, spots: chunkSpots };
   }

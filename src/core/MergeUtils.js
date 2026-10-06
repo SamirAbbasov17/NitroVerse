@@ -4,7 +4,23 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 // Statik qrupdakı mesh-ləri material imzasına görə birləşdirir —
 // yüzlərlə draw call bir neçəsinə düşür (görüntü DƏYİŞMİR).
 // Teksturalı və işıqlı obyektlər toxunulmaz qalır.
-export function mergeStaticGroup(group) {
+// RƏNGİN TƏPƏYƏ YAZILMASI (bakeColors): düz rəngli materiallar (teksturasız, parıltısız,
+// qeyri-şəffaf) rəngə görə ayrı dəstəyə düşmür — rəng həndəsənin `color` atributuna
+// yazılır və hamısı TƏK vertex-rəngli materialla çəkilir. Zen-də bir yol parçası
+// (chunk) rəng başına ayrı mesh idi: səhnədə 321 birləşmiş mesh-in 275-i yalnız rənglə
+// fərqlənirdi (ölçüldü) — draw call büdcəsinin əsas yükü bu idi.
+const _baked = new Map();
+function bakedMaterial(rough) {
+  let m = _baked.get(rough);
+  if (!m) {
+    m = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: rough, metalness: 0 });
+    m.userData = { shared: true };
+    _baked.set(rough, m);
+  }
+  return m;
+}
+
+export function mergeStaticGroup(group, { bakeColors = false } = {}) {
   group.updateMatrixWorld(true);
   const buckets = new Map();
   const skipped = [];
@@ -19,6 +35,31 @@ export function mergeStaticGroup(group) {
     // ona görə bütün ağac/daş/kol tək mesh-ə yığılır.
     if (m.map && !m.map.uuid) { skipped.push(o); return; }
     if (!g.attributes.uv && m.map) { skipped.push(o); return; } // UV yoxdursa qarışar
+    const bake = bakeColors && m.isMeshStandardMaterial && !m.map && !m.emissiveMap && !m.transparent
+      && m.flatShading && !m.vertexColors && (m.emissive.getHex() === 0 || m.emissiveIntensity === 0)
+      && !o.userData?.roadPart;
+    if (bake) {
+      const rough = m.roughness < 0.6 ? 0.5 : 0.9;
+      const bkey = ['VC', o.receiveShadow ? 'rs' : '-', o.userData?.flat ? 'flat' : '-', rough].join('|');
+      let bb = buckets.get(bkey);
+      if (!bb) {
+        bb = { material: bakedMaterial(rough), geos: [], roadPart: false, receiveShadow: !!o.receiveShadow, flat: !!o.userData?.flat };
+        buckets.set(bkey, bb);
+      }
+      const src = g.clone().applyMatrix4(o.matrixWorld);
+      // yalnız position + normal + color qalır (atribut dəsti hamıda eyni olsun)
+      const ng = new THREE.BufferGeometry();
+      ng.setIndex(src.index);
+      ng.setAttribute('position', src.attributes.position);
+      if (!src.attributes.normal) src.computeVertexNormals();
+      ng.setAttribute('normal', src.attributes.normal);
+      const n = src.attributes.position.count;
+      const col = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) { col[i * 3] = m.color.r; col[i * 3 + 1] = m.color.g; col[i * 3 + 2] = m.color.b; }
+      ng.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      bb.geos.push(ng);
+      return;
+    }
     const key = [
       o.userData?.roadPart ? 'road' : '-',   // yol hissələri ayrıca yığılır
       o.receiveShadow ? 'rs' : '-',          // kölgə qəbulu bucket-i bölür
