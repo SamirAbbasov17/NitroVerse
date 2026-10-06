@@ -31,7 +31,8 @@
     "test:impact": "playwright test tests/impact.spec.js",
     "test:race-end": "playwright test tests/race-end.spec.js",
     "test:online": "playwright test tests/online.spec.js",
-    "test:damage": "playwright test tests/damage.spec.js"
+    "test:damage": "playwright test tests/damage.spec.js",
+    "test:music": "playwright test tests/music.spec.js"
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.10",

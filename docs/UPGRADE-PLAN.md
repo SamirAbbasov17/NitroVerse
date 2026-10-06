@@ -144,6 +144,10 @@ Sıra bu fazanın daxilində: 3.1 (bibliya) → 3.11 + 3.12 (filtr və işıq �
 
 Mənbə: Kenney Audio, Sonniss GDC, Freesound (CC0). Hər fayl `ASSETS-LICENSES.md`-ə.
 
+### Musiqi — yeni üslub 🔶 (2026-10-06, istifadəçi dinləyib qərar verəcək)
+
+Menyu və yarış musiqisi yeni prosedural üslubda (`AudioManager._playStepWalk`): nəbz vuran yumşaq akkordlar, marimba arpeciosu, notdan-nota tullanan sözsüz səslər (formant sintezi). İstinad: "Big Walk" oyununun musiqisi (aksfx) — yalnız üslub, sempl/melodiya götürülməyib. Köhnə synthwave qalır: `?music=classic` / `?music=walk`. Zen-ə 10 yeni CC0 lofi treki əlavə olundu (cəmi 34). `npm run test:music` yalnız səviyyəni ölçür (kəsilmə yoxdur, köhnə ilə ±3 dB). **Musiqini mən eşidə bilmirəm — keyfiyyəti yalnız dinləməklə qiymətləndirmək olar.**
+
 ## Faza 5 — UI/UX 🔶
 
 | # | İş | Niyə | Ölçü |

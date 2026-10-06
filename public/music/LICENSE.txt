@@ -12,3 +12,10 @@ Collections used:
 
 License verified on the album pages on 2026-10-05. No attribution is required;
 this file is kept as a record of provenance.
+
+Added 2026-10-06 (10 tracks) from "Public Domain Lofi":
+birds, doodles, tranquil-mindscape, peaceful-drift, ocean-breeze, projector-screen,
+summer-break, the-best-of-times, walking-away, down-time
+https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/
+The album page states CC0 1.0 (checked 2026-10-06). Files were re-encoded from the
+320 kbps originals to 96 kbps MP3 to match the rest of this folder; no other edits.

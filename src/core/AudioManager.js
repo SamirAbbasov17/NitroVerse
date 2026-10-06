@@ -6,6 +6,13 @@ class AudioManagerImpl {
   constructor() {
     this.ctx = null;
     this.muted = localStorage.getItem('apexMuted') === '1';
+    // Musiqi üslubu: 'walk' (yeni, standart) | 'classic' (köhnə synthwave). Müqayisə üçün:
+    // ünvana ?music=classic / ?music=walk yaz (seçim yadda qalır).
+    try {
+      const q = new URLSearchParams(location.search).get('music');
+      if (q === 'classic' || q === 'walk') localStorage.setItem('apexMusicStyle', q);
+      this.musicStyle = localStorage.getItem('apexMusicStyle') === 'classic' ? 'classic' : 'walk';
+    } catch { this.musicStyle = 'walk'; }
     this._musicMode = null;
     this._musicTimer = null;
     this._step = 0;
@@ -353,6 +360,17 @@ class AudioManagerImpl {
     { src: 'music/i-dont-understand-a-thing.mp3', name: "I Don't Understand A Thing" },
     { src: 'music/washed-up.mp3', name: 'Washed Up' },
     { src: 'music/roof-tops.mp3', name: 'Roof Tops' },
+    // "Public Domain Lofi" albomundan (HoliznaCC0, CC0) — 2026-10-06 əlavəsi
+    { src: 'music/birds.mp3', name: 'Birds' },
+    { src: 'music/doodles.mp3', name: 'Doodles' },
+    { src: 'music/tranquil-mindscape.mp3', name: 'Tranquil Mindscape' },
+    { src: 'music/peaceful-drift.mp3', name: 'Peaceful Drift' },
+    { src: 'music/ocean-breeze.mp3', name: 'Ocean Breeze' },
+    { src: 'music/projector-screen.mp3', name: 'Projector Screen' },
+    { src: 'music/summer-break.mp3', name: 'Summer Break' },
+    { src: 'music/the-best-of-times.mp3', name: 'The Best Of Times' },
+    { src: 'music/walking-away.mp3', name: 'Walking Away' },
+    { src: 'music/down-time.mp3', name: 'Down Time' },
   ];
 
   _startLofiFile() {
@@ -404,13 +422,118 @@ class AudioManagerImpl {
   _scheduleMusic() {
     if (!this._musicMode || !this.ctx) return;
     if (this._musicMode === 'lofi' && !this._lofiSynth) return; // fayl çalınır
-    const bpm = this._musicMode === 'race' ? 118 : this._musicMode === 'lofi' ? 74 : 82;
+    const walk = this.musicStyle !== 'classic';
+    const bpm = this._musicMode === 'lofi' ? 74
+      : this._musicMode === 'race' ? (walk ? 122 : 118) : (walk ? 104 : 82);
     const stepDur = 60 / bpm / 2; // 8-lik notlar
     while (this._nextT < this.ctx.currentTime + 0.3) {
       if (!this.muted) this._playStep(this._musicMode, this._step, this._nextT, stepDur);
       this._nextT += stepDur;
       this._step = (this._step + 1) % 64;
+      if (this._step === 0) this._loopN = (this._loopN || 0) + 1; // bölmə növbəsi üçün
     }
+  }
+
+  // ——— "SƏS" SİNTEZİ: sözsüz vokal parçası ("ba / da / u") ———
+  // Mişar dalğası iki formant süzgəcindən keçir (sait rəngi) + başlanğıcda qısa
+  // aşağıdan-yuxarı sürüşmə — insan səsinə oxşar qısa heca. Menyu/yarış mövzusundakı
+  // "tullanan səslər" bununla çalınır.
+  _voice({ f0, t, dur = 0.16, g = 0.1, vowel = 'a', dest = null }) {
+    const ctx = this.ctx;
+    const F = { a: [820, 1180], o: [460, 820], u: [330, 760], e: [520, 1750] }[vowel] || [820, 1180];
+    const o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(f0 * 0.93, t);
+    o.frequency.exponentialRampToValueAtTime(f0, t + 0.035);
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0, t);
+    env.gain.linearRampToValueAtTime(g, t + 0.012);
+    env.gain.setValueAtTime(g, t + dur * 0.55);
+    env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(env);
+    for (const [k, fq] of F.entries()) {
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = fq;
+      bp.Q.value = 7;
+      const fg = ctx.createGain();
+      fg.gain.value = k ? 0.6 : 1;
+      env.connect(bp); bp.connect(fg); fg.connect(dest || this.musicGain);
+    }
+    o.start(t);
+    o.stop(t + dur + 0.05);
+  }
+
+  // Yeni mövzu (2026-10-06, istifadəçi istəyi): oynaq, havalı elektron — nəbz vuran
+  // yumşaq akkordlar, marimba arpeciosu və notdan-nota TULLANAN sözsüz səslər. Üslub
+  // istinadı "Big Walk" oyununun musiqisidir (aksfx); melodiya və harmoniya özümüzündür.
+  // mode: 'race' (sürətli, dörd-vuruş) | digəri = menyu/lobbi (sakit, yarım-temp).
+  _playStepWalk(mode, s, t, dur) {
+    const M = this.musicGain;
+    const semis = (root, n) => root * Math.pow(2, n / 12);
+    const race = mode === 'race';
+    // D major: D – Bm – G – A (hər akkord 16 addım = 2 takt)
+    const roots = [146.83, 123.47, 98.0, 110.0];
+    const tones = [[0, 4, 7, 11], [0, 3, 7, 10], [0, 4, 7, 11], [0, 4, 7, 9]];
+    const ci = Math.floor(s / 16) % 4;
+    const root = roots[ci];
+    const sec = (this._loopN || 0) % 4; // 0,1: tam · 2: marimba önə · 3: yüngül fasilə (kiksiz)
+    const k = s % 16;
+
+    // — Ritm —
+    const kickOn = sec !== 3 && (race ? s % 4 === 0 : (k === 0 || k === 10));
+    if (kickOn) this._tone({ f0: 118, f1: 48, t, dur: 0.17, g: race ? 0.42 : 0.3, dest: M });
+    if (s % 8 === 4 && sec !== 3) { // yumşaq əl çalma
+      this._noise({ t, dur: 0.09, g: race ? 0.07 : 0.045, type: 'bandpass', f0: 1700, q: 0.9, dest: M });
+    }
+    if (s % 2 === 1) this._noise({ t, dur: 0.035, g: 0.022, type: 'highpass', f0: 8500, dest: M }); // şeyker (zəif vuruşda)
+
+    // — Bas: kök, oktava sıçrayışı ilə —
+    const bassPat = race ? [0, -1, 12, 0, -1, 12, 0, 7] : [0, -1, -1, 12, -1, 0, -1, 7];
+    const bn = bassPat[s % 8];
+    if (bn >= 0) {
+      this._tone({ type: 'sine', f0: semis(root / 2, bn), t, dur: dur * 1.5, g: 0.22, dest: M, attack: 0.01 });
+      this._tone({ type: 'triangle', f0: semis(root / 2, bn), t, dur: dur * 1.2, g: 0.07, dest: M, attack: 0.01 });
+    }
+
+    // — Nəbz vuran akkord: hər 8-likdə qısa yumşaq zərbə (güclü vuruşda zəif — "nəfəs") —
+    const pump = kickOn ? 0.45 : 1;
+    for (const n of tones[ci]) {
+      this._tone({ type: 'triangle', f0: semis(root * 2, n), t, dur: dur * 0.9, g: 0.021 * pump, dest: M, attack: 0.03 });
+    }
+    if (k === 0) { // altda uzun, havalı lay
+      for (const n of [0, 7, tones[ci][1] + 12]) {
+        this._tone({ type: 'sine', f0: semis(root * 2, n), t, dur: dur * 15, g: 0.022, dest: M, attack: 0.9 });
+      }
+    }
+
+    // — Marimba arpeciosu —
+    const arp = [0, 2, 1, 3, 2, 1, 3, 0];
+    if (sec === 2 || s % 2 === 0) {
+      const n = tones[ci][arp[s % 8]] + (s % 4 === 3 ? 12 : 0);
+      const f = semis(root * 4, n);
+      const g = sec === 2 ? 0.07 : 0.04;
+      this._tone({ type: 'sine', f0: f, t, dur: 0.22, g, dest: M, attack: 0.003 });
+      this._tone({ type: 'sine', f0: f * 4, t, dur: 0.06, g: g * 0.25, dest: M, attack: 0.002 }); // taxta "tık"ı
+    }
+
+    // — TULLANAN SƏSLƏR: sinkopalı, iri intervallarla (kvinta/oktava) sıçrayan hecalar.
+    //   Çağırış (akkordun 1-ci taktı) → cavab (2-ci takt, terslə harmoniya). —
+    if (sec !== 2 || ci % 2 === 0) {
+      const call = [0, -1, 12, -1, 7, 12, -1, 4, -1, 12, -1, 7, -1, -1, 16, -1];
+      const resp = [-1, 7, -1, 12, -1, -1, 9, 12, -1, 7, -1, 4, 12, -1, -1, -1];
+      const line = (this._loopN || 0) % 2 === 0 ? call : resp;
+      const n = line[k];
+      if (n >= 0) {
+        const vow = ['a', 'o', 'a', 'u', 'e'][(k + ci) % 5];
+        const f = semis(root * 2, tones[ci].includes(n % 12) || n % 12 === 0 || n % 12 === 7 ? n : n - 1);
+        this._voice({ f0: f, t, dur: dur * (n >= 12 ? 0.7 : 0.95), g: 0.085, vowel: vow, dest: M });
+        // yuxarı səsdə ikinci səs (tersiya/kvarta yuxarı) — xor hissi
+        if (n >= 12 && sec !== 3) this._voice({ f0: semis(f, ci === 1 ? 3 : 4), t: t + 0.012, dur: dur * 0.6, g: 0.045, vowel: 'u', dest: M });
+      }
+    }
+    // 8 taktın sonunda yüngül qalxma
+    if (s >= 60) this._noise({ t, dur, g: 0.01 + (s - 60) * 0.008, type: 'highpass', f0: 4000 + (s - 60) * 900, dest: M });
   }
 
   _playStep(mode, s, t, dur) {
@@ -477,6 +600,7 @@ class AudioManagerImpl {
       }
       return;
     }
+    if (this.musicStyle !== 'classic') { this._playStepWalk(mode, s, t, dur); return; }
     if (mode === 'race') {
       // ——— YARIŞ: sürüşkən synthwave — dolu kick, backbeat snare, oktava bası, hook lead ———
       if (s % 4 === 0) this._tone({ f0: 140, f1: 44, t, dur: 0.16, g: 0.46, dest: M }); // dərin kick
