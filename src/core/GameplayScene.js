@@ -97,11 +97,11 @@ export class GameplayScene {
     }
     // Can hər xəritədə: yerli maşınlara HP ver
     for (const car of this.cars) {
-      if (!car.isRemote) { car.hp = this.hz.hp; car._dmgCd = 0; car._invuln = 0; }
+      if (!car.isRemote) { car.maxHp = this._maxHp(car); car.hp = car.maxHp; car._dmgCd = 0; car._invuln = 0; }
     }
     if (this.trackData.hazards) this._buildHazards(); // lazer/konteynerlər (zavod)
     this._buildHUD();
-    this.hud.setHP(this.hz.hp, this.hz.hp);
+    this.hud.setHP(this.playerCar.hp, this.playerCar.maxHp);
     this._bindKeys();
 
     // Kamera rejimi (yadda saxlanır): tps = arxadan, fps = sükan arxası
@@ -197,9 +197,9 @@ export class GameplayScene {
       this.powerups = new PowerUpManager(this.scene, this.track, this.racers, {
         repairWeight: this.trackData.hazards?.lasers ? 4 : 2, // təhlükəli trekdə can daha tez-tez düşür
         effects: this.effects,
-        onHit: (racer) => {
-          if (racer.isPlayer) { this._shake = 0.8; this._hitStop(1); }
-          if (!racer.isRemote) this._damage(racer.car, this.hz.hitDamage);
+        onHit: (racer, kind) => {
+          if (racer.isPlayer && kind !== 'trishot') { this._shake = 0.8; this._hitStop(1); }
+          if (!racer.isRemote) this._weaponDamage(racer.car, kind);
         },
         onRemoteHit: (racer) => this._net?.sendEvent({ kind: 'hit', target: racer.netId }),
         seed: this.online.seed ?? null, // host seed-i — qutu tipləri hamıda eyni
@@ -219,8 +219,8 @@ export class GameplayScene {
       this.powerups.onRepair = (racer) => {
         const car = racer.car;
         if (car.isRemote) return;
-        car.hp = Math.min(this.hz.hp, (car.hp ?? this.hz.hp) + 35);
-        if (racer.isPlayer) this.hud.setHP(car.hp, this.hz.hp);
+        car.hp = Math.min(car.maxHp, (car.hp ?? car.maxHp) + Math.round(car.maxHp * TUNING.damage.repair));
+        if (racer.isPlayer) this.hud.setHP(car.hp, car.maxHp);
         this.effects.spawnSparkle(car.position, 0x7dff8a);
       };
       this.powerups.onBoltFired = () => this._net?.sendEvent({ kind: 'bolt' });
@@ -328,9 +328,9 @@ export class GameplayScene {
     this.powerups = new PowerUpManager(this.scene, this.track, this.racers, {
         repairWeight: this.trackData.hazards?.lasers ? 4 : 2, // təhlükəli trekdə can daha tez-tez düşür
       effects: this.effects,
-      onHit: (racer) => {
-        if (racer.isPlayer) this._shake = 0.8;
-        this._damage(racer.car, this.hz.hitDamage);
+      onHit: (racer, kind) => {
+        if (racer.isPlayer && kind !== 'trishot') this._shake = 0.8;
+        this._weaponDamage(racer.car, kind);
       },
     });
     // Hər iki slot dolu → qutu götürülmür: bunu AÇIQ de, yoxsa buq kimi görünür
@@ -348,8 +348,8 @@ export class GameplayScene {
     this.powerups.onRepair = (racer) => {
       const car = racer.car;
       if (car.isRemote) return;
-      car.hp = Math.min(this.hz.hp, (car.hp ?? this.hz.hp) + 35);
-      if (racer.isPlayer) this.hud.setHP(car.hp, this.hz.hp);
+      car.hp = Math.min(car.maxHp, (car.hp ?? car.maxHp) + Math.round(car.maxHp * TUNING.damage.repair));
+      if (racer.isPlayer) this.hud.setHP(car.hp, car.maxHp);
       this.effects.spawnSparkle(car.position, 0x7dff8a);
     };
     this.powerups.onPlayerPickup = (item) => this.hud?.showToast(`${item.icon} ${item.name}!`);
@@ -576,7 +576,7 @@ export class GameplayScene {
           this.playerCar.hitTimer = TUNING.items.hitStun * (this.playerCar.stunMul || 1);
           this._shake = 0.8;
           this._hitStop(1);
-          this._damage(this.playerCar, this.hz.hitDamage, true);
+          this._weaponDamage(this.playerCar, 'missile', true);
         }
       }
     } else if (m.kind === 'missile') {
@@ -598,7 +598,7 @@ export class GameplayScene {
       this.effects.spawnSparkle(this.playerCar.position, 0xdbe6f5);
       if (this.playerCar.shieldTimer > 0) return; // qalxan udur
       this.playerCar.hitTimer = Math.max(this.playerCar.hitTimer, TUNING.items.trishotStun * (this.playerCar.stunMul || 1));
-      this._damage(this.playerCar, 6, true); // kiçik chip zərəri
+      this._weaponDamage(this.playerCar, 'trishot', true);
       audio.sfx('tick');
       this._shake = 0.3;
     } else if (m.kind === 'bolt') {
@@ -768,8 +768,8 @@ export class GameplayScene {
   // (Əvvəl `repairPlayer` idi və bot bu gücü işlədəndə oyunçunun canı dolurdu.)
   repairCar(car) {
     if (!car || !this.hz?.hp) return;
-    car.hp = this.hz.hp;
-    if (car === this.playerCar) this.hud?.setHP?.(car.hp, this.hz.hp);
+    car.hp = car.maxHp ?? this.hz.hp;
+    if (car === this.playerCar) this.hud?.setHP?.(car.hp, car.hp);
   }
 
   _useItem() {
@@ -990,7 +990,7 @@ export class GameplayScene {
     const N = this.track.N;
     // Yerli maşınlara can ver
     for (const car of this.cars) {
-      if (!car.isRemote) { car.hp = hz.hp; car._dmgCd = 0; car._invuln = 0; }
+      if (!car.isRemote) { car.maxHp = this._maxHp(car); car.hp = car.maxHp; car._dmgCd = 0; car._invuln = 0; }
     }
     // Lazer qapıları
     this._lasers = [];
@@ -1037,12 +1037,26 @@ export class GameplayScene {
       this.scene.add(box);
       this._obstacles.push({ x: box.position.x, z: box.position.z, r: 2.4 });
     }
-    this.hud?.setHP?.(hz.hp, hz.hp);
+    this.hud?.setHP?.(this.playerCar.hp, this.playerCar.maxHp);
   }
 
-  _damage(car, amount, silent = false) {
+  // Maşının maksimum canı zirehdən asılıdır (bax TUNING.damage)
+  _maxHp(car) {
+    const D = TUNING.damage;
+    return Math.round(D.hpBase + (car.data?.stats?.armor ?? 50) * D.hpPerArmor);
+  }
+
+  // Silah zərəri (raket, mina, güllə, şimşək). Zərər fasiləsinə (cooldown) TABE DEYİL:
+  // əvvəl bütün zərər 0.5 s-lik ümumi fasilə ilə gedirdi — lazerdən və ya əvvəlki
+  // zərbədən dərhal sonra minaya düşəndə can getmirdi (istifadəçi rəyi), üçlü atəşin
+  // üç gülləsindən isə yalnız biri sayılırdı.
+  _weaponDamage(car, kind, silent = false) {
+    this._damage(car, TUNING.damage[kind] ?? TUNING.damage.mine, silent, true);
+  }
+
+  _damage(car, amount, silent = false, weapon = false) {
     if (car.isRemote) return;
-    if ((car._dmgCd ?? 0) > 0 || (car._invuln ?? 0) > 0 || car.hp == null) return;
+    if ((!weapon && (car._dmgCd ?? 0) > 0) || (car._invuln ?? 0) > 0 || car.hp == null) return;
     // QALXAN bütün zərəri tutur (lazer, maneə). Əvvəl yalnız raket/mina/şimşəkdən
     // qoruyurdu: qalxanla lazerdən keçəndə can gedirdi (istifadəçi rəyi).
     if (car.shieldTimer > 0) {
@@ -1054,13 +1068,13 @@ export class GameplayScene {
       return;
     }
     car.hp -= amount;
-    car._dmgCd = 0.5;
+    if (!weapon) car._dmgCd = 0.5; // fasilə yalnız davamlı təhlükələr üçündür (lazer, maneə)
     // Zərbə qığılcımı — vizual geri bildirim (yalnız yaxınlıqda, ucuz)
     if (this.effects && car.position.distanceTo(this.playerCar.position) < 70) {
       this.effects.spawnSparkle(new THREE.Vector3(car.position.x, 1, car.position.z), 0xffa64d);
     }
     if (car.isPlayer) {
-      this.hud.setHP(Math.max(0, car.hp), this.hz.hp);
+      this.hud.setHP(Math.max(0, car.hp), car.maxHp);
       this._shake = Math.max(this._shake, 0.4);
       if (!silent) audio.sfx('tick');
     }
@@ -1068,17 +1082,16 @@ export class GameplayScene {
   }
 
   _explodeRespawn(car) {
-    const hz = this.hz;
     this.effects.spawnExplosion(new THREE.Vector3(car.position.x, 1, car.position.z));
     if (car.isPlayer || car.position.distanceTo(this.playerCar.position) < 90) audio.sfx('explosion');
     const near = this.track.getNearest(car.position);
     const p = this.track.points[near.index];
     const tg = this.track.tangents[near.index];
     car.reset(p.clone(), Math.atan2(tg.x, tg.z));
-    car.hp = hz.hp;
+    car.hp = car.maxHp;
     car._invuln = TUNING.items.respawnInvuln;
     if (car.isPlayer) {
-      this.hud.setHP(hz.hp, hz.hp);
+      this.hud.setHP(car.maxHp, car.maxHp);
       this.hud.showToast(t('tst.respawn'));
       this._shake = 1.0;
     }

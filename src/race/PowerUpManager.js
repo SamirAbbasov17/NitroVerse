@@ -653,7 +653,7 @@ export class PowerUpManager {
       this.effects?.spawnSparkle(t.position);
     } else {
       t.hitTimer = TUNING.items.hitStun * (t.stunMul || 1);
-      this.onHit?.(racer);
+      this.onHit?.(racer, 'missile');
     }
   }
 
@@ -695,7 +695,7 @@ export class PowerUpManager {
             } else {
               r.car.hitTimer = Math.max(r.car.hitTimer, TUNING.items.trishotStun * (r.car.stunMul || 1));
               if (r.isPlayer) audio.sfx('tick');
-              this.onHit?.(r);
+              this.onHit?.(r, 'trishot');
             }
             hit = true;
             break;
@@ -724,7 +724,7 @@ export class PowerUpManager {
           continue;
         }
         r.car.hitTimer = TUNING.items.boltStun * (r.car.stunMul || 1);
-        if (r.isPlayer) this.onHit?.(r);
+        this.onHit?.(r, 'bolt'); // əvvəl yalnız oyunçu can itirirdi — botlar şimşəkdən zərərsiz çıxırdı
       }
       audio.sfx('bolt');
       this.pendingBolts.splice(i, 1);
@@ -755,7 +755,7 @@ export class PowerUpManager {
             this.effects?.spawnSparkle(r.car.position);
           } else {
             r.car.hitTimer = TUNING.items.hitStun * (r.car.stunMul || 1);
-            this.onHit?.(r);
+            this.onHit?.(r, 'mine');
           }
           this.group.remove(m.mesh);
           this.mines.splice(i, 1);

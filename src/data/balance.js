@@ -108,6 +108,20 @@ export const TUNING = {
     speedMul: 1.45,  // max sürət vurucusu — nitro real hiss olunur
   },
 
+  // ————— CAN və SİLAH ZƏRƏRİ —————
+  // Hədəf (istifadəçi, 2026-10-06): ən güclü silahla orta maşın ~4 vuruşa partlasın;
+  // şimşək az, raket və mina çox aparsın; ağır maşın daha çox dözsün.
+  // Maşının canı = hpBase + zireh × hpPerArmor  → zireh 35: 91 · 55: 103 · 75: 115 · 95: 127
+  // Raket (28) ilə partlayış: yüngül/orta maşın 4 vuruş, ağır (zireh ≥ 71) 5 vuruş.
+  damage: {
+    hpBase: 70,
+    hpPerArmor: 0.6,
+    missile: 28,   // ən güclü
+    mine: 26,
+    trishot: 10,   // güllə başına (üçü də dəysə 30)
+    bolt: 12,      // şimşək: geniş sahə, hamıya dəyir — ona görə zəif
+    repair: 0.35,  // "Təmir" qutusu: maksimum canın payı
+  },
   items: {
     respawn: 1.8,      // qutu respawn (s) — ability-lər tez-tez çıxır
     pickupR: 2.7,      // götürmə radiusu

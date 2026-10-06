@@ -120,7 +120,7 @@ for (const carId of CARS) {
       out.boost_s = +car.boostTimer.toFixed(1);
       out.anchor_s = +(car._sigAnchor || 0).toFixed(1);
       out.cloak_s = +(car._sigCloak || 0).toFixed(1);
-      if (a.repair) { out.hitCleared = car.hitTimer === 0; out.hpAfter = car.hp ?? null; out.hpMax = sc.hz?.hp ?? null; }
+      if (a.repair) { out.hitCleared = car.hitTimer === 0; out.hpAfter = car.hp ?? null; out.hpMax = car.maxHp ?? null; } // maksimum can maşının zirehindən asılıdır
       if (a.rewind) out.rewind_m = +Math.hypot(car.position.x - before.x, car.position.z - before.z).toFixed(1);
 
       // Qalxan: raket zərbəsi udulurmu
