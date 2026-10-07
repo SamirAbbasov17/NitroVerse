@@ -31,6 +31,7 @@ Testlər Playwright-dır və repo-dadır: `tests/`. Dev serveri (5173) özləri 
 | `npm run test:online` | onlayn yarış, iki ayrı brauzer konteksti + yerli PeerJS broker (`peerserver/`, port 9123; canlı serverə toxunmur): host finişə çatır → qonaqda "uduzdun" → Enter → nəticə dərhal; bitirən maşın yerində qalır; heç kim bitirməsə host 30 s-dən sonra göndərir | 3 test yaşıl | ~25 s |
 | `npm run test:damage` | silah zərəri (yarış): mina can aparır; raket/mina/güllə/şimşək zərəri; yüngül/orta/ağır maşında can və raketlə partlayışa qədər vuruş sayı; zərər fasiləsi silahı udmur → `tests/out/damage.json` | raket ≥ mina > şimşək; orta maşın 4 vuruş; ağır maşın daha çox dözür | ~15 s |
 | `npm run test:zen-contact` | zen: (1) yoldan kənar sürüşdə hər təkərin görünən səthə batması; (2) maşın 5 mühitdə hər maneə növünə 2 bucaqdan sürülür, gövdənin modelin içinə girişi şüa ilə ölçülür → `tests/out/zen-contact.json` | kənarda təkər p99 < 0.2 m; ən dərin giriş < 0.35 m | ~7 dəq |
+| `npm run test:track-map` | hər trekin yuxarıdan sxemi (`tests/out/maps/<id>.png`, nəzarət nöqtələrinin t dəyərləri ilə) + həndəsə: yol öz-özünə yaxınlaşmır, şaxə qovşaqdan kənarda əsas yoldan aralıdır, ən iti döngənin radiusu. `TRACK=frost,lava` ilə süzülür | öz-özünə > yol eni + 6 m; şaxə > 18 m; R > 10 m | ~20 s |
 | `npm run test:mobile` | 844×390-da HUD düymələrinin örtüşməsi və ekrandan çıxması | 0 | ~30 s |
 
 Tək test: `npx playwright test tests/shots.spec.js -g "race-neon"`.

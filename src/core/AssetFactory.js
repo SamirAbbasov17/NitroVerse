@@ -573,9 +573,212 @@ export function makeDryBush() {
   return b;
 }
 
+// ————— YENİ TREKLƏR: Buz Zirvəsi, Payız Meşəsi, Vulkan —————
+// Paylaşılan xüsusi materiallar (parıltı/şəffaflıq hissi medMat-da yoxdur)
+const _fxMats = {};
+function fxMat(name, make) {
+  if (!_fxMats[name]) { _fxMats[name] = make(); _fxMats[name].userData = { shared: true }; }
+  return _fxMats[name];
+}
+export const iceMat = () => fxMat('ice', () => new THREE.MeshStandardMaterial({
+  color: 0xa9e2ff, emissive: 0x2f8fc4, emissiveIntensity: 0.42, roughness: 0.18, metalness: 0.1, flatShading: true,
+}));
+export const lavaGlowMat = () => fxMat('lavaGlow', () => new THREE.MeshStandardMaterial({
+  color: 0xff5a14, emissive: 0xff4208, emissiveIntensity: 1.25, roughness: 0.6, flatShading: true,
+}));
+
+// Qarlı şam: tünd yaşıl yaruslar, hər birinin üstündə qar papağı
+export function makeSnowPine() {
+  const g = new THREE.Group();
+  const h = rand(3.6, 6.2);
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.38, h * 0.3, 5, 1, true), medMat('trunk', 0x5a4030));
+  trunk.position.y = h * 0.15;
+  g.add(trunk);
+  const green = Math.random() < 0.5 ? medMat('spine1', 0x2a5a44) : medMat('spine2', 0x24503e);
+  const snow = medMat('snow', 0xf4f8ff);
+  let y = h * 0.26;
+  for (let i = 0; i < 3; i++) {
+    const r = (1.55 - i * 0.38) * (h / 4.6);
+    const ch = h * 0.34;
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(r, ch, 6), green);
+    cone.position.y = y + ch / 2;
+    cone.castShadow = true;
+    g.add(cone);
+    // qar papağı: eyni konusun yuxarı 60%-i, bir az enli — yarusun üstünü örtür
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(r * 0.72, ch * 0.62, 6, 1, true), snow);   // dibsiz: altı görünmür
+    cap.position.y = y + ch * 0.71;
+    g.add(cap);
+    y += ch * 0.6;
+  }
+  return g;
+}
+
+// Buz kristalı: yerdən çıxan 2–4 iti şiş (közərən mavi)
+export function makeIceCrystal() {
+  const g = new THREE.Group();
+  const n = 2 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < n; i++) {
+    const h = rand(1.2, 3.6) * (i ? 0.7 : 1);
+    const sp = new THREE.Mesh(new THREE.ConeGeometry(rand(0.28, 0.55), h, 5), iceMat());
+    const a = Math.random() * Math.PI * 2, d = i ? rand(0.35, 0.8) : 0;
+    sp.position.set(Math.cos(a) * d, h / 2 - 0.1, Math.sin(a) * d);
+    sp.rotation.set(Math.sin(a) * 0.28 * (i ? 1 : 0.3), Math.random() * 6, -Math.cos(a) * 0.28 * (i ? 1 : 0.3));
+    g.add(sp);
+  }
+  return g;
+}
+
+// Qarlı qaya: boz daş + üstündə yastı qar yığını
+export function makeSnowRock() {
+  const g = new THREE.Group();
+  const s = rand(0.8, 2.0);
+  const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), medMat('frock', 0x7d8794));
+  rock.position.y = s * 0.42;
+  rock.scale.y = 0.75;
+  rock.rotation.y = Math.random() * 6;
+  rock.castShadow = true;
+  g.add(rock);
+  const cap = new THREE.Mesh(new THREE.DodecahedronGeometry(s * 0.78, 0), medMat('snow', 0xf4f8ff));
+  cap.position.y = s * 0.86;
+  cap.scale.y = 0.34;
+  cap.rotation.y = Math.random() * 6;
+  g.add(cap);
+  return g;
+}
+
+// Payız ağacı: gövdə + 2–3 yarpaq topası (narıncı / qırmızı / qızılı / pas)
+const AUTUMN = [['au1', 0xe07a1f], ['au2', 0xc8421e], ['au3', 0xe6b422], ['au4', 0xa8521c], ['au5', 0xd85c28]];
+export function makeAutumnTree() {
+  const g = new THREE.Group();
+  const h = rand(4.2, 7.2);
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.34, h * 0.55, 5, 1, true), medMat('atrunk', 0x4a3324));
+  trunk.position.y = h * 0.275;
+  trunk.castShadow = true;
+  g.add(trunk);
+  const [k, c] = AUTUMN[Math.floor(Math.random() * AUTUMN.length)];
+  const n = 2 + Math.floor(Math.random() * 2);
+  for (let i = 0; i < n; i++) {
+    const r = rand(1.3, 2.1) * (i ? 0.78 : 1) * (h / 5.6);
+    const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), medMat(k, c));
+    const a = Math.random() * Math.PI * 2;
+    blob.position.set(i ? Math.cos(a) * r * 0.7 : 0, h * 0.62 + (i ? rand(-0.4, 0.9) : 0.5), i ? Math.sin(a) * r * 0.7 : 0);
+    blob.scale.y = 0.82;
+    blob.rotation.y = Math.random() * 6;
+    blob.castShadow = true;
+    g.add(blob);
+  }
+  return g;
+}
+
+// Yıxılmış kötük (payız meşəsi)
+export function makeLog() {
+  const g = new THREE.Group();
+  const len = rand(2.6, 4.6), r = rand(0.3, 0.48);
+  const log = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.08, len, 6), medMat('atrunk', 0x4a3324));
+  log.rotation.z = Math.PI / 2;
+  log.position.y = r * 0.9;
+  log.castShadow = true;
+  g.add(log);
+  const moss = new THREE.Mesh(new THREE.BoxGeometry(len * 0.5, r * 0.3, r * 1.2), medMat('moss', 0x5f7a36));
+  moss.position.set(rand(-0.5, 0.5), r * 1.75, 0);
+  g.add(moss);
+  return g;
+}
+
+// Bazalt sütunları: 3–5 altıbucaqlı tünd sütun, dibində közərən çat
+export function makeBasalt() {
+  const g = new THREE.Group();
+  const n = 3 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < n; i++) {
+    const h = rand(1.0, 4.4) * (i ? 0.8 : 1);
+    const r = rand(0.45, 0.75);
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.05, h, 6), medMat(i % 2 ? 'bas1' : 'bas2', i % 2 ? 0x34303a : 0x2a272f));
+    const a = (i / n) * Math.PI * 2 + rand(-0.3, 0.3), d = i ? rand(0.6, 1.1) : 0;
+    col.position.set(Math.cos(a) * d, h / 2, Math.sin(a) * d);
+    col.rotation.y = Math.random() * 6;
+    col.castShadow = true;
+    g.add(col);
+  }
+  if (Math.random() < 0.55) {
+    const glow = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.4, 0.1, 6), lavaGlowMat());
+    glow.position.y = 0.05;
+    g.add(glow);
+  }
+  return g;
+}
+
+// Yanmış ağac: qara gövdə, 2–3 çılpaq budaq
+export function makeDeadTree() {
+  const g = new THREE.Group();
+  const h = rand(3.0, 5.2);
+  const mat = medMat('char', 0x1e1a1c);
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.3, h, 5), mat);
+  trunk.position.y = h / 2;
+  trunk.rotation.z = rand(-0.12, 0.12);
+  trunk.castShadow = true;
+  g.add(trunk);
+  const n = 2 + Math.floor(Math.random() * 2);
+  for (let i = 0; i < n; i++) {
+    const len = rand(1.0, 2.0);
+    const br = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.1, len, 4), mat);
+    const a = Math.random() * Math.PI * 2;
+    br.position.set(Math.cos(a) * len * 0.32, h * rand(0.5, 0.85), Math.sin(a) * len * 0.32);
+    br.rotation.set(Math.sin(a) * 0.9, 0, -Math.cos(a) * 0.9);
+    g.add(br);
+  }
+  return g;
+}
+
+// ——— Yol üstü maneələr (hazards.blockKind) — hər ikisi ~2.4 m radiusa sığır ———
+// Buz bloku: bir-birinə söykənmiş iri buz parçaları
+export function makeIceBlock() {
+  const g = new THREE.Group();
+  const parts = [[2.6, 2.4, 2.2, 0, 0, 0.1], [1.7, 3.3, 1.6, 0.9, 0.4, -0.18], [1.5, 1.5, 1.7, -1.2, -0.5, 0.22]];
+  for (const [w, h, d, x, z, tilt] of parts) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), iceMat());
+    m.position.set(x, h / 2 - 0.05, z);
+    m.rotation.set(tilt * 0.6, Math.random() * 0.8, tilt);
+    m.castShadow = true;
+    g.add(m);
+  }
+  const snow = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5, 0), medMat('snow', 0xf4f8ff));
+  snow.scale.set(1.25, 0.22, 1.1);
+  snow.position.y = 0.12;
+  g.add(snow);
+  return g;
+}
+
+// Bazalt qayası: tünd daş, içindən közərən lava çatı
+export function makeBasaltBlock() {
+  const g = new THREE.Group();
+  const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(2.0, 0), medMat('bas2', 0x2a272f));
+  rock.scale.set(1.1, 0.85, 1.0);
+  rock.position.y = 1.35;
+  rock.rotation.set(0.3, Math.random() * 6, 0.2);
+  rock.castShadow = true;
+  g.add(rock);
+  // közərən nüvə: daşdan azca kiçik — çatlardan (üzlərin arasından) parıltı kimi görünür
+  const core = new THREE.Mesh(new THREE.IcosahedronGeometry(1.72, 0), lavaGlowMat());
+  core.scale.set(1.1, 0.85, 1.0);
+  core.position.y = 1.35;
+  core.rotation.y = Math.random() * 6;
+  g.add(core);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.4, 0.12, 7), lavaGlowMat());
+  base.position.y = 0.06;
+  g.add(base);
+  return g;
+}
+
 export function makeDecor(type, opts = {}) {
   switch (type) {
     case 'drybush': return makeDryBush();
+    case 'snowpine': return makeSnowPine();
+    case 'icecrystal': return makeIceCrystal();
+    case 'snowrock': return makeSnowRock();
+    case 'autumntree': return makeAutumnTree();
+    case 'log': return makeLog();
+    case 'basalt': return makeBasalt();
+    case 'deadtree': return makeDeadTree();
     case 'cypress': return makeCypress();
     case 'bush': return makeBush();
     case 'pine': return makePine();

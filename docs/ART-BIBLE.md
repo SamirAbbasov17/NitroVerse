@@ -57,6 +57,24 @@ Mənbə: `src/data/tracks.js` (indiki palitra və dekor) + 2026-10-06 kadrları 
 - **Dekor (icazəli):** konteyner, baca (tüstülü), anqar, boru kəməri, kran, çən, fənər, xəbərdarlıq lövhəsi. **Olmaz:** ağac, dağ, yaşayış binası.
 - **Təklif:** binaları anqar/sex formasına salmaq (mişar damı, boz-pas rəngi); yolun üstündən boru kəmərləri; uzaq fon — bacalar və soyutma qüllələri silueti; landmark — portal kran və əritmə sexi (narıncı parıltı).
 
+### Buz Zirvəsi — `frost` (2026-10-07, istifadəçi tələbi)
+- **Kimlik:** qarlı dağ aşırımı, dar dolanbaclar, buz.
+- **Palitra:** səma `#9fc4e6 → #eaf4fc` · yer `#e6eef6` · duman `#dbe8f3` · vurğu (bordür) `#49c8ff`.
+- **Dekor (icazəli):** qarlı şam, buz kristalı, qarlı qaya, taxta ev, buz tağı. **Olmaz:** yaşıl ot/kol, kaktus, neon.
+- **Oynanış:** yol üstündə buz blokları (12), sürüşkən buz ləkələri (6 — tutum itir), 2 şaxə (maneəsiz dolama yol); qar yağır.
+
+### Payız Meşəsi — `autumn` (2026-10-07, istifadəçi tələbi)
+- **Kimlik:** yağışlı payız meşəsi, yaş asfalt, uzun axıcı döngələr.
+- **Palitra:** səma `#7c8794 → #c9c2b4` · yer `#7a7030` · duman `#b7b3a8` · vurğu (bordür) `#ff9a2e`.
+- **Dekor (icazəli):** payız ağacı (narıncı/qırmızı/qızılı/pas), şam, kol, kötük, taxta darvaza (fənərli), ev. **Olmaz:** palma, kaktus, bina.
+- **Oynanış:** maneə yoxdur; 3 şaxə cığır; yağış yağır.
+
+### Vulkan — `lava` (2026-10-07, istifadəçi tələbi)
+- **Kimlik:** gecə lava çölü, közərən hər şey, təhlükə.
+- **Palitra:** səma `#1a0e16 → #7a2a14` · yer `#3a3034` · duman `#4a1e16` · vurğu (bordür, lava) `#ff5a1e`.
+- **Dekor (icazəli):** bazalt sütunları, yanmış ağac, lava gölməçəsi, lava çayı, bazalt tağı, üfüqdə vulkan. **Olmaz:** yaşıl bitki, ev, qar.
+- **Oynanış:** alov qapıları (7 — lazerin yerinə), bazalt maneələr (15), 2 şaxə; köz qalxır.
+
 ## Səndən lazım olan
 
 1. Hər trekin "Kimlik" cümləsi düzdürmü?

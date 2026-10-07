@@ -181,6 +181,18 @@ Prosedural hava səsi (`AudioManager.setWeather`, `thunder`): yağışda şırı
   - *Tunelin dağı:* hər chunk-da ayrıca qurulan alçaq prizma idi (tikişlərdə 16 m boşluq). İndi bütöv, portaldan içəri qalxan, ±70 m enində dağdır; portal çərçivəsi yalnız həqiqi uclarda.
 - **Açıq:** zen overlap testi ~7 qaçışdan 1-də qırılır (bir dəfə 2 iç-içə obyekt, bir dəfə yolun üstündə 7) — təkrarlaya bilmədim; test indi nümunələri çap edir. Zen üçbucaq sayı 92–96 min (büdcə 90 min).
 
+### Üç yeni trek ✅ (2026-10-07, istifadəçi tələbi)
+
+Buz Zirvəsi (`frost`), Payız Meşəsi (`autumn`), Vulkan (`lava`) — hər biri şaxə yolları ilə, fərqli üslubda (bax `docs/ART-BIBLE.md`). Trek datası genişləndi: `weather` (snow/rain/embers — `src/world/Weather.js`), `distantStyle`, `hills`, `snowCaps`, `palette.mountain/foothill`, `river.glow`, `hazards.blockKind` (ice/basalt), `hazards.gateKind: 'fire'`, `hazards.ice` (buz ləkələri → `Car._iceT`).
+
+| Trek | Uzunluq | Şaxə | Draw call | Üçbucaq | p99 |
+|---|---|---|---|---|---|
+| frost | 1790 m | 2 | 101 | 86 min | 6.4 ms |
+| autumn | 1860 m | 3 | 129 | 84 min | 7.2 ms |
+| lava | 1735 m | 2 | 123 | 70 min | 6.8 ms |
+
+Yan təsir (yaxşı): dekor rəngləri təpəyə yazılır və maneələrin tərpənməyən hissələri birləşdirilir — Zavod 138 → 95, Riviera 166 → 142 draw call. Onlayn `PREFIX` v19. **Yoxlanmayıb:** onlayn yarış yeni treklərdə; telefon; trek adları/təsvirləri 4 dilə çevrilməyib (mövcud treklərdə də belədir).
+
 ## Faza 5 — UI/UX 🔶
 
 | # | İş | Niyə | Ölçü |

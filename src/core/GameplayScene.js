@@ -4,7 +4,9 @@ import { t } from './i18n.js';
 import { CARS, getCarById, carSkin } from '../data/cars.js';
 import { getTrackById } from '../data/tracks.js';
 import { TrackBuilder } from '../world/TrackBuilder.js';
-import { makeNameTag, makeContainer, setLampGlow } from './AssetFactory.js';
+import { makeNameTag, makeContainer, makeIceBlock, makeBasaltBlock, lavaGlowMat, setLampGlow } from './AssetFactory.js';
+import { Weather } from '../world/Weather.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { Environment } from '../world/Environment.js';
 import { Car } from '../entities/Car.js';
 import { PlayerController } from '../entities/PlayerController.js';
@@ -13,7 +15,7 @@ import { chaseCamTweak } from './ChaseCam.js';
 import { NetworkController } from '../entities/NetworkController.js';
 import { RaceManager } from '../race/RaceManager.js';
 import { PowerUpManager } from '../race/PowerUpManager.js';
-import { disposeObject3D } from './MergeUtils.js';
+import { disposeObject3D, mergeStaticGroup } from './MergeUtils.js';
 import { playFinishFx } from './FinishFx.js';
 import { Effects } from './Effects.js';
 import { ImpactFeel } from './ImpactFeel.js';
@@ -100,6 +102,11 @@ export class GameplayScene {
       if (!car.isRemote) { car.maxHp = this._maxHp(car); car.hp = car.maxHp; car._dmgCd = 0; car._invuln = 0; }
     }
     if (this.trackData.hazards) this._buildHazards(); // lazer/konteynerlər (zavod)
+    // Trekin havası: qar / yağış / köz hissəcikləri + mühit səsi
+    if (this.trackData.weather) {
+      this.weather = new Weather(this.scene, this.trackData.weather, { lite: isTouchDevice() });
+      audio.setWeather(this.trackData.weather === 'rain' ? 0.75 : 0, this.trackData.weather === 'snow' ? 0.7 : 0);
+    }
     this._buildHUD();
     this.hud.setHP(this.playerCar.hp, this.playerCar.maxHp);
     this._bindKeys();
@@ -900,6 +907,7 @@ export class GameplayScene {
     const racingActive = this.isRace ? this.raceManager.state === 'racing' : true;
     this.powerups.update(dt, racingActive && this._state === 'run');
     this.effects.update(dt);
+    this.weather?.update(dt, this.camera);
     this.impact?.update(dt);
     if (this._finishFx) {
       this._finishFx.update(dt);
@@ -994,10 +1002,29 @@ export class GameplayScene {
     }
     // Lazer qapıları
     this._lasers = [];
+    // Tərpənməyən hissələr (dirək, odluq, maneə, buz ləkəsi) bir qrupa yığılıb birləşdirilir:
+    // ayrı-ayrı Vulkanda ~90 draw call edirdi (ölçüldü: 180, büdcə 140)
+    const hzGroup = new THREE.Group();
     const hw = this.track.halfWidth;
-    const pyGeo = new THREE.BoxGeometry(0.6, 2.4, 0.6);
-    const pyMat = new THREE.MeshStandardMaterial({ color: 0x3a3d46, roughness: 0.7 });
-    const tipMat = new THREE.MeshStandardMaterial({ color: 0xff4433, emissive: 0xff4433, emissiveIntensity: 1.5 });
+    const fire = hz.gateKind === 'fire';   // Vulkan: lazer əvəzinə yoldan qalxan alov divarı
+    const pyGeo = fire ? new THREE.CylinderGeometry(0.75, 1.0, 1.5, 6) : new THREE.BoxGeometry(0.6, 2.4, 0.6);
+    const pyMat = new THREE.MeshStandardMaterial({ color: fire ? 0x2a272f : 0x3a3d46, roughness: fire ? 1 : 0.7, flatShading: fire });
+    const tipMat = fire ? lavaGlowMat()
+      : new THREE.MeshStandardMaterial({ color: 0xff4433, emissive: 0xff4433, emissiveIntensity: 1.5 });
+    // alov divarı: yolun eninə düzülmüş konuslar — tək həndəsə (qapı başına 1 draw call)
+    let flameGeo = null;
+    if (fire) {
+      const cones = [];
+      const cnt = 9, span = (hw + 0.4) * 2;
+      for (let q = 0; q < cnt; q++) {
+        const h = 3.0 + ((q * 7) % 4) * 0.35;
+        const cg = new THREE.ConeGeometry(span / cnt * 0.72, h, 5, 1, true);
+        cg.translate(0, h / 2, -span / 2 + (q + 0.5) * (span / cnt));
+        cones.push(cg);
+      }
+      flameGeo = mergeGeometries(cones, false);
+      cones.forEach((cg) => cg.dispose());
+    }
     hz.lasers.forEach((tt, gi) => {
       const i = Math.round(tt * N) % N;
       const c = this.track.points[i];
@@ -1005,38 +1032,74 @@ export class GameplayScene {
       const tg = this.track.tangents[i];
       for (const side of [-1, 1]) {
         const py = new THREE.Mesh(pyGeo, pyMat);
-        py.position.set(c.x + n.x * (hw + 0.9) * side, 1.2, c.z + n.z * (hw + 0.9) * side);
-        this.scene.add(py);
-        const tip = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.35, 0.7), tipMat);
-        tip.position.set(py.position.x, 2.55, py.position.z);
-        this.scene.add(tip);
-        this._obstacles.push({ x: py.position.x, z: py.position.z, r: 0.8 });
+        py.position.set(c.x + n.x * (hw + 0.9) * side, fire ? 0.75 : 1.2, c.z + n.z * (hw + 0.9) * side);
+        hzGroup.add(py);
+        const tip = new THREE.Mesh(fire ? new THREE.CylinderGeometry(0.5, 0.62, 0.22, 6) : new THREE.BoxGeometry(0.7, 0.35, 0.7), tipMat);
+        tip.position.set(py.position.x, fire ? 1.6 : 2.55, py.position.z);
+        hzGroup.add(tip);
+        this._obstacles.push({ x: py.position.x, z: py.position.z, r: fire ? 1.0 : 0.8 });
       }
-      const beam = new THREE.Mesh(
-        new THREE.BoxGeometry(0.14, 0.5, (hw + 0.9) * 2),
-        new THREE.MeshBasicMaterial({ color: 0xff3322, transparent: true, opacity: 0.85 })
-      );
-      beam.position.set(c.x, 0.85, c.z);
+      const beam = fire
+        ? new THREE.Mesh(flameGeo, new THREE.MeshBasicMaterial({
+          color: 0xff4a0a, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending,
+          depthWrite: false, side: THREE.DoubleSide,
+        }))
+        : new THREE.Mesh(
+          new THREE.BoxGeometry(0.14, 0.5, (hw + 0.9) * 2),
+          new THREE.MeshBasicMaterial({ color: 0xff3322, transparent: true, opacity: 0.85 })
+        );
+      beam.position.set(c.x, fire ? 0.05 : 0.85, c.z);
       beam.rotation.y = Math.atan2(n.x, n.z);
       beam.visible = false;
       this.scene.add(beam);
-      this._lasers.push({ beam, center: c, tangent: tg, phaseOff: gi * 0.73 });
+      if (fire) {
+        // odluq: yolun eninə közərən yarıq — alov sönəndə də qapının yeri görünür
+        const slot = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.04, (hw + 0.4) * 2), lavaGlowMat());
+        slot.position.set(c.x, 0.07, c.z);
+        slot.rotation.y = beam.rotation.y;
+        hzGroup.add(slot);
+      }
+      this._lasers.push({ beam, fire, center: c, tangent: tg, phaseOff: gi * 0.73 });
     });
+    // Buz ləkələri (Buz Zirvəsi): üstündə tutum itir — bax Car._iceT
+    this._ice = [];
+    if (hz.ice?.length) {
+      const iceMat = new THREE.MeshStandardMaterial({
+        color: 0xd6f1ff, roughness: 0.06, metalness: 0.35, transparent: true, opacity: 0.82,
+        emissive: 0x4aa8d8, emissiveIntensity: 0.25, polygonOffset: true, polygonOffsetFactor: -2,
+      });
+      for (const ic of hz.ice) {
+        const i = Math.round(ic.t * N) % N;
+        const c = this.track.points[i], n = this.track.normals[i];
+        const x = c.x + n.x * ic.lane * hw, z = c.z + n.z * ic.lane * hw;
+        const m = new THREE.Mesh(new THREE.CircleGeometry(ic.r, 9), iceMat);
+        m.rotation.x = -Math.PI / 2;
+        m.rotation.z = i;                 // çoxbucaqlılar eyni bucaqda durmasın
+        m.scale.set(1.25, 0.8, 1);        // yol boyu uzanan ləkə
+        m.position.set(x, 0.075, z);
+        hzGroup.add(m);
+        this._ice.push({ x, z, r: ic.r * 0.95 });
+      }
+    }
     // Yol üstü konteynerlər (deterministik — onlaynda hamıda eyni)
     for (const b of hz.blocks || []) {
       const i = Math.round(b.t * N) % N;
       const c = this.track.points[i];
       const n = this.track.normals[i];
-      const box = makeContainer();
+      const box = hz.blockKind === 'ice' ? makeIceBlock() : hz.blockKind === 'basalt' ? makeBasaltBlock() : makeContainer();
       box.position.set(
         c.x + n.x * b.lane * this.track.halfWidth,
         0,
         c.z + n.z * b.lane * this.track.halfWidth
       );
       box.rotation.y = Math.atan2(this.track.tangents[i].x, this.track.tangents[i].z) + b.lane;
-      this.scene.add(box);
+      hzGroup.add(box);
       this._obstacles.push({ x: box.position.x, z: box.position.z, r: 2.4 });
     }
+    hzGroup.updateMatrixWorld(true);
+    const hzMerged = mergeStaticGroup(hzGroup);
+    hzGroup.traverse((o) => { if (o.isMesh && !o.material?.userData?.shared) o.geometry?.dispose?.(); });
+    this.scene.add(hzMerged);
     this.hud?.setHP?.(this.playerCar.hp, this.playerCar.maxHp);
   }
 
@@ -1105,7 +1168,13 @@ export class GameplayScene {
       const on = ph < laserOn;
       const warn = !on && ph > laserPeriod - laserWarn;
       L.beam.visible = on || warn;
-      if (warn) {
+      if (L.fire) {
+        // alov: xəbərdarlıqda alçaq pilot alovu, yananda titrəyən tam divar
+        const fl = 0.5 + 0.5 * Math.sin(this._time * 23 + L.phaseOff * 9);
+        L.beam.scale.y = warn ? 0.14 + 0.05 * fl : 0.92 + 0.2 * fl;
+        L.beam.material.color.set(warn ? 0xff9a2a : 0xff4a0a);
+        L.beam.material.opacity = warn ? 0.45 : 0.5 + 0.18 * fl;
+      } else if (warn) {
         L.beam.material.color.set(0xffaa33);
         L.beam.material.opacity = 0.3;
       } else if (on) {
@@ -1122,6 +1191,14 @@ export class GameplayScene {
             this._damage(car, this.trackData.hazards.laserDamage);
           }
         }
+      }
+    }
+    // Buz ləkələri
+    for (const ic of this._ice || []) {
+      for (const car of this.cars) {
+        if (car.isRemote) continue;
+        const dx = car.position.x - ic.x, dz = car.position.z - ic.z;
+        if (dx * dx + dz * dz < ic.r * ic.r) car._iceT = 0.3;
       }
     }
     // Cooldown + toxunulmazlıq yanıb-sönməsi
@@ -1662,6 +1739,8 @@ export class GameplayScene {
     this.effects?.dispose();
     this.skids?.dispose();
     this.speedLines?.dispose();
+    this.weather?.dispose();
+    if (this.trackData.weather) audio.setWeather(0, 0);
     audio.stopEngine();
     // SIRA VACİBDİR: əvvəl səhnə qrafı təmizlənir. car.dispose() maşının
     // övladlarını (ad etiketi, alov, qalxan) qrafdan çıxarır və sonra

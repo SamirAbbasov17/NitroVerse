@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 export const OUT = path.resolve('tests/out');
-export const TRACKS = ['desert', 'neon', 'alpine', 'canyon', 'riviera', 'zavod'];
+export const TRACKS = ['desert', 'neon', 'alpine', 'canyon', 'riviera', 'zavod', 'frost', 'autumn', 'lava'];
 
 // Hər rejimin başlanğıc konfiqurasiyası (Menu.onStart-a gedən obyekt).
 export const MODES = [

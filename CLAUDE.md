@@ -1,7 +1,7 @@
 # NitroVerse
 
 Brauzerdə işləyən oyun dünyası. **Tək oyun deyil** — içində çoxlu oyun olacaq.
-Hazırda: 3D low-poly yarış oyunu (yarış, zen, futbol 3v3, arena, onlayn).
+Hazırda: 3D low-poly yarış oyunu (yarış — 9 trek, zen, futbol 3v3, arena, onlayn).
 Növbəti: 2D Carmageddon (visual novel + 2D oynanış). Sahibi: Samir Abbasov.
 
 İstifadəçi ilə **Azərbaycan dilində** danış. Kod şərhləri və commit mesajları da Azərbaycan dilindədir.
@@ -35,6 +35,7 @@ npm run test:zfight  # yanıb-sönən səthlər (z-fighting) — ~7 dəq
 npm run test:hitch   # kadr donması (şeyder kompilyasiyası və s.) — ~6 dəq
 npm run test:abilities # 18 imza gücünün auditi
 npm run test:pace    # maşınlar arası sürət balansı — ~10 dəq
+npm run test:track-map # trek sxemi + həndəsə (yeni trek/şaxə çəkəndə)
 npm run test:zen-contact # zen: təkərlər yerə, gövdə maneəyə girmir — ~7 dəq
 npm run test:feel    # sürüş modelinin rəqəmləri → tests/out/feel.json (fizika dəyişəndə əvvəl/sonra)
 npm run serve:dev    # öz backend (SQLite) yerli

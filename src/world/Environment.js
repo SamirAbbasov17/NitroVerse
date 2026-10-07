@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { makeDecor, makeLamp, flatMat, makeTireStack, makeBarrier, cityBoxGeometry, cityMat, glowMat, makeCityBuilding,
+import { makeDecor, makeLamp, flatMat, iceMat, lavaGlowMat, makeTireStack, makeBarrier, cityBoxGeometry, cityMat, glowMat, makeCityBuilding,
   makeGrandstand, makeFloodlight, makeMarshalPost, makeSponsorBoard, makeBunting } from '../core/AssetFactory.js';
 import { mergeStaticGroup } from '../core/MergeUtils.js';
 import { sharedNature } from './NatureKit.js';
@@ -230,7 +230,7 @@ export class Environment {
     if (this.data.river) this._river(this.data.river);
     if (this.data.id === 'canyon') this._canyonWalls();
     if (this.data.id === 'riviera') this._rivieraTown(); // təpələrdən əvvəl: yerini tutur
-    if (['desert', 'alpine', 'riviera'].includes(this.data.id)) this._hills();
+    if (['desert', 'alpine', 'riviera'].includes(this.data.id) || this.data.hills) this._hills();
     if (this.data.id === 'neon') this._billboards();
     // Lampalar rekvizitlərdən ƏVVƏL: mövqeləri sabit addımlıdır (işıqlandırma),
     // şin/bariyer isə onlardan yan keçir. Əvvəl lampalar ən sonda, yoxlamasız
@@ -245,8 +245,209 @@ export class Environment {
     if (this.data.id === 'zavod') this._zavodLandmarks();
     if (this.data.id === 'desert') this._desertLandmarks();
     if (this.data.id === 'alpine') this._alpineLandmarks();
+    if (this.data.id === 'frost') this._frostLandmarks();
+    if (this.data.id === 'autumn') this._autumnLandmarks();
+    if (this.data.id === 'lava') this._lavaLandmarks();
     if (this.data.id === 'neon') this._cityBlocks(); // küçə divarı — ən sonda, boş qalan yerə
     this._autoObstacles();   // təhlükəsizlik toru — bax aşağı
+  }
+
+  // VULKAN (üfüq): nəhəng kəsik konus, krateri və yamacdan axan lava zolaqları közərir.
+  // Közərən hissələr dumandan təsirlənmir — uzaq dumanın içindən parıltı kimi görünür.
+  _volcano(g, base) {
+    const a = 2.2;                                   // trekdən baxanda şimal-qərb
+    const R = base + 150, H = 190;
+    const x = Math.cos(a) * R, z = Math.sin(a) * R;
+    const fogC = new THREE.Color(this.data.palette.fog);
+    const rock = flatMat(new THREE.Color(0x241a1e).lerp(fogC, 0.3).getHex(), { roughness: 1 });
+    const cone = new THREE.Mesh(new THREE.CylinderGeometry(40, 165, H, 9, 1, true), rock);
+    cone.position.set(x, H / 2 - 14, z);
+    g.add(cone);
+    const glow = new THREE.MeshBasicMaterial({ color: 0xff6a1a, fog: false });
+    const hot = new THREE.MeshBasicMaterial({ color: 0xffb04a, fog: false });
+    const crater = new THREE.Mesh(new THREE.CylinderGeometry(39, 36, 5, 9), hot);
+    crater.position.set(x, H - 15, z);
+    g.add(crater);
+    // lava zolaqları: yamac boyu enən nazik pazlar (konusun səthindən azca kənarda)
+    for (let k = 0; k < 6; k++) {
+      const ang = (k / 6) * Math.PI * 2 + 0.4 + (k % 2) * 0.35;
+      const len = 0.45 + ((k * 37) % 50) / 100;      // yamacın hansı hissəsinə qədər enir
+      const w = 5 + (k % 3) * 2.5;
+      const top = new THREE.Vector3(Math.cos(ang) * 41, H - 16, Math.sin(ang) * 41);
+      const rb = 41 + (165 - 41) * len + 1.5;
+      const bot = new THREE.Vector3(Math.cos(ang) * rb, H - 16 - H * len, Math.sin(ang) * rb);
+      const side = new THREE.Vector3(-Math.sin(ang), 0, Math.cos(ang));
+      const geo = new THREE.BufferGeometry();
+      const v = [
+        top.x - side.x * w, top.y, top.z - side.z * w, top.x + side.x * w, top.y, top.z + side.z * w,
+        bot.x + side.x * w * 0.35, bot.y, bot.z + side.z * w * 0.35, bot.x - side.x * w * 0.35, bot.y, bot.z - side.z * w * 0.35,
+      ];
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+      geo.setIndex([0, 1, 2, 0, 2, 3, 0, 2, 1, 0, 3, 2]);
+      geo.computeVertexNormals();
+      const m = new THREE.Mesh(geo, k % 2 ? glow : hot);
+      m.position.set(x, -14, z);
+      g.add(m);
+    }
+  }
+
+  // BUZ ZİRVƏSİ — yolun üstündə birləşən buz şişləri (tağ) və iri kristal dəstələri
+  _frostLandmarks() {
+    const tr = this.track, half = tr.halfWidth;
+    const g = new THREE.Group();
+    const reach = half + 6.5;
+    for (const s of this._overRoadSpots(2, reach)) {
+      const { n, legs } = s;
+      for (const [k, l] of legs.entries()) {
+        const sg = k ? -1 : 1;                        // +1: normal tərəfdəki dayaq
+        // əsas şiş yola doğru əyilir — ucları yolun ortasında, ~12 m hündürdə görüşür
+        const H = 17.5;
+        const sp = new THREE.Mesh(new THREE.ConeGeometry(3.1, H, 6), iceMat());
+        sp.position.set(l.x - n.x * sg * 3.6, H / 2 - 1.2, l.z - n.z * sg * 3.6);
+        // əyilmə oxu yol boyudur: şiş normal istiqamətində (yola doğru) yatır
+        sp.rotation.set(n.z * sg * 0.52, 0, -n.x * sg * 0.52);
+        g.add(sp);
+        for (const [dx, h2] of [[2.6, 7], [-2.2, 5]]) {
+          const c2 = new THREE.Mesh(new THREE.ConeGeometry(1.5, h2, 5), iceMat());
+          c2.position.set(l.x + n.x * sg * dx + s.t.x * dx * 0.6, h2 / 2 - 0.4, l.z + n.z * sg * dx + s.t.z * dx * 0.6);
+          c2.rotation.set(0.12 * dx, dx, -0.1 * dx);
+          g.add(c2);
+        }
+        this.obstacles.push({ x: l.x, z: l.z, r: 3.3 });
+      }
+    }
+    // iri kristal dəstələri — orta planın oriyentirləri
+    let n2 = 0;
+    for (let tries = 0; tries < 90 && n2 < 9; tries++) {
+      const pos = this._freeSpot(6, 20, tr.maxRadius + 40);
+      if (!pos || !this._free(pos.x, pos.z, 4.2, 1)) continue;   // təpənin/dekorun içinə düşməsin
+      const k = 3 + Math.floor(Math.random() * 3);
+      for (let q = 0; q < k; q++) {
+        const h = 6 + Math.random() * 9;
+        const c = new THREE.Mesh(new THREE.ConeGeometry(1.1 + Math.random() * 1.2, h, 5), iceMat());
+        const a = Math.random() * 6.28, d = q ? 1.5 + Math.random() * 2.2 : 0;
+        c.position.set(pos.x + Math.cos(a) * d, h / 2 - 0.5 + this._groundY(pos.x, pos.z), pos.z + Math.sin(a) * d);
+        c.rotation.set(Math.sin(a) * 0.25, Math.random() * 6, -Math.cos(a) * 0.25);
+        g.add(c);
+      }
+      this.obstacles.push({ x: pos.x, z: pos.z, r: 4.2 });
+      n2++;
+    }
+    const merged = mergeStaticGroup(g);
+    g.traverse((o) => { if (o.isMesh) o.geometry?.dispose?.(); });
+    this.scene.add(merged);
+    this._track(merged);
+  }
+
+  // PAYIZ MEŞƏSİ — yolun üstündə taxta darvazalar (fənərli) : dövrədə oriyentir
+  _autumnLandmarks() {
+    const tr = this.track, half = tr.halfWidth;
+    const g = new THREE.Group();
+    const wood = flatMat(0x5a3a22, { roughness: 1 }), dark = flatMat(0x3c2717, { roughness: 1 });
+    const lamp = new THREE.MeshStandardMaterial({ color: 0xffd9a0, emissive: 0xffb45a, emissiveIntensity: 2.2 });
+    const reach = half + 3.2;
+    for (const s of this._overRoadSpots(3, reach)) {
+      const { p, n, legs } = s;
+      const yaw = Math.atan2(n.x, n.z);
+      for (const l of legs) {
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.9, 9.5, 0.9), wood);
+        post.position.set(l.x, 4.75, l.z);
+        post.rotation.y = yaw;
+        post.castShadow = true;
+        g.add(post);
+        const foot = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.8, 1.5), dark);
+        foot.position.set(l.x, 0.4, l.z);
+        foot.rotation.y = yaw;
+        g.add(foot);
+        this.obstacles.push({ x: l.x, z: l.z, r: 1.1 });
+      }
+      // iki tir: aşağıdakı düz, yuxarıdakı bir az enli (dam kimi)
+      const beam = (w, h, d, y, mat) => {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(d, h, w), mat);   // yerli z = yolun eni
+        m.position.set(p.x, y, p.z);
+        m.rotation.y = yaw;
+        m.castShadow = true;
+        g.add(m);
+      };
+      beam(reach * 2 + 1.2, 0.7, 0.8, 8.1, wood);
+      beam(reach * 2 + 4.2, 0.55, 1.5, 9.6, dark);
+      // fənərlər: aşağı tirdən asılır
+      for (const f of [-0.5, 0, 0.5]) {
+        const lm = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.75, 0.55), lamp);
+        lm.position.set(p.x + n.x * reach * f, 7.2, p.z + n.z * reach * f);
+        g.add(lm);
+      }
+    }
+    const merged = mergeStaticGroup(g);
+    g.traverse((o) => { if (o.isMesh) o.geometry?.dispose?.(); });
+    this.scene.add(merged);
+    this._track(merged);
+  }
+
+  // VULKAN — yol kənarında lava gölməçələri (közərir, toqquşması yoxdur) və bazalt tağları
+  _lavaLandmarks() {
+    const tr = this.track, half = tr.halfWidth, N = tr.N;
+    const g = new THREE.Group();
+    const rockA = flatMat(0x2c2830, { roughness: 1 }), rockB = flatMat(0x3a343c, { roughness: 1 });
+    const crust = flatMat(0x1c181c, { roughness: 1 });
+    // ——— bazalt tağı ———
+    const reach = half + 7.5;
+    for (const s of this._overRoadSpots(2, reach)) {
+      const { p, n, legs } = s;
+      const yaw = Math.atan2(n.x, n.z);
+      const chunk = (w, h, d, mat, x, y, z, tilt = 0) => {
+        const m = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 0), mat);
+        m.scale.set(w / 2, h / 2, d / 2);
+        m.position.set(x, y, z);
+        m.rotation.set(tilt * 0.5, yaw + Math.PI / 2 + tilt * 0.4, tilt * 0.3);   // enli ox yolun eninə
+        g.add(m);
+      };
+      for (const [k, l] of legs.entries()) {
+        const sg = k ? -1 : 1;
+        chunk(8.5, 7, 8, rockA, l.x + n.x * 1.2 * sg, 2.8, l.z + n.z * 1.2 * sg, 0.12);
+        chunk(7.5, 6.5, 7, rockB, l.x, 7.2, l.z, -0.16);
+        chunk(8, 5.5, 6.5, rockA, l.x - n.x * 2.2 * sg, 11, l.z - n.z * 2.2 * sg, 0.2);
+        // dayağın dibində közərən çat
+        const gl = new THREE.Mesh(new THREE.CylinderGeometry(4.6, 5, 0.12, 7), lavaGlowMat());
+        gl.position.set(l.x + n.x * 1.2 * sg, 0.07, l.z + n.z * 1.2 * sg);
+        g.add(gl);
+        this.obstacles.push({ x: l.x, z: l.z, r: 3.4 });
+      }
+      for (const f of [-0.5, 0, 0.5]) {
+        chunk(reach * 1.25, 5 - Math.abs(f) * 1.4, 7.5, f === 0 ? rockB : rockA,
+          p.x + n.x * reach * f, 12.6 + (f === 0 ? 0.8 : 0), p.z + n.z * reach * f, f * 0.2);
+      }
+    }
+    // ——— lava gölməçələri: yastı közərən disk + tünd qabıq halqası ———
+    let made = 0;
+    for (let tries = 0; tries < 400 && made < 46; tries++) {
+      const i = Math.floor(Math.random() * N);
+      const c = tr.points[i], n = tr.normals[i];
+      const sd = Math.random() < 0.5 ? 1 : -1;
+      const r = 2.2 + Math.random() * 4.2;
+      const off = half + 4 + r + Math.random() * 34;
+      const x = c.x + n.x * off * sd, z = c.z + n.z * off * sd;
+      if (Math.abs(tr.getNearest(new THREE.Vector3(x, 0, z)).lateral) < half + r + 3) continue;
+      if (this._onBranch(x, z, r + 3) || this._inWater(x, z, r) || !this._free(x, z, r, 0.4)) continue;
+      const gy = this._groundY(x, z);
+      const ring = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.18, r * 1.3, 0.34, 8), crust);
+      ring.position.set(x, gy + 0.1, z);
+      ring.rotation.y = Math.random() * 6;
+      ring.scale.z = 0.7 + Math.random() * 0.5;
+      g.add(ring);
+      const pool = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.1, 8), lavaGlowMat());
+      pool.position.set(x, gy + 0.26, z);
+      pool.rotation.y = ring.rotation.y;
+      pool.scale.z = ring.scale.z;
+      g.add(pool);
+      this._pools = this._pools || [];
+      this._pools.push({ x, z, r });
+      made++;
+    }
+    const merged = mergeStaticGroup(g);
+    g.traverse((o) => { if (o.isMesh && !o.material?.userData?.shared) o.geometry?.dispose?.(); });
+    this.scene.add(merged);
+    this._track(merged);
   }
 
   // RİVİERA — SAHİL QƏSƏBƏSİ (bədii bibliya): sahil hissəsinin quru tərəfində kiçik
@@ -947,7 +1148,8 @@ export class Environment {
   // Uzaq relyef — dağlar / şəhər silueti
   _distant() {
     const g = new THREE.Group();
-    const id = this.data.id;
+    // `distantStyle`: yeni treklər mövcud üfüq üslublarından birini seçir (məs. Buz Zirvəsi → alp silsiləsi)
+    const id = this.data.distantStyle || this.data.id;
     const base = this.track.maxRadius + 90; // trekdən kənarda
     if (id === 'neon') {
       // 70 idi — üfüqdə binalar arası boşluqlar qalırdı (istifadəçi rəyi)
@@ -1016,7 +1218,7 @@ export class Environment {
         this.obstacles.push({ x: cx, z: cz, r: maxR });
       }
       // Dağətəyi: alçaq, enli, tünd meşə rəngli təpələr (dağların önündə)
-      const foot = [0.12, 0.3].map((k) => flatMat(new THREE.Color(0x2f6a48).lerp(fogC, k).getHex(), { roughness: 1 }));
+      const foot = [0.12, 0.3].map((k) => flatMat(new THREE.Color(this.data.palette.foothill ?? 0x2f6a48).lerp(fogC, k).getHex(), { roughness: 1 }));
       for (let i = 0; i < 26; i++) {
         const a = (i / 26) * Math.PI * 2 + Math.random() * 0.2;
         const r = base - 20 + Math.random() * 45;
@@ -1107,9 +1309,9 @@ export class Environment {
       }
     } else {
       // Trekə uyğun dağ silueti rəngi
-      const mountainColor = {
+      const mountainColor = this.data.palette.mountain ?? ({
         desert: 0xbc7c42, alpine: 0x556878, canyon: 0x6b3550, riviera: 0x8a5f86,
-      }[id] ?? 0x556878;
+      }[id] ?? 0x556878);
       // HAVA PERSPEKTİVİ: uzaq pillələr duman rənginə qarışır (3 pillə —
       // hər pillə bir materiala düşür ki, merge pozulmasın → cəmi 3 draw call)
       const fogC = new THREE.Color(this.data.palette.fog);
@@ -1128,7 +1330,7 @@ export class Environment {
         m.rotation.y = Math.random() * 6;
         g.add(m);
         this.obstacles.push({ x: m.position.x, z: m.position.z, r: rad * 0.6 });
-        if (id === 'alpine' && h > 90) {
+        if ((id === 'alpine' || this.data.snowCaps) && h > 90) {
           const cap = new THREE.Mesh(new THREE.ConeGeometry(rad * 0.42, h * 0.32, 5), flatMat(0xf2f7ff));
           cap.position.set(Math.cos(a) * r, h / 2 - 12 + h * 0.34, Math.sin(a) * r);
           cap.rotation.y = m.rotation.y;
@@ -1136,6 +1338,7 @@ export class Environment {
         }
       }
     }
+    if (id === 'volcanic') this._volcano(g, base);
     // PERFORMANS: uzaq relyef bir neçə mesh-ə birləşdirilir
     const merged = mergeStaticGroup(g);
     g.traverse((o) => o.geometry?.dispose?.());
@@ -1539,6 +1742,9 @@ export class Environment {
       obj.position.set(ox, 0, oz);
       obj.rotation.y = Math.atan2(t0.x, t0.z);
       if (!this._free(ox, oz, tyre ? 1.35 : 1.7, 0.6)) continue;
+      // İti dolanbacda (Buz Zirvəsi) döngənin iç tərəfinə qoyulan rekvizit yolun QONŞU
+      // qoluna düşürdü — yoxlama qlobal ən yaxın yol nöqtəsinə görə aparılır
+      if (Math.abs(this.track.getNearest(new THREE.Vector3(ox, 0, oz)).lateral) < hw + 1.6) continue;
       g.add(obj);
       // Trek kənarı maneələri toqquşma siyahısına DÜŞMÜRDÜ — təkər yığınının
       // və baryerin içindən keçmək olurdu (fiziki testlə təsdiqləndi)
@@ -1708,7 +1914,7 @@ export class Environment {
     };
     const waterMat = new THREE.MeshStandardMaterial({
       color: waterC, roughness: 0.28, metalness: 0,
-      emissive: waterC, emissiveIntensity: 0.18,
+      emissive: waterC, emissiveIntensity: def.glow ?? 0.18,   // lava çayı: güclü parıltı
     });
     const bankMat = new THREE.MeshStandardMaterial({
       // Sahil yerin faktiki tonundan bir az tünddür. `groundGain` olan treklərdə yer açılıb,
@@ -2154,7 +2360,9 @@ export class Environment {
     }
     this._decorLifted = düzəldi; // test/ölçmə üçün
     // PERFORMANS: yüzlərlə dekor mesh-i material üzrə birləşdirilir
-    const merged = mergeStaticGroup(decorGroup);
+    // bakeColors: düz rəngli dekor rəng başına ayrı mesh olmur (bax MergeUtils) — Payız
+    // Meşəsində 63 ayrı mesh idi (157 draw call); görüntü dəyişmir
+    const merged = mergeStaticGroup(decorGroup, { bakeColors: true });
     // Paylaşılan (kit) modellərin həndəsəsi şablona məxsusdur — silinmir
     decorGroup.traverse((o) => { if (o.isMesh && !o.material?.userData?.shared) o.geometry?.dispose?.(); });
     this.scene.add(merged);

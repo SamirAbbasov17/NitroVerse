@@ -173,6 +173,8 @@ export class Car {
     let g = drifting ? this.driftGrip2 : this.grip2;
     if (this.slipTimer > 0) g = 0.4;                 // yağ: demək olar tutum yoxdur
     else if (this._sigGrip > 0) g = Math.max(g, 14); // "mükəmməl tutum" imza gücü: demək olar sürüşmür
+    // Buz ləkəsi: yan tutum kəskin düşür — maşın getdiyi istiqamətdə sürüşür (imza tutumu xilas edir)
+    if (this._iceT > 0 && this._sigGrip <= 0) g = Math.min(g, 0.9);
     let S = Math.hypot(vF, vR);
     if (vF > 0.5) {
       const beta = Math.atan2(vR, vF) * Math.exp(-g * dt);
@@ -260,6 +262,7 @@ export class Car {
     this.boostTimer = Math.max(0, this.boostTimer - dt);
     this.hitTimer = Math.max(0, this.hitTimer - dt);
     this.slipTimer = Math.max(0, this.slipTimer - dt);
+    this._iceT = Math.max(0, (this._iceT || 0) - dt);   // buz ləkəsi (Buz Zirvəsi)
     this.shieldTimer = Math.max(0, this.shieldTimer - dt);
     // İmza gücü taymerləri (bax race/SignatureAbility.js)
     this._sigPowerT = Math.max(0, (this._sigPowerT || 0) - dt);

@@ -115,6 +115,46 @@ test.describe('masaüstü oyun kadrları', () => {
     }
   });
 
+  // Yeni treklər (Buz Zirvəsi, Payız Meşəsi, Vulkan): maneə, qapı, buz ləkəsi, tağ və üfüq —
+  // kamera yolun üstündə obyektdən 16 m geridə dayanır
+  for (const id of ['frost', 'autumn', 'lava']) {
+    test(`shots: ${id} detalları`, async ({ page }) => {
+      test.setTimeout(120_000);
+      await boot(page);
+      await startMode(page, MODES.find((m) => m.name === `race-${id}`).config);
+      await page.waitForFunction(() => window.__active.raceManager?.state === 'racing', null, { timeout: 30_000 });
+      const views = await page.evaluate(() => {
+        const sc = window.__active, hz = sc.trackData.hazards || {};
+        const v = [];
+        if (hz.blocks?.length) v.push(['maneə', hz.blocks[1].t, 16, 3.2]);
+        if (hz.lasers?.length) v.push(['qapi', hz.lasers[1], 20, 3.6]);
+        if (hz.ice?.length) v.push(['buz', hz.ice[1].t, 15, 5]);
+        if (sc.track.branches.length) v.push(['şaxə', sc.track.branches[0].i0 / sc.track.N - 0.012, 0, 9]);
+        v.push(['mənzərə', 0.36, 0, 14], ['üfüq', 0.62, 0, 30]);
+        return v;
+      });
+      for (const [name, tt, back, up] of views) {
+        await page.evaluate(([t0, bk, h]) => {
+          const sc = window.__active, tr = sc.track, N = tr.N;
+          const i = ((Math.round(t0 * N) % N) + N) % N;
+          const step = tr.length / N;
+          const j = (i - Math.round(bk / step) + N) % N;
+          const a = tr.points[j], b = tr.points[(i + Math.round(26 / step)) % N];
+          sc.__upd = sc.__upd || sc.update;
+          sc.update = (dt) => {
+            sc.__upd.call(sc, dt);
+            sc.camera.position.set(a.x, h, a.z);
+            sc.camera.lookAt(b.x, bk ? 1.2 : 4, b.z);
+          };
+        }, [tt, back, up]);
+        if (name === 'qapi') {
+          await page.waitForFunction(() => window.__active._lasers[1].beam.visible && window.__active._lasers[1].beam.scale.y > 0.6, null, { timeout: 20_000 });
+        } else await page.waitForTimeout(700);
+        await shot(page, `d-race-${id}-x-${name}`);
+      }
+    });
+  }
+
   // Zen biomları: hər biom gündüz (əl ilə seçim — `_biomeOverride`)
   test('shots: zen biomları', async ({ page }) => {
     test.setTimeout(120_000);
