@@ -2477,3 +2477,16 @@ body.flt-sepia #filter-fx {
 .np__on { color: #7dff9c; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
 .np__stop { flex: 0 0 auto; padding: 8px 11px; font-size: 12px; }
 @media (prefers-reduced-motion: reduce) { .np__disc { animation-duration: 8s; } }
+
+
+/* Arena: vuruş sayğacı və vurma nişanı */
+.ahud__kills { margin-left: 10px; font-weight: 800; color: #ffd34d; opacity: 0.45; transition: opacity 0.2s; }
+.ahud__kills.is-on { opacity: 1; }
+.ahud__hit {
+  position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%);
+  font: 800 22px/1 var(--font-display, inherit); color: #fff; text-shadow: 0 0 10px #ff5040, 0 2px 6px #000;
+  opacity: 0; pointer-events: none;
+}
+.ahud__hit.is-on { animation: ahHit 0.55s ease-out; }
+@keyframes ahHit { 0% { opacity: 0; transform: translate(-50%, -30%) scale(1.5); } 18% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -90%) scale(0.9); } }
+.arena-row__k { font-style: normal; color: #ffd34d; margin-left: 8px; font-size: 0.9em; }

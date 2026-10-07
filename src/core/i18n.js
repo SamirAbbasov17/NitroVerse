@@ -6,6 +6,8 @@ export const LANG_NAMES = { az: 'Azərbaycan', en: 'English', ru: 'Русски�
 
 const D = {
   az: {
+    // Arena: silahlar, lazer, vuruş seriyası
+    'ar.empty': 'boş', 'ar.item.missile': '🚀 Raket', 'ar.item.trishot': '🔱 Üçlü atəş', 'ar.item.mine': '💣 Mina', 'ar.item.bolt': '🌩️ Şimşək', 'ar.boltMiss': '🌩️ Mənzildə rəqib yoxdur', 'ar.double': '🔥 İKİLİ VURUŞ!', 'ar.multi': '💥 SERİYA!', 'ar.sweep': '⚠️ Mərkəzi lazer işə düşür!',
     'acc.needItem': '«{n}» almaq üçün hesab lazımdır.', 'acc.needCar': '«{n}» maşınını açmaq üçün hesab lazımdır.', 'acc.why': 'Daxil ol və ya pulsuz hesab yarat — qazandığın qızıl və aldıqların hesabında saxlanır.',
     'cos.needAcc': 'Almaq üçün hesab lazımdır.', 'cos.listening': 'Dinlənilir', 'cos.buy': 'Al', 'cos.use': 'Tax', 'cos.stop': 'Dayandır',
     // Yer işığı, iz, musiqi paketləri və üçüncü (Pro) skinlər
@@ -130,6 +132,8 @@ const D = {
     'pause.resume': 'Davam et', 'pause.backRoom': 'Otağa qayıt', 'pause.menu': 'Menyu',
   },
   en: {
+    // Arena: silahlar, lazer, vuruş seriyası
+    'ar.empty': 'empty', 'ar.item.missile': '🚀 Missile', 'ar.item.trishot': '🔱 Triple shot', 'ar.item.mine': '💣 Mine', 'ar.item.bolt': '🌩️ Lightning', 'ar.boltMiss': '🌩️ No rival in range', 'ar.double': '🔥 DOUBLE KILL!', 'ar.multi': '💥 KILLING SPREE!', 'ar.sweep': '⚠️ Central laser powering up!',
     'acc.needItem': 'You need an account to buy "{n}".', 'acc.needCar': 'You need an account to unlock the {n}.', 'acc.why': 'Sign in or create a free account — your gold and purchases are saved to it.',
     'cos.needAcc': 'You need an account to buy this.', 'cos.listening': 'Now playing', 'cos.buy': 'Buy', 'cos.use': 'Use', 'cos.stop': 'Stop',
     // Yer işığı, iz, musiqi paketləri və üçüncü (Pro) skinlər
@@ -256,6 +260,8 @@ const D = {
     'pause.resume': 'Resume', 'pause.backRoom': 'Back to room', 'pause.menu': 'Menu',
   },
   ru: {
+    // Arena: silahlar, lazer, vuruş seriyası
+    'ar.empty': 'пусто', 'ar.item.missile': '🚀 Ракета', 'ar.item.trishot': '🔱 Тройной выстрел', 'ar.item.mine': '💣 Мина', 'ar.item.bolt': '🌩️ Молния', 'ar.boltMiss': '🌩️ Нет соперника в радиусе', 'ar.double': '🔥 ДВОЙНОЕ УБИЙСТВО!', 'ar.multi': '💥 СЕРИЯ!', 'ar.sweep': '⚠️ Центральный лазер включается!',
     'acc.needItem': 'Чтобы купить «{n}», нужен аккаунт.', 'acc.needCar': 'Чтобы открыть машину «{n}», нужен аккаунт.', 'acc.why': 'Войди или создай бесплатный аккаунт — золото и покупки сохраняются в нём.',
     'cos.needAcc': 'Для покупки нужен аккаунт.', 'cos.listening': 'Сейчас играет', 'cos.buy': 'Купить', 'cos.use': 'Выбрать', 'cos.stop': 'Стоп',
     // Yer işığı, iz, musiqi paketləri və üçüncü (Pro) skinlər
@@ -382,6 +388,8 @@ const D = {
     'pause.resume': 'Продолжить', 'pause.backRoom': 'Вернуться в комнату', 'pause.menu': 'Меню',
   },
   tr: {
+    // Arena: silahlar, lazer, vuruş seriyası
+    'ar.empty': 'boş', 'ar.item.missile': '🚀 Roket', 'ar.item.trishot': '🔱 Üçlü atış', 'ar.item.mine': '💣 Mayın', 'ar.item.bolt': '🌩️ Şimşek', 'ar.boltMiss': '🌩️ Menzilde rakip yok', 'ar.double': '🔥 ÇİFTE VURUŞ!', 'ar.multi': '💥 SERİ!', 'ar.sweep': '⚠️ Merkez lazer devreye giriyor!',
     'acc.needItem': '«{n}» satın almak için hesap gerekli.', 'acc.needCar': '«{n}» aracını açmak için hesap gerekli.', 'acc.why': 'Giriş yap veya ücretsiz hesap oluştur — kazandığın altın ve aldıkların hesabında saklanır.',
     'cos.needAcc': 'Satın almak için hesap gerekli.', 'cos.listening': 'Şimdi çalıyor', 'cos.buy': 'Satın al', 'cos.use': 'Kullan', 'cos.stop': 'Durdur',
     // Yer işığı, iz, musiqi paketləri və üçüncü (Pro) skinlər

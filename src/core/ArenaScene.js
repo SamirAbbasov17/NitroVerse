@@ -36,12 +36,29 @@ const HIT_MU = 0.2;        // səth boyu sürtünmə
 // Balans: hücum ≫ hərəkət > müdafiə > şəfa.
 // 10/6/4/2 → 45% / 27% / 18% / 9%. Raket zərəri 30, can 100 (≈4 vuruş);
 // təmir +35 olduğuna görə nadir qalmalıdır, yoxsa heç kim ölmür.
+// 2026-10-07: silah çeşidi genişləndi (əvvəl tək raket idi — hər döyüş eyni gedirdi):
+//   üçlü atəş — yaxın məsafə, nişan tələb edir · mina — tələ, təqibçiyə qarşı ·
+//   şimşək — ani, yayınmaq olmur, amma zəifdir və yavaşladır.
 const PICKUP_TYPES = [
-  { id: 'missile', icon: '🚀', w: 10 },
-  { id: 'nitro', icon: '⚡', w: 6 },
-  { id: 'shield', icon: '🛡️', w: 4 },
-  { id: 'repair', icon: '➕', w: 2 },
+  // Hücum payı əvvəlki kimi ~45% saxlanır (4 silah birlikdə) — ilk variantda 60% idi və
+  // matç 39 s-də bitirdi (ölçüldü)
+  { id: 'missile', icon: '🚀', w: 5 },
+  { id: 'trishot', icon: '🔱', w: 3 },
+  { id: 'mine', icon: '💣', w: 3 },
+  { id: 'bolt', icon: '🌩️', w: 2 },
+  { id: 'nitro', icon: '⚡', w: 7 },
+  { id: 'shield', icon: '🛡️', w: 5 },
+  { id: 'repair', icon: '➕', w: 3 },
 ];
+// Əldə saxlanan (düymə ilə işlədilən) silahlar — qalanı götürən kimi işə düşür
+const HELD = new Set(['missile', 'trishot', 'mine', 'bolt']);
+const TRISHOT_DMG = 12;    // hər güllə (üçü 36 — raketdən çox, amma hamısını tutdurmaq çətindir)
+const MINE_DMG = 26;
+const MINE_R = 4.6;        // partlayış radiusu
+const BOLT_DMG = 14;
+const BOLT_RANGE = 46;
+// Mərkəzi lazer: oyunun 35-ci saniyəsindən fırlanan iki qol (mərkəz meydanı "təhlükəsiz düşərgə" olmasın)
+const SWEEP_START = 35, SWEEP_R0 = 7, SWEEP_R1 = 36, SWEEP_SPEED = 0.42, SWEEP_DMG = 14;
 
 export class ArenaScene {
   constructor(config, { input, uiRoot, renderer = null, library, onLeave = null, onQuit, onRestart = null }) {
@@ -63,6 +80,7 @@ export class ArenaScene {
     this._pickupSeq = 0;
     this.pickups = new Map(); // i → {tp, mesh, x, z}
     this.projectiles = [];
+    this.mines = [];          // {id, x, z, owner, mesh, arm}
     this._elimOrder = []; // tid ölmə sırası ilə
 
     this.scene = new THREE.Scene();
@@ -489,9 +507,11 @@ export class ArenaScene {
         <div class="ahud__top">
           <span class="ahud__alive" id="ah-alive">👥 6</span>
           <span class="ahud__zone" id="ah-zone">⭕ zona sabitdir</span>
+          <span class="ahud__kills" id="ah-kills">☠ 0</span>
         </div>
+        <div class="ahud__hit" id="ah-hit"></div>
         <div class="ahud__hp"><i id="ah-hpfill"></i></div>
-        <div class="ahud__item" id="ah-item">boş</div>
+        <div class="ahud__item" id="ah-item">${t('ar.empty')}</div>
         <div class="ahud__spec" id="ah-spec"></div>
         <div class="ahud__danger" id="ah-danger"></div>
         <div class="fhud__toast" id="ah-toast"></div>
@@ -500,6 +520,8 @@ export class ArenaScene {
     this._el = {
       alive: this.uiRoot.querySelector('#ah-alive'),
       zone: this.uiRoot.querySelector('#ah-zone'),
+      kills: this.uiRoot.querySelector('#ah-kills'),
+      hit: this.uiRoot.querySelector('#ah-hit'),
       hp: this.uiRoot.querySelector('#ah-hpfill'),
       item: this.uiRoot.querySelector('#ah-item'),
       danger: this.uiRoot.querySelector('#ah-danger'),
@@ -588,13 +610,22 @@ export class ArenaScene {
   _applyItem(r) {
     const it = r.item;
     r.item = null;
-    if (r.isLocal) { this._el.item.textContent = 'boş'; this._syncTouchItem(); }
-    this._applyEffect(it, r);
+    if (r.isLocal) { this._el.item.textContent = t('ar.empty'); this._syncTouchItem(); }
+    const extra = this._applyEffect(it, r) || null;
+    // Atəş HƏR ZAMAN yayımlanır (yerli oyunçu + hostun botları) — digər oyunçular silahı görsün.
+    // Əvvəl yalnız botların raketi yayımlanırdı: rəqib insanın raketi görünmədən dəyirdi.
+    if (this.online && (r.isLocal || (r.isBot && this._simBots))) {
+      this.online.net.sendEvent({ kind: 'afire', tid: r.tid, it, ...(extra || {}) });
+    }
   }
 
   // Effekti r.item-ə toxunmadan tətbiq et (ani pickup-lar üçün də)
-  _applyEffect(it, r) {
+  // `net` — uzaq oyunçunun atəşi (yalnız görüntü; zərəri sahibinin simulyasiyası hesablayır)
+  _applyEffect(it, r, net = null) {
     if (it === 'missile') this._fireMissile(r);
+    else if (it === 'trishot') this._fireTrishot(r);
+    else if (it === 'mine') return this._dropMine(r, net);
+    else if (it === 'bolt') return this._castBolt(r, net);
     else if (it === 'nitro') { r.car.boostTimer = 1.6; if (r.isLocal) audio.sfx('boost'); }
     else if (it === 'shield') {
       r.car._shieldT = 4;
@@ -608,6 +639,102 @@ export class ArenaScene {
       this.effects.spawnSparkle(r.car.position, 0x7dff8a);
       this._sendHp(r);
     }
+  }
+
+  // Üçlü atəş: yelpik kimi açılan üç kiçik güllə — izləmir, yaxın məsafədə güclüdür
+  _fireTrishot(r) {
+    const c = r.car;
+    for (const da of [-0.2, 0, 0.2]) {
+      const mesh = new THREE.Mesh(this._shotGeo ||= new THREE.SphereGeometry(0.32, 6, 5),
+        this._shotMat ||= new THREE.MeshBasicMaterial({ color: 0xeaf2ff }));
+      mesh.position.set(c.position.x, 1.0, c.position.z);
+      this.scene.add(mesh);
+      const a = c.heading + da;
+      this.projectiles.push({ mesh, owner: r, vx: Math.sin(a) * 74, vz: Math.cos(a) * 74, target: null, life: 1.05, dmg: TRISHOT_DMG, small: true });
+    }
+    if (r.isLocal || (!this.online && r.isBot)) audio.sfx('trishot');
+  }
+
+  // Mina: maşının arxasına düşür, 0.7 s sonra qurulur; yaxınlaşan (sahibindən başqa) maşında partlayır
+  _dropMine(r, net = null) {
+    const c = r.car;
+    const x = net?.x ?? +(c.position.x - Math.sin(c.heading) * 3.2).toFixed(1);
+    const z = net?.z ?? +(c.position.z - Math.cos(c.heading) * 3.2).toFixed(1);
+    r._mineN = (r._mineN || 0) + 1;
+    const id = net?.mid ?? `${r.tid}:${r._mineN}`;
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(this._mineGeo ||= new THREE.CylinderGeometry(0.85, 1.05, 0.42, 8),
+      this._mineMat ||= new THREE.MeshStandardMaterial({ color: 0x23262e, roughness: 0.6, flatShading: true }));
+    body.position.y = 0.21;
+    const lamp = new THREE.Mesh(this._mineLampGeo ||= new THREE.SphereGeometry(0.26, 8, 6),
+      new THREE.MeshBasicMaterial({ color: 0xffb02e }));
+    lamp.position.y = 0.52;
+    g.add(body, lamp);
+    g.position.set(x, 0, z);
+    this.scene.add(g);
+    this.mines.push({ id, x, z, owner: r, mesh: g, lamp, arm: 0.7, life: 40 });
+    if (r.isLocal) audio.sfx('oil');
+    return { x, z, mid: id };
+  }
+
+  _explodeMine(m, broadcast = true) {
+    const i = this.mines.indexOf(m);
+    if (i < 0) return;
+    this.mines.splice(i, 1);
+    this.scene.remove(m.mesh);
+    m.lamp.material.dispose();
+    this.effects.spawnExplosion(new THREE.Vector3(m.x, 0.8, m.z));
+    if (Math.hypot(m.x - this.playerCar.position.x, m.z - this.playerCar.position.z) < 90) audio.sfx('explosion');
+    const own = m.owner.isLocal || (m.owner.isBot && this._simBots) || !this.online;
+    if (!own) return;
+    if (broadcast) this.online?.net.sendEvent({ kind: 'aboom', mid: m.id });
+    for (const r of this.racers) {
+      if (!r.car.alive || r.gone) continue;
+      if (Math.hypot(r.car.position.x - m.x, r.car.position.z - m.z) > MINE_R) continue;
+      this._hit(m.owner, r, r === m.owner ? MINE_DMG * 0.5 : MINE_DMG);   // öz minan da səni yaralayır (yarı)
+    }
+  }
+
+  // Şimşək: qabaq yarımdairədə ən yaxın rəqibə ani zərbə — zəif, amma yayınmaq olmur və yavaşladır
+  _castBolt(r, net = null) {
+    const c = r.car;
+    let tg = net ? this.racers.find((x) => x.tid === net.tg) : null;
+    if (!net) {
+      const fx = Math.sin(c.heading), fz = Math.cos(c.heading);
+      let bd = BOLT_RANGE;
+      for (const o of this.racers) {
+        if (o === r || !o.car.alive || o.gone) continue;
+        const dx = o.car.position.x - c.position.x, dz = o.car.position.z - c.position.z;
+        const d = Math.hypot(dx, dz);
+        if (d < bd && (dx * fx + dz * fz) / (d || 1) > -0.2) { bd = d; tg = o; }
+      }
+    }
+    if (r.isLocal || (!this.online && r.isBot)) audio.sfx(tg ? 'bolt' : 'boltmiss');
+    if (!tg) { if (r.isLocal) this._toast(t('ar.boltMiss')); return { tg: null }; }
+    this.effects.spawnLightning(tg.car.position);
+    tg.car.hitTimer = Math.max(tg.car.hitTimer || 0, 0.7);   // qısa yavaşlama + silkələnmə
+    if (!net) this._hit(r, tg, BOLT_DMG);
+    return { tg: tg.tid };
+  }
+
+  // Zərərin tək yolu: atıcının simulyasiyası hesablayır, qurban başqasının simulyasiyasındadırsa xəbər gedir
+  _hit(owner, victim, dmg) {
+    const ownShooter = owner.isLocal || (owner.isBot && this._simBots) || !this.online;
+    if (!ownShooter) return;
+    const ownVictim = victim.isLocal || (victim.isBot && this._simBots) || !this.online;
+    if (ownVictim) this._damage(victim, dmg, false, owner.name);
+    else this.online?.net.sendEvent({ kind: 'ahit', tid: victim.tid, dmg, by: owner.name });
+    if (owner.isLocal && victim !== owner) this._hitMarker(dmg);
+  }
+
+  // Vurduğunu bil: ekranın ortasında qısa "+zərər" nişanı
+  _hitMarker(dmg) {
+    const el = this._el.hit;
+    if (!el) return;
+    el.textContent = '✕ ' + Math.round(dmg);
+    el.classList.remove('is-on');
+    void el.offsetWidth;
+    el.classList.add('is-on');
   }
 
   _fireMissile(r) {
@@ -699,6 +826,19 @@ export class ArenaScene {
     c.root.visible = false;
     this._elimOrder.push(r.tid);
     const by = r.car._lastBy;
+    // VURUŞ SAYĞACI: son vuran oyunçunun hesabına yazılır (zona/özü sayılmır)
+    const killer = by && by !== 'zona' ? this.racers.find((x) => x.name === by && x !== r) : null;
+    if (killer) {
+      killer.kills = (killer.kills || 0) + 1;
+      if (killer.isLocal) {
+        this._el.kills.textContent = '☠ ' + killer.kills;
+        this._el.kills.classList.add('is-on');
+        const now = this._time;
+        const combo = now - (this._lastKillT ?? -99) < 7 ? (this._combo || 1) + 1 : 1;
+        this._combo = combo; this._lastKillT = now;
+        if (combo >= 2) setTimeout(() => this._toast(t(combo === 2 ? 'ar.double' : 'ar.multi')), 900);
+      }
+    }
     // MƏNTIQ (istifadəçi rəyi): 2-ci olub öləndə matç ELƏ HƏMİN AN bitir —
     // "tamaşa edirsən" yazıb dərhal nəticə göstərmək mənasız idi. Tamaşa
     // rejimi yalnız matç doğrudan davam edəndə (≥2 sağ) açılır.
@@ -708,6 +848,7 @@ export class ArenaScene {
         ? (by ? `☠️ ${by} səni vurdu — tamaşa edirsən` : '☠️ Elendin — tamaşa edirsən')
         : (by ? `☠️ ${by} səni vurdu` : '☠️ Elendin'))
       : (by === 'zona' ? `☠️ ${r.name} zonada yandı`
+        : by === 'lazer' ? `☠️ ${r.name} lazerdə yandı`
         : by ? `☠️ ${by} → ${r.name}` : `☠️ ${r.name} elendi`));
     if (broadcast && this.online && (r.isLocal || (r.isBot && this._simBots))) {
       this.online.net.sendEvent({ kind: 'adead', tid: r.tid, by: r.car._lastBy || null });
@@ -795,7 +936,7 @@ export class ArenaScene {
     this.touchControls?.setVisible(false);
     const rows = [...order].reverse().map((tid, i) => {
       const r = this.racers.find((x) => x.tid === tid);
-      return `<div class="arena-row ${r?.isLocal ? 'is-me' : ''}"><b>#${i + 1}</b> ${r?.name || tid}</div>`;
+      return `<div class="arena-row ${r?.isLocal ? 'is-me' : ''}"><b>#${i + 1}</b> ${r?.name || tid}${r?.kills ? ` <em class="arena-row__k">☠ ${r.kills}</em>` : ''}</div>`;
     }).join('');
     audio.stopEngine();          // qalib ekranında motor səsi qalmasın
     // ÖNCƏ iri qalib bildirişi (2.2 s), sonra sıralama menyusu — əvvəl menyu
@@ -916,15 +1057,15 @@ export class ArenaScene {
     if (!pk) return;
     this.scene.remove(pk.mesh);
     this.pickups.delete(i);
-    const cols = { missile: 0xff8438, nitro: 0xffd34d, shield: 0x4fc3ff, repair: 0x7dff8a };
+    const cols = { missile: 0xff8438, nitro: 0xffd34d, shield: 0x4fc3ff, repair: 0x7dff8a, trishot: 0xdbe6f5, mine: 0xffb02e, bolt: 0xb44bff };
     this.effects.spawnSparkle(new THREE.Vector3(pk.x, 1.4, pk.z), cols[pk.tp] || 0xffffff);
-    if (pk.tp === 'repair' || pk.tp === 'shield' || pk.tp === 'nitro') {
-      // Ani effektli item-lər dərhal işə düşür — əldəki raketə toxunmur
+    if (!HELD.has(pk.tp)) {
+      // Ani effektli item-lər dərhal işə düşür — əldəki silaha toxunmur
       this._applyEffect(pk.tp, r);
     } else {
       r.item = pk.tp;
       if (r.isLocal) {
-        this._el.item.textContent = '🚀 Raket — E';
+        this._el.item.textContent = t('ar.item.' + pk.tp) + (isTouchDevice() ? '' : ' — E');
         this._syncTouchItem();
         audio.sfx('pickup');
       }
@@ -983,7 +1124,12 @@ export class ArenaScene {
         }
         case 'afire': { // vizual raket (zərəri sahibi hesablanır)
           const r = this.racers.find((x) => x.tid === m.tid);
-          if (r && !r.isLocal && !(r.isBot && this._simBots)) this._fireMissile(r);
+          if (r && !r.isLocal && !(r.isBot && this._simBots)) this._applyEffect(m.it || 'missile', r, m);
+          break;
+        }
+        case 'aboom': { // sahibinin simulyasiyasında partlayan mina — bizdə yalnız görüntü
+          const mn = this.mines.find((x) => x.id === m.mid);
+          if (mn) this._explodeMine(mn, false);
           break;
         }
         case 'zt': { // zona vaxtı sinxronu
@@ -1054,7 +1200,7 @@ export class ArenaScene {
       const d = o.car.position.distanceTo(myPos);
       if (d < ed) { ed = d; enemy = o; }
     }
-    if (!target && r.item === 'missile' && enemy) {
+    if (!target && (r.item === 'missile' || r.item === 'trishot' || r.item === 'bolt') && enemy) {
       target = new THREE.Vector3(enemy.car.position.x, 0, enemy.car.position.z);
     }
     // 4) Sərgərdan gəzinti
@@ -1115,16 +1261,71 @@ export class ArenaScene {
     }
     car.update(dt, drive, this._fakeTrack);
     // Atəş: raket + düşmən yaxın + nişan tutulub
-    if (r.item === 'missile' && enemy && ed < 42) {
+    if (r.item && enemy) {
       const aimErr = Math.abs((() => {
         let e = Math.atan2(enemy.car.position.x - myPos.x, enemy.car.position.z - myPos.z) - car.heading;
         while (e > Math.PI) e -= Math.PI * 2;
         while (e < -Math.PI) e += Math.PI * 2;
         return e;
       })());
-      if (aimErr < 0.4) {
-        this._applyItem(r);
-        this.online?.net.sendEvent({ kind: 'afire', tid: r.tid });
+      // hər silahın öz anı: raket — nişanda və 42 m; üçlü — yaxın və dəqiq; şimşək — mənzildə;
+      // mina — rəqib arxadan yaxınlaşanda (və ya 6 s əldə qalıbsa)
+      r._heldT = (r._heldT || 0) + dt;
+      const use = r.item === 'missile' ? (ed < 42 && aimErr < 0.4)
+        : r.item === 'trishot' ? (ed < 24 && aimErr < 0.22)
+          : r.item === 'bolt' ? (ed < BOLT_RANGE - 6 && aimErr < 1.4)
+            : r.item === 'mine' ? ((ed < 16 && aimErr > 2.2) || r._heldT > 6) : false;
+      if (use) { r._heldT = 0; this._applyItem(r); }
+    }
+  }
+
+  // ————— MƏRKƏZİ LAZER —————
+  // Oyunun 35-ci saniyəsindən mərkəzdən iki qol çıxıb yavaş fırlanır. Bucaq oyun vaxtından
+  // (`_playT` — onlaynda sinxrondur) hesablanır, zərəri hər kəs öz maşını üçün sayır.
+  _updateSweeper(dt, inPlay) {
+    if (!this._sweep) {
+      const g = new THREE.Group();
+      const len = SWEEP_R1 - SWEEP_R0;
+      const mat = new THREE.MeshBasicMaterial({ color: 0xff3b5c, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
+      const glow = new THREE.MeshBasicMaterial({ color: 0xff3b5c, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false });
+      for (const sd of [1, -1]) {
+        const beam = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, len), mat);
+        beam.position.set(0, 0.85, sd * (SWEEP_R0 + len / 2));
+        const halo = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.05, len), glow);
+        halo.position.set(0, 0.06, sd * (SWEEP_R0 + len / 2));
+        g.add(beam, halo);
+      }
+      g.visible = false;
+      this.scene.add(g);
+      this._sweep = { g, mat, glow };
+    }
+    const S = this._sweep;
+    const tt = this._playT - SWEEP_START;
+    const warn = tt > -4 && tt <= 0;
+    if (warn && !this._sweepWarned) { this._sweepWarned = true; this._toast(t('ar.sweep')); if (this.playerCar.alive) audio.sfx('warn'); }
+    S.g.visible = inPlay && tt > -4;
+    if (!S.g.visible) return;
+    const ang = Math.max(0, tt) * SWEEP_SPEED;
+    S.g.rotation.y = ang;
+    // xəbərdarlıqda solğun yanıb-sönür, sonra tam güc
+    S.mat.opacity = warn ? 0.25 + 0.2 * Math.sin(this._time * 12) : 0.8 + 0.15 * Math.sin(this._time * 20);
+    S.glow.opacity = warn ? 0.08 : 0.22;
+    if (tt <= 0) return;
+    const dx = Math.sin(ang), dz = Math.cos(ang);       // qolun istiqaməti (yerli +z)
+    for (const r of this.racers) {
+      if (!r.car.alive || r.gone) continue;
+      const own = r.isLocal || (r.isBot && this._simBots) || !this.online;
+      if (!own) continue;
+      r._sweepCd = Math.max(0, (r._sweepCd || 0) - dt);
+      if (r._sweepCd > 0) continue;
+      const px = r.car.position.x, pz = r.car.position.z;
+      const along = Math.abs(px * dx + pz * dz), across = Math.abs(px * dz - pz * dx);
+      if (along > SWEEP_R0 - 1 && along < SWEEP_R1 + 1 && across < 1.5) {
+        r._sweepCd = 1.2;
+        this._damage(r, SWEEP_DMG, false, 'lazer');
+        r.car.hitTimer = Math.max(r.car.hitTimer || 0, 0.4);
+        this.effects.spawnSparks({ x: px, y: 0.8, z: pz }, 0, 0, 8, 1);
+        if (r.isLocal) audio.sfx('bolt');
       }
     }
   }
@@ -1349,7 +1550,7 @@ export class ArenaScene {
           if (!r.car.alive || r.gone) continue;
           // Əlində item varkən: eyni tipdən İKİNCİ raket götürmək olmaz,
           // amma ani utility-lər (qalxan/nitro/təmir) yenə işləyir
-          if (r.item && pk.tp === 'missile') continue;
+          if (r.item && HELD.has(pk.tp)) continue;
           const own = r.isLocal || (r.isBot && this._simBots) || !this.online;
           if (!own) continue;
           if (Math.hypot(pk.x - r.car.position.x, pk.z - r.car.position.z) < 2.6) {
@@ -1402,13 +1603,14 @@ export class ArenaScene {
       }
       p.mesh.position.x += p.vx * dt;
       p.mesh.position.z += p.vz * dt;
-      this.effects.spawnSmoke({ x: p.mesh.position.x, y: 1.0, z: p.mesh.position.z }, false, 0xff8438, 0.4);
+      if (!p.small) this.effects.spawnSmoke({ x: p.mesh.position.x, y: 1.0, z: p.mesh.position.z }, false, 0xff8438, 0.4);
       let hit = false;
       // Maneəyə birbaşa dəymə → partlayış (içindən keçmək olmaz)
       for (const o of this.obstacles) {
         if (Math.hypot(p.mesh.position.x - o.x, p.mesh.position.z - o.z) < o.r + 0.4) {
           hit = true;
-          this.effects.spawnExplosion(p.mesh.position.clone());
+          if (p.small) this.effects.spawnSparkle(p.mesh.position, 0xeaf2ff);
+          else this.effects.spawnExplosion(p.mesh.position.clone());
           break;
         }
       }
@@ -1416,14 +1618,10 @@ export class ArenaScene {
         if (r === p.owner || !r.car.alive || r.gone) continue;
         if (p.mesh.position.distanceTo(r.car.position) < 2.3) {
           hit = true;
-          this.effects.spawnExplosion(p.mesh.position.clone());
-          // Tək səlahiyyət: yalnız ATICININ simulyasiyası zərər verir
-          const ownShooter = p.owner.isLocal || (p.owner.isBot && this._simBots) || !this.online;
-          if (ownShooter) {
-            const ownVictim = r.isLocal || (r.isBot && this._simBots) || !this.online;
-            if (ownVictim) this._damage(r, MISSILE_DMG, false, p.owner.name);
-            else this.online?.net.sendEvent({ kind: 'ahit', tid: r.tid, dmg: MISSILE_DMG, by: p.owner.name });
-          }
+          if (p.small) this.effects.spawnSparks(p.mesh.position, 0, 0, 6, 1);
+          else this.effects.spawnExplosion(p.mesh.position.clone());
+          // Tək səlahiyyət: yalnız ATICININ simulyasiyası zərər verir (bax _hit)
+          this._hit(p.owner, r, p.dmg ?? MISSILE_DMG);
           break;
         }
       }
@@ -1432,6 +1630,22 @@ export class ArenaScene {
         this.projectiles.splice(i, 1);
       }
     }
+
+    // Minalar: qurulma, yanıb-sönmə, tətik
+    for (let i = this.mines.length - 1; i >= 0; i--) {
+      const m = this.mines[i];
+      m.arm -= dt; m.life -= dt;
+      m.lamp.material.color.setHex(m.arm > 0 ? 0x55606e : (Math.sin(this._time * 9) > 0 ? 0xff3b2e : 0x5a1410));
+      if (m.life <= 0 || Math.hypot(m.x, m.z) > this.safeR + 6) { this.mines.splice(i, 1); this.scene.remove(m.mesh); m.lamp.material.dispose(); continue; }
+      if (m.arm > 0 || !inPlay) continue;
+      const own = m.owner.isLocal || (m.owner.isBot && this._simBots) || !this.online;
+      if (!own) continue;
+      for (const r of this.racers) {
+        if (r === m.owner || !r.car.alive || r.gone) continue;
+        if (Math.hypot(r.car.position.x - m.x, r.car.position.z - m.z) < 2.7) { this._explodeMine(m); break; }
+      }
+    }
+    this._updateSweeper(dt, inPlay);
 
     // Təhlükə vinyeti: oyunçu zonadan kənardadırsa qırmızı kənar parıltısı
     const meR = this.racers.find((r) => r.isLocal);
