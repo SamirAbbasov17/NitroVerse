@@ -243,3 +243,52 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
     });
   });
 }
+
+// TƏKƏR YAXIN PLANI: hər maşının ön təkəri yandan, 3 fırlanma bucağında — təkərin/qanadın
+// rəng qüsurlarını (dönəndə görünən başqa rəngli parça, gövdəyə girən təkər) görmək üçün.
+// → tests/out/cars/wheels.png
+test('maşın cədvəli: təkər yaxın planı', async ({ page }) => {
+  test.setTimeout(240_000);
+  await page.setViewportSize({ width: 420, height: 300 });
+  await boot(page);
+  await page.evaluate(() => {
+    const cv = document.querySelector('canvas');
+    document.querySelectorAll('body *').forEach((e) => { if (e !== cv && !e.contains(cv)) e.style.visibility = 'hidden'; });
+  });
+  const ANG = [0, 0.45, 0.9, 1.6, 2.2, 3.0];
+  const only = (process.env.CARS || '').split(',').filter(Boolean);
+  const shots = [];
+  for (const car of CARS.filter((c) => !only.length || only.includes(c.id))) {
+    for (const ang of ANG) {
+      await page.evaluate(([c, an]) => {
+        const sc = window.__showcase, T = window.__THREE;
+        sc.setCar(c);
+        sc.__upd = sc.__upd || sc.update;
+        sc.update = (dt) => {
+          sc.__upd.call(sc, dt);
+          let wheel = null;
+          sc.carRoot.traverse((o) => { if (o.name === 'wheel-front-left') wheel = o; if (/^wheel-(front|back)-(left|right)$/.test(o.name)) o.rotation.x = an; });
+          if (!wheel) return;
+          sc.carRoot.updateMatrixWorld(true);
+          const w = wheel.getWorldPosition(new T.Vector3());
+          const p = sc.carRoot.position;
+          const out = new T.Vector3(w.x - p.x, 0, w.z - p.z);
+          const a = sc._carHeading, fw = new T.Vector3(Math.sin(a), 0, Math.cos(a));
+          out.addScaledVector(fw, -out.dot(fw)).normalize();   // yalnız yan istiqamət
+          sc.camera.position.set(w.x + out.x * 2.3 + fw.x * 0.5, w.y + 0.75, w.z + out.z * 2.3 + fw.z * 0.5);
+          sc.camera.clearViewOffset?.();
+          sc.camera.lookAt(w.x, w.y + 0.12, w.z);
+        };
+      }, [car, ang]);
+      await page.waitForTimeout(300);
+      const buf = await page.screenshot({ type: 'jpeg', quality: 92 });
+      shots.push({ name: car.name, model: car.model, ang, b64: buf.toString('base64') });
+    }
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  const cells = shots.map((s) => `<figure><img src="data:image/jpeg;base64,${s.b64}"><figcaption>${s.name} · <b>${s.model}</b> · ${s.ang}</figcaption></figure>`).join('');
+  await page.setContent(`<style>body{margin:0;background:#111;display:grid;grid-template-columns:repeat(6,1fr);gap:4px;padding:4px;font:13px sans-serif;color:#eee}
+    figure{margin:0;position:relative;align-self:start}img{width:100%;display:block}figcaption{position:absolute;left:6px;bottom:4px;text-shadow:0 0 4px #000}</style>${cells}`);
+  await page.waitForTimeout(400);
+  fs.writeFileSync(path.join(DIR, 'wheels.png'), await page.screenshot({ fullPage: true }));
+});

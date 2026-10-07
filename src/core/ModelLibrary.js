@@ -87,6 +87,21 @@ export class ModelLibrary {
           // təmizlənməsi ona toxunmamalıdır (bax disposeObject3D)
           o.material.userData = { ...(o.material.userData || {}), shared: true };
           if (o.material.map) o.material.map.userData = { ...(o.material.map.userData || {}), shared: true };
+          // TƏKƏRDƏ YANAN TEKSEL OLMUR: fara rəngi palitrada narıncı qradiyentin açıq ucu ilə eyni
+          // hücrədədir — F1 bolidinin narıncı diskində bir dilim "fara" kimi közərir və təkər
+          // fırlandıqca yuxarıda krem ləkə kimi görünürdü. Təkər közərməsiz nüsxəni işlədir.
+          if (/^wheel/i.test(o.name) || /^wheel/i.test(o.parent?.name || '')) {
+            this._wheelMats = this._wheelMats || new Map();
+            let wm = this._wheelMats.get(o.material);
+            if (!wm) {
+              wm = o.material.clone();
+              wm.emissiveMap = null;
+              wm.emissive = new THREE.Color(0x000000);
+              wm.userData = { ...(o.material.userData || {}), shared: true };
+              this._wheelMats.set(o.material, wm);
+            }
+            o.material = wm;
+          }
         }
       }
       if (/^wheel-front-left$/.test(o.name)) {
