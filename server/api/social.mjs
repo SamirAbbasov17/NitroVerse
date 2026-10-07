@@ -284,7 +284,8 @@ export function makeSocial(getStore) {
           }
           for (const k of silinəcək) store.delete(k).catch(() => {});
         }
-        return json({ ok: 1, t: now });
+        // nick: mesajın çatda göründüyü ad (qonağın adı hesaba məxsusdursa '~' ilə) — müştəri bunu deyir
+        return json({ ok: 1, t: now, nick });
       }
 
       return json({ error: 'action' }, 400);

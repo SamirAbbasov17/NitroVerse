@@ -198,9 +198,18 @@ export class Menu {
       this._gSending = false;
       if (sentAt) {
         this._gSeen.add(sentAt);
-        this._appendGchat({ nick, text, t: sentAt }, true);
+        const shown = social.lastNick || nick;
+        this._appendGchat({ nick: shown, text, t: sentAt }, true);
+        // qonağın adı qeydiyyatlı hesaba məxsusdur → səbəbi de (hər ad üçün bir dəfə)
+        if (shown !== nick && this._nickOwnedTold !== nick) {
+          this._nickOwnedTold = nick;
+          window.__notices?.show({ icon: '🔒', text: t('ntc.nickOwned', { n: nick }), life: 10 });
+        }
       } else {
         this._appendGchat({ nick: 'Sistem', text: social.lastSlow ? t('ntc.slow', { n: social.lastSlow }) : t('online.msgFail'), t: 0 }, false);
+        // yazılan mətn itməsin — oyunçu gözləyib yenidən göndərə bilsin
+        const again = this.root.querySelector('#gchat-input');
+        if (again && !again.value) again.value = text;
       }
     };
     this.root.querySelector('[data-gchat-send]').onclick = sendG;
@@ -324,11 +333,12 @@ export class Menu {
         inp.focus();
         const doSend = async () => {
           const text = inp.value.trim();
-          if (!text) return;
-          c.remove();
+          if (!text || inp.disabled) return;
+          inp.disabled = true;
           // Login istifadəçiyə username ünvanı (tarixçəyə düşsün), qonağa cid
           const to = b.dataset.u && auth.isLoggedIn ? 'u:' + b.dataset.u : b.dataset.wDm;
           const ok = await social.sendTo(to, 'dm', { text });
+          if (ok) c.remove(); else inp.disabled = false;   // alınmadısa mətn xanada qalır
           window.__notices?.show({ icon: '✉️', text: ok ? t('ntc.msgSent') : this._sendFail(), life: 4 });
         };
         c.querySelector('button').onclick = doSend;
@@ -629,7 +639,11 @@ export class Menu {
       const ok = await social.sendTo('u:' + withUser, 'dm', { text });
       this._dmSending = false;
       if (ok) this._refreshConvo();
-      else window.__notices?.show({ icon: '⚠️', text: this._sendFail(), life: 4 });
+      else {
+        window.__notices?.show({ icon: '⚠️', text: this._sendFail(), life: 4 });
+        const again = this.root.querySelector('#dm-input');
+        if (again && !again.value) again.value = text;   // mətn itməsin
+      }
     };
     this.root.querySelector('[data-dm-send]').onclick = doSend;
     this.root.querySelector('#dm-input').addEventListener('keydown', (e) => {

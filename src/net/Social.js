@@ -158,6 +158,7 @@ class Social {
   async send(nick, text) {
     try {
       const r = await this._post({ action: 'chat', nick, text, cid: this.cid });
+      this.lastNick = r.nick || nick;   // serverin yazdığı ad (hesaba məxsus adda '~' əlavə olunur)
       return r.t || null;
     } catch {
       return null;

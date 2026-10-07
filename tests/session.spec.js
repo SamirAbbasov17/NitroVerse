@@ -171,6 +171,14 @@ test('sosial: hesabla girən oyunçunun çatı, mesajı və dostluğu tokenlə i
   await guest.evaluate((n) => window.__social.send(n, 'mən Xanam'), 'Xan' + id);
   const feed = (await guest.evaluate(() => window.__social.feed(0))).msgs.filter((m) => /hamıya salam|mən Xanam/.test(m.text)).map((m) => [m.nick, m.u]);
   expect(feed.sort((x, y) => x[0].localeCompare(y[0]))).toEqual([['Xan' + id, ua], ['~Xan' + id, null]].sort((x, y) => x[0].localeCompare(y[0])));
+  // qonaq hesab adı ilə real çat ekranından yazır → adı '~' ilə görünür və səbəbi deyilir
+  await guest.setViewportSize({ width: 844, height: 390 });
+  await guest.evaluate((n) => { localStorage.setItem('apexName', n); window.__menu.showOnline(); }, 'Yar' + id);
+  await guest.fill('#gchat-input', 'mən Yaram');
+  await guest.press('#gchat-input', 'Enter');
+  await expect(guest.locator('#gchat')).toContainText('~Yar' + id + ': mən Yaram', { timeout: 8000 });
+  await expect(guest.locator('body')).toContainText('qeydiyyatlı hesaba məxsusdur');
+  await guest.screenshot({ path: 'tests/out/chat-nick-owned-mobile.png' });
   // qonaq hesab tələb edən şeyləri ala bilmir (boş qayıdır, xəta atmır)
   expect(await guest.evaluate(() => window.__social.dmList())).toEqual([]);
 });
@@ -227,6 +235,7 @@ test('sosial: sürət limiti — spam rədd olunur, gözləmə vaxtı deyilir', 
   await page.press('#gchat-input', 'Enter');
   await expect(page.locator('#gchat')).toContainText('saniyə gözlə', { timeout: 8000 });
   await expect(page.locator('#gchat')).not.toContainText('yenə yazıram');
+  await expect(page.locator('#gchat-input'), 'yazılan mətn xanada qalır').toHaveValue('yenə yazıram');
   await page.locator('#gchat').scrollIntoViewIfNeeded();
   await page.screenshot({ path: 'tests/out/chat-slow-mobile.png' });
 });
