@@ -314,6 +314,47 @@ class AudioManagerImpl {
     W.tone.frequency.setTargetAtTime(muffled ? 700 : 12000, t, 0.25);
   }
 
+  // ——— QARIN ÜSTÜNDƏ SÜRÜŞ (zen) ———
+  // amount 0..1 = qar örtüyü × sürət × səth (torpaqda tam, asfaltda zəif). Qar təkərin
+  // altında xırçıldayır: orta-yüksək zolaqlı küy + sıxılan qarın alçaq xışıltısı; səviyyəni
+  // yavaş təsadüfi dalğa (10–16 Hz-ə qədər süzülmüş küy) dənəli edir ki, düz "şşş" olmasın.
+  setSnowRoll(amount = 0, muffled = false) {
+    if (!this.ctx || (!this._snowRoll && amount < 0.02)) return;
+    if (!this._ensure()) return;
+    const ctx = this.ctx;
+    if (!this._snowRoll) {
+      const out = ctx.createGain(); out.gain.value = 0;
+      out.connect(this.master);
+      const grain = ctx.createGain(); grain.gain.value = 0.55;   // dənəlilik bu düyünün səviyyəsini oynadır
+      grain.connect(out);
+      const mk = (type, freq, q, lvl, rate) => {
+        const src = ctx.createBufferSource();
+        src.buffer = this._noiseBuf; src.loop = true; src.playbackRate.value = rate;
+        const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+        const g = ctx.createGain(); g.gain.value = lvl;
+        src.connect(f); f.connect(g); g.connect(grain);
+        src.start();
+        return f;
+      };
+      const crunch = mk('bandpass', 2300, 0.9, 1, 1.07);
+      mk('lowpass', 520, 0.6, 0.7, 0.83);
+      // dənəlilik: çox yavaş çalınan küy → alçaq süzgəc → səviyyə modulyasiyası
+      const ms = ctx.createBufferSource();
+      ms.buffer = this._noiseBuf; ms.loop = true; ms.playbackRate.value = 0.012;
+      const mf = ctx.createBiquadFilter(); mf.type = 'lowpass'; mf.frequency.value = 14;
+      const mg = ctx.createGain(); mg.gain.value = 2.2;
+      ms.connect(mf); mf.connect(mg); mg.connect(grain.gain);
+      ms.start();
+      this._snowRoll = { out, crunch, mf };
+    }
+    const R = this._snowRoll, t = ctx.currentTime;
+    const a = Math.max(0, Math.min(1, amount));
+    // Səviyyə hava səsi ilə eyni sırada (musiqidən aşağı); tuneldə qar yoxdur
+    R.out.gain.setTargetAtTime(muffled || this._pausedGame ? 0 : a * 0.05, t, 0.18);
+    R.crunch.frequency.setTargetAtTime(1900 + a * 900, t, 0.3);
+    R.mf.frequency.setTargetAtTime(8 + a * 10, t, 0.3);
+  }
+
   // Uzaq göy gurultusu: alçaq küy, bir neçə dalğa ilə sönür. dist 0 (yaxın) .. 1 (uzaq)
   thunder(dist = 0.5) {
     if (!this._ensure() || this.muted) return;

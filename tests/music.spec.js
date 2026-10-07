@@ -78,6 +78,11 @@ test('zen: yağış/qar səsi və göy gurultusu', async ({ page }) => {
     a.setWeather(1, 0, true); await new Promise((res) => setTimeout(res, 1500)); out.rainTunnel = await measure(1200);
     a.setWeather(0, 1); await new Promise((res) => setTimeout(res, 3500)); out.snow = await measure(1500);
     a.setWeather(0, 0); await new Promise((res) => setTimeout(res, 4000)); out.after = await measure(1000);
+    // qarın üstündə sürüş: torpaqda tam sürət → asfaltda (0.3) → dayanıb (0) → tuneldə
+    a.setSnowRoll(1); await new Promise((res) => setTimeout(res, 1500)); out.snowRoll = await measure(2000);
+    a.setSnowRoll(0.3); await new Promise((res) => setTimeout(res, 1500)); out.snowRollRoad = await measure(1500);
+    a.setSnowRoll(1, true); await new Promise((res) => setTimeout(res, 1500)); out.snowRollTunnel = await measure(1000);
+    a.setSnowRoll(0); await new Promise((res) => setTimeout(res, 1500)); out.snowRollOff = await measure(1000);
     a.thunder(0.2); out.thunder = await measure(2500);
     return out;
   });
@@ -89,6 +94,11 @@ test('zen: yağış/qar səsi və göy gurultusu', async ({ page }) => {
   expect(r.snow.db, 'qar yağışdan sakitdir').toBeLessThan(r.rain.db);
   expect(r.rainTunnel.db, 'tuneldə yağış zəifləyir').toBeLessThan(r.rain.db - 5);
   expect(r.after.db, 'hava açılanda səs sönür').toBeLessThan(r.rain.db - 25);
+  expect(r.snowRoll.db, 'qarda təkər səsi gəlir').toBeGreaterThan(r.after.db + 25);
+  expect(r.snowRoll.db, 'qar xırçıltısı musiqidən (≈ −40 dB) ucadan deyil').toBeLessThan(-40);
+  expect(r.snowRollRoad.db, 'asfaltda daha zəifdir').toBeLessThan(r.snowRoll.db - 6);
+  expect(r.snowRollTunnel.db, 'tuneldə susur').toBeLessThan(r.snowRoll.db - 25);
+  expect(r.snowRollOff.db, 'dayananda susur').toBeLessThan(r.snowRoll.db - 25);
   expect(r.thunder.peak, 'göy gurultusu çalınır').toBeGreaterThan(0.02);
   for (const v of Object.values(r)) expect(v.peak, 'kəsilmə yoxdur').toBeLessThan(0.98);
 });

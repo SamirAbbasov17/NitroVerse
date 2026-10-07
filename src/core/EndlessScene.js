@@ -1792,6 +1792,13 @@ export class EndlessScene {
     {
       const fl = flakeNow ? 1 : 0;
       audio.setWeather(fl ? 0 : rAmount, fl ? rAmount : 0, inTunnel);
+      // Qar yerə oturandan sonra təkərin altında xırçıldayır: torpaqda tam, asfaltda zəif
+      {
+        const pc = this.playerCar;
+        const sürət = Math.min(1, Math.abs(pc.vF || 0) / 22);
+        const səth = pc.onRoad ? 0.3 : 1;
+        audio.setSnowRoll(this._state === 'run' ? (this._snow || 0) * sürət * səth : 0, inTunnel);
+      }
       if (!fl && rAmount > 0.55 && this._state === 'run') {
         this._thunderT = (this._thunderT ?? (12 + Math.random() * 20)) - dt;
         if (this._thunderT <= 0) {
@@ -2190,6 +2197,7 @@ export class EndlessScene {
     audio.stopEngine();
     audio.setZenMix(false); // adi miks bərpa olunsun
     audio.setWeather(0, 0);  // hava səsləri sönsün
+    audio.setSnowRoll(0);
     this._fireflies?.geometry.dispose();
     this._ffMat?.dispose();
     this._glowTex?.dispose();
