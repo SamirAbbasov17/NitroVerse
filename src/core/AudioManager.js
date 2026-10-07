@@ -226,6 +226,14 @@ class AudioManagerImpl {
         this._noise({ t, dur: 0.09 + 0.06 * k, g: 0.07 * g, f0: 520, f1: 160 });
         break;
       }
+      case 'kick': {
+        // Topa vuruş: dolğun "tup" (rezin top) + qısa hava şappıltısı; güc artdıqca dərinləşir
+        const g = 0.4 + 0.6 * k;
+        this._tone({ type: 'sine', f0: 210 - 60 * k, f1: 70, t, dur: 0.13 + 0.08 * k, g: 0.3 * g, attack: 0.002 });
+        this._tone({ type: 'triangle', f0: 420, f1: 180, t, dur: 0.05, g: 0.08 * g, attack: 0.001 });
+        this._noise({ t, dur: 0.05 + 0.05 * k, g: 0.1 * g, type: 'bandpass', f0: 1400, f1: 500, q: 1.2 });
+        break;
+      }
       case 'scrape':
         this._noise({ t, dur: 0.09, g: 0.05, type: 'bandpass', f0: 3200, f1: 1800, q: 2 });
         break;

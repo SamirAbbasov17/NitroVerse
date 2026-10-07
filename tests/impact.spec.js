@@ -119,3 +119,50 @@ test('impact: maneə və maşın toqquşması', async ({ page }) => {
   expect.soft(res.feedback.camSettleSec, 'kamera qayıdır (s)').toBeGreaterThan(0);
   expect.soft(res.feedback.camSettleSec, 'kamera tez qayıdır (s)').toBeLessThan(0.7);
 });
+
+// ARENA və FUTBOL: divara 26 m/s düz zərbə (real oyun dövrü). Ölçülən: geri sıçrayış sürəti və
+// kameranın zərbə itələnməsi. Köhnə model: arena 1.4× silmə (≈ 10 m/s geri), futbol −0.35 (≈ 9 m/s).
+for (const mode of ['arena', 'football']) {
+  test(`impact: ${mode} divarı`, async ({ page }) => {
+    test.setTimeout(90_000);
+    await boot(page);
+    await startMode(page, MODES.find((m) => m.name === mode).config);
+    await page.waitForFunction(() => ['play', 'run', 'fight'].includes(window.__active._state), null, { timeout: 40_000 });
+    const r = await page.evaluate(async () => {
+      const sc = window.__active, car = sc.playerCar;
+      const frame = () => new Promise((res) => requestAnimationFrame(res));
+      // rəqiblər və top qarışmasın
+      for (const c of sc.cars) if (c !== car) { c.position.set(0, 0, -40); c.velocity.set(0, 0, 0); }
+      if (sc.racers) for (const x of sc.racers) if (x.car !== car) x.isBot = false;
+      sc._botDrive = () => {};
+      sc.input.touch.throttle = 0; sc.input.touch.steer = 0;
+      // +x divarına doğru: heading = +x
+      const V = 26;
+      if (sc.obstacles) sc.obstacles.length = 0;   // arena: yalnız xarici divar ölçülür
+      car.position.set(20, 0, 0);
+      car.heading = Math.PI / 2; car.vF = V; car.velocity.set(V, 0, 0);
+      let minVx = V, cam = 0, n = 0, maxX = 0;
+      const t0 = performance.now();
+      while (performance.now() - t0 < 6000) {
+        await frame(); n++;
+        // sürəti saxla (sürtünmə divara çatana qədər yeməsin)
+        if (car.velocity.x > 5) { car.vF = V; car.velocity.set(V, 0, 0); car.heading = Math.PI / 2; }
+        maxX = Math.max(maxX, car.position.x);
+        minVx = Math.min(minVx, car.velocity.x);
+        if (sc.impact) cam = Math.max(cam, Math.hypot(sc.impact.x, sc.impact.z));
+        if (car.velocity.x < 4 && n > 5 && performance.now() - t0 > 600 && minVx < 4) {
+          // zərbədən sonra bir neçə kadr da izlə
+          for (let i = 0; i < 20; i++) { await frame(); minVx = Math.min(minVx, car.velocity.x); if (sc.impact) cam = Math.max(cam, Math.hypot(sc.impact.x, sc.impact.z)); }
+          break;
+        }
+      }
+      return { wallX: +maxX.toFixed(1), bounce: +(-minVx).toFixed(2), camPush: +cam.toFixed(3) };
+    });
+    mergeJson('impact.json', mode, r);
+    console.log(`${mode}: divar x=${r.wallX} · geri sıçrayış ${r.bounce} m/s · kamera itələnməsi ${r.camPush} m`);
+    expect(r.wallX, 'maşın divara çatdı').toBeGreaterThan(40);
+    expect(r.bounce, 'divardan güllə kimi geri atılmır (m/s)').toBeLessThan(5);
+    expect(r.camPush, 'zərbə kamerada hiss olunur (m)').toBeGreaterThan(0.05);
+    expect(r.camPush, 'kamera həddən artıq itələnmir (m)').toBeLessThan(0.5);
+  });
+}

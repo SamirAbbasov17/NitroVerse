@@ -8,6 +8,7 @@ import { SkidMarks } from './SkidMarks.js';
 import { disposeObject3D } from './MergeUtils.js';
 import { playFinishFx } from './FinishFx.js';
 import { Effects } from './Effects.js';
+import { ImpactFeel } from './ImpactFeel.js';
 import { SpeedLines } from './SpeedLines.js';
 import { TouchControls, isTouchDevice } from './TouchControls.js';
 import { audio } from './AudioManager.js';
@@ -25,6 +26,7 @@ const BALL_R = 2.3;
 const CAR_R = 1.6;
 const MATCH_TIME = 180;
 const LUNGE_CD = 2.6;
+const WALL_REST = 0.15;  // bortun elastikliyi
 const HOP_T = 0.68;    // zərbə sıçrayışının müddəti (s) — hiss olunan havalanma
 const CORNER = 13;     // meydança künclərinin diaqonal kəsimi
 const NITRO_REGEN_T = 8; // saniyədə bir yığım
@@ -536,6 +538,7 @@ export class FootballScene {
     if (!this.playerCar) { this.playerCar = this.cars[0]; } // ehtiyat
     this.skids = new SkidMarks(this.scene);
     this.effects = new Effects(this.scene);
+    this.impact = new ImpactFeel(this.effects);
   }
 
   _kickoff() {
@@ -845,7 +848,20 @@ export class FootballScene {
           this.effects.spawnSparkle(new THREE.Vector3(p.x, 1.6, p.z), 0xfff2c0);
           this.effects.spawnSmoke({ x: p.x, y: 0.6, z: p.z }, false, car.smokeColor ?? null, 0.6);
         }
-        if (car.isPlayer) audio.sfx('click');
+        // Vuruşun çəkisi: gücə görə səs (uzaqdakı vuruş zəif eşidilir), oyunçunun öz
+        // vuruşunda kamera top istiqamətində yüngül itələnir və maşın silkələnir
+        {
+          const güc = Math.min(1, push / 44);
+          const uzaq = Math.hypot(p.x - this.playerCar.position.x, p.z - this.playerCar.position.z);
+          if ((this._kickFxCd ?? 0) <= 0) {
+            this._kickFxCd = 0.12;
+            audio.sfx('kick', güc * Math.max(0.25, 1 - uzaq / 90));
+            if (car === this.playerCar && güc > 0.3) {
+              this.impact.vx += nx * 5 * güc; this.impact.vz += nz * 5 * güc;
+              car.jolt?.(-nx, -nz, güc * 0.5);
+            }
+          }
+        }
       }
     }
   }
@@ -1073,16 +1089,29 @@ export class FootballScene {
     }
 
     // Divar sərhədləri (yerli simulyasiya olunan maşınlar)
+    // Bort: yüngül elastiklik + bort boyu sürtünmə; oyunçuya əks-əlaqə gücə görə (ImpactFeel).
+    // Əvvəl düz divarda sürət 0.35 ilə əks olunur, küncdə 1.35 dəfə silinirdi və heç bir
+    // səs/effekt yox idi — maşın borta "səssiz yapışıb" geri atılırdı.
+    const bort = (car, nx, nz) => {        // (nx, nz): bortdan meydana doğru
+      const vn = car.velocity.x * nx + car.velocity.z * nz;
+      if (vn >= 0) return;
+      car.velocity.x -= nx * vn * (1 + WALL_REST);
+      car.velocity.z -= nz * vn * (1 + WALL_REST);
+      // sürtünmə yalnız səth BOYU komponentə düşür (geri sıçrayışa yox)
+      const vn2 = car.velocity.x * nx + car.velocity.z * nz;
+      const tx = car.velocity.x - nx * vn2, tz = car.velocity.z - nz * vn2;
+      const slide = Math.hypot(tx, tz);
+      const cut = Math.min(slide, -vn * 0.2);
+      if (slide > 1e-3) { car.velocity.x -= (tx / slide) * cut; car.velocity.z -= (tz / slide) * cut; }
+      if (car === this.playerCar) this.impact.hit(car, nx, nz, -vn, slide);
+    };
     for (const car of this.cars) {
       if (car.isRemote) continue;
       const hx = FIELD_W / 2 - 1.4;
-      if (Math.abs(car.position.x) > hx) { car.position.x = Math.sign(car.position.x) * hx; car.velocity.x *= -0.35; }
+      if (Math.abs(car.position.x) > hx) { const sg = Math.sign(car.position.x); car.position.x = sg * hx; bort(car, -sg, 0); }
       // Qapı xətti maşınlar üçün TAM bağlıdır (yalnız top keçir)
       const hz = FIELD_H / 2 - 1.4;
-      if (Math.abs(car.position.z) > hz) {
-        car.position.z = Math.sign(car.position.z) * hz;
-        car.velocity.z *= -0.35;
-      }
+      if (Math.abs(car.position.z) > hz) { const sg = Math.sign(car.position.z); car.position.z = sg * hz; bort(car, 0, -sg); }
       // Diaqonal künc kəsimi
       const cLim = FIELD_W / 2 + FIELD_H / 2 - CORNER - 1.4;
       const cSum = Math.abs(car.position.x) + Math.abs(car.position.z);
@@ -1092,8 +1121,7 @@ export class FootballScene {
         const over = (cSum - cLim) / Math.SQRT2;
         car.position.x -= nx * over;
         car.position.z -= nz * over;
-        const vn = car.velocity.x * nx + car.velocity.z * nz;
-        if (vn > 0) { car.velocity.x -= nx * vn * 1.35; car.velocity.z -= nz * vn * 1.35; }
+        bort(car, -nx, -nz);
       }
     }
     // Maşın-maşın toqquşması (sadə)
@@ -1119,6 +1147,8 @@ export class FootballScene {
             const imp = -rvn * (both ? 0.5 : 1) * 1.12; // 1.12 — yüngül elastiklik
             if (!a.isRemote) { a.velocity.x -= nx * imp; a.velocity.z -= nz * imp; }
             if (!b.isRemote) { b.velocity.x += nx * imp; b.velocity.z += nz * imp; }
+            if (a === this.playerCar) this.impact.hit(a, -nx, -nz, -rvn);
+            else if (b === this.playerCar) this.impact.hit(b, nx, nz, -rvn);
           }
         }
       }
@@ -1254,6 +1284,8 @@ export class FootballScene {
     }
 
     this.effects.update(dt);
+    this.impact.update(dt);
+    this._kickFxCd = Math.max(0, (this._kickFxCd ?? 0) - dt);
     this.skids.update(dt);
     this._updateCamera(dt);
     // Matç bitəndə motor səsi qalib ekranında da davam edirdi
@@ -1328,6 +1360,7 @@ export class FootballScene {
     const sqz = Math.hypot(desired.x - car.position.x, desired.z - car.position.z);
     if (sqz < 8) desired.y = Math.max(3.4, desired.y * (0.5 + 0.5 * sqz / 8));
     this._camPrev = this._camPrev || this.camera.position.clone();
+    this.camera.position.x -= this._impX || 0; this.camera.position.z -= this._impZ || 0; // əvvəlki kadrın zərbə itələnməsi
     this.camera.position.lerp(desired, 1 - Math.exp(-dt * 9));
     // Sürət tavanı: toqquşmada maşın mövqeyi sıçrayanda kamera teleport etməsin
     const camStep = this.camera.position.distanceTo(this._camPrev);
@@ -1389,6 +1422,8 @@ export class FootballScene {
       cp.z + Math.cos(aim) * tHor
     );
     this.camera.lookAt(this._camTarget);
+    this._impX = this.impact.x; this._impZ = this.impact.z;
+    this.impact.apply(this.camera);   // zərbə/vuruş itələnməsi (baxış hədəfi dəyişmir)
     // FOV: boost/sürət zərbəsi — yumşaq "sürət hissi"
     const wantFov = 62 + (car.boostTimer > 0 ? 7 : 0) + Math.min(4, speed * 0.09);
     this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 5);

@@ -10,6 +10,7 @@ import { SkidMarks } from './SkidMarks.js';
 import { disposeObject3D } from './MergeUtils.js';
 import { playFinishFx } from './FinishFx.js';
 import { Effects } from './Effects.js';
+import { ImpactFeel } from './ImpactFeel.js';
 import { SpeedLines } from './SpeedLines.js';
 import { TouchControls, isTouchDevice } from './TouchControls.js';
 import { audio } from './AudioManager.js';
@@ -28,6 +29,8 @@ const ZONE_DPS = 8;        // zonadan kənarda saniyəlik zərər
 const PAD_RESPAWN = 3;     // pad boşalandan neçə saniyə sonra yenisi çıxır
 const MISSILE_DMG = 30;
 const RAM_DMG = 8;
+const HIT_REST = 0.12;     // divar/maneə elastikliyi (yarışla eyni)
+const HIT_MU = 0.2;        // səth boyu sürtünmə
 
 // Balans: hücum ≫ hərəkət > müdafiə > şəfa.
 // 10/6/4/2 → 45% / 27% / 18% / 9%. Raket zərəri 30, can 100 (≈4 vuruş);
@@ -452,6 +455,7 @@ export class ArenaScene {
     if (!this.playerCar) this.playerCar = this.cars[0];
     this.skids = new SkidMarks(this.scene);
     this.effects = new Effects(this.scene);
+    this.impact = new ImpactFeel(this.effects);
   }
 
   // ————— HUD —————
@@ -1149,6 +1153,22 @@ export class ArenaScene {
     }
 
     // Divar + maneə toqquşmaları (yerli simulyasiya olunanlar)
+    // ƏVVƏL normal komponent 1.3–1.4 dəfə silinirdi — bu, ƏKS SIÇRAYIŞDIR: maşın divardan
+    // güllə kimi geri atılırdı (yarış və zen-də istifadəçi rəyi ilə çıxarılıb). İndi yarışla
+    // eyni model: yüngül elastiklik + səth boyu sürtünmə, əks-əlaqə gücə görə (ImpactFeel).
+    const bounce = (car, nx, nz) => {      // (nx, nz): maneədən maşına doğru
+      const vn = car.velocity.x * nx + car.velocity.z * nz;
+      if (vn >= 0) return;
+      car.velocity.x -= nx * vn * (1 + HIT_REST);
+      car.velocity.z -= nz * vn * (1 + HIT_REST);
+      // sürtünmə yalnız səth BOYU komponentə düşür (geri sıçrayışa yox)
+      const vn2 = car.velocity.x * nx + car.velocity.z * nz;
+      const tx = car.velocity.x - nx * vn2, tz = car.velocity.z - nz * vn2;
+      const slide = Math.hypot(tx, tz);
+      const cut = Math.min(slide, -vn * HIT_MU);
+      if (slide > 1e-3) { car.velocity.x -= (tx / slide) * cut; car.velocity.z -= (tz / slide) * cut; }
+      if (car === this.playerCar) this.impact.hit(car, nx, nz, -vn, slide);
+    };
     for (const car of this.cars) {
       if (car.isRemote || !car.alive) continue;
       const d = Math.hypot(car.position.x, car.position.z);
@@ -1156,8 +1176,7 @@ export class ArenaScene {
         const nx = car.position.x / d, nz = car.position.z / d;
         car.position.x = nx * (ARENA_R - 1.6);
         car.position.z = nz * (ARENA_R - 1.6);
-        const vn = car.velocity.x * nx + car.velocity.z * nz;
-        if (vn > 0) { car.velocity.x -= nx * vn * 1.4; car.velocity.z -= nz * vn * 1.4; }
+        bounce(car, -nx, -nz);
       }
       for (const o of this.obstacles) {
         const dx = car.position.x - o.x, dz = car.position.z - o.z;
@@ -1166,8 +1185,7 @@ export class ArenaScene {
         if (dd < min && dd > 0.001) {
           car.position.x = o.x + (dx / dd) * min;
           car.position.z = o.z + (dz / dd) * min;
-          const vn = car.velocity.x * (dx / dd) + car.velocity.z * (dz / dd);
-          if (vn < 0) { car.velocity.x -= (dx / dd) * vn * 1.3; car.velocity.z -= (dz / dd) * vn * 1.3; }
+          bounce(car, dx / dd, dz / dd);
         }
       }
     }
@@ -1186,6 +1204,18 @@ export class ArenaScene {
           const ov = (3.2 - d) / 2;
           if (!a.isRemote) { a.position.x -= nx * ov; a.position.z -= nz * ov; }
           if (!b.isRemote) { b.position.x += nx * ov; b.position.z += nz * ov; }
+          // SÜRƏT CAVABI: əvvəl yalnız mövqe ayrılırdı — maşınlar bir-birinə doğru sürməyə
+          // davam edir, hər kadr üst-üstə düşüb geri itələnirdi (titrəmə) və vuran maşın
+          // heç nə itirmirdi. İndi yaxınlaşma sürəti impulsla bölüşdürülür (yarışdakı kimi).
+          const rvn = (b.velocity.x - a.velocity.x) * nx + (b.velocity.z - a.velocity.z) * nz;
+          if (rvn < 0) {
+            const both = !a.isRemote && !b.isRemote;
+            const imp = -rvn * (both ? 0.5 : 1) * 1.15;
+            if (!a.isRemote) { a.velocity.x -= nx * imp; a.velocity.z -= nz * imp; }
+            if (!b.isRemote) { b.velocity.x += nx * imp; b.velocity.z += nz * imp; }
+            if (a === this.playerCar) this.impact.hit(a, -nx, -nz, -rvn);
+            else if (b === this.playerCar) this.impact.hit(b, nx, nz, -rvn);
+          }
           // Ram: nisbi sürət böyükdürsə hər ikisinə kiçik zərər
           // (uzaq maşınların velocity-si sinxron deyil — vF ehtiyatı ilə)
           const rel = Math.max(
@@ -1392,6 +1422,7 @@ export class ArenaScene {
     }
 
     this.effects.update(dt);
+    this.impact.update(dt);
     this.skids.update(dt);
     this._updateCamera(dt);
     const pc = this.playerCar;
@@ -1415,10 +1446,14 @@ export class ArenaScene {
       car.position.x - fx * 9 + car.velocity.x * 0.08, 5.2,
       car.position.z - fz * 9 + car.velocity.z * 0.08
     );
+    // zərbə itələnməsi əvvəlki kadrdan çıxılır ki, hamarlamaya qarışmasın
+    this.camera.position.x -= this._impX || 0; this.camera.position.z -= this._impZ || 0;
     this.camera.position.lerp(desired, 1 - Math.exp(-dt * 7));
     const look = new THREE.Vector3(car.position.x + fx * 6, 1.1, car.position.z + fz * 6);
     this._camTarget.lerp(look, 1 - Math.exp(-dt * 7));
     this.camera.lookAt(this._camTarget);
+    this._impX = this.impact.x; this._impZ = this.impact.z;
+    this.impact.apply(this.camera);
   }
 
   // Mağazadan alınmış finiş animasiyası (yarışdakı ilə eyni)
