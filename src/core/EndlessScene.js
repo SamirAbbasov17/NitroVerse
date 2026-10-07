@@ -61,6 +61,7 @@ function obstaclePush(o, cx, cz, r, out) {
 }
 // Təkərlərin maşın mərkəzindən yerli məsafəsi (yan, irəli) — model 4.4 m-ə normallaşdırılıb
 const WHEEL_X = 0.82, WHEEL_Z = 1.32;
+const ZEN_STEER_CALM = 0.6;   // sürətdə dönmənin nə qədər yumşaldığı (0 = yarışdakı kimi)
 // Asfalt yol nöqtələrindən bu qədər yuxarı çəkilir (EndlessRoad: `_ribbon(…, 0.08)`) — əvvəl
 // maşın yol nöqtəsinin hündürlüyündə otururdu və təkərlər asfalta ~11 sm batırdı (ölçüldü)
 const ROAD_TOP = 0.08;
@@ -319,6 +320,15 @@ export class EndlessScene {
     const data = playerCarData(config.carId);
     this.library = library;
     this.playerCar = new Car(data, library, { isPlayer: true });
+    // ZEN SÜKANI: yol yarışdakından qat-qat hamardır (ən iti döngə R ≈ 180 m, yarışda 14–54 m),
+    // sükan isə eyni idi — tam sükanda maşın 27 m radiusla dönürdü, yəni yolun tələb etdiyindən
+    // 6.5 dəfə iti: xəfif toxunuş maşını yolun o başına atırdı (istifadəçi: "çox kəskin dönür").
+    // İndi sürətdə dönmə 40%-ə enir (aşağı sürətdə — manevr — tam qalır), sükan da yumşaq açılır.
+    // Köhnə ilə müqayisə: localStorage `apexZenSteer` = 'old'.
+    if ((() => { try { return localStorage.getItem('apexZenSteer') !== 'old'; } catch { return true; } })()) {
+      this.playerCar.steerCalm = ZEN_STEER_CALM;
+      this.playerCar.steerRampMul = 0.55;
+    }
     const spot = this.road.nearestSpot(new THREE.Vector3(0, 0, 20));
     this.playerCar.reset(spot.point, spot.heading);
     this.playerCar.wpHint = 0;

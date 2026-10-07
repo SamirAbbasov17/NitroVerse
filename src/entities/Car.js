@@ -346,7 +346,7 @@ export class Car {
     const steerTarget = drive.steer * (this.slipTimer > 0 ? 0.4 : 1);
     const returning = Math.abs(steerTarget) < Math.abs(this._steerSmooth) ||
       Math.sign(steerTarget) !== Math.sign(this._steerSmooth || steerTarget);
-    const rampRate = returning ? TUNING.car.steerRampOut : TUNING.car.steerRampIn;
+    const rampRate = returning ? TUNING.car.steerRampOut : TUNING.car.steerRampIn * (this.steerRampMul ?? 1);
     this._steerSmooth += (steerTarget - this._steerSmooth) * Math.min(1, dt * rampRate);
 
     // Yüksək sürətdə dönmə həssaslığı azalır (stabil, axıcı idarə)
@@ -354,7 +354,11 @@ export class Car {
     const highSpeedDamp = 1 - TUNING.car.highSpeedSteerDamp * speedRatio;
     // Drift zamanı burun daha iti fırlanır
     const driftSteer = F ? (drifting ? F.driftSteer : 1) : (drive.handbrake ? 1.4 : 1);
-    const steerFactor = Math.min(Math.abs(vF) / 6, 1) * highSpeedDamp * driftSteer;
+    // SAKİT SÜKAN (zen): sürətdə dönmə əlavə olaraq yumşalır, aşağı sürətdə (manevr, yola qayıtma)
+    // tam qalır. `steerCalm` 0 = yarış davranışı (dəyişmir).
+    const calmK = this.steerCalm ? Math.max(0, Math.min(1, (Math.abs(vF) - 12) / 16)) : 0;
+    const calm = 1 - (this.steerCalm || 0) * calmK * calmK * (3 - 2 * calmK);
+    const steerFactor = Math.min(Math.abs(vF) / 6, 1) * highSpeedDamp * driftSteer * calm;
     this.heading -= this._steerSmooth * this.turnRate * steerFactor * dt * Math.sign(vF || 1);
 
     // Stabilizasiya: sükan mərkəzdə olanda yan sürüşmə daha tez sönür
