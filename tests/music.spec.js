@@ -202,3 +202,99 @@ test('musiqi paketləri: çalınır, səviyyə uyğundur', async ({ page }) => {
   }
   expect(r.backToSynth.file, 'paket çıxarılanda sintezə qayıdır').toBe(false);
 });
+
+// MÜHƏRRİK, TƏKƏR, SƏS AYARLARI (Faza 4): yazılmış mühərrik döngələri yüklənir və çalınır,
+// səviyyəsi köhnə sintezdən bir qədər yuxarıdır (çox uca deyil), sürət artdıqca ötürücü keçidində
+// dövr DÜŞÜR (köhnədə düz qalxırdı), drift cığıltısı/torpaq/külək gəlir və kəsilir, musiqi və
+// effekt sürgüləri öz şinini səsləndirir.
+test('səs: yazılmış mühərrik, ötürücülər, təkər səsləri, ayrı səviyyələr', async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.addInitScript(() => { try { localStorage.setItem('apexMuted', '0'); localStorage.removeItem('apexVolMusic'); localStorage.removeItem('apexVolFx'); } catch { /* boş */ } });
+  await page.goto('/');
+  await page.waitForFunction(() => !!window.__audio && !!window.__menu, null, { timeout: 60_000 });
+  await page.mouse.click(700, 400);
+  const r = await page.evaluate(async () => {
+    const a = window.__audio;
+    a.muted = false; a.stopMusic(); a._ensure();
+    await a.ctx.resume();
+    const an = a.ctx.createAnalyser();
+    an.fftSize = 8192;
+    a.master.connect(an);
+    const buf = new Float32Array(an.fftSize), spec = new Float32Array(an.frequencyBinCount);
+    const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+    const db = async (ms) => {
+      let sum = 0, n = 0;
+      const end = performance.now() + ms;
+      while (performance.now() < end) { await sleep(40); an.getFloatTimeDomainData(buf); for (let i = 0; i < buf.length; i++) { sum += buf[i] * buf[i]; n++; } }
+      return +(20 * Math.log10(Math.sqrt(sum / n) || 1e-9)).toFixed(1);
+    };
+    // spektrin "ağırlıq mərkəzi" (Hz) — dövrün qalxıb-düşməsini izləmək üçün
+    const centroid = () => {
+      an.getFloatFrequencyData(spec);
+      let num = 0, den = 0;
+      const hzPer = a.ctx.sampleRate / an.fftSize;
+      for (let i = 2; i < 400; i++) { const p = Math.pow(10, spec[i] / 10); num += p * i * hzPer; den += p; }
+      return den ? num / den : 0;
+    };
+    const drive = async (speed, ms) => { const end = performance.now() + ms; while (performance.now() < end) { a.setEngine(speed, false); await sleep(16); } };
+    const out = {};
+    // 1) köhnə sintez
+    localStorage.setItem('apexEngine', 'synth');
+    a.startEngine();
+    await drive(0.8, 900); out.synth = { db: 0 };
+    { const p = drive(0.8, 2200); out.synth.db = await db(2000); await p; }
+    a.stopEngine(); await sleep(500);
+    // 2) yazılmış döngələr (yüklənməsini gözlə)
+    localStorage.removeItem('apexEngine');
+    a.startEngine();
+    for (let i = 0; i < 60 && !a._engine?.rec; i++) { a.setEngine(0.2, false); await sleep(100); }
+    out.rec = { loaded: !!a._engine?.rec, levels: {} };
+    for (const sp of [0.1, 0.5, 0.8, 1.0]) {
+      await drive(sp, 700);
+      const p = drive(sp, 1700); out.rec.levels[sp] = await db(1500); await p;
+    }
+    // 3) ötürücülər: sürət 0 → 1, 6 saniyə; dövrün düşdüyü anları say
+    await drive(0, 700);
+    let prevRpm = 0, drops = 0, maxRpm = 0;
+    const t0 = performance.now();
+    const cents = [];
+    while (performance.now() - t0 < 6000) {
+      const sp = (performance.now() - t0) / 6000;
+      a.setEngine(sp, false);
+      const rpm = a._engine.rpm;
+      if (rpm < prevRpm - 0.004 && !a.__dropping) { drops++; a.__dropping = true; } else if (rpm > prevRpm) a.__dropping = false;
+      prevRpm = rpm; maxRpm = Math.max(maxRpm, rpm);
+      if (cents.length < 400) cents.push(Math.round(centroid()));
+      await sleep(16);
+    }
+    out.gears = { drops, maxRpm: +maxRpm.toFixed(2), centMin: Math.min(...cents.filter((x) => x > 0)), centMax: Math.max(...cents) };
+    a.setEngine(0, false); await sleep(300);
+    a.stopEngine(); await sleep(500);
+    // 4) təkər / torpaq / külək (mühərriksiz)
+    out.silence = await db(600);
+    a.setTyres(1, 0, 0); await sleep(500); out.squeal = await db(900);
+    a.setTyres(0, 1, 0); await sleep(600); out.dirt = await db(900);
+    a.setTyres(0, 0, 1); await sleep(800); out.wind = await db(900);
+    a.setTyres(0, 0, 0); await sleep(900); out.tyresOff = await db(600);
+    // 5) ayrı səviyyələr: effekt sürgüsü 0 → cığıltı susur; musiqi sürgüsü ona toxunmur
+    a.setTyres(1, 0, 0); await sleep(400);
+    a.setVolume('music', 0); await sleep(300); out.fxWithMusic0 = await db(700);
+    a.setVolume('fx', 0); await sleep(300); out.fx0 = await db(700);
+    a.setVolume('fx', 1); a.setVolume('music', 1); a.setTyres(0, 0, 0);
+    return out;
+  });
+  mergeJson('music.json', 'engine', r);
+  console.log(JSON.stringify(r));
+  expect(r.rec.loaded, 'yazılmış mühərrik döngələri yükləndi').toBe(true);
+  expect(r.rec.levels[0.8], 'mühərrik eşidilir').toBeGreaterThan(-50);
+  expect(r.rec.levels[0.8] - r.synth.db, 'köhnə sintezə nisbətən fərq (dB)').toBeGreaterThan(-3);
+  expect(r.rec.levels[0.8] - r.synth.db, 'həddən artıq uca deyil (dB)').toBeLessThan(12);
+  expect(r.rec.levels[1.0], 'sürətdə daha uca').toBeGreaterThan(r.rec.levels[0.1]);
+  expect(r.gears.drops, 'ötürücü keçidlərində dövr düşür (4 keçid)').toBeGreaterThanOrEqual(3);
+  expect(r.squeal, 'drift cığıltısı gəlir').toBeGreaterThan(r.silence + 20);
+  expect(r.dirt, 'torpaq uğultusu gəlir').toBeGreaterThan(r.silence + 20);
+  expect(r.wind, 'külək gəlir').toBeGreaterThan(r.silence + 15);
+  expect(r.tyresOff, 'kəsiləndə susur').toBeLessThan(r.squeal - 25);
+  expect(r.fxWithMusic0, 'musiqi sürgüsü effektə toxunmur').toBeGreaterThan(r.squeal - 3);
+  expect(r.fx0, 'effekt sürgüsü 0 → susur').toBeLessThan(r.squeal - 25);
+});

@@ -149,6 +149,13 @@ Sıra bu fazanın daxilində: 3.1 (bibliya) → 3.11 + 3.12 (filtr və işıq �
 
 Mənbə: Kenney Audio, Sonniss GDC, Freesound (CC0). Hər fayl `ASSETS-LICENSES.md`-ə.
 
+**Vəziyyət (2026-10-07 — rəy gözlənilir; səsi eşidə bilmirəm, yalnız ölçürəm):**
+- **4.1 ✅ Mühərrik:** üç yazılmış döngə (domasx2, CC0) dövrə görə keçir və zilləşir; dövr sürətdən 5 ötürücü ilə hesablanır (hər keçiddə düşür — sintezdə düz qalxırdı), qaz/buraxma tembri dəyişir, maşının xarakteri (ağır → bəm, sürətli → zil). Səviyyə köhnə ilə eyni sırada: −25…−29 dB (sintez −27). Köhnə sintez müqayisə üçün qalır: `localStorage.apexEngine = 'synth'`.
+- **4.2 🔶 Təkər / torpaq / külək:** drift cığıltısı (−38 dB), yoldan kənar uğultu, sürət küləyi — **sintezdir** (süzgəcli küy): CC0 yazılmış cığıltı OpenGameArt və Commons-da tapılmadı (Freesound API açarı tələb edir). Əvvəl bu səslərin heç biri yox idi.
+- **4.5 ✅ Səs ayarları:** menyuda 🔊 → Musiqi və Effektlər sürgüləri + səsi bağla (telefonda səsi bağlamağın yolu əvvəl yox idi). Oyun içində pauza menyusuna hələ qoşulmayıb.
+- **4.3 / 4.4 ⬜** vahid effekt dəsti, mühit səsləri.
+- Ölçmə: `npx playwright test tests/music.spec.js -g mühərrik`.
+
 ### Musiqi — yeni üslub 🔶 (istifadəçi dinləyib qərar verəcək)
 
 - **1-ci variant rədd edildi (2026-10-06):** oynaq/şən sintez (major, 104–122 bpm, marimba). İstifadəçi: "şən olmasını yox, rahatladıcı, soul tipli istəyirəm; istinad mahnıları qətiyyən şən deyil".

@@ -363,6 +363,7 @@ export class EndlessScene {
     this._buildHUD();
     this._bindKeys();
     audio.playMusic('lofi');
+    audio.setEngineVoice(null);
     audio.setZenMix(true); // musiqi önə, mühərrik arxa fona
 
     // Zen HƏMİŞƏ arxa görünüşlə başlayır — yadda qalmış fps/kapot rejimi
@@ -2075,6 +2076,7 @@ export class EndlessScene {
     const speedT = Math.min(speed / car.maxSpeed, 1);
     (this.postMotion ||= { gain: 0.5 }).speed = speedT; this.postMotion.boost = car.boostTimer > 0 ? 1 : 0; // zen: yarı güc
     audio.setEngine(speedT, car.boostTimer > 0);
+    audio.setTyres(car.isDrifting ? Math.min(1, 0.45 + speedT * 0.7) : 0, (car.onRoad ? 0 : 1) * Math.min(1, speedT * 2.5), speedT);
 
     // Mobil rescue düyməsi vəziyyəti
     this.touchControls?.setRescueEnabled(!car.onRoad);

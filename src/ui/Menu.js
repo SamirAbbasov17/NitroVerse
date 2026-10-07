@@ -1700,6 +1700,41 @@ export class Menu {
 
   // ————— Kömekçilər —————
 
+  // SƏS AYARLARI (Faza 4.5): musiqi və effektlər ayrıca; telefonda səsi bağlamağın yeganə yeri
+  // budur (üzən 🔊 düyməsi toxunma ekranında gizlidir).
+  _soundPanel(anchor) {
+    const old = document.querySelector('.snd-pop');
+    if (old) { old.remove(); return; }
+    const pop = document.createElement('div');
+    pop.className = 'snd-pop';
+    const pct = (v) => Math.round(v * 100);
+    pop.innerHTML = `
+      <div class="snd-pop__title">${t('snd.title')}</div>
+      <label class="snd-row"><span>🎵 ${t('snd.music')}</span><input type="range" min="0" max="100" step="5" value="${pct(audio.vol.music)}" data-vol="music"><b>${pct(audio.vol.music)}</b></label>
+      <label class="snd-row"><span>💥 ${t('snd.fx')}</span><input type="range" min="0" max="100" step="5" value="${pct(audio.vol.fx)}" data-vol="fx"><b>${pct(audio.vol.fx)}</b></label>
+      <button class="btn snd-pop__mute" data-mute>${audio.muted ? '🔊 ' + t('snd.unmute') : '🔇 ' + t('snd.mute')}</button>`;
+    document.body.appendChild(pop);
+    const r = anchor.getBoundingClientRect();
+    pop.style.top = Math.min(window.innerHeight - pop.offsetHeight - 8, r.bottom + 8) + 'px';
+    pop.style.left = Math.max(8, Math.min(window.innerWidth - pop.offsetWidth - 8, r.right - pop.offsetWidth)) + 'px';
+    pop.querySelectorAll('[data-vol]').forEach((el) => {
+      el.oninput = () => {
+        audio.resume();
+        audio.setVolume(el.dataset.vol, el.value / 100);
+        el.nextElementSibling.textContent = el.value;
+        if (el.dataset.vol === 'fx') { clearTimeout(this._sndT); this._sndT = setTimeout(() => audio.sfx('pickup'), 120); }   // səviyyəni eşit
+      };
+    });
+    pop.querySelector('[data-mute]').onclick = () => {
+      const m = audio.toggleMute();
+      pop.querySelector('[data-mute]').textContent = m ? '🔊 ' + t('snd.unmute') : '🔇 ' + t('snd.mute');
+      anchor.textContent = m ? '🔇' : '🔊';
+      const fb = document.getElementById('mute-btn'); if (fb) fb.textContent = m ? '🔇' : '🔊';
+    };
+    const close = (e) => { if (!pop.contains(e.target) && e.target !== anchor) { pop.remove(); document.removeEventListener('pointerdown', close, true); } };
+    document.addEventListener('pointerdown', close, true);
+  }
+
   // HESAB TƏLƏB EDƏN ƏMƏLİYYAT: ekranın yuxarısında aydın bildiriş çıxır — nəyə görə alınmadı
   // və nə etmək lazımdır, yanında "Daxil ol" düyməsi. Oyunçu olduğu yerdə qalır (əvvəl ya
   // soruşmadan giriş ekranına atılırdı, ya da demək olar gözə dəyməyən kiçik yazı çıxırdı —
@@ -1744,6 +1779,7 @@ export class Menu {
               <button class="menu-sound" data-msgs title="${t('msgs.title')}">✉️</button>
               <button class="menu-sound" data-lang title="Dil / Language">${getLang().toUpperCase()}</button>
               <button class="menu-sound" data-garage title="Qaraj">🏎️</button>
+              <button class="menu-sound" data-snd title="${t('snd.title')}">${audio.muted ? '🔇' : '🔊'}</button>
             </div>
           </div>
           <div class="menu-step"><b>${step}</b><i></i>${stepLabel.toUpperCase()}</div>
@@ -1762,6 +1798,8 @@ export class Menu {
           <div class="menu-hint">${t('hint')}</div>` : ''}
         </aside>
       </div>`;
+    const sndb = this.root.querySelector('[data-snd]');
+    if (sndb) sndb.onclick = (e) => { e.stopPropagation(); this._soundPanel(sndb); };
     const bugb = this.root.querySelector('[data-bug]');
     if (bugb) bugb.onclick = () => this.showBugReport();
     const inb = this.root.querySelector('[data-inbox]');

@@ -102,6 +102,7 @@ export class GameplayScene {
     for (const car of this.cars) {
       if (!car.isRemote) { car.maxHp = this._maxHp(car); car.hp = car.maxHp; car._dmgCd = 0; car._invuln = 0; }
     }
+    audio.setEngineVoice(this.playerCar.data?.stats);   // ağır maşın bəm, sürətli maşın zil
     if (this.trackData.hazards) this._buildHazards(); // lazer/konteynerlər (zavod)
     // Trekin havası: qar / yağış / köz hissəcikləri + mühit səsi
     if (this.trackData.weather) {
@@ -1585,6 +1586,8 @@ export class GameplayScene {
     this.speedLines?.update(dt, speedT, car.velocity.length());
     (this.postMotion ||= {}).speed = speedT; this.postMotion.boost = car.boostTimer > 0 || car.driftBoostT > 0 ? 1 : 0; // PostFX sürət effektləri
     audio.setEngine(speedT, car.boostTimer > 0);
+    // Təkər cığıltısı (drift), yoldan kənar uğultu, sürət küləyi
+    audio.setTyres(car.isDrifting ? Math.min(1, 0.45 + speedT * 0.7) : 0, (car.offRoad || 0) * Math.min(1, speedT * 2.5), speedT);
 
     const sideLook = B.side;
     this._camTarget.lerp(

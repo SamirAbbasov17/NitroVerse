@@ -1705,6 +1705,7 @@ export class ArenaScene {
     const speedT = (over || !pc.alive) ? 0 : Math.min(pc.velocity.length() / pc.maxSpeed, 1);
     (this.postMotion ||= { gain: 0.7 }).speed = speedT; this.postMotion.boost = !over && pc.boostTimer > 0 ? 1 : 0;
     audio.setEngine(speedT, !over && pc.boostTimer > 0);
+    audio.setTyres(0, 0, over ? 0 : speedT);
     this.speedLines?.update(dt, speedT, pc.velocity.length());
   }
 

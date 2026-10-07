@@ -12,6 +12,18 @@ class AudioManagerImpl {
     this._step = 0;
     this._nextT = 0;
     this._engine = null;
+    // Səs ayarları: 0..1, localStorage-da qalır
+    const rd = (k) => { const v = parseFloat(localStorage.getItem(k)); return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 1; };
+    this.vol = { music: rd('apexVolMusic'), fx: rd('apexVolFx') };
+  }
+
+  // kind: 'music' | 'fx' · v: 0..1
+  setVolume(kind, v) {
+    v = Math.max(0, Math.min(1, v));
+    this.vol[kind] = v;
+    try { localStorage.setItem(kind === 'music' ? 'apexVolMusic' : 'apexVolFx', String(v)); } catch { /* gizli rejim */ }
+    const bus = kind === 'music' ? this.musicBus : this.fxBus;
+    if (bus) bus.gain.setTargetAtTime(v, this.ctx.currentTime, 0.03);
   }
 
   _ensure() {
@@ -22,12 +34,20 @@ class AudioManagerImpl {
       this.master = this.ctx.createGain();
       this.master.gain.value = this.muted ? 0 : 1;
       this.master.connect(this.ctx.destination);
+      // İKİ ŞİN (Faza 4.5): musiqi və effektlər ayrıca səviyyələnir (səs ayarları — bax setVolume).
+      // Effekt şininə hər şey düşür: sfx, mühərrik, təkər, külək, hava.
+      this.musicBus = this.ctx.createGain();
+      this.musicBus.gain.value = this.vol.music;
+      this.musicBus.connect(this.master);
+      this.fxBus = this.ctx.createGain();
+      this.fxBus.gain.value = this.vol.fx;
+      this.fxBus.connect(this.master);
       this.musicGain = this.ctx.createGain();
       this.musicGain.gain.value = 0.17;
-      this.musicGain.connect(this.master);
+      this.musicGain.connect(this.musicBus);
       this.sfxGain = this.ctx.createGain();
       this.sfxGain.gain.value = 0.45;
-      this.sfxGain.connect(this.master);
+      this.sfxGain.connect(this.fxBus);
       // Ağ küy buferi (partlayış, külək və s. üçün)
       const len = this.ctx.sampleRate;
       this._noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
@@ -248,8 +268,60 @@ class AudioManagerImpl {
   // ——— Mühərrik səsi (yalnız yerli oyunçu) ———
   // Dizayn: sub-oktava + yumşaq qatlar + amplitud LFO ("işləmə" pulsu),
   // aşağı rezonanslı filtr — dərin, sakit, peşəkar uğultu.
+  // ——— YAZILMIŞ MÜHƏRRİK (Faza 4.1) ———
+  // Üç real mühərrik döngəsi (aşağı / orta / yüksək dövr — domasx2, "racing car engine sound
+  // loops", CC0, opengameart.org) dövrə görə bir-birinə keçir və hər biri dövrlə birlikdə
+  // zilləşir. Dövr sürətdən ÖTÜRÜCÜLƏRLƏ hesablanır: hər ötürücüdə qalxır, keçiddə düşür —
+  // sintez vızıltısında bu yox idi (tək ton sürətlə birlikdə düz qalxırdı).
+  // Fayllar yüklənənə qədər (və ya yüklənməsə) köhnə sintez mühərrik işləyir.
+  // Müqayisə üçün köhnəni saxlamaq: localStorage `apexEngine` = 'synth'.
+  static ENGINE_LOOPS = [
+    { src: 'sfx/engine-low.wav', f0: 43, at: 0 },
+    { src: 'sfx/engine-mid.wav', f0: 65, at: 0.5 },
+    { src: 'sfx/engine-high.wav', f0: 76, at: 1 },
+  ];
+
+  _loadEngineLoops() {
+    if (this._engBufs || this._engLoading) return;
+    this._engLoading = true;
+    Promise.all(AudioManagerImpl.ENGINE_LOOPS.map((l) =>
+      fetch(assetBase() + l.src).then((r) => r.arrayBuffer()).then((b) => this.ctx.decodeAudioData(b))))
+      .then((bufs) => {
+        this._engBufs = bufs;
+        if (this._engine && !this._engine.rec && !this._engine.forceSynth) { this.stopEngine(); this.startEngine(); }
+      })
+      .catch(() => { this._engLoading = false; /* sintez qalır */ });
+  }
+
+  // Maşının səs xarakteri: ağır maşın bəm, yüngül/sürətli maşın zil (0.82 … 1.2)
+  setEngineVoice(stats) {
+    const armor = stats?.armor ?? 50, top = stats?.topSpeed ?? 80;
+    this._engVoice = Math.max(0.82, Math.min(1.2, 1 + (top - 80) * 0.008 - (armor - 50) * 0.005));
+  }
+
+  _startRecEngine() {
+    const ctx = this.ctx;
+    const out = ctx.createGain(); out.gain.value = 0;
+    const tone = ctx.createBiquadFilter(); tone.type = 'lowpass'; tone.frequency.value = 900; tone.Q.value = 0.4;
+    tone.connect(out); out.connect(this.fxBus);
+    const layers = AudioManagerImpl.ENGINE_LOOPS.map((l, i) => {
+      const src = ctx.createBufferSource();
+      src.buffer = this._engBufs[i]; src.loop = true;
+      const g = ctx.createGain(); g.gain.value = 0;
+      src.connect(g); g.connect(tone);
+      src.start();
+      return { src, g, f0: l.f0, at: l.at };
+    });
+    this._engine = { rec: true, out, tone, layers, rpm: 0.2, gear: 0, load: 0, prev: 0 };
+  }
+
   startEngine() {
     if (!this._ensure() || this._engine) return;
+    const forceSynth = (() => { try { return localStorage.getItem('apexEngine') === 'synth'; } catch { return false; } })();
+    if (!forceSynth) {
+      if (this._engBufs) { this._startRecEngine(); return; }
+      this._loadEngineLoops();
+    }
     const ctx = this.ctx;
     const o1 = ctx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = 60;
     const o2 = ctx.createOscillator(); o2.type = 'sawtooth'; o2.frequency.value = 30;   // sub-oktava (dərinlik)
@@ -261,19 +333,21 @@ class AudioManagerImpl {
     const lfoGain = ctx.createGain(); lfoGain.gain.value = 0;
     lfo.connect(lfoGain); lfoGain.connect(gn.gain);
     o1.connect(flt); o2.connect(flt); o3.connect(flt);
-    flt.connect(gn); gn.connect(this.master);
+    flt.connect(gn); gn.connect(this.fxBus);
     o1.start(); o2.start(); o3.start(); lfo.start();
-    this._engine = { o1, o2, o3, flt, gn, lfo, lfoGain };
+    this._engine = { o1, o2, o3, flt, gn, lfo, lfoGain, forceSynth };
   }
 
   // Oyun pauzasında mühərrik susur
   setPaused(p) {
     this._pausedGame = p;
     if (this._engine && this.ctx) {
-      if (p) {
+      if (p && this._engine.rec) this._engine.out.gain.setTargetAtTime(0, this.ctx.currentTime, 0.06);
+      else if (p) {
         this._engine.gn.gain.setTargetAtTime(0, this.ctx.currentTime, 0.06);
         this._engine.lfoGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.06);
       }
+      if (p) this.setTyres(0, 0, 0);
       // davamda setEngine növbəti kadrda səviyyəni bərpa edir
     }
   }
@@ -292,7 +366,7 @@ class AudioManagerImpl {
       bus.gain.value = 1;
       const tone = ctx.createBiquadFilter(); // tunel boğuqluğu
       tone.type = 'lowpass'; tone.frequency.value = 12000;
-      bus.connect(tone); tone.connect(this.master);
+      bus.connect(tone); tone.connect(this.fxBus);
       const layer = (type, freq, q) => {
         const src = ctx.createBufferSource();
         src.buffer = this._noiseBuf; src.loop = true;
@@ -332,7 +406,7 @@ class AudioManagerImpl {
     const ctx = this.ctx;
     if (!this._snowRoll) {
       const out = ctx.createGain(); out.gain.value = 0;
-      out.connect(this.master);
+      out.connect(this.fxBus);
       const grain = ctx.createGain(); grain.gain.value = 0.55;   // dənəlilik bu düyünün səviyyəsini oynadır
       grain.connect(out);
       const mk = (type, freq, q, lvl, rate) => {
@@ -383,8 +457,42 @@ class AudioManagerImpl {
     g.gain.linearRampToValueAtTime(peak * 0.6, t + dur * 0.42);
     g.gain.exponentialRampToValueAtTime(peak * 0.15, t + dur * 0.7);
     g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    src.connect(f); f.connect(g); g.connect(this.master);
+    src.connect(f); f.connect(g); g.connect(this.fxBus);
     src.start(t); src.stop(t + dur + 0.1);
+  }
+
+  // ——— TƏKƏR, TORPAQ, KÜLƏK (Faza 4.2) ———
+  // slip 0..1 — drift/sürüşmə (rezin cığıltısı) · dirt 0..1 — yoldan kənar uğultu · wind 0..1 — sürət küləyi.
+  // Hamısı süzgəclənmiş küydür (yazılmış CC0 cığıltı tapılmadı — sintezdir); düyünlər bir dəfə qurulur.
+  setTyres(slip = 0, dirt = 0, wind = 0) {
+    if (!this.ctx || (!this._tyres && slip + dirt + wind < 0.02)) return;
+    if (!this._ensure()) return;
+    const ctx = this.ctx;
+    if (!this._tyres) {
+      const mk = (type, freq, q) => {
+        const src = ctx.createBufferSource();
+        src.buffer = this._noiseBuf; src.loop = true; src.playbackRate.value = 0.8 + Math.random() * 0.4;
+        const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+        const g = ctx.createGain(); g.gain.value = 0;
+        src.connect(f); f.connect(g); g.connect(this.fxBus);
+        src.start();
+        return { f, g };
+      };
+      // cığıltı: iki dar zolaq (rezinin "oxuması") — biri əsas ton, biri onun üstündəki fit
+      const sq1 = mk('bandpass', 1050, 9), sq2 = mk('bandpass', 1680, 12);
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 6.5;
+      const lg = ctx.createGain(); lg.gain.value = 55;
+      lfo.connect(lg); lg.connect(sq1.f.frequency); lg.connect(sq2.f.frequency); lfo.start();
+      this._tyres = { sq1, sq2, dirt: mk('lowpass', 210, 0.6), wind: mk('bandpass', 700, 0.5) };
+    }
+    const T = this._tyres, t = ctx.currentTime;
+    const k = this._pausedGame ? 0 : (this._zenMix ? 0.35 : 1);
+    T.sq1.g.gain.setTargetAtTime(slip * 0.21 * k, t, 0.06);
+    T.sq2.g.gain.setTargetAtTime(slip * 0.1 * k, t, 0.06);
+    T.sq1.f.frequency.setTargetAtTime(950 + slip * 260, t, 0.1);
+    T.dirt.g.gain.setTargetAtTime(dirt * 0.16 * k, t, 0.1);
+    T.wind.g.gain.setTargetAtTime(wind * wind * 0.05 * k, t, 0.2);
+    T.wind.f.frequency.setTargetAtTime(520 + wind * 900, t, 0.2);
   }
 
   setZenMix(on) {
@@ -398,6 +506,32 @@ class AudioManagerImpl {
     if (!this._engine || this._pausedGame) return;
     const e = this._engine;
     const t = this.ctx.currentTime;
+    if (e.rec) {
+      // ÖTÜRÜCÜLƏR: sürət aralığı 5 pilləyə bölünür; dövr pillənin içində 0.32 → 1 qalxır
+      const G = [0, 0.16, 0.34, 0.54, 0.76, 1.001];
+      let gi = 0;
+      while (gi < 4 && speedT >= G[gi + 1]) gi++;
+      const frac = (speedT - G[gi]) / (G[gi + 1] - G[gi]);
+      const want = gi === 0 ? 0.16 + 0.84 * frac : 0.32 + 0.68 * frac;
+      // dövr ani sıçramır: qalxma cəld, ötürücü keçidində düşmə bir az yavaş
+      e.rpm += (want - e.rpm) * (want > e.rpm ? 0.22 : 0.12);
+      // YÜK: sürət artırsa (qaz) mühərrik açıq və uca, düşürsə (qaz buraxılıb) boğuq
+      const acc = speedT - e.prev; e.prev = speedT;
+      e.load += ((acc > 0.0004 || boosting ? 1 : acc < -0.0004 ? 0 : 0.45) - e.load) * 0.08;
+      const voice = this._engVoice || 1;
+      const hz = (40 + e.rpm * 62 + (boosting ? 8 : 0)) * voice;
+      for (const L of e.layers) {
+        L.src.playbackRate.setTargetAtTime(Math.max(0.4, Math.min(3, hz / L.f0)), t, 0.04);
+        const w = Math.max(0, 1 - Math.abs(e.rpm - L.at) / 0.5);          // üçbucaq keçid
+        L.g.gain.setTargetAtTime(w, t, 0.05);
+      }
+      e.tone.frequency.setTargetAtTime(520 + e.rpm * 1500 + e.load * 1400, t, 0.08);
+      // səviyyə köhnə sintez mühərriklə eyni sırada (ölçüldü: 0.8 sürətdə sintez −27 dB)
+      let g = (0.09 + e.rpm * 0.1) * (0.62 + 0.38 * e.load);
+      if (this._zenMix) g *= 0.12;   // zen: mühərrik arxa fonda
+      e.out.gain.setTargetAtTime(g, t, 0.07);
+      return;
+    }
     const tc = 0.08;
     const f = 42 + speedT * 95 + (boosting ? 22 : 0);
     e.o1.frequency.setTargetAtTime(f, t, tc);
@@ -412,14 +546,24 @@ class AudioManagerImpl {
   }
 
   stopEngine() {
+    this.setTyres(0, 0, 0);
     this._pausedGame = false; // növbəti oyun üçün sıfırla
-    if (!this._engine) return;
     const e = this._engine;
-    e.gn.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
+    if (!e) return;
+    this._engine = null;
+    const t = this.ctx.currentTime;
+    if (e.rec) {
+      e.out.gain.setTargetAtTime(0, t, 0.05);
+      setTimeout(() => {
+        for (const L of e.layers) { try { L.src.stop(); } catch { /* artıq dayanıb */ } }
+        e.out.disconnect();
+      }, 300);
+      return;
+    }
+    e.gn.gain.setTargetAtTime(0, t, 0.05);
     setTimeout(() => {
       try { e.o1.stop(); e.o2.stop(); e.o3.stop(); e.lfo.stop(); } catch { /* boş */ }
     }, 400);
-    this._engine = null;
   }
 
   // ——— Musiqi (prosedural sekvenser, lookahead planlaması) ———

@@ -1,0 +1,8 @@
+Engine loops in this folder: "racing car engine sound loops" by domasx2
+https://opengameart.org/content/racing-car-engine-sound-loops
+Licence: CC0 1.0 (stated on the page; checked 2026-10-07). Made for www.banditracer.eu.
+
+engine-low.wav  = loop_0.wav   (fundamental ~43 Hz)
+engine-mid.wav  = loop_2_0.wav (~65 Hz)
+engine-high.wav = loop_5_0.wav (~76 Hz)
+Files are unmodified (renamed only). No attribution required; kept as a record of provenance.
