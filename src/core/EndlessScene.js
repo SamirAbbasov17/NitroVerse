@@ -1121,6 +1121,8 @@ export class EndlessScene {
     if (this._twCells) this._roadCells = this._twCells;
     this._gridAx = gx - GROUND_SIZE / 2;
     this._gridAz = gz - GROUND_SIZE / 2;
+    // iş gedərkən yeni sorğu gəlmişdisə — növbəti kadrda təzə məlumatla yenidən hesabla
+    if (this._twQueued) { this._twQueued = false; this._cutTip = -1e9; }
   }
 
   // ————— Biom / hava / gün —————
@@ -1574,6 +1576,14 @@ export class EndlessScene {
           localX: this._twLocal.x, localY: this._twLocal.y, CELL,
         });
         this._cutJob = null;   // əsas mövzuda iş yoxdur — nəticə mesajla gələcək
+      } else if (this._tw) {
+        // İŞÇİ MƏŞĞULDUR. Əvvəl bu halda hesablama PARALEL olaraq əsas mövzuda da başlayırdı:
+        // hansı sonra bitirdisə, o qalırdı — işçinin KÖHNƏ yol/kafel ilə hesabladığı nəticə
+        // təzəsini əvəz edə bilirdi və yolun yeni hissəsi növbəti kəsimə qədər KƏSİLMƏMİŞ
+        // torpağın altında qalırdı (ölçüldü: asfaltın ortasında torpaq 0.4–1.5 m yuxarı;
+        // tests/zen-ground). Kafel sərhədində yellənən sürüşdə tez-tez baş verirdi. İndi sorğu
+        // növbəyə yazılır və işçi boşalan kimi ƏN TƏZƏ məlumatla yenidən göndərilir.
+        this._twQueued = true;
       } else {
       this._cutJob = {
         i: 0, gx, gz, cells, CELL,
