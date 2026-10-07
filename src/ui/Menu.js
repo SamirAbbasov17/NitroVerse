@@ -12,6 +12,7 @@ import { COSMETIC_GROUPS, cosmeticById, isCosmeticOwned, equippedCosmetics, carS
 import { playerCarData } from '../data/playerCar.js';
 import { audio } from '../core/AudioManager.js';
 import { t, getLang, setLang, LANGS, LANG_NAMES } from '../core/i18n.js';
+import { soundControlsHTML, bindSoundControls } from './SoundControls.js';
 
 // Kosmetikanın adı/təsviri seçilmiş dildə: skin → `skin.<maşın>.<n>`, qalanı → `cos.<id>`.
 // Tərcümə yoxdursa (az dili və ya köhnə əşya) datadakı mətn göstərilir.
@@ -1707,30 +1708,12 @@ export class Menu {
     if (old) { old.remove(); return; }
     const pop = document.createElement('div');
     pop.className = 'snd-pop';
-    const pct = (v) => Math.round(v * 100);
-    pop.innerHTML = `
-      <div class="snd-pop__title">${t('snd.title')}</div>
-      <label class="snd-row"><span>🎵 ${t('snd.music')}</span><input type="range" min="0" max="100" step="5" value="${pct(audio.vol.music)}" data-vol="music"><b>${pct(audio.vol.music)}</b></label>
-      <label class="snd-row"><span>💥 ${t('snd.fx')}</span><input type="range" min="0" max="100" step="5" value="${pct(audio.vol.fx)}" data-vol="fx"><b>${pct(audio.vol.fx)}</b></label>
-      <button class="btn snd-pop__mute" data-mute>${audio.muted ? '🔊 ' + t('snd.unmute') : '🔇 ' + t('snd.mute')}</button>`;
+    pop.innerHTML = `<div class="snd-pop__title">${t('snd.title')}</div>${soundControlsHTML()}`;
     document.body.appendChild(pop);
     const r = anchor.getBoundingClientRect();
     pop.style.top = Math.min(window.innerHeight - pop.offsetHeight - 8, r.bottom + 8) + 'px';
     pop.style.left = Math.max(8, Math.min(window.innerWidth - pop.offsetWidth - 8, r.right - pop.offsetWidth)) + 'px';
-    pop.querySelectorAll('[data-vol]').forEach((el) => {
-      el.oninput = () => {
-        audio.resume();
-        audio.setVolume(el.dataset.vol, el.value / 100);
-        el.nextElementSibling.textContent = el.value;
-        if (el.dataset.vol === 'fx') { clearTimeout(this._sndT); this._sndT = setTimeout(() => audio.sfx('pickup'), 120); }   // səviyyəni eşit
-      };
-    });
-    pop.querySelector('[data-mute]').onclick = () => {
-      const m = audio.toggleMute();
-      pop.querySelector('[data-mute]').textContent = m ? '🔊 ' + t('snd.unmute') : '🔇 ' + t('snd.mute');
-      anchor.textContent = m ? '🔇' : '🔊';
-      const fb = document.getElementById('mute-btn'); if (fb) fb.textContent = m ? '🔇' : '🔊';
-    };
+    bindSoundControls(pop, (m) => { anchor.textContent = m ? '🔇' : '🔊'; });
     const close = (e) => { if (!pop.contains(e.target) && e.target !== anchor) { pop.remove(); document.removeEventListener('pointerdown', close, true); } };
     document.addEventListener('pointerdown', close, true);
   }

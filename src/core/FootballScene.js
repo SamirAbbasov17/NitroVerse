@@ -9,6 +9,7 @@ import { disposeObject3D } from './MergeUtils.js';
 import { playFinishFx } from './FinishFx.js';
 import { Effects } from './Effects.js';
 import { fxTrail } from './LegendaryFx.js';
+import { soundControlsHTML, bindSoundControls } from '../ui/SoundControls.js';
 import { ImpactFeel } from './ImpactFeel.js';
 import { SpeedLines } from './SpeedLines.js';
 import { TouchControls, isTouchDevice } from './TouchControls.js';
@@ -683,7 +684,9 @@ export class FootballScene {
           ${!this.online && this.onRestart ? `<button class="btn" data-restart>${t('ui.again')}</button>` : ''}
           <button class="btn btn--ghost" data-quit>${this.online ? 'Otaqdan çıx' : 'Menyu'}</button>
         </div>
+        ${soundControlsHTML()}
       </div>`;
+    bindSoundControls(this._el.overlay);
     this._el.overlay.querySelector('[data-resume]').onclick = () => this._togglePause();
     const plb = this._el.overlay.querySelector('[data-lobby]');
     if (plb) plb.onclick = () => this.onQuit?.(); // onlaynda onQuit = lobbiyə qayıdış

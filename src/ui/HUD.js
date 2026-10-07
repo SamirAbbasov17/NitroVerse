@@ -1,5 +1,6 @@
 import { formatTime } from '../race/RaceManager.js';
 import { t } from '../core/i18n.js';
+import { soundControlsHTML, bindSoundControls } from './SoundControls.js';
 
 const hexCss = (n) => '#' + n.toString(16).padStart(6, '0');
 
@@ -366,7 +367,9 @@ export class HUD {
           ${lobbyBtn}
           <button class="btn btn--ghost" data-quit>${this.canRestart ? t('pause.menu') : t('res.leaveRoom')}</button>
         </div>
+        ${soundControlsHTML()}
       </div>`;
+    bindSoundControls(this.el.overlay);
     this.el.overlay.querySelector('[data-resume]').onclick = () => this.onResume?.();
     const rb = this.el.overlay.querySelector('[data-restart]');
     if (rb) rb.onclick = () => this.onRestart?.();

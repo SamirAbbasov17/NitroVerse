@@ -13,6 +13,7 @@ import { disposeObject3D } from './MergeUtils.js';
 import { SkidMarks } from './SkidMarks.js';
 import { Effects } from './Effects.js';
 import { fxTrail } from './LegendaryFx.js';
+import { soundControlsHTML, bindSoundControls } from '../ui/SoundControls.js';
 import { ImpactFeel } from './ImpactFeel.js';
 import { TouchControls, isTouchDevice } from './TouchControls.js';
 import { audio } from './AudioManager.js';
@@ -926,7 +927,9 @@ export class EndlessScene {
           <button class="btn btn--primary" data-resume>${t('pause.resume')}</button>
           <button class="btn btn--ghost" data-quit>Menyu</button>
         </div>
+        ${soundControlsHTML()}
       </div>`;
+    bindSoundControls(this._el.overlay);
     this._el.overlay.querySelector('[data-resume]').onclick = () => this._togglePause();
     this._el.overlay.querySelector('[data-quit]').onclick = () => this.onQuit?.();
   }

@@ -2502,4 +2502,17 @@ body.flt-sepia #filter-fx {
 .snd-row { display: grid; grid-template-columns: 92px 1fr 30px; align-items: center; gap: 8px; padding: 6px 0; font-size: 13.5px; }
 .snd-row b { text-align: right; font-size: 12px; color: #c9cedb; font-variant-numeric: tabular-nums; }
 .snd-row input[type="range"] { width: 100%; accent-color: #ff7a2f; height: 22px; }
-.snd-pop__mute { width: 100%; margin-top: 8px; padding: 9px 10px; font-size: 12.5px; }
+.snd-box__mute { width: 100%; margin-top: 8px; padding: 9px 10px; font-size: 12.5px; }
+
+
+/* Səs bloku pauza menyusunda: düymələrin altında dar kart */
+.pause .snd-box {
+  width: min(300px, 86vw); margin-top: 14px; padding: 8px 14px 12px;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px;
+}
+.pause .snd-box__mute { min-width: 0; margin-top: 6px; }
+@media (max-height: 430px) {
+  .pause .snd-box { margin-top: 8px; padding: 4px 12px 8px; }
+  .pause .snd-row { padding: 2px 0; }
+  .pause .snd-box__mute { padding: 6px 10px; margin-top: 4px; }
+}
