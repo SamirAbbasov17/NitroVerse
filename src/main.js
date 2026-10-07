@@ -119,7 +119,7 @@ function goMenu() {
     onStart: startGame,
     onStartOnline: startOnlineGame,
     thumbs,
-    onPreviewTrack: (tt) => showcase.setTrack(tt),
+    onPreviewTrack: (tt) => { showcase.setTrack(tt); if (game.active === showcase) game.post?.setGrade(showcase.grade); },
     onPreviewCar: (c) => showcase.setCar(c),
     onPreviewDemo: (kind, cos) => showcase.setDemo(kind, cos),
   });
@@ -143,7 +143,7 @@ function goLobby(net) {
     onStart: startGame,
     onStartOnline: startOnlineGame,
     thumbs,
-    onPreviewTrack: (tt) => showcase.setTrack(tt),
+    onPreviewTrack: (tt) => { showcase.setTrack(tt); if (game.active === showcase) game.post?.setGrade(showcase.grade); },
     onPreviewCar: (c) => showcase.setCar(c),
     onPreviewDemo: (kind, cos) => showcase.setDemo(kind, cos),
   });

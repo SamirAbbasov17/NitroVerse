@@ -5,6 +5,8 @@ import { applyLegendaryFx } from './LegendaryFx.js';
 import { applyPaintPattern } from './PaintPatterns.js';
 import { disposeObject3D } from './MergeUtils.js';
 import { playFinishFx } from './FinishFx.js';
+import { Weather } from '../world/Weather.js';
+import { isTouchDevice } from './TouchControls.js';
 
 // Menyu arxa fonu: seçilmiş trekdə seçilmiş maşın, yavaş orbit kamera.
 // Menyudakı seçimlər dəyişdikcə canlı yenilənir — UI ilə oyun tam eyni görünür.
@@ -47,6 +49,11 @@ export class ShowcaseScene {
     this.trackGroup = this.track.build();
     this.scene.add(this.trackGroup);
     this.environment = new Environment(this.scene, trackData, this.track, this.renderer);
+    // Trekin havası menyuda da görünür (qar / yağış / köz) və cila preseti trekinkidir —
+    // seçim ekranı oyunun özü kimi görünsün
+    this.weather?.dispose();
+    this.weather = trackData.weather ? new Weather(this.scene, trackData.weather, { lite: isTouchDevice() }) : null;
+    this.grade = trackData.grade;
 
     this._placeCar();
   }
@@ -216,6 +223,7 @@ export class ShowcaseScene {
     const cz = this._carPos.z + Math.cos(this._angle) * r;
     this.camera.position.set(cx, 3.1, cz);
     this.camera.lookAt(this._carPos.x, 1.0, this._carPos.z);
+    this.weather?.update(dt, this.camera);
 
     // Telefonda menyu paneli solu örtür — maşını boş sahənin MƏRKƏZİNƏ sürüşdür
     if (small) {
@@ -233,6 +241,7 @@ export class ShowcaseScene {
     if (this.trackGroup) this.scene.remove(this.trackGroup);
     this.track?.dispose();
     this.environment?.dispose();
+    this.weather?.dispose(); this.weather = null;
     if (this.carRoot) this.scene.remove(this.carRoot);
     this._finDemo?.dispose(); this._finDemo = null;
     this._demoFlame = null;
