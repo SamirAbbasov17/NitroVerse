@@ -1,4 +1,5 @@
-// 10 maşın — Kenney Car Kit (CC0) modelləri. model: public/models/cars/<model>.glb
+// 18 maşın, hər birinin ÖZ gövdəsi. 8-i Kenney Car Kit (CC0) modelidir, 10-u öz generatorumuzla
+// qurulub (tools/models/build_cars.py — Faza 3.8b). model: public/models/cars/<model>.glb
 // bodyColor UI/minimap üçün modelin real dominant rəngidir.
 // stats 0-100: topSpeed (max sürət), accel (sürətlənmə), handling (dönmə), grip (yol tutumu)
 export const CARS = [
@@ -15,7 +16,8 @@ export const CARS = [
     id: 'titan',
     name: 'Titan Apex',
     class: 'Hyper',
-    model: 'race-future',
+    model: 'hyper',
+    tint: 0x4a6de5,
     bodyColor: 0x4a6de5,
     accentColor: 0x20242e,
     stats: { topSpeed: 95, accel: 83, handling: 60, grip: 66, armor: 35 },
@@ -24,7 +26,8 @@ export const CARS = [
     id: 'inferno',
     name: 'Inferno GT',
     class: 'Sport',
-    model: 'sedan-sports',
+    model: 'coupe',
+    tint: 0xe8442e,
     bodyColor: 0xe8442e,
     accentColor: 0x33111f,
     stats: { topSpeed: 84, accel: 74, handling: 74, grip: 72, armor: 50 },
@@ -94,54 +97,46 @@ export const CARS = [
   },
 ];
 
-// Rəngli variantlar — eyni CC0 modellər, fərqli boya (tint materialı klonlanır)
+// İkinci dalğa — hər birinin öz gövdəsi (əvvəl birinci dalğanın modelləri başqa rəngdə idi)
 CARS.push(
   {
-    id: 'lagoon', name: 'Laguna S', class: 'Sport', model: 'sedan-sports',
+    id: 'lagoon', name: 'Laguna S', class: 'GT', model: 'gt',
     tint: 0x21c9a8, bodyColor: 0x21c9a8, accentColor: 0x0e3a33,
-    kit: { wing: 'lip', skirt: true },
     stats: { topSpeed: 83, accel: 72, handling: 77, grip: 74, armor: 48 },
   },
   {
-    id: 'sunburst', name: 'Sunburst', class: 'Hot Hatch', model: 'hatchback-sports',
+    id: 'sunburst', name: 'Sunburst', class: 'Hot Hatch', model: 'hatch',
     tint: 0xffc21c, bodyColor: 0xffc21c, accentColor: 0x4a3505,
-    kit: { wing: 'spoiler', exhaust: true },
     stats: { topSpeed: 76, accel: 80, handling: 82, grip: 72, armor: 45 },
   },
   {
-    id: 'flamingo', name: 'Flamingo', class: 'Sedan', model: 'sedan',
+    id: 'flamingo', name: 'Flamingo', class: 'Muscle', model: 'muscle',
     tint: 0xff5fa2, bodyColor: 0xff5fa2, accentColor: 0x4a1029,
-    kit: { wing: 'lip', skirt: true, exhaust: true },
     stats: { topSpeed: 72, accel: 66, handling: 74, grip: 78, armor: 60 },
   },
   {
-    id: 'sequoia', name: 'Sequoia 4x4', class: 'Offroad', model: 'suv',
+    id: 'sequoia', name: 'Sequoia 4x4', class: 'Pikap', model: 'pickup',
     tint: 0x2e8b3a, bodyColor: 0x2e8b3a, accentColor: 0x0f2e14,
-    kit: { rails: true, bar: true },
     stats: { topSpeed: 66, accel: 62, handling: 66, grip: 88, armor: 75 },
   },
   {
-    id: 'crimson', name: 'Crimson Van', class: 'Van', model: 'van',
+    id: 'crimson', name: 'Crimson Van', class: 'Mikroavtobus', model: 'bus',
     tint: 0xc21f3a, bodyColor: 0xc21f3a, accentColor: 0x3d0a12,
-    kit: { rails: true, skirt: true },
     stats: { topSpeed: 62, accel: 62, handling: 68, grip: 84, armor: 88 },
   },
   {
-    id: 'midnight', name: 'Midnight LX', class: 'Lüks', model: 'suv-luxury',
+    id: 'midnight', name: 'Midnight LX', class: 'Lüks', model: 'limo',
     tint: 0x232c52, bodyColor: 0x38466e, accentColor: 0x11162b,
-    kit: { rails: true, exhaust: true },
     stats: { topSpeed: 78, accel: 68, handling: 70, grip: 80, armor: 68 },
   },
   {
-    id: 'violetta', name: 'Violetta R', class: 'Formula', model: 'race',
+    id: 'violetta', name: 'Violetta R', class: 'Prototip', model: 'proto',
     tint: 0x8a3df0, bodyColor: 0x8a3df0, accentColor: 0x2a1148,
-    kit: { pods: true, wing: 'lip' },
     stats: { topSpeed: 86, accel: 79, handling: 80, grip: 68, armor: 50 },
   },
   {
-    id: 'frost', name: 'Frost X', class: 'Hyper', model: 'race-future',
+    id: 'frost', name: 'Frost X', class: 'Konsept', model: 'concept',
     tint: 0x7fd4ff, bodyColor: 0x7fd4ff, accentColor: 0x2b3a4a,
-    kit: { pods: true, skirt: true },
     stats: { topSpeed: 92, accel: 86, handling: 64, grip: 68, armor: 38 },
   }
 );

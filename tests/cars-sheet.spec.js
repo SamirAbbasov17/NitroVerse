@@ -105,3 +105,44 @@ test('maşın cədvəli: sınaq gövdələri köhnə ilə yan-yana', async ({ pa
     });
   }
 });
+
+// Yeni gövdələrin hamısı bir cədvəldə (hər biri 3 bucaqdan, nəzərdə tutulan maşının rəngində):
+//   NEW=titan:hyper,lagoon:gt npx playwright test tests/cars-sheet.spec.js -g "yeni gövdələr"
+const NEW = (process.env.NEW || '').split(',').filter(Boolean).map((x) => x.split(':'));
+test('maşın cədvəli: yeni gövdələr', async ({ page }) => {
+  test.skip(!NEW.length, 'NEW=maşın:model,… ilə');
+  test.setTimeout(300_000);
+  await page.setViewportSize({ width: 640, height: 400 });
+  await boot(page);
+  await page.evaluate(() => {
+    const cv = document.querySelector('canvas');
+    document.querySelectorAll('body *').forEach((e) => { if (e !== cv && !e.contains(cv)) e.style.visibility = 'hidden'; });
+  });
+  await page.evaluate((mdls) => window.__showcase.library.loadCars(mdls), [...new Set(NEW.map((x) => x[1]))]);
+  const cells = [];
+  for (const [carId, model] of NEW) {
+    const car = CARS.find((c) => c.id === carId);
+    for (const [view, side, up, fwd] of [['ön-yan', 4.4, 2.0, 4.8], ['yan', 7.0, 1.3, 0.2], ['arxa-yan', -4.4, 2.4, -5.0]]) {
+      await page.evaluate(([c, sd, h, fw]) => {
+        const sc = window.__showcase;
+        sc.setCar(c);
+        sc.__upd = sc.__upd || sc.update;
+        sc.update = (dt) => {
+          sc.__upd.call(sc, dt);
+          const p = sc.carRoot.position, a = sc._carHeading;
+          const s = Math.sin(a), co = Math.cos(a);
+          sc.camera.position.set(p.x + co * sd + s * fw, h, p.z - s * sd + co * fw);
+          sc.camera.lookAt(p.x, 0.7, p.z);
+        };
+      }, [{ ...car, model, kit: null }, side, up, fwd]);
+      await page.waitForTimeout(300);
+      cells.push({ cap: `${car.name} · ${model} · ${view}`, b64: (await page.screenshot({ type: 'jpeg', quality: 88 })).toString('base64') });
+    }
+  }
+  await page.setViewportSize({ width: 1920, height: 1000 });
+  await page.setContent(`<style>body{margin:0;background:#111;display:grid;grid-template-columns:repeat(6,1fr);gap:3px;padding:3px;font:12px sans-serif;color:#eee}
+    figure{margin:0;position:relative}img{width:100%;display:block}figcaption{position:absolute;left:5px;bottom:3px;text-shadow:0 0 4px #000}</style>`
+    + cells.map((c) => `<figure><img src="data:image/jpeg;base64,${c.b64}"><figcaption>${c.cap}</figcaption></figure>`).join(''));
+  await page.waitForTimeout(400);
+  fs.writeFileSync(path.join(DIR, 'new-bodies.png'), await page.screenshot({ fullPage: true }));
+});
