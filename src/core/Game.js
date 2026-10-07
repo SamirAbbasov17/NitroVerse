@@ -4,6 +4,8 @@ import { PostFX } from './PostFX.js';
 
 // Renderer + əsas loop mühərriki. Aktiv "scene" obyektini idarə edir.
 // Aktiv scene interfeysi: { scene: THREE.Scene, camera: THREE.Camera, update(dt), dispose() }
+const readQuality = () => { try { return localStorage.getItem('apexQuality') || ''; } catch { return ''; } };
+
 export class Game {
   constructor(canvas) {
     this.canvas = canvas;
@@ -14,7 +16,10 @@ export class Game {
     });
     // Mobildə performans: aşağı pixel ratio + kölgəsiz render
     const touch = isTouchDevice();
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, touch ? 1.5 : 2));
+    // Keyfiyyət pilləsi (Ayarlar → Qrafika): görüntünün dəqiqliyi. 'high' əvvəlki standartdır.
+    this._touch = touch;
+    this.quality = ['mid', 'low'].includes(readQuality()) ? readQuality() : 'high';
+    this.renderer.setPixelRatio(this._ratioCap());
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = !touch;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -78,6 +83,21 @@ export class Game {
   // BİR pillə endirilir (2 → 1.5 → 1.25). Yalnız aşağı enir (osilasiya
   // yoxdur), yalnız görünən tabda və səhnənin ilk 6 saniyəsindən sonra —
   // yüklənmə sıçrayışları ölçüyə düşmür. Güclü cihaza heç vaxt toxunmur.
+  // Pillənin piksel nisbəti tavanı (telefonda bir pillə aşağı)
+  _ratioCap() {
+    const cap = { high: this._touch ? 1.5 : 2, mid: this._touch ? 1.25 : 1.5, low: 1 }[this.quality];
+    return Math.min(window.devicePixelRatio, cap);
+  }
+
+  setQuality(q) {
+    if (!['high', 'mid', 'low'].includes(q)) return;
+    this.quality = q;
+    try { localStorage.setItem('apexQuality', q); } catch { /* gizli rejim */ }
+    this.renderer.setPixelRatio(this._ratioCap());
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.post?.resize();
+  }
+
   _adapt(rawDt) {
     if (document.visibilityState !== 'visible' || rawDt > 0.1) { return; }
     const A = (this._ad ||= { t: 0, n: 0, yavaş: 0, isti: 0 });

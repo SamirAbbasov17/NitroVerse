@@ -40,8 +40,9 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
 // Sol panel menyu — arxa fonda canlı 3D showcase (main.js idarə edir).
 // Seçimlər dəyişdikcə onPreviewTrack/onPreviewCar çağırılır.
 export class Menu {
-  constructor(root, { onStart, onStartOnline, thumbs = {}, onPreviewTrack, onPreviewCar, onPreviewDemo }) {
+  constructor(root, { onStart, onStartOnline, thumbs = {}, onPreviewTrack, onPreviewCar, onPreviewDemo, gfx = null }) {
     this.root = root;
+    this.gfx = gfx;
     this.onStart = onStart;
     this.onStartOnline = onStartOnline;
     this.thumbs = thumbs;
@@ -1715,21 +1716,67 @@ export class Menu {
 
   // ————— Kömekçilər —————
 
-  // SƏS AYARLARI (Faza 4.5): musiqi və effektlər ayrıca; telefonda səsi bağlamağın yeganə yeri
-  // budur (üzən 🔊 düyməsi toxunma ekranında gizlidir).
-  _soundPanel(anchor) {
-    const old = document.querySelector('.snd-pop');
-    if (old) { old.remove(); return; }
-    const pop = document.createElement('div');
-    pop.className = 'snd-pop';
-    pop.innerHTML = `<div class="snd-pop__title">${t('snd.title')}</div>${soundControlsHTML()}`;
-    document.body.appendChild(pop);
-    const r = anchor.getBoundingClientRect();
-    pop.style.top = Math.min(window.innerHeight - pop.offsetHeight - 8, r.bottom + 8) + 'px';
-    pop.style.left = Math.max(8, Math.min(window.innerWidth - pop.offsetWidth - 8, r.right - pop.offsetWidth)) + 'px';
-    bindSoundControls(pop, (m) => { anchor.textContent = m ? '🔇' : '🔊'; });
-    const close = (e) => { if (!pop.contains(e.target) && e.target !== anchor) { pop.remove(); document.removeEventListener('pointerdown', close, true); } };
-    document.addEventListener('pointerdown', close, true);
+  // AYARLAR (Faza 5.4): səs, qrafika, idarə və dil bir ekranda. Əvvəl səs ayrıca pəncərədə,
+  // dil ayrıca düymədə idi, qrafika açarları isə yalnız localStorage-dan dəyişirdi. Dəyişiklik
+  // dərhal tətbiq olunur və yadda qalır (ayrıca "Saxla" yoxdur).
+  showSettings(tab = null) {
+    this._here = 'settings';
+    this._stopRoomsPoll?.();
+    this._setTab = tab || this._setTab || 'sound';
+    const g = this.gfx;
+    const cam = ['fps', 'hood'].includes(localStorage.getItem('apexCamMode')) ? localStorage.getItem('apexCamMode') : 'tps';
+    const opt = (attr, val, label, on) => `<button class="set-opt ${on ? 'is-selected' : ''}" ${attr}="${val}">${label}</button>`;
+    const row = (title, desc, inner) => `
+      <div class="set-row">
+        <div class="set-row__txt"><b>${title}</b>${desc ? `<span>${desc}</span>` : ''}</div>
+        <div class="set-row__opts">${inner}</div>
+      </div>`;
+    const onOff = (key, on) => opt('data-tg', key + ':1', t('set.on'), on) + opt('data-tg', key + ':0', t('set.off'), !on);
+    const tabs = [['sound', 'set.tab.sound'], ['gfx', 'set.tab.gfx'], ['ctl', 'set.tab.ctl'], ['lang', 'set.tab.lang']]
+      .map(([k, key]) => `<button class="set-tab ${k === this._setTab ? 'is-selected' : ''}" data-set-tab="${k}">${t(key)}</button>`).join('');
+    let body;
+    if (this._setTab === 'sound') {
+      body = soundControlsHTML();
+    } else if (this._setTab === 'gfx') {
+      body = row(t('set.quality'), t('set.qualityDesc'),
+        ['high', 'mid', 'low'].map((q) => opt('data-q', q, t('set.q.' + q), (g?.quality || 'high') === q)).join(''))
+        + (g?.hasPost
+          ? row(t('set.post'), t('set.postDesc'), onOff('post', g.post))
+            + row(t('set.speedFx'), t('set.speedFxDesc'), onOff('speedFx', g.speedFx && g.post))
+          : `<div class="set-note">${t('set.mobileNote')}</div>`);
+    } else if (this._setTab === 'ctl') {
+      body = row(t('set.cam'), t('set.camDesc'),
+        ['tps', 'fps', 'hood'].map((c) => opt('data-cam', c, t('set.cam.' + c), cam === c)).join(''))
+        + (window.matchMedia?.('(pointer: fine)').matches ? `<div class="set-keys">${t('hint')}</div>` : `<div class="set-note">${t('set.touchNote')}</div>`);
+    } else {
+      body = `<div class="set-langs">${LANGS.map((l) => `
+        <button class="set-opt set-opt--lang ${l === getLang() ? 'is-selected' : ''}" data-l="${l}"><b>${l.toUpperCase()}</b>${LANG_NAMES[l]}</button>`).join('')}</div>`;
+    }
+    this._panel({
+      step: '⚙️', stepLabel: t('set.step'), title: t('set.title'), sub: t('set.sub'),
+      body: `<div class="set-tabs">${tabs}</div><div class="menu-list menu-list--scroll set-body">${body}</div>`,
+      nav: `<button class="btn btn--ghost" data-back>${t('ui.back')}</button>`,
+    });
+    const q = (sel) => this.root.querySelectorAll(sel);
+    this.root.querySelector('[data-back]').onclick = () => this.showModes();
+    q('[data-set-tab]').forEach((b) => { b.onclick = () => this.showSettings(b.dataset.setTab); });
+    bindSoundControls(this.root.querySelector('.set-body'));
+    q('[data-q]').forEach((b) => { b.onclick = () => { g?.setQuality(b.dataset.q); this.showSettings(); }; });
+    q('[data-tg]').forEach((b) => {
+      b.onclick = () => {
+        const [key, v] = b.dataset.tg.split(':');
+        if (key === 'post') g?.setPost(v === '1');
+        if (key === 'speedFx') { if (v === '1') g?.setPost(true); g?.setSpeedFx(v === '1'); }   // sürət effekti cilanın içindədir
+        this.showSettings();
+      };
+    });
+    q('[data-cam]').forEach((b) => { b.onclick = () => { localStorage.setItem('apexCamMode', b.dataset.cam); this.showSettings(); }; });
+    q('[data-l]').forEach((b) => {
+      b.onclick = () => {
+        try { sessionStorage.setItem('apexReopen', 'settings'); } catch { /* gizli rejim */ }
+        setLang(b.dataset.l);
+      };
+    });
   }
 
   // HESAB TƏLƏB EDƏN ƏMƏLİYYAT: ekranın yuxarısında aydın bildiriş çıxır — nəyə görə alınmadı
@@ -1781,7 +1828,7 @@ export class Menu {
               <button class="menu-sound" data-msgs title="${t('msgs.title')}">✉️</button>
               <button class="menu-sound" data-lang title="Dil / Language">${getLang().toUpperCase()}</button>
               <button class="menu-sound" data-garage title="Qaraj">🏎️</button>
-              <button class="menu-sound" data-snd title="${t('snd.title')}">${audio.muted ? '🔇' : '🔊'}</button>
+              <button class="menu-sound" data-settings title="${t('set.title')}">⚙️</button>
             </div>
           </div>
           <div class="menu-step"><b>${step}</b><i></i>${stepLabel.toUpperCase()}</div>
@@ -1800,8 +1847,8 @@ export class Menu {
           <div class="menu-hint">${t('hint')}</div>` : ''}
         </aside>
       </div>`;
-    const sndb = this.root.querySelector('[data-snd]');
-    if (sndb) sndb.onclick = (e) => { e.stopPropagation(); this._soundPanel(sndb); };
+    const setb = this.root.querySelector('[data-settings]');
+    if (setb) setb.onclick = () => this.showSettings();
     const bugb = this.root.querySelector('[data-bug]');
     if (bugb) bugb.onclick = () => this.showBugReport();
     const inb = this.root.querySelector('[data-inbox]');

@@ -226,6 +226,7 @@ Araşdırma (arkada yarışlarında sürət hissini nə verir): (1) kənarların
 | 5.6 | Nəticə ekranı: dövrə vaxtları, ən yaxşı dövrə, şəxsi rekord | | S |
 | 5.7 | Yüklənmə: JS 1.15 MB tək parça → rejimə görə bölmə; ilk ekrana qədər vaxt ölçülür | `BASELINE.md` §1 | S |
 
+- **5.4 ✅ (2026-10-07)** — Ayarlar ekranı (başlıqdakı ⚙; səs pəncərəsini əvəz edir): Səs (musiqi/effekt/bağla), Qrafika (keyfiyyət pilləsi = piksel nisbəti tavanı `apexQuality`; masaüstündə cila və sürət effektləri açarı), İdarə (başlanğıc kamerası, düymə siyahısı), Dil (dəyişəndən sonra ayarlara qayıdır). Dəyişiklik dərhal tətbiq olunur. Test: `npm run test:settings` (masaüstü + 844×390, az/ru).
 - **5.7 ✅ (2026-10-07)** — dörd oyun səhnəsi ayrıca parçadır, menyudan sonra arxa fonda yüklənir (`main.js` → `ensureScene`). İlk JS 1300 → 1066 KB; menyuya qədər vaxt yavaş telefon şərtində (4G, CPU 4×) median 5.36 → 5.00 s. Qazanc kiçikdir: qalan 1066 KB-ın çoxu Three.js və ortaq koddur. Ölçmə: `npm run build && npx playwright test tests/load.spec.js`.
 
 ## Faza 6 — Platforma (Carmageddon-a hazırlıq)

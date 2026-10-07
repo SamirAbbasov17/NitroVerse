@@ -40,6 +40,7 @@
     "test:arena": "playwright test tests/arena.spec.js",
     "test:zen-steer": "playwright test tests/zen-steer.spec.js",
     "test:session": "playwright test tests/session.spec.js",
+    "test:settings": "playwright test tests/settings.spec.js",
     "test:load": "npm run build && playwright test tests/load.spec.js"
   },
   "dependencies": {

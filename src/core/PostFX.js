@@ -20,7 +20,7 @@ import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
 // Three.js yenilənəndə bu yer yoxlanmalıdır (`npm run test:postfx`).
 // EffectComposer işlədilmir: iki tam ölçülü hədəf saxlayır, burada biri kifayətdir.
 //
-// Oyunçu söndürə bilər: localStorage `apexPost` = '0' (ayarlar düyməsi Faza 5-də).
+// Oyunçu söndürə bilər: Ayarlar → Qrafika (localStorage `apexPost` = '0').
 //
 // SÜRƏT HİSSİ (2026-10-07, istifadəçi tələbi: "PC-də hissiyatı artırmaq üçün filtr/post").
 // Arkada yarışlarında sürət hissini verən əsas ekran effektləri: kənarların radial bulanması
@@ -135,6 +135,11 @@ export class PostFX {
     // Çalar ekran fəzasında vurulur — rəng idarəetməsi çevirməsin
     u.uShadows.value.setHex(g.shadows, THREE.NoColorSpace);
     u.uHighlights.value.setHex(g.highlights, THREE.NoColorSpace);
+  }
+
+  setSpeedFx(on) {
+    this.speedFx = !!on;
+    try { localStorage.setItem('apexSpeedFx', on ? '1' : '0'); } catch { /* gizli rejim */ }
   }
 
   setEnabled(on) {

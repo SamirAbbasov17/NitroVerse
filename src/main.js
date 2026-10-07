@@ -152,11 +152,27 @@ function goMenu() {
     onPreviewTrack: (tt) => { showcase.setTrack(tt); if (game.active === showcase) game.post?.setGrade(showcase.grade); },
     onPreviewCar: (c) => showcase.setCar(c),
     onPreviewDemo: (kind, cos) => showcase.setDemo(kind, cos),
+    gfx,
   });
   activeMenu = menu;
   if (import.meta.env.DEV) window.__menu = menu;
   menu.showModes();
+  // dil dəyişəndə səhifə yenilənir — oyunçu ayarlar ekranına qaytarılır
+  try {
+    if (sessionStorage.getItem('apexReopen') === 'settings') { sessionStorage.removeItem('apexReopen'); menu.showSettings('lang'); }
+  } catch { /* gizli rejim */ }
 }
+
+// Ayarlar ekranının qrafika körpüsü (Menu oyunu birbaşa tanımır)
+const gfx = {
+  get hasPost() { return !!game.post; },
+  get post() { return !!game.post?.enabled; },
+  setPost: (on) => game.post?.setEnabled(on),
+  get speedFx() { return !!game.post?.speedFx; },
+  setSpeedFx: (on) => game.post?.setSpeedFx(on),
+  get quality() { return game.quality; },
+  setQuality: (q) => game.setQuality(q),
+};
 
 // ————— Onlayn: eyni otağın lobbisinə qayıt (bağlantılar qalır) —————
 function goLobby(net) {
@@ -176,6 +192,7 @@ function goLobby(net) {
     onPreviewTrack: (tt) => { showcase.setTrack(tt); if (game.active === showcase) game.post?.setGrade(showcase.grade); },
     onPreviewCar: (c) => showcase.setCar(c),
     onPreviewDemo: (kind, cos) => showcase.setDemo(kind, cos),
+    gfx,
   });
   menu.net = net;
   menu._lobbyCarId = net.players.find((p) => p.id === net.selfId)?.carId || null;
