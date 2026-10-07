@@ -1054,6 +1054,37 @@ export class ArenaScene {
       steer: Math.max(-1, Math.min(1, -err * 2.4)),
       handbrake: false,
     };
+    // MANEƏDƏN YAYINMA. Əvvəl bot sütuna düz sürür və toqquşmanın geri atması onu
+    // qurtarırdı; indi toqquşma geri atmır (bax "Divar + maneə") və bot sütuna söykənib
+    // qalırdı (ölçüldü: vaxtın 8%-i, 5.6 s-ə qədər). Qabaqdakı ən yaxın maneə yolun
+    // üstündədirsə, bot onun boş tərəfinə burulur.
+    {
+      const fx = Math.sin(car.heading), fz = Math.cos(car.heading);
+      const look = 8 + Math.abs(car.vF) * 0.55;
+      let bestAhead = look, side = 0;
+      for (const o of this.obstacles) {
+        const dx = o.x - myPos.x, dz = o.z - myPos.z;
+        const ahead = dx * fx + dz * fz;
+        if (ahead < 0 || ahead - o.r > bestAhead) continue;
+        const lat = dx * fz - dz * fx;                 // + : maneə sağdadır
+        if (Math.abs(lat) > o.r + 2.4) continue;       // yolun üstündə deyil
+        bestAhead = ahead - o.r; side = lat >= 0 ? 1 : -1;
+      }
+      if (side) {
+        // maneədən əks tərəfə burul. `lat` > 0 maneənin (fz, −fx) tərəfində olması deməkdir;
+        // oradan uzaqlaşmaq üçün heading azalmalıdır, yəni steer müsbət (heading -= steer)
+        const güc = 1 - Math.max(0, bestAhead) / look;
+        drive.steer = Math.max(-1, Math.min(1, drive.steer + side * (0.6 + 0.9 * güc)));
+        if (bestAhead < 6) drive.throttle = Math.min(drive.throttle, 0.5);
+      }
+    }
+    // İLİŞMƏ: 0.6 s yerində qalıbsa 0.9 s geri çəkilib burulur
+    r._stuckT = Math.abs(car.vF) < 1.5 && drive.throttle > 0 ? (r._stuckT || 0) + dt : 0;
+    if (r._stuckT > 0.6) { r._backT = 0.9; r._backSide = Math.random() < 0.5 ? -1 : 1; r._stuckT = 0; }
+    if ((r._backT || 0) > 0) {
+      r._backT -= dt;
+      drive.throttle = -1; drive.steer = r._backSide;
+    }
     car.update(dt, drive, this._fakeTrack);
     // Atəş: raket + düşmən yaxın + nişan tutulub
     if (r.item === 'missile' && enemy && ed < 42) {

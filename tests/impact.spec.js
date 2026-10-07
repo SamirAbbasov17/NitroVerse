@@ -166,3 +166,32 @@ for (const mode of ['arena', 'football']) {
     expect(r.camPush, 'kamera həddən artıq itələnmir (m)').toBeLessThan(0.5);
   });
 }
+
+// Arena botları maneəyə söykənib qalmamalıdır (toqquşma artıq geri atmır — bot özü yayınır
+// və ilişəndə geri çəkilir). Köhnə toqquşma ilə: pay 1%, ən uzun 0.6 s; yayınmasız yeni: 8.4%, 5.6 s.
+test('impact: arena botları ilişmir', async ({ page }) => {
+  test.setTimeout(120_000);
+  await boot(page);
+  await startMode(page, MODES.find((m) => m.name === 'arena').config);
+  const r = await page.evaluate(async () => {
+    const sc = window.__active;
+    let n = 0, slow = 0, longest = 0;
+    const run = new Map();
+    const end = performance.now() + 40000;
+    while (performance.now() < end) {
+      await new Promise((res) => setTimeout(res, 200));
+      if (sc._state !== 'play') continue;
+      for (const c of sc.cars) {
+        if (c === sc.playerCar || c.alive === false) continue;
+        n++;
+        if (c.velocity.length() < 1.5) { slow++; run.set(c, (run.get(c) || 0) + 0.2); longest = Math.max(longest, run.get(c)); } else run.set(c, 0);
+      }
+    }
+    return { n, slowShare: +(slow / Math.max(1, n)).toFixed(3), longestStuckS: +longest.toFixed(1) };
+  });
+  mergeJson('impact.json', 'arenaBots', r);
+  console.log(`arena botları: nümunə ${r.n} · yavaş pay ${r.slowShare} · ən uzun ilişmə ${r.longestStuckS} s`);
+  expect(r.n).toBeGreaterThan(300);
+  expect(r.slowShare, 'botların dayanıq qaldığı vaxt payı').toBeLessThan(0.08);
+  expect(r.longestStuckS, 'ən uzun ilişmə (s)').toBeLessThan(3);
+});
