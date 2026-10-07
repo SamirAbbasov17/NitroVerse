@@ -10,10 +10,6 @@ import { POWERUP_TYPES } from './race/PowerUpManager.js';
 import { CAR_MODELS, CARS } from './data/cars.js';
 import { Menu } from './ui/Menu.js';
 import { Results } from './ui/Results.js';
-import { GameplayScene } from './core/GameplayScene.js';
-import { EndlessScene } from './core/EndlessScene.js';
-import { FootballScene } from './core/FootballScene.js';
-import { ArenaScene } from './core/ArenaScene.js';
 import { auth } from './net/Auth.js';
 import { social } from './net/Social.js';
 import { Notices } from './ui/Notices.js';
@@ -28,6 +24,31 @@ audio.packProvider = () => {
   return id && isCosmeticOwned(id, auth.profile) ? id : null;
 };
 auth.onChange(() => audio.refreshMusicPack());   // giriş/çıxışda seçim dəyişir
+
+// SƏHNƏLƏR AYRICA YÜKLƏNİR (Faza 5.7): dörd oyun səhnəsi ilk yükləmədə gəlmir — menyu
+// açılandan sonra arxa fonda yüklənir. Oyunçu ondan tez "Başla"ya bassa, start həmin
+// parçanı gözləyir (bax ensureScene). Başlatma funksiyaları sinxron qalır.
+const Scenes = {};
+const SCENE_LOADERS = {
+  race: () => import('./core/GameplayScene.js').then((m) => m.GameplayScene),
+  free: () => import('./core/EndlessScene.js').then((m) => m.EndlessScene),
+  football: () => import('./core/FootballScene.js').then((m) => m.FootballScene),
+  arena: () => import('./core/ArenaScene.js').then((m) => m.ArenaScene),
+};
+const scenePending = {};
+function loadScene(mode) {
+  const key = SCENE_LOADERS[mode] ? mode : 'race';
+  scenePending[key] = scenePending[key] || SCENE_LOADERS[key]().then((C) => { Scenes[key] = C; return C; });
+  return scenePending[key];
+}
+// Səhnə hazırdırsa true; deyilsə yüklənmə göstərir, bitəndə `retry`-ı çağırır və false qaytarır
+function ensureScene(mode, retry) {
+  const key = SCENE_LOADERS[mode] ? mode : 'race';
+  if (Scenes[key]) return true;
+  uiRoot.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  loadScene(key).then(retry, () => { scenePending[key] = null; goMenu(); });
+  return false;
+}
 
 const canvas = document.getElementById('game-canvas');
 const uiRoot = document.getElementById('ui-root');
@@ -165,6 +186,7 @@ function goLobby(net) {
 
 // ————— Onlayn yarış —————
 function startOnlineGame(net, startMsg) {
+  if (!ensureScene(startMsg.mode, () => startOnlineGame(net, startMsg))) return;
   tryLandscapeFullscreen();
   activeMenu = null;
   social.setActivity('idle');
@@ -175,7 +197,7 @@ function startOnlineGame(net, startMsg) {
     game.setActive(null);
     audio.playMusic('race');
     audio.startEngine();
-    const ar = new ArenaScene(
+    const ar = new Scenes.arena(
       { mode: 'arena', carId: me?.carId || 'blaze', online: { net, players: startMsg.players } },
       {
         input, uiRoot, renderer: game.renderer, library,
@@ -193,7 +215,7 @@ function startOnlineGame(net, startMsg) {
     game.setActive(null);
     audio.playMusic('race');
     audio.startEngine();
-    const fb = new FootballScene(
+    const fb = new Scenes.football(
       { mode: 'football', carId: me?.carId || 'blaze', online: { net, players: startMsg.players } },
       {
         input, uiRoot, renderer: game.renderer, library,
@@ -216,7 +238,7 @@ function startOnlineGame(net, startMsg) {
   game.setActive(null); // köhnə dispose → stopEngine burada olur
   audio.playMusic('race');
   audio.startEngine();
-  const scene = new GameplayScene(config, {
+  const scene = new Scenes.race(config, {
     input,
     uiRoot,
     renderer: game.renderer,
@@ -243,6 +265,7 @@ function startOnlineGame(net, startMsg) {
 }
 
 function startGame(config) {
+  if (!ensureScene(config.mode, () => startGame(config))) return;
   tryLandscapeFullscreen();
   activeMenu = null;
   social.setActivity('idle');
@@ -254,7 +277,7 @@ function startGame(config) {
   if (config.mode === 'arena') {
     audio.playMusic('race');
     audio.startEngine();
-    const ar = new ArenaScene(config, {
+    const ar = new Scenes.arena(config, {
       input, uiRoot, renderer: game.renderer, library, onQuit: goMenu,
       onRestart: () => startGame(config),
     });
@@ -265,7 +288,7 @@ function startGame(config) {
   if (config.mode === 'football') {
     audio.playMusic('race');
     audio.startEngine();
-    const fb = new FootballScene(config, {
+    const fb = new Scenes.football(config, {
       input, uiRoot, renderer: game.renderer, library, onQuit: goMenu,
       onRestart: () => startGame(config),
     });
@@ -275,7 +298,7 @@ function startGame(config) {
   // SƏRBƏST SÜRÜŞ 2.0 — sonsuz zen rejimi (lofi musiqini səhnə özü qoşur)
   if (config.mode === 'free') {
     audio.startEngine();
-    const zen = new EndlessScene(config, {
+    const zen = new Scenes.free(config, {
       input, uiRoot, renderer: game.renderer, library, onQuit: goMenu,
     });
     game.setActive(zen);
@@ -283,7 +306,7 @@ function startGame(config) {
   }
   audio.playMusic('race');
   audio.startEngine();
-  const scene = new GameplayScene(config, {
+  const scene = new Scenes.race(config, {
     input,
     uiRoot,
     renderer: game.renderer,
@@ -339,6 +362,8 @@ async function boot() {
   }
   await authReady; // profil çipi ilk açılışdan düzgün görünsün
   goMenu();
+  // menyu göründü → oyun səhnələrini arxa fonda yüklə (ardıcıl, menyunu ləngitməsin)
+  setTimeout(async () => { for (const m of Object.keys(SCENE_LOADERS)) await loadScene(m).catch(() => null); }, 600);
 }
 
 boot();
