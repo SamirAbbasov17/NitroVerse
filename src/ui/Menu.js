@@ -1109,7 +1109,7 @@ export class Menu {
   }
 
   // ————— QARAJ: kosmetika mağazası (boya · disk · alov · tüstü) —————
-  showCosmetics(notice = '', opts = {}) {
+  showCosmetics(notice = '') {
     this._here = 'garage';
     this._garage = true;
     this._preview();
@@ -1192,7 +1192,6 @@ export class Menu {
           <button class="btn np__stop" data-npstop title="${t('cos.stop')}">■</button>
         </div>`;
     }
-    const loginBtn = opts.login ? `<button class="btn" data-coslogin>${t('auth.chip')}</button>` : '';
 
     this._panel({
       step: '🏎️', stepLabel: '🏎️',
@@ -1207,12 +1206,11 @@ export class Menu {
       body: `<div class="menu-seg menu-seg--wrap" style="margin-bottom:10px">${tabs}</div>
              ${nowCard}
              <div class="menu-list menu-list--scroll">${rows}</div>`,
-      nav: `${loginBtn}<button class="btn btn--primary" data-back>${t('garage.done')}</button>`,
+      nav: `<button class="btn btn--primary" data-back>${t('garage.done')}</button>`,
     });
     const stopPreview = () => { this._musicPreview = null; audio.previewPack(null); };
     const q = (sel) => this.root.querySelector(sel);
-    if (q('[data-coslogin]')) q('[data-coslogin]').onclick = () => { stopPreview(); this.showAuth(t('cos.needAcc')); };
-    if (q('[data-nplogin]')) q('[data-nplogin]').onclick = () => { stopPreview(); this.showAuth(t('cos.needAcc')); };
+    if (q('[data-nplogin]')) q('[data-nplogin]').onclick = () => this._needAccount('acc.needItem', { n: cosText(cosmeticById(this._musicPreview)) });
     if (q('[data-npstop]')) q('[data-npstop]').onclick = () => { stopPreview(); this.showCosmetics(); };
     if (q('[data-npuse]')) q('[data-npuse]').onclick = async () => {
       const id = this._musicPreview;
@@ -1282,7 +1280,7 @@ export class Menu {
         }
         // Qonaq: əvvəl birbaşa giriş ekranına atırdı ("birdən başqa yerə düşürəm"). İndi yerində
         // bildiriş çıxır, giriş ayrıca düymə ilədir.
-        if (!auth.isLoggedIn) { this.showCosmetics('🔒 ' + t('cos.needAcc'), { login: true }); return; }
+        if (!auth.isLoggedIn) { this._needAccount('acc.needItem', { n: cosText(it) }); return; }
         if ((auth.profile?.gold ?? 0) < it.price) {
           this.showCosmetics('🪙 ' + t('cars.goldShort', { p: it.price, g: auth.profile.gold }));
           return;
@@ -1371,7 +1369,7 @@ export class Menu {
           return;
         }
         // Kilidli maşın
-        if (!auth.isLoggedIn) { this.showAuth(t('auth.needCar')); return; }
+        if (!auth.isLoggedIn) { this._needAccount('acc.needCar', { n: getCarById(id).name }); return; }
         const price = CAR_PRICES[id];
         if ((auth.profile?.gold ?? 0) < price) {
           this.showCars('🪙 ' + t('cars.goldShort', { p: price, g: auth.profile.gold }));
@@ -1701,6 +1699,20 @@ export class Menu {
   }
 
   // ————— Kömekçilər —————
+
+  // HESAB TƏLƏB EDƏN ƏMƏLİYYAT: ekranın yuxarısında aydın bildiriş çıxır — nəyə görə alınmadı
+  // və nə etmək lazımdır, yanında "Daxil ol" düyməsi. Oyunçu olduğu yerdə qalır (əvvəl ya
+  // soruşmadan giriş ekranına atılırdı, ya da demək olar gözə dəyməyən kiçik yazı çıxırdı —
+  // istifadəçi rəyi: "klikləyəndə heç nə olmur").
+  _needAccount(key, vars = null) {
+    window.__notices?.show({
+      icon: '🔒',
+      text: t(key, vars) + ' ' + t('acc.why'),
+      life: 9,
+      actions: [{ label: t('auth.chip'), primary: true, onClick: () => { this._musicPreview = null; audio.previewPack(null); this.showAuth(); } }],
+    });
+    audio.sfx('discard');
+  }
 
   _panel({ step, stepLabel, title, sub, body, nav, hint, foot }) {
     // EYNİ EKRANIN YENİLƏNMƏSİ (qarajda əşyaya toxunmaq, bildiriş göstərmək) yeni ekrana
