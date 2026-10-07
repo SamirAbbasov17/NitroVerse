@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { test } from '@playwright/test';
-import { MODES, OUT, boot, startMode, drive, autopilot, ensureDir } from './helpers.js';
+import { MODES, OUT, boot, startMode, drive, autopilot, ensureDir, measure, mergeJson } from './helpers.js';
 
 // Kadr toplayıcı — heç nə təsdiqləmir, yalnız baxmaq üçün material yaradır.
 // Kadrlara BAXMADAN vizual iş "hazır" sayılmır (docs/TESTING.md).
@@ -313,12 +313,30 @@ test.describe('mobil', () => {
     await menuShots(page, 'm');
   });
 
-  for (const name of ['race-desert', 'zen', 'football', 'arena']) {
+  for (const name of ['race-desert', 'race-frost', 'race-autumn', 'race-lava', 'zen', 'football', 'arena']) {
     test(`shots: mobil HUD ${name}`, async ({ page }) => {
       await boot(page);
       await startMode(page, MODES.find((m) => m.name === name).config);
       await drive(page, 7000);
       await shot(page, `m-${name}-hud`);
+      // mobil konfiqurasiyada (cila yox, kölgə yox, yüngül hava) yük — real telefon DEYİL, emulyasiyadır
+      const r = await measure(page, 4000);
+      mergeJson('perf-mobile.json', name, r);
+      console.log(`mobil ${name.padEnd(12)} draw call ${r.drawCallsP50} · üçbucaq ${r.triangles} · CPU p99 ${r.costP99} ms`);
     });
   }
+
+  // Trek siyahısı ən uzun mətnlərlə (rus dili) — adlar və təsvirlər sətrə sığır
+  test('shots: trek siyahısı (mobil, ru)', async ({ page }) => {
+    await boot(page, { lang: 'ru' });
+    await page.evaluate(() => { const m = window.__menu; m.sel.mode = 'race'; m.showTracks(); });
+    await page.waitForTimeout(900);
+    await shot(page, 'm-menu-tracks-ru');
+    await page.evaluate(() => { const l = document.querySelector('.mrow:last-child'); l?.scrollIntoView(); });
+    await page.waitForTimeout(500);
+    await shot(page, 'm-menu-tracks-ru-son');
+    const clipped = await page.evaluate(() => [...document.querySelectorAll('.mrow__title, .mrow__desc')]
+      .filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.textContent));
+    console.log('sığmayan mətnlər:', JSON.stringify(clipped));
+  });
 });

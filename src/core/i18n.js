@@ -6,6 +6,8 @@ export const LANG_NAMES = { az: 'Azərbaycan', en: 'English', ru: 'Русски�
 
 const D = {
   az: {
+    // Trek adları və təsvirləri (src/data/tracks.js-dəki `name`/`theme` yalnız ehtiyatdır)
+    'trk.desert': 'Qürub Səhrası', 'trk.desert.d': 'İsti qum düzləri, uzun virajlar', 'trk.neon': 'Neon Şəhər', 'trk.neon.d': 'Gecə şəhəri, texniki döngələr', 'trk.alpine': 'Alp Meşəsi', 'trk.alpine.d': 'Şam meşəsi, uzun sürətli xətt', 'trk.canyon': 'Qızıl Kanyon', 'trk.canyon.d': 'Uzun dolanbac dərə, şaxələnən yollar', 'trk.riviera': 'Riviera Qürubu', 'trk.riviera.d': 'Sahil qəsəbəsi, ən uzun marşrut', 'trk.zavod': 'Zavod', 'trk.zavod.d': 'Lazerlər · təhlükə · CAN sistemi', 'trk.frost': 'Buz Zirvəsi', 'trk.frost.d': 'Qarlı aşırım · buz maneələri · sürüşkən buz', 'trk.autumn': 'Payız Meşəsi', 'trk.autumn.d': 'Yağışlı meşə yolu · axıcı döngələr · şaxə cığırlar', 'trk.lava': 'Vulkan', 'trk.lava.d': 'Lava çölü · alov qapıları · bazalt maneələr',
     'ui.continue': 'Davam et', 'ui.back': 'Geri', 'ui.start': 'Başla',
     'ui.again': 'Yenidən', 'ui.menu': 'Menyu', 'ui.close': 'Bağla', 'ui.send': 'Göndər', 'ui.cancel': 'İmtina',
     'modes.step': 'Rejim', 'modes.title': 'Necə oynayacaqsan?',
@@ -124,6 +126,8 @@ const D = {
     'pause.resume': 'Davam et', 'pause.backRoom': 'Otağa qayıt', 'pause.menu': 'Menyu',
   },
   en: {
+    // Trek adları və təsvirləri (src/data/tracks.js-dəki `name`/`theme` yalnız ehtiyatdır)
+    'trk.desert': 'Sunset Desert', 'trk.desert.d': 'Warm sand flats, long sweepers', 'trk.neon': 'Neon City Night', 'trk.neon.d': 'City at night, technical corners', 'trk.alpine': 'Alpine Forest', 'trk.alpine.d': 'Pine forest, long fast line', 'trk.canyon': 'Golden Canyon', 'trk.canyon.d': 'Long winding gorge, branching roads', 'trk.riviera': 'Riviera Sunset', 'trk.riviera.d': 'Seaside town, the longest route', 'trk.zavod': 'Factory', 'trk.zavod.d': 'Lasers · hazards · HP system', 'trk.frost': 'Frost Peak', 'trk.frost.d': 'Snowy pass · ice obstacles · slippery ice', 'trk.autumn': 'Autumn Forest', 'trk.autumn.d': 'Rainy forest road · flowing bends · side trails', 'trk.lava': 'Volcano', 'trk.lava.d': 'Lava field · fire gates · basalt obstacles',
     'ui.continue': 'Continue', 'ui.back': 'Back', 'ui.start': 'Start',
     'ui.again': 'Play again', 'ui.menu': 'Menu', 'ui.close': 'Close', 'ui.send': 'Send', 'ui.cancel': 'Cancel',
     'modes.step': 'Mode', 'modes.title': 'Pick your game',
@@ -242,6 +246,8 @@ const D = {
     'pause.resume': 'Resume', 'pause.backRoom': 'Back to room', 'pause.menu': 'Menu',
   },
   ru: {
+    // Trek adları və təsvirləri (src/data/tracks.js-dəki `name`/`theme` yalnız ehtiyatdır)
+    'trk.desert': 'Закатная пустыня', 'trk.desert.d': 'Тёплые пески, длинные виражи', 'trk.neon': 'Неоновый город', 'trk.neon.d': 'Ночной город, техничные повороты', 'trk.alpine': 'Альпийский лес', 'trk.alpine.d': 'Сосновый лес, длинная быстрая прямая', 'trk.canyon': 'Золотой каньон', 'trk.canyon.d': 'Длинное извилистое ущелье, развилки', 'trk.riviera': 'Закат на Ривьере', 'trk.riviera.d': 'Прибрежный городок, самый длинный маршрут', 'trk.zavod': 'Завод', 'trk.zavod.d': 'Лазеры · опасности · система HP', 'trk.frost': 'Ледяная вершина', 'trk.frost.d': 'Снежный перевал · ледяные преграды · скользкий лёд', 'trk.autumn': 'Осенний лес', 'trk.autumn.d': 'Дождливая лесная дорога · плавные повороты · боковые тропы', 'trk.lava': 'Вулкан', 'trk.lava.d': 'Лавовое поле · огненные ворота · базальтовые преграды',
     'ui.continue': 'Продолжить', 'ui.back': 'Назад', 'ui.start': 'Поехали',
     'ui.again': 'Ещё раз', 'ui.menu': 'Меню', 'ui.close': 'Закрыть', 'ui.send': 'Отправить', 'ui.cancel': 'Отмена',
     'modes.step': 'Режим', 'modes.title': 'Во что играем?',
@@ -360,6 +366,8 @@ const D = {
     'pause.resume': 'Продолжить', 'pause.backRoom': 'Вернуться в комнату', 'pause.menu': 'Меню',
   },
   tr: {
+    // Trek adları və təsvirləri (src/data/tracks.js-dəki `name`/`theme` yalnız ehtiyatdır)
+    'trk.desert': 'Gün Batımı Çölü', 'trk.desert.d': 'Sıcak kum düzlükleri, uzun virajlar', 'trk.neon': 'Neon Şehir', 'trk.neon.d': 'Gece şehri, teknik virajlar', 'trk.alpine': 'Alp Ormanı', 'trk.alpine.d': 'Çam ormanı, uzun hızlı düzlük', 'trk.canyon': 'Altın Kanyon', 'trk.canyon.d': 'Uzun kıvrımlı vadi, ayrılan yollar', 'trk.riviera': 'Riviera Gün Batımı', 'trk.riviera.d': 'Sahil kasabası, en uzun rota', 'trk.zavod': 'Fabrika', 'trk.zavod.d': 'Lazerler · tehlike · CAN sistemi', 'trk.frost': 'Buz Zirvesi', 'trk.frost.d': 'Karlı geçit · buz engelleri · kaygan buz', 'trk.autumn': 'Sonbahar Ormanı', 'trk.autumn.d': 'Yağmurlu orman yolu · akıcı virajlar · yan patikalar', 'trk.lava': 'Volkan', 'trk.lava.d': 'Lav çölü · ateş kapıları · bazalt engeller',
     'ui.continue': 'Devam et', 'ui.back': 'Geri', 'ui.start': 'Başla',
     'ui.again': 'Tekrar oyna', 'ui.menu': 'Menü', 'ui.close': 'Kapat', 'ui.send': 'Gönder', 'ui.cancel': 'Vazgeç',
     'modes.step': 'Mod', 'modes.title': 'Ne oynamak istersin?',

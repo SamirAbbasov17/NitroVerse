@@ -191,7 +191,7 @@ Buz Zirvəsi (`frost`), Payız Meşəsi (`autumn`), Vulkan (`lava`) — hər bir
 | autumn | 1860 m | 3 | 129 | 84 min | 7.2 ms |
 | lava | 1735 m | 2 | 123 | 70 min | 6.8 ms |
 
-Yan təsir (yaxşı): dekor rəngləri təpəyə yazılır və maneələrin tərpənməyən hissələri birləşdirilir — Zavod 138 → 95, Riviera 166 → 142 draw call. Onlayn `PREFIX` v19. **Yoxlanmayıb:** onlayn yarış yeni treklərdə; telefon; trek adları/təsvirləri 4 dilə çevrilməyib (mövcud treklərdə də belədir).
+Yan təsir (yaxşı): dekor rəngləri təpəyə yazılır və maneələrin tərpənməyən hissələri birləşdirilir — Zavod 138 → 95, Riviera 166 → 142 draw call. Onlayn `PREFIX` v19. Trek adları və təsvirləri 4 dildədir (`trk.<id>`, `trk.<id>.d`). Vulkanın yeri və işığı açıldı (əvvəl demək olar qara idi). Kadr sürəti: cila açıq/bağlı 60 fps, p99 16.8 ms (yeni 3 trek + alp). Mobil emulyasiya (844×390, cila və kölgə yox): frost 128 draw call / 92 min üçbucaq, autumn 135 / 89 min, lava 95 / 80 min, CPU p99 < 4 ms; HUD kadrlarına baxıldı. **Yoxlanmayıb:** onlayn yarış yeni treklərdə; real telefon (yalnız emulyasiya).
 
 ### PC: sürət hissi üçün ekran effektləri 🔶 (2026-10-07, istifadəçi tələbi — rəy gözlənilir)
 

@@ -692,7 +692,7 @@ export function makeBasalt() {
   for (let i = 0; i < n; i++) {
     const h = rand(1.0, 4.4) * (i ? 0.8 : 1);
     const r = rand(0.45, 0.75);
-    const col = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.05, h, 6), medMat(i % 2 ? 'bas1' : 'bas2', i % 2 ? 0x34303a : 0x2a272f));
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.05, h, 6), medMat(i % 2 ? 'bas1' : 'bas2', i % 2 ? 0x4a4450 : 0x3a363f));
     const a = (i / n) * Math.PI * 2 + rand(-0.3, 0.3), d = i ? rand(0.6, 1.1) : 0;
     col.position.set(Math.cos(a) * d, h / 2, Math.sin(a) * d);
     col.rotation.y = Math.random() * 6;
@@ -751,7 +751,7 @@ export function makeIceBlock() {
 // Bazalt qayası: tünd daş, içindən közərən lava çatı
 export function makeBasaltBlock() {
   const g = new THREE.Group();
-  const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(2.0, 0), medMat('bas2', 0x2a272f));
+  const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(2.0, 0), medMat('bas2', 0x3a363f));
   rock.scale.set(1.1, 0.85, 1.0);
   rock.position.y = 1.35;
   rock.rotation.set(0.3, Math.random() * 6, 0.2);

@@ -1044,8 +1044,8 @@ export class Menu {
       <button class="mrow ${tr.id === this.sel.trackId ? 'is-selected' : ''}" data-track="${tr.id}">
         <span class="mrow__swatch" style="background:${grad}"><span>${tr.icon}</span></span>
         <span class="mrow__body">
-          <span class="mrow__title">${tr.name}</span>
-          <span class="mrow__desc">${tr.theme}</span>
+          <span class="mrow__title">${t('trk.' + tr.id)}</span>
+          <span class="mrow__desc">${t('trk.' + tr.id + '.d')}</span>
         </span>
       </button>`;
     }).join('');
