@@ -13,7 +13,14 @@ for (const m of MODES) {
       return !!sc && !!sc.scene && sc.scene.children.length > 0;
     });
     expect(alive, 'səhnə aktiv və dolu olmalıdır').toBe(true);
-    const st = await carState(page);
+    // 2 saniyədə ən yüksək sürət: tək an ölçüləndə maşın maneəyə söykənib geri çəkilən
+    // anda (arena sütunu — toqquşma artıq geri atmır) testə düşə bilir
+    let st = await carState(page);
+    for (let i = 0; i < 4 && (st?.speed ?? 0) <= 3; i++) {
+      await page.waitForTimeout(500);
+      const s2 = await carState(page);
+      if ((s2?.speed ?? 0) > (st?.speed ?? 0)) st = s2;
+    }
     expect(st?.speed ?? 0, 'maşın hərəkət etməlidir').toBeGreaterThan(3);
     if (m.config.mode === 'race' || m.config.mode === 'free') {
       expect(st.onRoad, 'avtopilot yolda qalmalıdır').toBe(true);
