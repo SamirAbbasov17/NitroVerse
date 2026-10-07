@@ -153,7 +153,8 @@ Mənbə: Kenney Audio, Sonniss GDC, Freesound (CC0). Hər fayl `ASSETS-LICENSES.
 - **4.1 ✅ Mühərrik:** üç yazılmış döngə (domasx2, CC0) dövrə görə keçir və zilləşir; dövr sürətdən 5 ötürücü ilə hesablanır (hər keçiddə düşür — sintezdə düz qalxırdı), qaz/buraxma tembri dəyişir, maşının xarakteri (ağır → bəm, sürətli → zil). Səviyyə köhnə ilə eyni sırada: −25…−29 dB (sintez −27). Köhnə sintez müqayisə üçün qalır: `localStorage.apexEngine = 'synth'`.
 - **4.2 🔶 Təkər / torpaq / külək:** drift cığıltısı (−38 dB), yoldan kənar uğultu, sürət küləyi — **sintezdir** (süzgəcli küy): CC0 yazılmış cığıltı OpenGameArt və Commons-da tapılmadı (Freesound API açarı tələb edir). Əvvəl bu səslərin heç biri yox idi.
 - **4.5 ✅ Səs ayarları:** menyuda 🔊 → Musiqi və Effektlər sürgüləri + səsi bağla (telefonda səsi bağlamağın yolu əvvəl yox idi). Eyni blok dörd rejimin pauza menyusundadır (`src/ui/SoundControls.js`).
-- **4.3 / 4.4 ⬜** vahid effekt dəsti, mühit səsləri.
+- **4.3 🟡 toqquşma** — sintez "thud"-un üstündə yazılmış metal zərbəsi (Kenney Impact Sounds, CC0; güclü zərbədə ağır, zəifdə orta, 3 variant, təsadüfi ton). Ölçmə: zəif −38.2 dB / güclü −29.9 dB (sintez ehtiyatı −35.6), pik 0.52. Bonus və UI səsləri sintez qalır — eşitmədən əvəz edilmədi.
+- **4.4 🟡 mühit** — quş səsi (OpenGameArt "Park ambiences", CC0): zen-də gündüz, yağışsız, tuneldən kənar; yarışda Alp, Riviera, payız (yağışda zəif). −34.7 dB (mühərrik −27.3), pauzada və effekt sürgüsü 0-da susur. Qalır: neon şəhər fonu (uyğun CC0 yazı tapılmadı), tunel əks-sədası. Test: `tests/music.spec.js` → 'toqquşma nümunələri', 'quş səsi yalnız təbiət trekində'.
 - Ölçmə: `npx playwright test tests/music.spec.js -g mühərrik`.
 
 ### Musiqi — yeni üslub 🔶 (istifadəçi dinləyib qərar verəcək)

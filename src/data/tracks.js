@@ -86,6 +86,7 @@ export const TRACKS = [
   },
   {
     id: 'alpine',
+    ambience: 'birds',
     name: 'Alpine Forest',
     theme: 'Şam meşəsi, uzun sürətli xətt',
     icon: '🌲',
@@ -183,6 +184,7 @@ export const TRACKS = [
   },
   {
     id: 'riviera',
+    ambience: 'birds',
     name: 'Riviera Sunset',
     theme: 'Sahil qəsəbəsi, ən uzun marşrut',
     icon: '🌅',
@@ -370,6 +372,7 @@ export const TRACKS = [
   // ————— PAYIZ MEŞƏSİ — yağışlı payız: sıx rəngli meşə, yaş asfalt, uzun axıcı döngələr —————
   {
     id: 'autumn',
+    ambience: 'birds',
     name: 'Payız Meşəsi',
     theme: 'Yağışlı meşə yolu · axıcı döngələr · şaxə cığırlar',
     icon: '🍂',

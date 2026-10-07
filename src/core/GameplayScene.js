@@ -105,6 +105,9 @@ export class GameplayScene {
     audio.setEngineVoice(this.playerCar.data?.stats);   // ağır maşın bəm, sürətli maşın zil
     if (this.trackData.hazards) this._buildHazards(); // lazer/konteynerlər (zavod)
     // Trekin havası: qar / yağış / köz hissəcikləri + mühit səsi
+    // Mühit səsi: təbiət treklərində quş cəh-cəhi (yağışlı payızda zəif). Səviyyə update-də
+    // verilir — köhnə səhnənin dispose-u (stopEngine) yeni səhnənin səsini söndürməsin.
+    this._ambience = this.trackData.ambience === 'birds' ? (this.trackData.weather === 'rain' ? 0.35 : 0.8) : 0;
     if (this.trackData.weather) {
       this.weather = new Weather(this.scene, this.trackData.weather, { lite: isTouchDevice() });
       audio.setWeather(this.trackData.weather === 'rain' ? 0.75 : 0, this.trackData.weather === 'snow' ? 0.7 : 0);
@@ -1587,6 +1590,7 @@ export class GameplayScene {
     (this.postMotion ||= {}).speed = speedT; this.postMotion.boost = car.boostTimer > 0 || car.driftBoostT > 0 ? 1 : 0; // PostFX sürət effektləri
     audio.setEngine(speedT, car.boostTimer > 0);
     // Təkər cığıltısı (drift), yoldan kənar uğultu, sürət küləyi
+    if (this._ambience) audio.setAmbience(this._ambience);
     audio.setTyres(car.isDrifting ? Math.min(1, 0.45 + speedT * 0.7) : 0, (car.offRoad || 0) * Math.min(1, speedT * 2.5), speedT);
 
     const sideLook = B.side;

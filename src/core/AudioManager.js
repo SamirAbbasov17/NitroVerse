@@ -53,6 +53,7 @@ class AudioManagerImpl {
       this._noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
       const d = this._noiseBuf.getChannelData(0);
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      this._loadSamples();
     }
     if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
     // Kontekst SONRADAN öz-özünə oyansa (Chrome media-nişan icazəsi, tam
@@ -88,6 +89,66 @@ class AudioManagerImpl {
     localStorage.setItem('apexMuted', this.muted ? '1' : '0');
     if (this.ctx) this.master.gain.setTargetAtTime(this.muted ? 0 : 1, this.ctx.currentTime, 0.04);
     return this.muted;
+  }
+
+  // ——— YAZILMIŞ NÜMUNƏLƏR (Faza 4.3 / 4.4) ———
+  // Kiçik CC0 fayllar bir dəfə yüklənir (mənbələr: public/sfx/LICENSE.txt). Yüklənməsə və ya
+  // hələ hazır deyilsə, səs sintez variantı ilə çalınır — heç nə səssiz qalmır.
+  static SAMPLES = {
+    'hit-heavy': ['sfx/hit-heavy-000.mp3', 'sfx/hit-heavy-001.mp3', 'sfx/hit-heavy-002.mp3'],
+    'hit-med': ['sfx/hit-med-000.mp3', 'sfx/hit-med-001.mp3', 'sfx/hit-med-002.mp3'],
+    birds: ['sfx/amb-birds.mp3'],
+  };
+
+  _loadSamples() {
+    if (this._smp) return;
+    this._smp = {};
+    for (const [name, list] of Object.entries(AudioManagerImpl.SAMPLES)) {
+      this._smp[name] = [];
+      for (const src of list) {
+        fetch(assetBase() + src).then((r) => r.arrayBuffer()).then((b) => this.ctx.decodeAudioData(b))
+          .then((buf) => { this._smp[name].push(buf); if (name === 'birds') this._applyAmbience(); })
+          .catch(() => { /* sintez qalır */ });
+      }
+    }
+  }
+
+  // Nümunəni çal (varsa). Qaytarır: çalındımı.
+  _sample(name, gain = 1, rate = 1) {
+    const list = this._smp?.[name];
+    if (!list?.length) return false;
+    const src = this.ctx.createBufferSource();
+    src.buffer = list[Math.floor(Math.random() * list.length)];
+    src.playbackRate.value = rate;
+    const g = this.ctx.createGain(); g.gain.value = gain;
+    src.connect(g); g.connect(this.sfxGain);
+    src.start();
+    return true;
+  }
+
+  // MÜHİT SƏSİ: quş cəh-cəhi (zen — gündüz, yağışsız; təbiət trekləri). level 0..1.
+  setAmbience(level = 0) {
+    const l = Math.max(0, Math.min(1, level));
+    if (l === this._ambLevel && (this._amb || !l)) return;
+    this._ambLevel = l;
+    if (!this.ctx || (!this._amb && this._ambLevel < 0.02)) return;
+    if (!this._ensure()) return;
+    this._applyAmbience();
+  }
+
+  _applyAmbience() {
+    const buf = this._smp?.birds?.[0];
+    if (!buf || !this.ctx) return;
+    if (!this._amb) {
+      const src = this.ctx.createBufferSource();
+      src.buffer = buf; src.loop = true;
+      const g = this.ctx.createGain(); g.gain.value = 0;
+      src.connect(g); g.connect(this.fxBus);
+      src.start();
+      this._amb = { src, g };
+    }
+    // arxa fon: musiqidən xeyli aşağı
+    this._amb.g.gain.setTargetAtTime((this._pausedGame ? 0 : this._ambLevel || 0) * 0.3, this.ctx.currentTime, 0.8);
   }
 
   // ——— Sintez primitivləri ———
@@ -232,11 +293,15 @@ class AudioManagerImpl {
         this._noise({ t, dur: 0.06, g: 0.06, type: 'bandpass', f0: 2000, q: 1.5 });
         break;
       case 'impact': {
-        // Toqquşma: gücə görə dərinləşən "thud" + qısa xırıltı; güclü zərbədə metal cingiltisi
+        // Toqquşma: gücə görə dərinləşən "thud" (sintez — gövdənin çəkisi) + REAL metal zərbəsi
+        // (Kenney Impact Sounds, CC0): güclü zərbədə ağır, zəifdə orta nümunə. Nümunə hələ
+        // yüklənməyibsə əvvəlki sintez xırıltı/cingilti çalınır.
         const g = 0.35 + 0.65 * k;
         this._tone({ type: 'sine', f0: 170 - 50 * k, f1: 46, t, dur: 0.16 + 0.12 * k, g: 0.26 * g, attack: 0.002 });
-        this._noise({ t, dur: 0.07 + 0.12 * k, g: 0.2 * g, f0: 900 + 1600 * k, f1: 180 });
-        if (k > 0.5) this._noise({ t: t + 0.012, dur: 0.16, g: 0.12 * k, type: 'bandpass', f0: 2600, f1: 900, q: 3 });
+        if (!this._sample(k > 0.5 ? 'hit-heavy' : 'hit-med', 0.3 + 0.6 * k, 0.9 + Math.random() * 0.2 - k * 0.12)) {
+          this._noise({ t, dur: 0.07 + 0.12 * k, g: 0.2 * g, f0: 900 + 1600 * k, f1: 180 });
+          if (k > 0.5) this._noise({ t: t + 0.012, dur: 0.16, g: 0.12 * k, type: 'bandpass', f0: 2600, f1: 900, q: 3 });
+        }
         break;
       }
       case 'bump': {
@@ -348,6 +413,7 @@ class AudioManagerImpl {
         this._engine.lfoGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.06);
       }
       if (p) this.setTyres(0, 0, 0);
+      this._applyAmbience();
       // davamda setEngine növbəti kadrda səviyyəni bərpa edir
     }
   }
@@ -547,6 +613,7 @@ class AudioManagerImpl {
 
   stopEngine() {
     this.setTyres(0, 0, 0);
+    this.setAmbience(0);
     this._pausedGame = false; // növbəti oyun üçün sıfırla
     const e = this._engine;
     if (!e) return;

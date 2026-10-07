@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { mergeJson } from './helpers.js';
+import { mergeJson, startMode, autopilot } from './helpers.js';
 
 // Prosedural musiqi (menyu/yarış): səs SƏVİYYƏSİ ölçülür — eşitmə əvəzi deyil, yalnız
 // obyektiv hissə: səs çıxır və kəsilmir (clipping yoxdur). Musiqinin xoşagəlimli olub-
@@ -297,4 +297,96 @@ test('səs: yazılmış mühərrik, ötürücülər, təkər səsləri, ayrı s�
   expect(r.tyresOff, 'kəsiləndə susur').toBeLessThan(r.squeal - 25);
   expect(r.fxWithMusic0, 'musiqi sürgüsü effektə toxunmur').toBeGreaterThan(r.squeal - 3);
   expect(r.fx0, 'effekt sürgüsü 0 → susur').toBeLessThan(r.squeal - 25);
+});
+
+test('səs: toqquşma nümunələri və quş səsi (mühit)', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.addInitScript(() => { try { localStorage.setItem('apexMuted', '0'); localStorage.removeItem('apexVolMusic'); localStorage.removeItem('apexVolFx'); } catch { /* boş */ } });
+  await page.goto('/');
+  await page.waitForFunction(() => !!window.__audio && !!window.__menu, null, { timeout: 60_000 });
+  await page.mouse.click(700, 400);
+  const r = await page.evaluate(async () => {
+    const a = window.__audio;
+    a.muted = false; a.stopMusic(); a._ensure();
+    await a.ctx.resume();
+    const an = a.ctx.createAnalyser();
+    an.fftSize = 8192;
+    a.master.connect(an);
+    const buf = new Float32Array(an.fftSize);
+    const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+    const meas = async (ms) => {
+      let sum = 0, n = 0, peak = 0;
+      const end = performance.now() + ms;
+      while (performance.now() < end) { await sleep(30); an.getFloatTimeDomainData(buf); for (let i = 0; i < buf.length; i++) { const v = Math.abs(buf[i]); if (v > peak) peak = v; sum += buf[i] * buf[i]; n++; } }
+      return { db: +(20 * Math.log10(Math.sqrt(sum / n) || 1e-9)).toFixed(1), peak: +peak.toFixed(3) };
+    };
+    for (let i = 0; i < 80 && !(a._smp?.['hit-heavy']?.length === 3 && a._smp?.['hit-med']?.length === 3 && a._smp?.birds?.length === 1); i++) await sleep(100);
+    const out = { loaded: { heavy: a._smp['hit-heavy'].length, med: a._smp['hit-med'].length, birds: a._smp.birds.length } };
+    await sleep(3000);   // musiqinin sönmə quyruğu bitsin
+    out.silence = (await meas(500)).db;
+    // zərbə: nümunə ilə və nümunəsiz (sintez ehtiyatı), zəif və güclü
+    const hit = async (k) => { const p = meas(700); a.sfx('impact', k); const m = await p; await sleep(500); return m; };
+    out.hitSoft = await hit(0.3);
+    out.hitHard = await hit(1);
+    const keep = a._smp; a._smp = {};
+    out.hitHardSynth = await hit(1);
+    a._smp = keep;
+    // quş səsi: açılır, pauzada susur, sönür
+    a.setAmbience(1); await sleep(2500); out.birds = (await meas(4000));
+    a.setPaused(true); a._applyAmbience(); await sleep(3500); out.birdsPaused = (await meas(600)).db;
+    a.setPaused(false); a._applyAmbience(); await sleep(2500);
+    a.setVolume('fx', 0); await sleep(400); out.birdsFx0 = (await meas(600)).db; a.setVolume('fx', 1);
+    a.setAmbience(0); await sleep(4000); out.birdsOff = (await meas(600)).db;
+    // müqayisə üçün: mühərrik orta sürətdə
+    a.startEngine();
+    for (let i = 0; i < 60 && !a._engine?.rec; i++) { a.setEngine(0.6, false); await sleep(100); }
+    { const end = performance.now() + 2200; const p = (async () => { await sleep(700); return meas(1400); })(); while (performance.now() < end) { a.setEngine(0.6, false); await sleep(16); } out.engine = (await p).db; }
+    a.stopEngine();
+    return out;
+  });
+  mergeJson('music.json', 'samples', r);
+  console.log(JSON.stringify(r));
+  expect(r.loaded, 'nümunələr yükləndi').toEqual({ heavy: 3, med: 3, birds: 1 });
+  expect(r.hitHard.db, 'güclü zərbə zəifdən ucadır').toBeGreaterThan(r.hitSoft.db + 3);
+  expect(r.hitHard.peak, 'zərbə kəsilmir (clipping yoxdur)').toBeLessThan(0.98);
+  expect(Math.abs(r.hitHard.db - r.hitHardSynth.db), 'nümunə sintez ehtiyatına yaxın səviyyədədir (dB)').toBeLessThan(9);
+  expect(r.birds.db, 'quş səsi eşidilir').toBeGreaterThan(Math.max(r.silence + 15, -42));
+  expect(r.birds.db, 'quş səsi mühərrikdən aşağıdır (arxa fon)').toBeLessThan(r.engine - 4);
+  expect(r.birdsPaused, 'pauzada susur').toBeLessThan(r.birds.db - 20);
+  expect(r.birdsFx0, 'effekt sürgüsü 0 → susur').toBeLessThan(r.birds.db - 20);
+  expect(r.birdsOff, 'söndürüləndə susur').toBeLessThan(r.birds.db - 20);
+});
+
+test('səs: quş səsi yalnız təbiət trekində və zen gündüzündə açılır', async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.addInitScript(() => { try { localStorage.setItem('apexMuted', '0'); } catch { /* boş */ } });
+  await page.goto('/');
+  await page.waitForFunction(() => !!window.__audio && !!window.__menu, null, { timeout: 60_000 });
+  await page.mouse.click(700, 400);
+  const amb = async (ms = 6000) => {
+    await autopilot(page, true);
+    await page.waitForTimeout(ms);
+    return page.evaluate(() => ({ level: +(window.__audio._ambLevel || 0).toFixed(2), gain: +(window.__audio._amb?.g.gain.value || 0).toFixed(3) }));
+  };
+  const out = {};
+  await startMode(page, { mode: 'race', trackId: 'alpine', carId: 'blaze', laps: 3, difficulty: 'normal' });
+  out.alpine = await amb();
+  await startMode(page, { mode: 'race', trackId: 'neon', carId: 'blaze', laps: 3, difficulty: 'normal' });
+  out.neon = await amb();
+  await startMode(page, { mode: 'race', trackId: 'autumn', carId: 'blaze', laps: 3, difficulty: 'normal' });
+  out.autumn = await amb();
+  await startMode(page, { mode: 'arena', trackId: 'desert', carId: 'blaze', laps: 3, difficulty: 'normal' });
+  out.arena = await amb();
+  await startMode(page, { mode: 'free', trackId: 'desert', carId: 'blaze', laps: 3, difficulty: 'normal' });
+  out.zen = await amb();
+  out.zenNight = await page.evaluate(() => +(window.__active._dayNow?.night ?? -1).toFixed(2));
+  mergeJson('music.json', 'ambience', out);
+  console.log(JSON.stringify(out));
+  expect(out.alpine.level, 'alp: quşlar').toBeCloseTo(0.8, 2);
+  expect(out.alpine.gain, 'alp: səs açıqdır').toBeGreaterThan(0.15);
+  expect(out.neon.level, 'neon şəhər: quş yoxdur').toBe(0);
+  expect(out.neon.gain).toBeLessThan(0.01);
+  expect(out.autumn.level, 'yağışlı payız: zəif').toBeCloseTo(0.35, 2);
+  expect(out.arena.level, 'arena: quş yoxdur').toBe(0);
+  if (out.zenNight < 0.2) expect(out.zen.level, 'zen gündüz: quşlar').toBeGreaterThan(0.3);
 });

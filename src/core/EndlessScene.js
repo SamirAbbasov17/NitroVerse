@@ -1817,6 +1817,8 @@ export class EndlessScene {
     {
       const fl = flakeNow ? 1 : 0;
       audio.setWeather(fl ? 0 : rAmount, fl ? rAmount : 0, inTunnel);
+      // quş səsi: gündüz, hava açıq, tuneldən kənarda (gecə və yağışda quşlar susur)
+      audio.setAmbience(this._state === 'run' && !inTunnel ? Math.max(0, 1 - (this._dayNow?.night ?? 0) * 2.2) * Math.max(0, 1 - rAmount * 2.5) : 0);
       // Qar yerə oturandan sonra təkərin altında xırçıldayır: torpaqda tam, asfaltda zəif
       {
         const pc = this.playerCar;
