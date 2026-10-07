@@ -2446,3 +2446,34 @@ body.flt-sepia #filter-fx {
   .menu-seg--wrap::-webkit-scrollbar { display: none; }
   .menu-seg--wrap > .seg { flex: 0 0 auto; }
 }
+
+
+/* Eyni ekranın yenilənməsi keçid deyil — giriş animasiyası təkrar oynamır */
+.menu-panel--still { animation: none; }
+
+/* ——— "İndi dinlənilir" kartı (qaraj → Musiqi) ——— */
+.np {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; margin-bottom: 8px;
+  border-radius: 12px;
+  background: linear-gradient(120deg, rgba(255, 122, 47, 0.16), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 122, 47, 0.45);
+}
+.np__disc {
+  width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%;
+  background:
+    radial-gradient(circle, #0c0d12 0 16%, var(--c, #ff7a2f) 17% 34%, #0c0d12 35% 37%, transparent 38%),
+    repeating-radial-gradient(circle, #15171f 0 2px, #23262f 2px 3px);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08), 0 0 14px color-mix(in srgb, var(--c, #ff7a2f) 55%, transparent);
+  animation: npSpin 2.4s linear infinite;
+  position: relative;
+}
+.np__disc i { position: absolute; left: 50%; top: 5px; width: 2px; height: 9px; margin-left: -1px; border-radius: 2px; background: rgba(255, 255, 255, 0.55); }
+@keyframes npSpin { to { transform: rotate(360deg); } }
+.np__txt { display: flex; flex-direction: column; min-width: 0; flex: 1; line-height: 1.2; }
+.np__txt b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.np__lbl { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: #ffb27a; }
+.np__btn { flex: 0 0 auto; padding: 8px 12px; font-size: 12.5px; }
+.np__on { color: #7dff9c; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.np__stop { flex: 0 0 auto; padding: 8px 11px; font-size: 12px; }
+@media (prefers-reduced-motion: reduce) { .np__disc { animation-duration: 8s; } }

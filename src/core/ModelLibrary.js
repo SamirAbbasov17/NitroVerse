@@ -80,7 +80,9 @@ export class ModelLibrary {
           // İndi yüngül parıltı var: lak təbəqəsi hissi, xrom deyil.
           o.material.roughness = 0.58;
           o.material.metalness = 0.22;
-          this._applyDetail(o.material, name === 'police');   // yanan fara/stop, tünd parlaq şüşə
+          // formula bolidində "şüşə" tekselləri kokpitin örtüyüdür — tünd şüşə ona yaraşmırdı
+          // (istifadəçi rəyi: "Blaze-ə qapqara şüşə yaraşmayıb") → orijinal açıq rəngdə qalır
+          this._applyDetail(o.material, name === 'police', !/^race/.test(name));   // yanan fara/stop, tünd parlaq şüşə
           // Şablon materialı bütün səhnələrdə təkrar işlənir — səhnə
           // təmizlənməsi ona toxunmamalıdır (bax disposeObject3D)
           o.material.userData = { ...(o.material.userData || {}), shared: true };
@@ -105,7 +107,7 @@ export class ModelLibrary {
   //   emissiveMap — fara isti ağ, stop qırmızı, polis çırağı mavi/qırmızı (boyadan asılı deyil)
   //   roughness/metalness (G/B) — şüşə və işıqlar hamar və parlaq, qalan səth əvvəlki kimi
   // Bütün modellər eyni atlası işlədir — xəritələr bir dəfə qurulur və paylaşılır.
-  _applyDetail(mat, siren = false) {
+  _applyDetail(mat, siren = false, darkGlass = true) {
     if (mat.userData?.detail || !mat.map?.image?.width) return;
     const img = mat.map.image;
     const W = img.width, H = img.height;
@@ -120,7 +122,7 @@ export class ModelLibrary {
     orig.getContext('2d').drawImage(img, 0, 0);
     const cls = new Uint8Array(W * H);               // 1 = detal keçidinin dəyişdiyi teksel (stop, şüşə)
     // eyni atlas → eyni xəritələr (hər GLB teksturanı ayrıca yükləyir)
-    let key = W + 'x' + H + (siren ? 's' : '');
+    let key = W + 'x' + H + (siren ? 's' : '') + (darkGlass ? '' : 'g');
     for (let q = 0; q < 48; q++) { const o = ((q * 5471) % (W * H)) * 4; key += ':' + d[o] + d[o + 1] + d[o + 2]; }
     this._detailCache = this._detailCache || new Map();
     let maps = this._detailCache.get(key);
@@ -142,7 +144,7 @@ export class ModelLibrary {
         } else if (siren && B >= 195 && R <= 110 && G >= 90 && G <= 150) { // polis çırağı (mavi) — yalnız polisdə:
           // furqon və hiperkarın GÖVDƏSİ də bu mavi ailədəndir, onlarda bütün gövdə közərirdi
           er = 60; eg = 120; eb = 255; rough = 0.3; metal = 0;
-        } else if (B === 255 && R >= 215 && G >= 235) {                // şüşə
+        } else if (darkGlass && B === 255 && R >= 215 && G >= 235) {   // şüşə
           const k = (R - 215) / 40;                                   // atlasdakı açıq/tünd çalar
           d[o] = 22 + k * 30; d[o + 1] = 34 + k * 40; d[o + 2] = 50 + k * 52;
           rough = 0.1; metal = 0.55;

@@ -1109,7 +1109,7 @@ export class Menu {
   }
 
   // ————— QARAJ: kosmetika mağazası (boya · disk · alov · tüstü) —————
-  showCosmetics(notice = '') {
+  showCosmetics(notice = '', opts = {}) {
     this._here = 'garage';
     this._garage = true;
     this._preview();
@@ -1164,11 +1164,35 @@ export class Menu {
       const desc = cosText(it, true);
       const sub = (desc || stockDesc) ? `<span class="mrow__desc">${desc || stockDesc}</span>` : '';
       return `
-      <button class="mrow mrow--cos ${on ? 'is-selected' : ''} ${owned ? '' : 'is-locked'} ${legendary ? 'is-legend' : ''}" data-cos="${it.id}">
+      <button class="mrow mrow--cos ${on || (grp.key === 'music' && this._musicPreview === it.id) ? 'is-selected' : ''} ${owned ? '' : 'is-locked'} ${legendary ? 'is-legend' : ''}" data-cos="${it.id}">
         <span class="cos__dot ${legendary ? 'cos__dot--legend' : ''}" style="${swatch}"></span>
         <span class="mrow__body"><span class="mrow__title">${cosText(it)}${tag}</span>${sub}</span>
       </button>`;
     }).join('');
+
+    // MUSİQİ: dinlənilən paketin kartı — fırlanan disk, ad və AYRI düymələr (al / tax / dayandır).
+    // Sətrə toxunmaq yalnız dinlədir; almaq kartdakı düymə ilədir.
+    let nowCard = '';
+    if (grp.key === 'music' && this._musicPreview) {
+      const it = cosmeticById(this._musicPreview);
+      const owned = isCosmeticOwned(it.id, auth.profile);
+      const active = (eq.music || 'm_classic') === it.id;
+      const act = active
+        ? `<span class="np__on">✓ ${t('cos.on')}</span>`
+        : owned
+          ? `<button class="btn btn--primary np__btn" data-npuse>${t('cos.use')}</button>`
+          : auth.isLoggedIn
+            ? `<button class="btn btn--primary np__btn" data-npbuy>🪙 ${it.price} · ${t('cos.buy')}</button>`
+            : `<button class="btn btn--primary np__btn" data-nplogin>${t('auth.chip')}</button>`;
+      nowCard = `
+        <div class="np">
+          <div class="np__disc" style="--c:${hex(it.hex)}"><i></i></div>
+          <div class="np__txt"><span class="np__lbl">▶ ${t('cos.listening')}</span><b>${cosText(it)}</b></div>
+          ${act}
+          <button class="btn np__stop" data-npstop title="${t('cos.stop')}">■</button>
+        </div>`;
+    }
+    const loginBtn = opts.login ? `<button class="btn" data-coslogin>${t('auth.chip')}</button>` : '';
 
     this._panel({
       step: '🏎️', stepLabel: '🏎️',
@@ -1181,9 +1205,37 @@ export class Menu {
           ? `🪙 ${gold} · ${t('cos.skinOverrides')}`
           : `🪙 ${gold} · ${grp.title} — seç və ya al`)),
       body: `<div class="menu-seg menu-seg--wrap" style="margin-bottom:10px">${tabs}</div>
+             ${nowCard}
              <div class="menu-list menu-list--scroll">${rows}</div>`,
-      nav: `<button class="btn btn--primary" data-back>${t('garage.done')}</button>`,
+      nav: `${loginBtn}<button class="btn btn--primary" data-back>${t('garage.done')}</button>`,
     });
+    const stopPreview = () => { this._musicPreview = null; audio.previewPack(null); };
+    const q = (sel) => this.root.querySelector(sel);
+    if (q('[data-coslogin]')) q('[data-coslogin]').onclick = () => { stopPreview(); this.showAuth(t('cos.needAcc')); };
+    if (q('[data-nplogin]')) q('[data-nplogin]').onclick = () => { stopPreview(); this.showAuth(t('cos.needAcc')); };
+    if (q('[data-npstop]')) q('[data-npstop]').onclick = () => { stopPreview(); this.showCosmetics(); };
+    if (q('[data-npuse]')) q('[data-npuse]').onclick = async () => {
+      const id = this._musicPreview;
+      await auth.equip('music', id);
+      stopPreview();
+      this.showCosmetics();
+    };
+    if (q('[data-npbuy]')) q('[data-npbuy]').onclick = async () => {
+      const it = cosmeticById(this._musicPreview);
+      if ((auth.profile?.gold ?? 0) < it.price) {
+        this.showCosmetics('🪙 ' + t('cars.goldShort', { p: it.price, g: auth.profile.gold }));
+        return;
+      }
+      try {
+        await auth.buy(it.id);
+        await auth.equip('music', it.id);
+        stopPreview();
+        audio.sfx('pickup');
+        this.showCosmetics(`✓ ${cosText(it)} alındı və taxıldı`);
+      } catch {
+        this.showCosmetics('Alınmadı — yenidən yoxla.');
+      }
+    };
 
     this.root.querySelectorAll('[data-gtab]').forEach((el) => {
       el.onclick = () => { this._garageTab = el.dataset.gtab; this._musicPreview = null; audio.previewPack(null); this.showGarage(); };
@@ -1211,17 +1263,16 @@ export class Menu {
           this.showCosmetics();
           return;
         }
-        // MUSİQİ: alınmamış paketə ilk toxunuş onu DİNLƏDİR (menyuda çalınır), ikinci toxunuş alır.
-        // Görmədən (eşitmədən) almaq olmaz — musiqi zövq məsələsidir.
-        if (it.group === 'music' && !isCosmeticOwned(id, auth.profile) && this._musicPreview !== id) {
-          this._musicPreview = id;
-          audio.previewPack(id);
-          this.showCosmetics(`▶ ${cosText(it)} — ${t('cos.musicPreview')}`);
+        // MUSİQİ: sətrə toxunmaq paketi DİNLƏDİR (yenidən toxunmaq dayandırır). Almaq və taxmaq
+        // yuxarıdakı kartın düymələri ilədir — toxunuşla təsadüfən alış olmur.
+        if (it.group === 'music') {
+          if (this._musicPreview === id) { this._musicPreview = null; audio.previewPack(null); }
+          else { this._musicPreview = id; audio.previewPack(id); }
+          this.showCosmetics();
           return;
         }
         if (isCosmeticOwned(id, auth.profile)) {
           await auth.equip(grpKey, id);
-          if (it.group === 'music') { this._musicPreview = null; audio.previewPack(null); }
           // GÖRÜNÜŞ QRUPU: boya · skin · əfsanəvi — eyni anda yalnız BİRİ.
           // Birini seçəndə digərləri avtomatik söndürülür (əvvəl skin sakitcə
           // boyanı üstələyirdi və "rəngi dəyişirəm, heç nə olmur" hissi yaranırdı)
@@ -1229,7 +1280,9 @@ export class Menu {
           this.showCosmetics();
           return;
         }
-        if (!auth.isLoggedIn) { this.showAuth(t('auth.needCar')); return; }
+        // Qonaq: əvvəl birbaşa giriş ekranına atırdı ("birdən başqa yerə düşürəm"). İndi yerində
+        // bildiriş çıxır, giriş ayrıca düymə ilədir.
+        if (!auth.isLoggedIn) { this.showCosmetics('🔒 ' + t('cos.needAcc'), { login: true }); return; }
         if ((auth.profile?.gold ?? 0) < it.price) {
           this.showCosmetics('🪙 ' + t('cars.goldShort', { p: it.price, g: auth.profile.gold }));
           return;
@@ -1238,7 +1291,6 @@ export class Menu {
         try {
           await auth.buy(id);
           await auth.equip(grpKey, id);
-          if (it.group === 'music') { this._musicPreview = null; audio.previewPack(null); }
           await this._clearRivalLooks(it.group);
           audio.sfx('pickup');
           this.showCosmetics(`✓ ${cosText(it)} alındı və taxıldı`);
@@ -1610,6 +1662,8 @@ export class Menu {
       modes: () => this.showModes(),
       tracks: () => this.showTracks(),
       cars: () => this.showCars(),
+      // qarajın kosmetika tablarından gəlmişiksə ora qayıt (əvvəl xəritədə yox idi → ana menyuya atırdı)
+      garage: () => this.showGarage(),
       laps: () => this.showLaps(),
       online: () => this.showOnline(),
       friends: () => this.showFriends(),
@@ -1649,9 +1703,23 @@ export class Menu {
   // ————— Kömekçilər —————
 
   _panel({ step, stepLabel, title, sub, body, nav, hint, foot }) {
+    // EYNİ EKRANIN YENİLƏNMƏSİ (qarajda əşyaya toxunmaq, bildiriş göstərmək) yeni ekrana
+    // keçid deyil: panel yenidən "içəri sürüşməməli", siyahı da başa qayıtmamalıdır. Əvvəl hər
+    // toxunuşda giriş animasiyası təkrar oynayır və siyahı yuxarı atılırdı (istifadəçi rəyi:
+    // "keçidlər qəribədir").
+    const key = this._here + '|' + (this._here === 'garage' ? this._garageTab : '') + '|' + (this.sel?.carId && this._garageTab === 'skin' ? this.sel.carId : '');
+    const same = this._panelKey === key;
+    const sameScreen = (this._panelKey || '').split('|')[0] === this._here;
+    this._panelKey = key;
+    const keepList = same ? (this.root.querySelector('.menu-list--scroll')?.scrollTop ?? 0) : 0;
+    const keepTabs = sameScreen ? (this.root.querySelector('.menu-seg--wrap')?.scrollLeft ?? 0) : 0;
+    queueMicrotask(() => {
+      const l = this.root.querySelector('.menu-list--scroll'); if (l && keepList) l.scrollTop = keepList;
+      const tb = this.root.querySelector('.menu-seg--wrap'); if (tb && keepTabs) tb.scrollLeft = keepTabs;
+    });
     this.root.innerHTML = `
       <div class="menu">
-        <aside class="menu-panel">
+        <aside class="menu-panel ${sameScreen ? 'menu-panel--still' : ''}">
           <div class="menu-brandrow">
             <div class="menu-brand">Nitro<span>Verse</span></div>
             <div class="menu-brandrow__right">
