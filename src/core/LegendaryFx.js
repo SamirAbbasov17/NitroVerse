@@ -160,11 +160,36 @@ export const LEGENDARY_SET = {
 const PRISM = [0xff4d6d, 0xffb02e, 0xf5e642, 0x3ddc84, 0x35c8ff, 0xb46bff];
 const _tp = { x: 0, y: 0, z: 0 };
 
+// Mağazadakı "Yer işığı" (əfsanəvi örtüksüz maşın üçün) — eyni yumşaq ləkə, seçilən rəngdə.
+// Qaytarır: { mesh, tick(dt) }. rainbow: rəng yavaş-yavaş spektri dolanır.
+export function makeUnderglow(root, hex, rainbow = false) {
+  const mesh = new THREE.Mesh(_glowGeo(), new THREE.MeshBasicMaterial({
+    color: hex, map: _glowTex(), transparent: true, opacity: 0.5,
+    blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
+  }));
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.scale.set(3.3, 5.6, 1);
+  mesh.position.y = 0.07;
+  mesh.renderOrder = 2;
+  mesh.name = 'underglow';
+  root.add(mesh);
+  let t = Math.random() * 10;
+  return {
+    mesh,
+    tick: (dt) => {
+      t += dt;
+      mesh.material.opacity = 0.42 + 0.12 * Math.sin(t * 2.1);
+      if (rainbow) mesh.material.color.setHSL((t * 0.12) % 1, 1, 0.55);
+    },
+  };
+}
+
 // Əfsanəvi örtüklü maşının arxasında qalan iz. Səhnə hər kadr çağırır (yalnız örtüyü olan
 // maşınlarda iş görür); hissəciklər səhnənin ortaq hovuzundandır (Effects) — yeni obyekt yaranmır.
 export function fxTrail(car, effects, dt) {
   const kind = car?._fx?.kind;
-  const set = kind && LEGENDARY_SET[kind];
+  // örtük yoxdursa mağazadan alınmış adi iz (car._trail = { type, hex })
+  const set = (kind && LEGENDARY_SET[kind]) || (car?._trail ? { trail: car._trail.type, glow: car._trail.hex } : null);
   if (!set || !effects || car.root.visible === false) return;
   const speed = Math.abs(car.vF || 0);
   if (speed < 9) return;
@@ -196,6 +221,23 @@ export function fxTrail(car, effects, dt) {
     case 'shade':     // boşluq: qara-bənövşəyi kölgə izi
       effects.spawnSmoke(_tp, true, 0x2a1648, 0.7);
       if (Math.random() < 0.25) effects.spawnSparkle(_tp, 0x9a5cff);
+      break;
+    // ——— mağaza izləri ———
+    case 'sparkle':
+      effects.spawnSparkle(_tp, set.glow);
+      break;
+    case 'puff':
+      effects.spawnSmoke(_tp, false, set.glow, 0.6);
+      break;
+    case 'sparks':
+      _tp.y = (car.position.y || 0) + 0.2;
+      effects.spawnSparks(_tp, -s, -c, 3, 0.6 + fast * 0.5);
+      break;
+    case 'confetti':
+      // hər dəfə iki fərqli rəngdə parıltı (spawnConfetti bir çağırışda 34 hissəcik atır — iz üçün ağırdır)
+      effects.spawnSparkle(_tp, PRISM[Math.floor(Math.random() * PRISM.length)]);
+      _tp.y += 0.4;
+      effects.spawnSparkle(_tp, PRISM[Math.floor(Math.random() * PRISM.length)]);
       break;
     case 'star':      // ulduz tozu
       effects.spawnSparkle(_tp, Math.random() < 0.5 ? 0xffffff : 0xffc8f0);

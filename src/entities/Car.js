@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TUNING } from '../data/balance.js';
-import { applyLegendaryFx, LEGENDARY_SET } from '../core/LegendaryFx.js';
+import { applyLegendaryFx, LEGENDARY_SET, makeUnderglow } from '../core/LegendaryFx.js';
 import { applyPaintPattern } from '../core/PaintPatterns.js';
 
 const tmpF = new THREE.Vector3();
@@ -85,6 +85,9 @@ export class Car {
     this._fx = applyLegendaryFx(inst.root, cos?.fx?.kind);
     // Əfsanəvi dəst: drift tüstüsü də örtüyün rəngindədir (bax LEGENDARY_SET)
     if (this._fx && LEGENDARY_SET[this._fx.kind]) this.smokeColor = LEGENDARY_SET[this._fx.kind].smoke;
+    // Mağaza: yer işığı və iz (əfsanəvi örtük yoxdursa — onun öz dəsti var)
+    if (!this._fx && cos?.glow) this._glowFx = makeUnderglow(inst.root, cos.glow.hex, cos.glow.rainbow);
+    if (!this._fx && cos?.trail) this._trail = cos.trail;
     // Naxışlı skin (boya dizaynı — animasiya yoxdur)
     if (cos?.skin) applyPaintPattern(inst.root, cos.skin);
     this.steerPivots = inst.steerPivots;
@@ -263,6 +266,7 @@ export class Car {
   // Əfsanəvi örtüyün canlandırılması (Car.update-dən çağırılır)
   _updateFx(dt) {
     this._fx?.tick(dt);
+    this._glowFx?.tick(dt);
   }
 
   update(dt, drive, track) {

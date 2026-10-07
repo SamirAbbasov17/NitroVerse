@@ -43,6 +43,13 @@ Object.assign(COSMETIC_PRICES, {
   e_holo: 1400, e_void: 1600, e_galaxy: 2000,
 });
 
+// Yer işığı · iz · musiqi paketləri (2026-10-07) — src/data/cosmetics.js ilə SİNXRON saxla
+Object.assign(COSMETIC_PRICES, {
+  g_none: 0, g_cyan: 180, g_lime: 180, g_magenta: 220, g_orange: 220, g_violet: 260, g_white: 300, g_rainbow: 520,
+  t_none: 0, t_gold: 260, t_mint: 260, t_rose: 320, t_sky: 320, t_sparks: 380, t_confetti: 480,
+  m_classic: 0, m_lofi: 300, m_chip: 350, m_synth: 450, m_rock: 450, m_phonk: 500, m_orch: 600,
+});
+
 // Maşına xas skinlər — id determinist yaranır (client ilə EYNİ alqoritm)
 const SKIN_FX = ['stripes', 'sweep', 'camo', 'checker', 'twotone', 'flames', 'blocks', 'rally'];
 const SKIN_PRICES = [420, 620];
@@ -50,6 +57,7 @@ function carSkinPrice(id) {
   const m = /^sk_(.+)_([a-z]+)$/.exec(id);
   if (!m) return null;
   const [, carId, fx] = m;
+  if (fx === 'pro') return 820;   // üçüncü ("Pro") skin — hər maşında var
   if (!SKIN_FX.includes(fx)) return null;
   let h = 0;
   for (let i = 0; i < carId.length; i++) h = (h * 31 + carId.charCodeAt(i)) >>> 0;
@@ -68,7 +76,7 @@ const COSMETIC_GROUP = (id) => {
     const m = /^sk_(.+)_[a-z]+$/.exec(id);
     return m ? 'skin_' + m[1] : null;
   }
-  return { p: 'paint', r: 'rim', f: 'flame', e: 'effect', w: 'finish' }[id[0]] || null;
+  return { p: 'paint', r: 'rim', f: 'flame', e: 'effect', w: 'finish', g: 'glow', t: 'trail', m: 'music' }[id[0]] || null;
 };
 
 // Qiymət: sabit cədvəl və ya maşın skini
@@ -326,7 +334,7 @@ export function makeAuth(getStore, env = process.env) {
       // Boş id = ÇIXAR. Yoxsa hesabda seçim qalırdı və skin dərhal geri qayıdırdı.
       if (!id) {
         const g = String(b.group || '');
-        if (!/^(paint|rim|flame|smoke|effect|skin_[a-zA-Z0-9_-]{1,24})$/.test(g)) {
+        if (!/^(paint|rim|flame|smoke|effect|glow|trail|music|skin_[a-zA-Z0-9_-]{1,24})$/.test(g)) {
           return json({ error: 'no-group' }, 400);
         }
         const eq = { ...(user.equip || {}) };

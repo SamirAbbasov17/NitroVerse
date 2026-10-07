@@ -427,12 +427,14 @@ class AudioManagerImpl {
     if (!this._ensure()) return;
     if (this._musicMode === mode) return;
     this.stopMusic();
+    this._resolvePack();
     this._musicMode = mode;
     // Kontekst hələ kilidlidirsə qeyd et — oyananda (statechange) təmiz qurulacaq
     this._stalled = this.ctx.state !== 'running';
     this._step = 0;
     this._nextT = this.ctx.currentTime + 0.15;
     this._musicTimer = setInterval(() => this._scheduleMusic(), 90);
+    if ((mode === 'menu' || mode === 'race') && this._packList(mode)) this._startPackFile(mode);
     if (mode === 'lofi') {
       // Hər girişdə FƏRQLİ mahnı ilə başla (eyni trek təkrarlanmasın)
       const n = AudioManagerImpl.LOFI_FILES.length;
@@ -448,6 +450,106 @@ class AudioManagerImpl {
     this._musicTimer = null;
     this._musicMode = null;
     this._stopLofiFile();
+    this._stopPackFile();
+  }
+
+  // ——— MUSİQİ PAKETLƏRİ (mağaza: "Musiqi") ———
+  // Menyu və yarış mövzusunun yerinə real yazılmış treklər çalınır. Paket seçilməyibsə
+  // (və ya fayl oxunmasa) oyunun öz sintez mövzuları qalır — onlara toxunulmur.
+  // Hamısı CC0 / ictimai mülkiyyət: HoliznaCC0 (freemusicarchive.org) və Musopen yazıları
+  // (Wikimedia Commons). Mənbələr: public/music/LICENSE.txt.
+  static PACKS = {
+    m_lofi: {
+      menu: ['music/morning-coffee.mp3', 'music/autumn.mp3'],
+      race: ['music/new-shoes.mp3', 'music/moon-unit.mp3', 'music/summer-break.mp3'],
+    },
+    m_chip: {
+      menu: ['music/packs/chip-adventure-begins-loop.mp3'],
+      race: ['music/packs/chip-rising-hero.mp3', 'music/packs/chip-level-2.mp3'],
+    },
+    m_synth: {
+      menu: ['music/packs/synth-morning-light.mp3'],
+      race: ['music/packs/synth-city-in-the-rearview.mp3', 'music/packs/synth-retrospect.mp3'],
+    },
+    m_rock: {
+      menu: ['music/packs/rock-classic.mp3'],
+      race: ['music/packs/rock-punk.mp3', 'music/packs/rock-grunge.mp3'],
+    },
+    m_phonk: {
+      menu: ['music/packs/phonk-phonk-ish.mp3'],
+      race: ['music/packs/phonk-only-human.mp3', 'music/packs/phonk-pantheon.mp3'],
+    },
+    m_orch: {
+      menu: ['music/packs/classic-night-on-bald-mountain.mp3'],
+      race: ['music/packs/classic-hall-of-the-mountain-king.mp3', 'music/packs/classic-beethoven-symphony-5.mp3'],
+    },
+  };
+
+  _packList(mode) {
+    const P = this._pack && AudioManagerImpl.PACKS[this._pack];
+    return P ? P[mode] : null;
+  }
+
+  // Hansı paket çalınmalıdır: mağazada önizləmə > oyunçunun taxdığı paket (packProvider —
+  // main.js verir) > standart sintez (null).
+  _resolvePack() {
+    const id = this._previewPack ?? this.packProvider?.() ?? null;
+    this._pack = id && AudioManagerImpl.PACKS[id] ? id : null;
+  }
+
+  // Seçim dəyişəndə (alındı / taxıldı / önizləmə) çalınan musiqini yenisinə keçir
+  refreshMusicPack() {
+    const before = this._pack;
+    this._resolvePack();
+    const mode = this._musicMode;
+    if (before === this._pack || (mode !== 'menu' && mode !== 'race')) return;
+    this.stopMusic();
+    this.playMusic(mode);
+  }
+
+  // Mağazada dinləmə: paket alınmadan əvvəl menyuda çalınır. id = null → önizləmə bitir.
+  previewPack(id) {
+    this._previewPack = id || undefined;
+    this.refreshMusicPack();
+  }
+
+  _startPackFile(mode) {
+    const list = this._packList(mode);
+    this._packFail = false;
+    this._packIdx = ((this._packIdx ?? -1) + 1) % list.length;
+    try {
+      const el = new Audio(assetBase() + list[this._packIdx]);
+      el.preload = 'auto';
+      this._packEl = el;
+      this._packNode = this.ctx.createMediaElementSource(el);
+      // Fayllar −16 LUFS-ə normallaşdırılıb — sintez mövzusunun səviyyəsinə endirilir
+      this._packGain = this._packGain || this.ctx.createGain();
+      this._packGain.gain.value = 0.5;
+      this._packNode.connect(this._packGain);
+      this._packGain.connect(this.musicGain);
+      el.onended = () => {
+        if (this._packEl !== el || this._musicMode !== mode) return;
+        this._stopPackFile();
+        if (this._packList(mode)) this._startPackFile(mode);
+      };
+      el.onerror = () => { if (this._packEl === el) this._packFail = true; };   // sintezə düş
+      el.play().catch(() => { if (this._packEl === el) this._packFail = true; });
+    } catch {
+      this._packFail = true;
+    }
+  }
+
+  _stopPackFile() {
+    if (this._packEl) {
+      const el = this._packEl;
+      this._packEl = null;
+      el.onended = null;
+      el.onerror = null;
+      el.pause();
+      el.src = '';
+    }
+    this._packNode?.disconnect();
+    this._packNode = null;
   }
 
   // ——— Həqiqi lofi trekləri (HoliznaCC0 — "Lo-fi And Chill", CC0 1.0 ictimai mülkiyyət) ———
@@ -539,6 +641,7 @@ class AudioManagerImpl {
   _scheduleMusic() {
     if (!this._musicMode || !this.ctx) return;
     if (this._musicMode === 'lofi' && !this._lofiSynth) return; // fayl çalınır
+    if (this._packEl && !this._packFail) return;                 // musiqi paketi çalınır
     const bpm = this._musicMode === 'race' ? 118 : this._musicMode === 'lofi' ? 74 : 82;
     const stepDur = 60 / bpm / 2; // 8-lik notlar
     while (this._nextT < this.ctx.currentTime + 0.3) {

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { TrackBuilder } from '../world/TrackBuilder.js';
 import { Environment } from '../world/Environment.js';
-import { applyLegendaryFx } from './LegendaryFx.js';
+import { applyLegendaryFx, makeUnderglow } from './LegendaryFx.js';
 import { applyPaintPattern } from './PaintPatterns.js';
 import { disposeObject3D } from './MergeUtils.js';
 import { playFinishFx } from './FinishFx.js';
@@ -73,6 +73,7 @@ export class ShowcaseScene {
     this.carRoot = inst.root;
     // Əfsanəvi örtük — oyundakı Car ilə EYNİ şeyder (bax LegendaryFx.js)
     this._fx = applyLegendaryFx(inst.root, cos?.fx?.kind);
+    this._glowFx = !this._fx && cos?.glow ? makeUnderglow(inst.root, cos.glow.hex, cos.glow.rainbow) : null;
     if (cos?.skin) applyPaintPattern(inst.root, cos.skin);
     this.scene.add(this.carRoot);
     this._placeCar();
@@ -183,6 +184,7 @@ export class ShowcaseScene {
 
   _animFx(dt) {
     this._fx?.tick(dt);
+    this._glowFx?.tick(dt);
     if (this._demo === 'finish') {
       this._finDemo?.update(dt);
       this._finLoop = (this._finLoop || 0) - dt;

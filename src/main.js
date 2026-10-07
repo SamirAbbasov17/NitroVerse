@@ -20,6 +20,14 @@ import { Notices } from './ui/Notices.js';
 import { t } from './core/i18n.js';
 import { raceGold } from './data/economy.js';
 import { installErrorReporter } from './core/ErrorReporter.js';
+import { equippedCosmetics, isCosmeticOwned } from './data/cosmetics.js';
+
+// Musiqi paketi: oyunçunun mağazadan alıb taxdığı (yoxdursa standart sintez mövzuları)
+audio.packProvider = () => {
+  const id = equippedCosmetics(auth.profile).music;
+  return id && isCosmeticOwned(id, auth.profile) ? id : null;
+};
+auth.onChange(() => audio.refreshMusicPack());   // giriş/çıxışda seçim dəyişir
 
 const canvas = document.getElementById('game-canvas');
 const uiRoot = document.getElementById('ui-root');

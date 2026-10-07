@@ -1157,7 +1157,8 @@ export class Menu {
         : (auth.isLoggedIn
           ? `<span class="mrow__lock">🪙${it.price}</span>`
           : `<span class="mrow__lock">${t('cars.lockAcc')}</span>`);
-      const stockDesc = it.stock
+      // yalnız boya və disk üçün (yer işığı/iz/musiqinin "zavod" variantı sadəcə "yoxdur")
+      const stockDesc = it.stock && (grp.key === 'paint' || grp.key === 'rim')
         ? `${car?.name || 'Maşın'} — ${grp.key === 'rim' ? 'öz zavod diskləri' : 'öz orijinal rəngi'}`
         : '';
       const desc = cosText(it, true);
@@ -1185,9 +1186,9 @@ export class Menu {
     });
 
     this.root.querySelectorAll('[data-gtab]').forEach((el) => {
-      el.onclick = () => { this._garageTab = el.dataset.gtab; this.showGarage(); };
+      el.onclick = () => { this._garageTab = el.dataset.gtab; this._musicPreview = null; audio.previewPack(null); this.showGarage(); };
     });
-    this.root.querySelector('[data-back]').onclick = () => this.showModes();
+    this.root.querySelector('[data-back]').onclick = () => { this._musicPreview = null; audio.previewPack(null); this.showModes(); };
     this.root.querySelectorAll('[data-cos]').forEach((el) => {
       el.onclick = async () => {
         const id = el.dataset.cos;
@@ -1210,8 +1211,17 @@ export class Menu {
           this.showCosmetics();
           return;
         }
+        // MUSİQİ: alınmamış paketə ilk toxunuş onu DİNLƏDİR (menyuda çalınır), ikinci toxunuş alır.
+        // Görmədən (eşitmədən) almaq olmaz — musiqi zövq məsələsidir.
+        if (it.group === 'music' && !isCosmeticOwned(id, auth.profile) && this._musicPreview !== id) {
+          this._musicPreview = id;
+          audio.previewPack(id);
+          this.showCosmetics(`▶ ${cosText(it)} — ${t('cos.musicPreview')}`);
+          return;
+        }
         if (isCosmeticOwned(id, auth.profile)) {
           await auth.equip(grpKey, id);
+          if (it.group === 'music') { this._musicPreview = null; audio.previewPack(null); }
           // GÖRÜNÜŞ QRUPU: boya · skin · əfsanəvi — eyni anda yalnız BİRİ.
           // Birini seçəndə digərləri avtomatik söndürülür (əvvəl skin sakitcə
           // boyanı üstələyirdi və "rəngi dəyişirəm, heç nə olmur" hissi yaranırdı)
@@ -1228,6 +1238,7 @@ export class Menu {
         try {
           await auth.buy(id);
           await auth.equip(grpKey, id);
+          if (it.group === 'music') { this._musicPreview = null; audio.previewPack(null); }
           await this._clearRivalLooks(it.group);
           audio.sfx('pickup');
           this.showCosmetics(`✓ ${cosText(it)} alındı və taxıldı`);

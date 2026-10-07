@@ -2431,3 +2431,18 @@ body.flt-sepia #filter-fx {
   animation: btnSheen 3.6s ease-in-out infinite;
 }
 @keyframes btnSheen { 0%, 62% { left: -45%; } 88%, 100% { left: 115%; } }
+
+
+/* Qaraj tabları (10 bölmə): alçaq ekranda (telefon, landşaft) iki-üç sətrə bükülüb siyahıya
+   yer saxlamırdı — tək sətirdə üfüqi sürüşür. */
+@media (max-height: 520px) {
+  .menu-seg--wrap {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .menu-seg--wrap::-webkit-scrollbar { display: none; }
+  .menu-seg--wrap > .seg { flex: 0 0 auto; }
+}

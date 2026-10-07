@@ -19,3 +19,29 @@ summer-break, the-best-of-times, walking-away, down-time
 https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/
 The album page states CC0 1.0 (checked 2026-10-06). Files were re-encoded from the
 320 kbps originals to 96 kbps MP3 to match the rest of this folder; no other edits.
+
+Added 2026-10-07 — music packs (shop: "Musiqi"), folder packs/
+All re-encoded to 96 kbps MP3, loudness-normalised (-16 LUFS), cut to max 200 s with a
+3 s fade-out; no other edits.
+
+HoliznaCC0 (CC0 1.0 — stated on each album page, checked 2026-10-07):
+- rock-classic, rock-punk, rock-grunge — "Rock Montage" (Classic, Punk, Grunge)
+  https://freemusicarchive.org/music/holiznacc0/rock-montage/
+- synth-morning-light, synth-city-in-the-rearview, synth-retrospect — "We Drove All Night"
+  https://freemusicarchive.org/music/holiznacc0/we-drove-all-night/
+- chip-adventure-begins-loop, chip-rising-hero, chip-level-2 — "Chiptunes"
+  https://freemusicarchive.org/music/holiznacc0/chiptunes/
+- phonk-phonk-ish, phonk-only-human, phonk-pantheon — "Phonk - Aura Farming"
+  https://freemusicarchive.org/music/holiznacc0/phonk-aura-farming/
+
+Public-domain classical recordings from Wikimedia Commons (licence field "Public domain",
+Musopen recordings; checked via the Commons API on 2026-10-07):
+- classic-hall-of-the-mountain-king — Grieg, Peer Gynt; Musopen Symphony Orchestra
+  https://commons.wikimedia.org/wiki/File:Musopen_-_In_the_Hall_Of_The_Mountain_King.ogg
+- classic-beethoven-symphony-5 — Beethoven, Symphony No. 5, I. Allegro con brio (first 200 s)
+  https://commons.wikimedia.org/wiki/File:Ludwig_van_Beethoven_-_symphony_no._5_in_c_minor,_op._67_-_i._allegro_con_brio.ogg
+- classic-night-on-bald-mountain — Mussorgsky, Night on Bald Mountain (first 200 s)
+  https://commons.wikimedia.org/wiki/File:Modest_Mussorgsky_-_night_on_bald_mountain.ogg
+Musopen asks (does not require) that derived works credit Musopen — credited here.
+
+The "m_lofi" pack reuses lofi tracks already listed above.

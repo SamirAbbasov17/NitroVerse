@@ -140,6 +140,29 @@ const CAR_SKINS = {
   frost: [['Buz dövrəsi', 'circuit', 0xd6f1ff, 0x1f8fd0], ['Şimal işığı', 'wave', 0x1a2a55, 0x5dffc0]],
 };
 
+// ÜÇÜNCÜ SKİN ("Pro" — 2026-10-07): hər maşına daha bir, ən bahalı imza dizaynı.
+const CAR_SKINS_PRO = {
+  blaze: ['Qırmızı ox', 'chevron', 0xffffff, 0xe2231a],
+  titan: ['Gecə yarışı', 'retro', 0x12162a, 0xff3dc8],
+  inferno: ['Pələng', 'tiger', 0xff8a1e, 0x1c1c22],
+  venom: ['Kiber şanə', 'hex', 0x101820, 0x7be33a],
+  cruiser: ['Ralli veteranı', 'rally', 0xf2ead6, 0x1f5fd0],
+  ranger: ['Ekspedisiya', 'panda', 0xd9b36a, 0x2e5d3a],
+  goldrush: ['Kral damğası', 'star', 0x1f2430, 0xf5c518],
+  cargo: ['Ekspress', 'bolt', 0xffffff, 0xe2231a],
+  interceptor: ['Təqib', 'gulf', 0x1c2030, 0x35e0ff],
+  taxi: ['Şəhər əfsanəsi', 'harlequin', 0xffc21c, 0x23262e],
+  lagoon: ['Tropik', 'splat', 0x21c9a8, 0xff7ac8],
+  sunburst: ['Arı', 'zebra', 0xffc21c, 0x23262e],
+  flamingo: ['Odlu sürücü', 'flames', 0x23262e, 0xff5fa2],
+  sequoia: ['Xilasedici', 'hazard', 0xff7a1a, 0xffffff],
+  crimson: ['Dalğa sörfü', 'wave', 0xfff2d6, 0x1f8fd0],
+  midnight: ['Almaz', 'harlequin', 0x1c2240, 0x35406e],
+  violetta: ['Le Mans', 'gulf', 0x7fd0ff, 0xff7a1a],
+  frost: ['Qütb parıltısı', 'rays', 0xd6f1ff, 0x8a4dff],
+};
+const SKIN_PRO_PRICE = 820;
+
 // Skin İD-ləri DƏYİŞMİR: oyunçuların aldığı skinlər profildə bu İD ilə saxlanır. İD köhnə
 // (hash) düsturu ilə hesablanır, görünüş isə yuxarıdakı cədvəldən gəlir.
 function legacySkinIds(carId) {
@@ -157,25 +180,69 @@ function legacySkinIds(carId) {
 export function carSkinsFor(carId) {
   const ids = legacySkinIds(carId);
   const own = CAR_SKINS[carId];
-  return ids.map((id, i) => {
-    // cədvəldə olmayan (gələcək) maşın köhnə ümumi dizayna düşür
-    const [name, pattern, a, b] = own?.[i]
-      ?? (() => { const d = SKIN_DESIGNS.find((x) => id.endsWith('_' + x.pattern)); return [d.name, d.pattern, d.a, d.b]; })();
-    return {
-      id,
-      name,
-      i18n: `skin.${carId}.${i}`,   // tərcümə açarı (UI: Menu → cosText)
-      pattern,
-      hex: a,
-      glow: b,      // UI nümunəsində ikinci rəng kimi işlənir
-      colA: a,
-      colB: b,
-      price: SKIN_PRICES[i],
-      car: carId,
-      group: 'skin',
-    };
+  const mk = (id, i, [name, pattern, a, b], price) => ({
+    id,
+    name,
+    i18n: `skin.${carId}.${i}`,   // tərcümə açarı (UI: Menu → cosText)
+    pattern,
+    hex: a,
+    glow: b,      // UI nümunəsində ikinci rəng kimi işlənir
+    colA: a,
+    colB: b,
+    price,
+    car: carId,
+    group: 'skin',
   });
+  const out = ids.map((id, i) => {
+    // cədvəldə olmayan (gələcək) maşın köhnə ümumi dizayna düşür
+    const d = own?.[i]
+      ?? (() => { const q = SKIN_DESIGNS.find((x) => id.endsWith('_' + x.pattern)); return [q.name, q.pattern, q.a, q.b]; })();
+    return mk(id, i, d, SKIN_PRICES[i]);
+  });
+  if (CAR_SKINS_PRO[carId]) out.push(mk(`sk_${carId}_pro`, 2, CAR_SKINS_PRO[carId], SKIN_PRO_PRICE));
+  return out;
 }
+
+// ————— YER İŞIĞI (neon): maşının altında rəngli işıq ləkəsi —————
+// Əfsanəvi örtüyün öz yer işığı var; örtük taxılı deyilsə bu seçim işləyir.
+export const GLOWS = [
+  { id: 'g_none', name: 'Yoxdur', hex: 0x3a4050, price: 0, stock: true },
+  { id: 'g_cyan', name: 'Buz mavisi', hex: 0x35e0ff, price: 180 },
+  { id: 'g_lime', name: 'Turş yaşıl', hex: 0x8dff3a, price: 180 },
+  { id: 'g_magenta', name: 'Neon çəhrayı', hex: 0xff3dc8, price: 220 },
+  { id: 'g_orange', name: 'Qürub', hex: 0xff8a1e, price: 220 },
+  { id: 'g_violet', name: 'Ultrabənövşəyi', hex: 0x8a4dff, price: 260 },
+  { id: 'g_white', name: 'Ksenon', hex: 0xf2f6ff, price: 300 },
+  { id: 'g_rainbow', name: '🌈 Göy qurşağı', hex: 0xff4df0, core: 0x35e0ff, rainbow: true, price: 520,
+    desc: 'Rəng yavaş-yavaş bütün spektri dolanır' },
+];
+
+// ————— İZ: sürətlə gedəndə maşının arxasında qalan hissəciklər —————
+// (əfsanəvi örtüklərin öz izi var və bunu əvəz edir)
+export const TRAILS = [
+  { id: 't_none', name: 'Yoxdur', hex: 0x3a4050, price: 0, stock: true },
+  { id: 't_gold', name: 'Qızıl toz', hex: 0xffd34d, trail: 'sparkle', price: 260, desc: 'Arxada qızılı parıltılar' },
+  { id: 't_mint', name: 'Nanə parıltısı', hex: 0x5dffc0, trail: 'sparkle', price: 260, desc: 'Arxada yaşılımtıl parıltılar' },
+  { id: 't_rose', name: 'Çəhrayı duman', hex: 0xff7ac8, trail: 'puff', price: 320, desc: 'Arxada rəngli duman topaları' },
+  { id: 't_sky', name: 'Bulud izi', hex: 0xbfe6ff, trail: 'puff', price: 320, desc: 'Arxada açıq mavi duman' },
+  { id: 't_sparks', name: 'Qaynaq qığılcımı', hex: 0xffb04a, trail: 'sparks', price: 380, desc: 'Yerə səpilən qığılcımlar' },
+  { id: 't_confetti', name: '🎉 Konfeti', hex: 0xff5fa2, core: 0x35e0ff, trail: 'confetti', price: 480, desc: 'Arxada rəngli konfeti' },
+];
+
+// ————— MUSİQİ PAKETLƏRİ: menyu və yarış (arena, futbol daxil) musiqisi —————
+// Standart: oyunun öz sintez mövzusu. Paketlər real yazılmış treklərdir — hamısı CC0 və ya
+// ictimai mülkiyyət (mənbələr: public/music/LICENSE.txt, docs/ASSETS-LICENSES.md).
+// Zen-in lofi siyahısı ayrıcadır və dəyişmir.
+export const MUSIC = [
+  { id: 'm_classic', name: 'NitroVerse (standart)', hex: 0xff7a2f, price: 0, stock: true, desc: 'Oyunun öz mövzuları' },
+  { id: 'm_lofi', name: '☕ Lofi', hex: 0xc9a27a, price: 300, desc: 'Sakit lofi — menyuda və yarışda' },
+  { id: 'm_chip', name: '👾 Çiptyun', hex: 0x7be33a, price: 350, desc: '8-bit oyun avtomatı səsi' },
+  { id: 'm_synth', name: '🌆 Sintveyv', hex: 0xff3dc8, core: 0x35e0ff, price: 450, desc: 'Gecə şosesi, retro sintezatorlar' },
+  { id: 'm_rock', name: '🎸 Rok', hex: 0xe23a2e, price: 450, desc: 'Gitara, təbil — klassik rok, pank, qranj' },
+  { id: 'm_phonk', name: '🔊 Fonk', hex: 0x8a4dff, price: 500, desc: 'Ağır bas, drift əhvalı' },
+  { id: 'm_orch', name: '🎻 Məşhur klassika', hex: 0xf5c518, price: 600,
+    desc: 'Qriq "Dağ kralının sarayında", Bethoven 5-ci simfoniya, Musorqski' },
+];
 
 export const COSMETIC_GROUPS = [
   { key: 'paint', title: 'Boya', icon: '🎨', items: PAINTS },
@@ -183,6 +250,9 @@ export const COSMETIC_GROUPS = [
   { key: 'flame', title: 'Nitro alovu', icon: '🔥', items: FLAMES },
   { key: 'finish', title: 'Finiş', icon: '🎆', items: FINISHES },
   { key: 'effect', title: 'Əfsanəvi', icon: '✨', items: EFFECTS },
+  { key: 'glow', title: 'Yer işığı', icon: '💡', items: GLOWS },
+  { key: 'trail', title: 'İz', icon: '💫', items: TRAILS },
+  { key: 'music', title: 'Musiqi', icon: '🎵', items: MUSIC },
 ];
 
 // Siyahıda GÖRÜNMƏYƏN, amma daxildə işlənən dəyərlər ("söndürülmüş" halı).
@@ -228,6 +298,9 @@ export function equippedCosmetics(profile) {
     flame: eq.flame ?? ls('flame'),
     finish: eq.finish ?? ls('finish'),
     effect: eq.effect ?? ls('effect'),
+    glow: eq.glow ?? ls('glow'),
+    trail: eq.trail ?? ls('trail'),
+    music: eq.music ?? ls('music'),
   };
 }
 

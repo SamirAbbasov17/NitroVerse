@@ -139,3 +139,66 @@ test('musiqi: yazı (RECORD=1)', async ({ page }) => {
     fs.writeFileSync(path.join('tests/out/music', `${mode}.webm`), Buffer.from(b64, 'base64'));
   }
 });
+
+// MUSİQİ PAKETLƏRİ (mağaza): hər paketin menyu və yarış treki həqiqətən çalınır, səviyyəsi
+// standart sintez mövzusuna yaxındır (çox uca/sakit deyil) və paket çıxarılanda sintez qayıdır.
+test('musiqi paketləri: çalınır, səviyyə uyğundur', async ({ page }) => {
+  test.setTimeout(240_000);
+  await page.addInitScript(() => { try { localStorage.setItem('apexMuted', '0'); } catch { /* boş */ } });
+  await page.goto('/');
+  await page.waitForFunction(() => !!window.__audio && !!window.__menu, null, { timeout: 60_000 });
+  await page.mouse.click(700, 400);
+  const r = await page.evaluate(async () => {
+    const a = window.__audio;
+    a.muted = false; a._ensure();
+    await a.ctx.resume();
+    const an = a.ctx.createAnalyser();
+    an.fftSize = 2048;
+    a.master.connect(an);
+    const buf = new Float32Array(an.fftSize);
+    const measure = async (ms) => {
+      let sum = 0, n = 0, peak = 0;
+      const end = performance.now() + ms;
+      while (performance.now() < end) {
+        await new Promise((res) => setTimeout(res, 40));
+        an.getFloatTimeDomainData(buf);
+        for (let i = 0; i < buf.length; i++) { sum += buf[i] * buf[i]; n++; peak = Math.max(peak, Math.abs(buf[i])); }
+      }
+      return { db: +(20 * Math.log10(Math.sqrt(sum / n) || 1e-9)).toFixed(1), peak: +peak.toFixed(3) };
+    };
+    const out = {};
+    let pack = null;
+    a.packProvider = () => pack;
+    for (const mode of ['menu', 'race']) {
+      a.stopMusic(); a.playMusic(mode);
+      await new Promise((res) => setTimeout(res, 1500));
+      out[`synth-${mode}`] = { ...(await measure(5000)), file: !!a._packEl };
+    }
+    for (const id of Object.keys(a.constructor.PACKS)) {
+      pack = id;
+      for (const mode of ['menu', 'race']) {
+        a.stopMusic(); a.playMusic(mode);
+        // trekin ortasına keç (girişlər sakit olur) və yüklənməsini gözlə
+        await new Promise((res) => setTimeout(res, 2500));
+        try { if (a._packEl && a._packEl.duration > 40) a._packEl.currentTime = 30; } catch { /* boş */ }
+        await new Promise((res) => setTimeout(res, 1200));
+        out[`${id}-${mode}`] = { ...(await measure(5000)), file: !!a._packEl && !a._packFail };
+      }
+    }
+    pack = null; a.refreshMusicPack();
+    await new Promise((res) => setTimeout(res, 800));
+    out.backToSynth = { file: !!a._packEl };
+    return out;
+  });
+  mergeJson('music.json', 'packs', r);
+  for (const [k, v] of Object.entries(r)) if (v.db != null) console.log(`${k.padEnd(16)} ${String(v.db).padStart(6)} dB · pik ${v.peak} · fayl ${v.file}`);
+  const ref = r['synth-race'].db;
+  for (const [k, v] of Object.entries(r)) {
+    if (!k.startsWith('m_')) continue;
+    expect.soft(v.file, `${k}: fayl çalınır`).toBe(true);
+    expect.soft(v.db, `${k}: səs gəlir`).toBeGreaterThan(-60);
+    expect.soft(Math.abs(v.db - ref), `${k}: sintez mövzusundan fərq (dB)`).toBeLessThan(12);
+    expect.soft(v.peak, `${k}: kəsilmə yoxdur`).toBeLessThan(0.98);
+  }
+  expect(r.backToSynth.file, 'paket çıxarılanda sintezə qayıdır').toBe(false);
+});

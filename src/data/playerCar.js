@@ -39,5 +39,12 @@ export function playerCarData(carId) {
     const fx = pick(eq.effect);
     if (fx?.kind && fx.kind !== 'none') cos.fx = { kind: fx.kind, hex: fx.hex, glow: fx.glow };
   }
+  // Yer işığı və iz — əfsanəvi örtük taxılı deyilsə (onun öz dəsti var)
+  if (!cos.fx) {
+    const glow = pick(eq.glow);
+    if (glow && !glow.stock) cos.glow = { hex: glow.hex, rainbow: !!glow.rainbow };
+    const trail = pick(eq.trail);
+    if (trail?.trail) cos.trail = { type: trail.trail, hex: trail.hex };
+  }
   return { ...base, cosmetics: cos };
 }
