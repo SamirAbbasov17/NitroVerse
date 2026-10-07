@@ -80,11 +80,11 @@ test('ayarlar: telefon (844×390) — bölmələr sığır, üfüqi daşma yoxdu
   const page = await ctx.newPage();
   await bootOnce(page);
   await page.tap('[data-settings]');
-  for (const lang of ['az', 'ru']) {
-    if (lang === 'ru') {
+  for (const [lang, title] of [['az', 'Ayarlar'], ['ru', 'Настройки'], ['tr', 'Ayarlar'], ['en', 'Settings']]) {
+    if (lang !== 'az') {
       await page.tap('[data-set-tab="lang"]');
-      await page.tap('[data-l="ru"]');
-      await page.waitForFunction(() => document.querySelector('.menu-title')?.textContent === 'Настройки', null, { timeout: 60_000 });
+      await page.tap(`[data-l="${lang}"]`);
+      await page.waitForFunction(([l, tt]) => localStorage.getItem('apexLang') === l && !!window.__menu && document.querySelector('.menu-title')?.textContent === tt && !!document.querySelector('[data-set-tab]'), [lang, title], { timeout: 60_000 });
     }
     for (const tab of TABS) {
       await page.tap(`[data-set-tab="${tab}"]`);
@@ -94,9 +94,11 @@ test('ayarlar: telefon (844×390) — bölmələr sığır, üfüqi daşma yoxdu
         const panel = document.querySelector('.menu-panel').getBoundingClientRect();
         const bad = [...document.querySelectorAll('.set-tabs *, .set-body *, .menu-nav *')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.right > panel.right + 1 || r.left < panel.left - 1); }).length;
         const nav = document.querySelector('.menu-nav [data-back]').getBoundingClientRect();
-        return { bad, navVisible: nav.bottom <= window.innerHeight + 1 };
+        const body = document.querySelector('.set-body');
+        return { bad, navVisible: nav.bottom <= window.innerHeight + 1, scroll: body.scrollHeight - body.clientHeight };
       });
       expect([lang, tab, fit.bad, fit.navVisible], 'panel daxilində qalır, Geri görünür').toEqual([lang, tab, 0, true]);
+      expect([lang, tab, fit.scroll <= 1], 'sürüşdürmədən sığır').toEqual([lang, tab, true]);
     }
   }
   expect(await page.evaluate(() => document.querySelectorAll('[data-tg]').length), 'telefonda cila açarları göstərilmir').toBe(0);

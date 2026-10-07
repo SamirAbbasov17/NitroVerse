@@ -1826,7 +1826,6 @@ export class Menu {
               </button>
               <button class="menu-sound" data-friends title="${t('fr.title')}">👥</button>
               <button class="menu-sound" data-msgs title="${t('msgs.title')}">✉️</button>
-              <button class="menu-sound" data-lang title="Dil / Language">${getLang().toUpperCase()}</button>
               <button class="menu-sound" data-garage title="Qaraj">🏎️</button>
               <button class="menu-sound" data-settings title="${t('set.title')}">⚙️</button>
             </div>
@@ -1855,21 +1854,6 @@ export class Menu {
     if (inb) inb.onclick = () => this.showInbox();
     const gb = this.root.querySelector('[data-garage]');
     if (gb) gb.onclick = () => this.showGarage();
-    const lb = this.root.querySelector('[data-lang]');
-    if (lb) lb.onclick = () => {
-      const open = this.root.querySelector('.lang-pop');
-      if (open) { open.remove(); return; }
-      const pop = document.createElement('div');
-      pop.className = 'lang-pop';
-      pop.innerHTML = LANGS.map((l) => `
-        <button class="lang-pop__opt ${l === getLang() ? 'is-selected' : ''}" data-l="${l}">
-          <b>${l.toUpperCase()}</b> ${LANG_NAMES[l]}
-        </button>`).join('');
-      lb.after(pop);
-      pop.querySelectorAll('[data-l]').forEach((o) => {
-        o.onclick = () => setLang(o.dataset.l);
-      });
-    };
     const fb = this.root.querySelector('[data-friends]');
     if (fb) fb.onclick = () => this.showFriends();
     const mb = this.root.querySelector('[data-msgs]');
