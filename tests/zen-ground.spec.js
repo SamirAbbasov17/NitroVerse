@@ -11,6 +11,8 @@ const SECS = Number(process.env.SECS || 110);
 
 test('zen: maşın görünən səthdə oturur (yol, çiyin, torpaq, tunel)', async ({ page }) => {
   test.setTimeout((SECS + 60) * 1000);
+  // ZEN_ROAD=old → ritmsiz (əvvəlki) yol ilə müqayisə
+  if (process.env.ZEN_ROAD === 'old') await page.addInitScript(() => { try { localStorage.setItem('apexZenRoad', 'old'); } catch { /* boş */ } });
   await boot(page);
   await startMode(page, MODES.find((m) => m.name === 'zen').config);
   await autopilot(page, true);
@@ -41,6 +43,10 @@ test('zen: maşın görünən səthdə oturur (yol, çiyin, torpaq, tunel)', asy
       const bridge = rp.y - sc._meshGroundY(rp.x + nrm.x * (hw + 6), rp.z + nrm.z * (hw + 6)) > 1.2
         || rp.y - sc._meshGroundY(rp.x - nrm.x * (hw + 6), rp.z - nrm.z * (hw + 6)) > 1.2;
       const meshes = surfaces();
+      // Yer meshi yeni kafelə keçəndə `position` dərhal, `matrixWorld` isə növbəti render-də yenilənir.
+      // Arada şüa köhnə matrisə görə düşürdü və asfaltın üstündə 1–1.5 m "torpaq" ölçülürdü —
+      // ekranda belə kadr yoxdur (ölçüldü: bütün belə nümunələr tətbiqdən 3–8 ms sonra idi).
+      sc.ground.updateMatrixWorld(true);
       const keepLat = sc._latSm;
       // eninə nöqtələr: asfalt, çiyin, yaxın torpaq (maşın yoldan ən çox ~13 m aralana bilir)
       for (const off of [0, hw * 0.8, -hw * 0.8, hw + 2, -(hw + 2), hw + 5, -(hw + 5), hw + 8, -(hw + 8)]) {
@@ -49,6 +55,9 @@ test('zen: maşın görünən səthdə oturur (yol, çiyin, torpaq, tunel)', asy
         if (inTun && Math.abs(lat) > road.tunnelHalfWidth - 1.2) continue; // divarın arxası — maşın ora çata bilmir
         // körpüdə sürahi yoldan çıxmağa qoymur (yol relyefdən xeyli yuxarıdadır) — kənar nöqtələr əlçatmazdır
         if (bridge && Math.abs(lat) > hw + 0.3) continue;
+        // yol dirəyi / işıq / nişan (nazik, bərk obyekt): şüa onun başına düşür və 1 m "batma" kimi
+        // oxunurdu — maşın ora çata bilmir (toqquşması var), səth deyil
+        if (road.obstacles.some((ob) => ['post', 'pole', 'lamp', 'sign'].includes(ob.kind) && Math.hypot(ob.x - pos.x, ob.z - pos.z) < ob.r + 0.6)) continue;
         sc._latSm = undefined;
         const phys = sc._groundYFor({ position: pos, lateral: lat, wpHint: car.wpHint }, 1);
         // görünən səth: fizikadan 1.6 m yuxarıdan aşağı şüa (tunel tavanı daha hündürdür)

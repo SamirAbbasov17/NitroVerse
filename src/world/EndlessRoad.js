@@ -14,8 +14,16 @@ const SEG = 8;         // nöqtələr arası (m)
 // yeyirdi və hər ~7 saniyədə bir 36-40 ms-lik kadr donması verirdi (ölçülüb:
 // spike vaxtları chunk vaxtları ilə üst-üstə düşür). Yarıya bölünəndə hər
 // qurulma ~6-11 ms olur və kadr büdcəsinə sığır; draw-call artımı cüzidir.
+// Ritm zonalarında əyrilik HƏDƏFİ (rad/seqment). Yol hamarlandığı üçün faktiki pik bundan aşağı olur —
+// ölçülmüş radiuslar: tests/zen-road.spec.js
+const SERP_CURV = 0.28;
+const SWEEP_CURV = 0.12;
 const CHUNK = 12;      // chunk başına seqment (≈96 m)
-const AHEAD = 760;     // hərəkət istiqamətində hazır yol (m)
+// Chunk-ın dekoru yolun bu qədər İRƏLİDƏKİ nöqtələrini bilərək qoyulur (seqment). Əvvəl dekor
+// yalnız öz chunk-ının yoluna baxırdı; yol sonradan döndükdə dekora ilişir, "sərt zəmanət"
+// nöqtələri kənara itələyir və yol diş-diş olurdu (ritm zonalarında ölçüldü: radius 7–9 m).
+const LOOK = 24;
+const AHEAD = 760 + LOOK * SEG; // hərəkət istiqamətində hazır nöqtələr (m); qurulmuş yol əvvəlki kimi 760 m
 const BACK_AHEAD = 520; // arxaya dönəndə də hazır yol (m)
 const TRIM_FAR = 1050; // bu məsafədən uzaq chunk-lar silinir
 
@@ -98,8 +106,13 @@ export function waterMaterial() {
 }
 
 export class EndlessRoad {
-  constructor(scene) {
+  constructor(scene, { rhythm = true } = {}) {
     this.scene = scene;
+    // YOLUN RİTMİ (istifadəçi: "ancaq düz getmək sıxıcıdır, drift olmur"): hər 2600 m-lik dövrədə
+    // şəhər və tuneldən kənar iki zonada yol canlanır — ya uzun S-döngələr, ya da serpantin
+    // (drift üçün iti döngələr). Qalan yerdə əvvəlki sakit yoldur. false = köhnə yol.
+    this.rhythm = rhythm;
+    this._secId = null;
     this.halfWidth = 7.5;
     this.maxRadius = Infinity; // dünya sərhədi klampı işə düşməsin
     this.branches = [];
@@ -142,7 +155,7 @@ export class EndlessRoad {
 
     // Başlanğıc düz yol
     for (let i = 0; i < CHUNK + 6; i++) this._addPoint();
-    this._buildChunk();
+    this._buildChunk(true);
   }
 
   get length() { return (this.base + this.points.length) * SEG; }
@@ -156,6 +169,22 @@ export class EndlessRoad {
   // divar yoxlaması üçün yaramır.
   isInTunnel(position, hint = null) {
     return this._tunnelT(this.getNearest(position, hint).index) > 0;
+  }
+
+  // Ritm zonası: bu nöqtədə yol hansı xarakterdədir — 'serp' (serpantin), 'sweep' (uzun S) və ya
+  // null (sakit). Zonalar şəhər (200–560 m) və tunel (1480–1710 m) pəncərələrindən uzaqdadır.
+  // İlk dövrədə birinci zona həmişə serpantindir (oyunçu onu ilk 30 saniyədə görsün).
+  sectionAt(abs) {
+    if (!this.rhythm) return null;
+    const dist = abs * SEG;
+    const m = ((dist % 2600) + 2600) % 2600;
+    const zone = (m >= 760 && m < 1280) ? 0 : (m >= 1900 && m < 2460) ? 1 : -1;
+    if (zone < 0 || dist < 0) return null;
+    const cyc = Math.floor(dist / 2600);
+    if (cyc === 0) return zone === 0 ? 'serp' : 'sweep';
+    // determinist "zər": eyni zona hər dəfə eyni xarakterdədir (arxaya dönəndə də)
+    const h = Math.sin((cyc * 2 + zone) * 12.9898) * 43758.5453;
+    return (h - Math.floor(h)) < 0.6 ? 'serp' : 'sweep';
   }
 
   // Tunel zonası: hər 2600 m-də bir ~230 m tunel (şəhər pəncərəsindən uzaqda)
@@ -342,6 +371,23 @@ export class EndlessRoad {
       this._curvTarget = (Math.random() - 0.5) * 0.11 * this.style.curvMul;
       if (Math.random() < 0.12) this._curvTarget *= 0.25; // arabir sakit hissə
     }
+    if (this.rhythm) {
+      const kind = this.sectionAt(this.base + this.points.length);
+      if (kind) {
+        const id = Math.floor(((this.base + this.points.length) * SEG) / 1300);
+        if (this._secId !== id) { this._secId = id; this._secSign = Math.random() < 0.5 ? 1 : -1; this._secLeft = 0; }
+        if (--this._secLeft <= 0) {
+          this._secSign *= -1;   // növbəti döngə əks tərəfə — yol ümumi istiqamətini saxlayır
+          const serp = kind === 'serp';
+          this._secLeft = serp ? 5 + Math.floor(Math.random() * 3) : 9 + Math.floor(Math.random() * 5);
+          this._curvTarget = this._secSign * (serp ? SERP_CURV : SWEEP_CURV) * (0.88 + Math.random() * 0.24);
+        }
+        this._sinceTurn = 0;     // zonada təsadüfi "sakit viraj" seçimi işləmir
+      } else if (this._secId != null) {
+        this._secId = null;
+        this._curvTarget = 0;    // zonadan çıxanda yol düzəlir (iti hədəf qalsa yol öz üstünə qıvrılırdı)
+      }
+    }
     // Tuneldə yol DÜZDÜR (qazma düz gedir)
     {
       const tw = this._tunnelW(this.base + this.points.length);
@@ -424,7 +470,7 @@ export class EndlessRoad {
     this.tangents.push(t);
     this.normals.push(new THREE.Vector3(t.z, 0, -t.x));
     this._pending++;
-    if (this._pending >= CHUNK) this._buildChunk();
+    if (this._pending >= CHUNK + LOOK) this._buildChunk();
   }
 
   // Maşının olduğu yerə görə yol HƏR İKİ istiqamətdə hazır saxlanır —
@@ -638,19 +684,24 @@ export class EndlessRoad {
     return rb;
   }
 
-  _buildChunk() {
-    if (this._pending < 2) return;
+  // Ən köhnə qurulmamış CHUNK seqmenti qurur; ondan irəlidəki (hələ qurulmamış) nöqtələr dekorun
+  // yoldan təmizlənməsi üçün `_lookPts`-də verilir. force: irəlidə nöqtə az olsa da qur (başlanğıc).
+  _buildChunk(force = false) {
+    if (this._pending < 2 || (!force && this._pending < CHUNK + LOOK)) return;
     const n = this.points.length;
     const i0 = Math.max(0, n - this._pending - 1); // 1 nöqtə üst-üstə — tikişsiz
-    const pts = this.points.slice(i0);
-    const nrms = this.normals.slice(i0);
-    const tans = this.tangents.slice(i0);
+    const i1 = Math.min(n, i0 + CHUNK + 1);
+    const pts = this.points.slice(i0, i1);
+    const nrms = this.normals.slice(i0, i1);
+    const tans = this.tangents.slice(i0, i1);
     const absStart = this.base + i0;
-    this._pending = 0;
+    this._pending = n - i1;
+    this._lookPts = this.points.slice(i1, i1 + LOOK);
     const { merged, obstacles, spots } = this._makeChunkMesh(pts, nrms, absStart, tans);
+    this._lookPts = null;
     this._group.add(merged);
     this.decorSpots.push(...spots);
-    this.chunks.push({ startAbs: absStart, endAbs: this.base + n - 1, group: merged, obstacles, spots });
+    this.chunks.push({ startAbs: absStart, endAbs: this.base + i1 - 1, group: merged, obstacles, spots });
   }
 
   // Arxa istiqamət chunk-ı — siyahının ƏVVƏLİNƏ daxil olur
@@ -1621,7 +1672,18 @@ export class EndlessRoad {
     // yazılmır (dağ, bina, dirək, hasar…). Nəticədə yol sonradan onların
     // üstündən keçirdi. Bu keçid HƏR obyektin ÖZ ÖLÇÜSÜNÜ (bounding box)
     // yolun eni ilə müqayisə edir və dəhlizə girəni SİLİR.
-    this._clearRoadCorridor(g, pts, absStart, chunkObstacles);
+    this._clearRoadCorridor(g, this._lookPts?.length ? pts.concat(this._lookPts) : pts, absStart, chunkObstacles);
+    // İrəlidəki yolun üstündə qalan toqquşmalar da silinir (obyekti silinib, görünməz maneə qalmasın)
+    if (this._lookPts?.length) {
+      for (let q = chunkObstacles.length - 1; q >= 0; q--) {
+        const ob = chunkObstacles[q];
+        const lim = this.halfWidth + (ob.reach ?? ob.r) + 1.0;
+        if (!this._lookPts.some((lp) => Math.hypot(ob.x - lp.x, ob.z - lp.z) < lim)) continue;
+        const gi = this.obstacles.indexOf(ob);
+        if (gi >= 0) this.obstacles.splice(gi, 1);
+        chunkObstacles.splice(q, 1);
+      }
+    }
 
     // bakeColors: düz rəngli dekor rəng başına ayrı mesh olmur (bax MergeUtils)
     const merged = mergeStaticGroup(g, { bakeColors: true });

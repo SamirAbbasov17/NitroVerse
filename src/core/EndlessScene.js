@@ -286,7 +286,8 @@ export class EndlessScene {
     this.scene.fog = new THREE.Fog(0xffffff, 90, 620);
 
     // ——— Yol + maşın ———
-    this.road = new EndlessRoad(this.scene);
+    // Müqayisə üçün: localStorage `apexZenRoad` = 'old' → ritmsiz (əvvəlki) yol
+    this.road = new EndlessRoad(this.scene, { rhythm: (() => { try { return localStorage.getItem('apexZenRoad') !== 'old'; } catch { return true; } })() });
     // Kenney Nature Kit (CC0) — arxa planda yüklənir, hazır olanda dekora qarışır
     // RELYEF İŞÇİSİ: yer torunun hesablanması ayrı mövzuya keçir — kadr
     // vaxtı sıçrayışları tamamilə yox olur. Dəstəklənmirsə (köhnə brauzer)
