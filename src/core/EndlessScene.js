@@ -61,7 +61,8 @@ function obstaclePush(o, cx, cz, r, out) {
 }
 // Təkərlərin maşın mərkəzindən yerli məsafəsi (yan, irəli) — model 4.4 m-ə normallaşdırılıb
 const WHEEL_X = 0.82, WHEEL_Z = 1.32;
-const ZEN_STEER_CALM = 0.6;   // sürətdə dönmənin nə qədər yumşaldığı (0 = yarışdakı kimi)
+const ZEN_STEER_CALM = 0.38;  // sürətdə dönmənin nə qədər yumşaldığı (0 = yarışdakı kimi)
+const ZEN_STEER_RAMP = 0.8;   // sükanın açılma sürəti (1 = yarışdakı kimi)
 // Asfalt yol nöqtələrindən bu qədər yuxarı çəkilir (EndlessRoad: `_ribbon(…, 0.08)`) — əvvəl
 // maşın yol nöqtəsinin hündürlüyündə otururdu və təkərlər asfalta ~11 sm batırdı (ölçüldü)
 const ROAD_TOP = 0.08;
@@ -325,9 +326,12 @@ export class EndlessScene {
     // 6.5 dəfə iti: xəfif toxunuş maşını yolun o başına atırdı (istifadəçi: "çox kəskin dönür").
     // İndi sürətdə dönmə 40%-ə enir (aşağı sürətdə — manevr — tam qalır), sükan da yumşaq açılır.
     // Köhnə ilə müqayisə: localStorage `apexZenSteer` = 'old'.
-    if ((() => { try { return localStorage.getItem('apexZenSteer') !== 'old'; } catch { return true; } })()) {
-      this.playerCar.steerCalm = ZEN_STEER_CALM;
-      this.playerCar.steerRampMul = 0.55;
+    // 2-ci tənzim (istifadəçi: "indi də çox yavaşdır"): ilk variant (0.6 / 0.55) həddən artıq
+    // sakit idi → orta nöqtə. Müqayisə: `apexZenSteer` = 'old' (yarışdakı kimi) | 'calm' (ilk variant).
+    {
+      const v = (() => { try { return localStorage.getItem('apexZenSteer') || ''; } catch { return ''; } })();
+      if (v === 'calm') { this.playerCar.steerCalm = 0.6; this.playerCar.steerRampMul = 0.55; }
+      else if (v !== 'old') { this.playerCar.steerCalm = ZEN_STEER_CALM; this.playerCar.steerRampMul = ZEN_STEER_RAMP; }
     }
     const spot = this.road.nearestSpot(new THREE.Vector3(0, 0, 20));
     this.playerCar.reset(spot.point, spot.heading);

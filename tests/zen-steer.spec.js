@@ -2,12 +2,13 @@ import { test, expect } from '@playwright/test';
 import { MODES, boot, startMode, autopilot, mergeJson } from './helpers.js';
 
 // ZEN SÜKANI: yolun hamarlığına uyğun olmalıdır. Kruiz sürətində (1) tam sükanda dönmə radiusu,
-// (2) qısa toxunuşun (0.3 s) maşını nə qədər yana atdığı ölçülür — köhnə ('old') və yeni tənzimlə.
+// (2) qısa toxunuşun (0.3 s) maşını nə qədər yana atdığı ölçülür — yarışdakı kimi ('old'), ilk sakit
+// variant ('calm' — istifadəçi: "çox yavaşdır") və indiki orta tənzimlə ('new').
 // Aşağı sürətdə manevr itməməlidir (dönmə radiusu dəyişmir).
-for (const variant of ['old', 'new']) {
+for (const variant of ['old', 'calm', 'new']) {
   test(`zen sükanı: ${variant}`, async ({ page }) => {
     test.setTimeout(120_000);
-    await page.addInitScript((v) => { try { if (v === 'old') localStorage.setItem('apexZenSteer', 'old'); else localStorage.removeItem('apexZenSteer'); } catch { /* boş */ } }, variant);
+    await page.addInitScript((v) => { try { if (v !== 'new') localStorage.setItem('apexZenSteer', v); else localStorage.removeItem('apexZenSteer'); } catch { /* boş */ } }, variant);
     await boot(page);
     await startMode(page, MODES.find((m) => m.name === 'zen').config);
     await autopilot(page, true);
@@ -59,7 +60,7 @@ for (const variant of ['old', 'new']) {
     console.log(`${variant}: kruiz ${r.cruise} m/s · tam sükanda dönmə ${r.yaw} rad/s, radius ${r.radius} m · 0.3 s toxunuş → ${r.tapHeadingDeg}° dönmə, 1 s-də ${r.tapLateral} m yana (yolun yarım eni ${r.roadHalf} m) · aşağı sürətdə (${r.slowV} m/s) radius ${r.slowRadius} m`);
     if (variant === 'new') {
       expect(r.radius, 'kruizdə tam sükan radiusu yolun ən iti döngəsindən (≈180 m) xeyli kiçik qalır').toBeLessThan(120);
-      expect(r.radius, 'amma yarışdakı qədər iti deyil').toBeGreaterThan(40);
+      expect(r.radius, 'amma yarışdakı qədər iti deyil').toBeGreaterThan(28);
       expect(r.tapLateral, 'qısa toxunuş maşını yoldan çıxarmır (m)').toBeLessThan(r.roadHalf);
       expect(r.slowRadius, 'aşağı sürətdə manevr qalır (m)').toBeLessThan(12);
     }
