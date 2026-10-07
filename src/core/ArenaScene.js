@@ -1078,12 +1078,16 @@ export class ArenaScene {
         if (bestAhead < 6) drive.throttle = Math.min(drive.throttle, 0.5);
       }
     }
-    // İLİŞMƏ: 0.6 s yerində qalıbsa 0.9 s geri çəkilib burulur
-    r._stuckT = Math.abs(car.vF) < 1.5 && drive.throttle > 0 ? (r._stuckT || 0) + dt : 0;
-    if (r._stuckT > 0.6) { r._backT = 0.9; r._backSide = Math.random() < 0.5 ? -1 : 1; r._stuckT = 0; }
+    // İLİŞMƏ: 0.6 s yerində qalıbsa (maneə, divar və ya burun-buruna dayanmış rəqib) 0.9 s
+    // getmək istədiyinin ƏKSİNƏ sürür və burulur
+    r._stuckT = Math.abs(car.vF) < 1.5 && car.velocity.length() < 1.5 ? (r._stuckT || 0) + dt : 0;
+    if (r._stuckT > 0.6 && !((r._backT || 0) > 0)) {
+      r._backT = 0.9; r._backDir = drive.throttle >= 0 ? -1 : 1; r._backSide = Math.random() < 0.5 ? -1 : 1;
+      r._stuckT = 0;
+    }
     if ((r._backT || 0) > 0) {
       r._backT -= dt;
-      drive.throttle = -1; drive.steer = r._backSide;
+      drive.throttle = r._backDir; drive.steer = r._backSide;
     }
     car.update(dt, drive, this._fakeTrack);
     // Atəş: raket + düşmən yaxın + nişan tutulub
