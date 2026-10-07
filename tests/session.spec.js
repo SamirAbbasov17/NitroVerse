@@ -220,4 +220,13 @@ test('sosial: sürət limiti — spam rədd olunur, gözləmə vaxtı deyilir', 
   expect(ui.wait).toBeGreaterThan(0);
   expect(ui.text).toContain('saniyə gözlə');
   console.log(JSON.stringify({ wait6th: st[5].wait, ui }));
+  // real ekran: oyunçu çat xanasına yazır → çatın içində sistem sətri kimi görünür
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.evaluate(() => window.__menu.showOnline());
+  await page.fill('#gchat-input', 'yenə yazıram');
+  await page.press('#gchat-input', 'Enter');
+  await expect(page.locator('#gchat')).toContainText('saniyə gözlə', { timeout: 8000 });
+  await expect(page.locator('#gchat')).not.toContainText('yenə yazıram');
+  await page.locator('#gchat').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: 'tests/out/chat-slow-mobile.png' });
 });
