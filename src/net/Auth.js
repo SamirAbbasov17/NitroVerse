@@ -22,6 +22,28 @@ class AuthManager {
   onChange(cb) { this._handlers.push(cb); }
   _emit() { for (const h of this._handlers) h(this.profile); }
 
+  // TƏK SESSİYA: hesaba başqa cihazdan girilibsə server 'session' xətası qaytarır — bu cihaz
+  // çıxarılır və istifadəçiyə səbəbi deyilir (onKicked). Oyun zamanı da tez bilinsin deyə
+  // hesab açıq olanda 30 saniyədən bir və pəncərə önə gələndə yoxlanır.
+  onKicked(cb) { this._kickHandlers = this._kickHandlers || []; this._kickHandlers.push(cb); }
+
+  _kick() {
+    if (!this.token) return;
+    this.logout();
+    for (const h of this._kickHandlers || []) h();
+  }
+
+  _watch() {
+    if (this._watching || typeof document === 'undefined') return;
+    this._watching = true;
+    const check = () => {
+      if (!this.token || !this.profile || document.hidden) return;
+      this._call({ action: 'me', token: this.token }).catch(() => null);   // 'session' → _call özü çıxarır
+    };
+    setInterval(check, 30000);
+    document.addEventListener('visibilitychange', check);
+  }
+
   get isLoggedIn() { return !!this.profile; }
   get isGuest() { return !this.profile; }
 
@@ -33,13 +55,17 @@ class AuthManager {
       signal: AbortSignal.timeout(9000),
     });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.error || 'network');
+    if (!r.ok) {
+      if (j.error === 'session' && body.token && body.token === this.token) this._kick();
+      throw new Error(j.error || 'network');
+    }
     return j;
   }
 
   // Sessiya bərpası (boot zamanı) — xəta atmır
   async restore() {
     this._ready = true;
+    this._watch();
     if (!this.token) return null;
     try {
       const { profile } = await this._call({ action: 'me', token: this.token });
@@ -89,7 +115,8 @@ class AuthManager {
   }
 
   async changePass(oldPass, pass) {
-    const { profile } = await this._call({ action: 'changePass', token: this.token, old: oldPass, pass });
+    const { profile, token } = await this._call({ action: 'changePass', token: this.token, old: oldPass, pass });
+    if (token) { this.token = token; localStorage.setItem('apexToken', token); }
     if (profile) { this.profile = profile; this._emit(); }
     return profile;
   }

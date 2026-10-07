@@ -38,6 +38,7 @@ npm run test:pace    # maşınlar arası sürət balansı — ~10 dəq
 npm run test:arena   # arena silahları, mina, lazer, vuruş sayğacı
 npm run test:track-map # trek sxemi + həndəsə (yeni trek/şaxə çəkəndə)
 npm run test:zen-contact # zen: təkərlər yerə, gövdə maneəyə girmir — ~7 dəq
+npm run test:session # bir hesab — bir cihaz: yeni giriş köhnə cihazı çıxarır (öz backend-i müvəqqəti qaldırır)
 npm run test:feel    # sürüş modelinin rəqəmləri → tests/out/feel.json (fizika dəyişəndə əvvəl/sonra)
 npm run serve:dev    # öz backend (SQLite) yerli
 ```

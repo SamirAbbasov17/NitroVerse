@@ -109,6 +109,15 @@ function verify(token) {
   }
 }
 
+// TƏK SESSİYA: hər giriş hesaba yeni sessiya nömrəsi (sid) yazır və token onu daşıyır.
+// Token tələb edən əməliyyatda sid hesabdakı ilə tutuşdurulur — yəni yeni giriş əvvəlki
+// cihazın tokenini etibarsız edir (bir hesabda eyni anda yalnız bir cihaz). Sid-siz köhnə
+// tokenlər hesabda sid yaranana qədər (ilk yeni girişə qədər) işləyir.
+function openSession(key, user) {
+  user.sid = randomBytes(9).toString('base64url');
+  return sign({ nick: key, sid: user.sid, exp: Date.now() + 30 * 24 * 3600 * 1000 });
+}
+
 function hashPass(pass, saltHex = null) {
   const salt = saltHex ? Buffer.from(saltHex, 'hex') : randomBytes(16);
   const hash = scryptSync(String(pass), salt, 32);
@@ -164,8 +173,8 @@ export function makeAuth(getStore, env = process.env) {
         gold: 0, cars: [], created: Date.now(),
         awards: [], stats: {},
       };
+      const token = openSession(key, user);
       await store.setJSON(key, user);
-      const token = sign({ nick: key, exp: Date.now() + 30 * 24 * 3600 * 1000 });
       return json({ token, profile: pubProfile(user) });
     }
 
@@ -193,8 +202,11 @@ export function makeAuth(getStore, env = process.env) {
         return json({ error: 'wrong-pass' }, 401);
       }
       if (rl.n) store.delete(rlKey).catch(() => {}); // uğurlu giriş → sayğac sıfırlanır
-      const token = sign({ nick: key, exp: Date.now() + 30 * 24 * 3600 * 1000 });
-      return json({ token, profile: pubProfile(user) });
+      // yeni giriş əvvəlki cihazı çıxarır. Hesab yenidən oxunur ki, paralel yazılan qızıl itməsin
+      const fresh = (await store.get(key, { type: 'json' })) || user;
+      const token = openSession(key, fresh);
+      await store.setJSON(key, fresh);
+      return json({ token, profile: pubProfile(fresh) });
     }
 
     // ————— PAROL BƏRPASI: kod göndər —————
@@ -246,10 +258,10 @@ export function makeAuth(getStore, env = process.env) {
       if (!user) return json({ error: 'no-user' }, 404);
       const nh = hashPass(yeni);
       user.salt = nh.salt; user.hash = nh.hash;
+      const token = openSession(key, user);
       await store.setJSON(key, user);
       await store.delete(rk);
       await store.delete(`rl/${key}`).catch(() => {});   // giriş kilidi açılsın
-      const token = sign({ nick: key, exp: Date.now() + 30 * 24 * 3600 * 1000 });
       return json({ token, profile: pubProfile(user) });
     }
 
@@ -258,6 +270,8 @@ export function makeAuth(getStore, env = process.env) {
     if (!session) return json({ error: 'auth' }, 401);
     const user = await store.get(session.nick, { type: 'json' });
     if (!user) return json({ error: 'no-user' }, 404);
+    // hesaba sonradan başqa cihazdan girilib → bu token artıq keçmir
+    if (user.sid && session.sid !== user.sid) return json({ error: 'session' }, 401);
 
     if (action === 'me') return json({ profile: pubProfile(user) });
 
@@ -270,8 +284,9 @@ export function makeAuth(getStore, env = process.env) {
       if (a.length !== c.length || !timingSafeEqual(a, c)) return json({ error: 'wrong-pass' }, 401);
       const nh = hashPass(yeni);
       user.salt = nh.salt; user.hash = nh.hash;
+      const token = openSession(session.nick, user);   // parol dəyişdi → başqa cihazlar çıxır
       await store.setJSON(session.nick, user);
-      return json({ ok: true, profile: pubProfile(user) });
+      return json({ ok: true, token, profile: pubProfile(user) });
     }
 
     // E-poçtu təyin et / dəyiş (parol bərpası üçün lazımdır)

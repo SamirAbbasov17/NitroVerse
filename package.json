@@ -38,7 +38,8 @@
     "test:cars-sheet": "playwright test tests/cars-sheet.spec.js",
     "test:track-map": "playwright test tests/track-map.spec.js",
     "test:arena": "playwright test tests/arena.spec.js",
-    "test:zen-steer": "playwright test tests/zen-steer.spec.js"
+    "test:zen-steer": "playwright test tests/zen-steer.spec.js",
+    "test:session": "playwright test tests/session.spec.js"
   },
   "dependencies": {
     "@netlify/blobs": "^10.7.10",

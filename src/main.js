@@ -92,6 +92,7 @@ uiRoot.addEventListener('click', (e) => {
 });
 if (import.meta.env.DEV) {
   window.__audio = audio;
+  window.__auth = auth;
   window.__game = game;
   // Onlayn testlər (tests/online.spec.js): menyudan keçmədən otaq qurub yarış başlatmaq üçün
   import('./net/NetRoom.js').then((m) => { window.__online = { NetRoom: m.NetRoom, start: (net, msg) => startOnlineGame(net, msg) }; });
@@ -344,6 +345,8 @@ boot();
 // ————— Sosial: kimlik, bildirişlər, dəvət axını —————
 const notices = new Notices();
 window.__notices = notices; // Menu bildirişləri buradan göstərir
+// Hesaba başqa cihazdan girilib → bu cihaz çıxarıldı; səbəbi deyilir
+auth.onKicked(() => notices.show({ icon: '🔒', text: t('acc.kicked'), life: 14 }));
 
 // Server cleanUser ilə EYNİ normallaşdırma — 'İ'.toLowerCase() 'i̇' (nöqtəli)
 // verir, birləşən işarə uzaqlaşdırılmasa ünvanlar uyğun gəlmir
