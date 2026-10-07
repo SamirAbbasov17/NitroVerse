@@ -246,6 +246,20 @@ export class Car {
     this.root.rotation.y = heading;
   }
 
+  // Kapot kamerası üçün: maşının mərkəzindən `fwd` m irəlidə gövdənin ÜST səthinin hündürlüyü
+  // (maşının öz yerinə nisbətən). Kamera bundan aşağı düşə bilməz — tək həcmli gövdədə
+  // (mikroavtobus) sabit düsturla kamera kabinanın İÇİNDƏ qalırdı (kadr: cams-mobile, crimson).
+  hoodTop(fwd = 0.55) {
+    if (this._hoodTop == null) {
+      this.root.updateWorldMatrix(true, true);
+      const s = Math.sin(this.root.rotation.y), c = Math.cos(this.root.rotation.y);
+      const from = new THREE.Vector3(this.root.position.x + s * fwd, this.root.position.y + 8, this.root.position.z + c * fwd);
+      const hit = new THREE.Raycaster(from, new THREE.Vector3(0, -1, 0), 0, 12).intersectObject(this._model, true)[0];
+      this._hoodTop = hit ? hit.point.y - this.root.position.y : 1.2;
+    }
+    return this._hoodTop;
+  }
+
   // Əfsanəvi örtüyün canlandırılması (Car.update-dən çağırılır)
   _updateFx(dt) {
     this._fx?.tick(dt);

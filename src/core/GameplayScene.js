@@ -1545,7 +1545,7 @@ export class GameplayScene {
       }
       // Kapot: kamera şüşənin önündə, kapotun ÜSTÜNDƏ — maşının burnu kadrda
       const fwd = hood ? 0.55 : 0.45;
-      const camY = hood ? this._carH * 0.62 + 0.42 : 1.5;
+      const camY = hood ? Math.max(this._carH * 0.62 + 0.42, car.hoodTop(fwd) + 0.32) : 1.5;
       this.camera.position.set(
         car.position.x + Math.sin(h) * fwd, camY,
         car.position.z + Math.cos(h) * fwd

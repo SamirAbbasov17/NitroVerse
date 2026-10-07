@@ -204,3 +204,42 @@ test('maşın cədvəli: əfsanəvi örtüklər və maşına xas skinlər', asyn
   }
   await sheet(sk, 6, 'skins.png');
 });
+
+// KAMERALAR × GÖVDƏLƏR: kapot və sükan arxası kamerası hər gövdədə düzgün yerdədirmi (kamera
+// gövdənin içində qalmır, kapot kadrı örtmür)? Masaüstü və telefon ölçüsündə →
+// tests/out/cars/cams-desktop.png, cams-mobile.png. Örtüklü (lava) və skinli maşın da daxildir.
+for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, false], ['mobile', { width: 844, height: 390 }, true]]) {
+  test.describe(`kameralar ${label}`, () => {
+    test.use({ viewport: vp, hasTouch: touch, isMobile: touch });
+    test(`maşın cədvəli: kameralar (${label})`, async ({ page }) => {
+      test.setTimeout(600_000);
+      const cells = [];
+      const ids = (process.env.CAMS || 'blaze,titan,inferno,sunburst,sequoia,crimson,midnight,violetta,frost,ranger').split(',');
+      for (const carId of ids) {
+        for (const mode of ['tps', 'hood', 'fps']) {
+          await page.addInitScript((m) => { try { localStorage.setItem('apexCamMode', m); } catch { /* boş */ } }, mode);
+          await boot(page);
+          await page.evaluate((cid) => window.__menu.onStart({ mode: 'race', trackId: 'alpine', carId: cid, laps: 3, difficulty: 'normal' }), carId);
+          await page.waitForFunction(() => window.__active?.raceManager?.state === 'racing', null, { timeout: 40_000 });
+          await page.evaluate(async () => {
+            const sc = window.__active;
+            // sınaq: oyunçu maşınına lava örtüyü (iz + yer işığı telefonda da görünsün)
+            if (sc.playerCar.data?.id === 'inferno') {
+              const mod = await import('/src/core/LegendaryFx.js');
+              sc.playerCar._fx = mod.applyLegendaryFx(sc.playerCar._model, 'fire');
+            }
+            sc.input.touch.throttle = 1;
+          });
+          await page.waitForTimeout(2600);
+          cells.push({ cap: `${carId} · ${mode}`, b64: (await page.screenshot({ type: 'jpeg', quality: 80 })).toString('base64') });
+        }
+      }
+      await page.setViewportSize({ width: 1920, height: 1000 });
+      await page.setContent(`<style>body{margin:0;background:#111;display:grid;grid-template-columns:repeat(6,1fr);gap:3px;padding:3px;font:12px sans-serif;color:#eee}
+        figure{margin:0;position:relative}img{width:100%;display:block}figcaption{position:absolute;left:5px;top:3px;background:#000a;padding:1px 4px}</style>`
+        + cells.map((c) => `<figure><img src="data:image/jpeg;base64,${c.b64}"><figcaption>${c.cap}</figcaption></figure>`).join(''));
+      await page.waitForTimeout(400);
+      fs.writeFileSync(path.join(DIR, `cams-${label}.png`), await page.screenshot({ fullPage: true }));
+    });
+  });
+}
