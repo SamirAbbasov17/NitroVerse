@@ -44,6 +44,8 @@ export class FootballScene {
     this.onLeave = onLeave;
     this.onRestart = onRestart;
     this.online = config.online || null;
+    // Render sonrası cila (masaüstü): gecə stadionu — projektorlar və reklam lövhələri parıldayır
+    this.grade = { bloom: 0.3, bloomThreshold: 0.86, saturation: 1.14, contrast: 1.07, shadows: 0xeef2ff, highlights: 0xfff8ec };
     this._state = 'countdown';
     this._time = 0;
     this._matchT = MATCH_TIME;
@@ -1355,6 +1357,17 @@ export class FootballScene {
     const mx = FIELD_W / 2 - 1.2, mz = FIELD_H / 2 - 1.2;
     desired.x = Math.max(-mx, Math.min(mx, desired.x));
     desired.z = Math.max(-mz, Math.min(mz, desired.z));
+    // Künclər DİAQONAL kəsilib — düzbucaqlı hədd orada kameranı bortun arxasına buraxırdı
+    // və reklam lövhəsi maşını örtürdü (kadr: d-football-2later)
+    {
+      const cLim = FIELD_W / 2 + FIELD_H / 2 - CORNER - 1.6;
+      const cSum = Math.abs(desired.x) + Math.abs(desired.z);
+      if (cSum > cLim) {
+        const over = (cSum - cLim) / 2;
+        desired.x -= Math.sign(desired.x) * over;
+        desired.z -= Math.sign(desired.z) * over;
+      }
+    }
     // Küncdə/divarda kamera maşına sıxılanda hündürlüyü də azalt —
     // dik yuxarıdan baxış əvəzinə təbii alçaq rakurs
     const sqz = Math.hypot(desired.x - car.position.x, desired.z - car.position.z);

@@ -53,6 +53,8 @@ export class ArenaScene {
     this.onLeave = onLeave;
     this.onRestart = onRestart;
     this.online = config.online || null;
+    // Render sonrası cila (masaüstü): gecə neon arenası — işıqlı səthlər parıldayır (bax PostFX)
+    this.grade = { bloom: 0.22, bloomThreshold: 0.9, saturation: 1.18, contrast: 1.08, shadows: 0xf0f0ff, highlights: 0xfff2fb };
     this._state = 'countdown';
     this._time = 0;
     this._playT = 0;
@@ -102,8 +104,29 @@ export class ArenaScene {
     const cv = document.createElement('canvas');
     cv.width = 512; cv.height = 512;
     const cx = cv.getContext('2d');
-    cx.fillStyle = '#3a3244';
-    cx.fillRect(0, 0, 512, 512);
+    // Lövhəli döşəmə: əvvəl tək tünd rəng (#3a3244) idi — ekranda demək olar qara çıxır,
+    // maşınlar və maneələr yerdən seçilmirdi (plan 3.6: "döşəmə kontrastı"). İndi 4×4 beton
+    // lövhə (hər biri ≈ 5.8 m), ton fərqi və tikişlərlə — miqyas və sürət hissi verir.
+    {
+      const N = 4, S = 512 / N;
+      for (let i = 0; i < N; i++) {
+        for (let j = 0; j < N; j++) {
+          const v = ((i * 7 + j * 13) % 5) * 5;            // determinist ton fərqi
+          cx.fillStyle = `rgb(${86 + v},${76 + v},${104 + v})`;
+          cx.fillRect(i * S, j * S, S, S);
+        }
+      }
+      cx.strokeStyle = 'rgba(28,20,44,0.85)'; cx.lineWidth = 3;   // tikişlər
+      for (let i = 0; i <= N; i++) {
+        cx.beginPath(); cx.moveTo(i * S, 0); cx.lineTo(i * S, 512); cx.stroke();
+        cx.beginPath(); cx.moveTo(0, i * S); cx.lineTo(512, i * S); cx.stroke();
+      }
+      cx.strokeStyle = 'rgba(160,140,200,0.18)'; cx.lineWidth = 1; // tikişin işıqlı kənarı
+      for (let i = 0; i < N; i++) {
+        cx.beginPath(); cx.moveTo(i * S + 3, 0); cx.lineTo(i * S + 3, 512); cx.stroke();
+        cx.beginPath(); cx.moveTo(0, i * S + 3); cx.lineTo(512, i * S + 3); cx.stroke();
+      }
+    }
     // Cızıq sıxlığı/kontrastı azaldıldı — təkrarlanan teksturada 260 ədəd
     // "zibil" kimi görünürdü
     for (let i = 0; i < 130; i++) {
@@ -150,7 +173,7 @@ export class ArenaScene {
       }
       g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
       const şəbəkə = new THREE.LineSegments(g, new THREE.LineBasicMaterial({
-        color: 0x7a5cff, transparent: true, opacity: 0.13, blending: THREE.AdditiveBlending, depthWrite: false,
+        color: 0x7a5cff, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false,
       }));
       this.scene.add(şəbəkə);
     }
