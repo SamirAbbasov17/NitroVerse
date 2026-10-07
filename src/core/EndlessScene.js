@@ -2071,6 +2071,7 @@ export class EndlessScene {
 
     // Mühərrik + sürət xətləri
     const speedT = Math.min(speed / car.maxSpeed, 1);
+    (this.postMotion ||= { gain: 0.5 }).speed = speedT; this.postMotion.boost = car.boostTimer > 0 ? 1 : 0; // zen: yarı güc
     audio.setEngine(speedT, car.boostTimer > 0);
 
     // Mobil rescue düyməsi vəziyyəti

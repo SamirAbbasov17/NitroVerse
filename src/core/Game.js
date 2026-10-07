@@ -64,7 +64,7 @@ export class Game {
     if (this.active) {
       if (this.active.update) this.active.update(dt);
       if (this.active.scene && this.active.camera) {
-        if (this.post?.enabled) this.post.render(this.active.scene, this.active.camera);
+        if (this.post?.enabled) { this.post.setMotion(this.active.postMotion, dt); this.post.render(this.active.scene, this.active.camera); }
         else this.renderer.render(this.active.scene, this.active.camera);
       } else {
         this.renderer.setClearColor(0x070a14, 1);

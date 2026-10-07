@@ -1293,6 +1293,7 @@ export class FootballScene {
     // Matç bitəndə motor səsi qalib ekranında da davam edirdi
     const over = this._state === 'done';
     const speedT = over ? 0 : Math.min(pc.velocity.length() / pc.maxSpeed, 1);
+    (this.postMotion ||= { gain: 0.7 }).speed = speedT; this.postMotion.boost = !over && pc.boostTimer > 0 ? 1 : 0;
     audio.setEngine(speedT, !over && pc.boostTimer > 0);
     this.speedLines?.update(dt, speedT, pc.velocity.length());
   }

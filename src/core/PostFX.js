@@ -21,6 +21,11 @@ import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
 // EffectComposer işlədilmir: iki tam ölçülü hədəf saxlayır, burada biri kifayətdir.
 //
 // Oyunçu söndürə bilər: localStorage `apexPost` = '0' (ayarlar düyməsi Faza 5-də).
+//
+// SÜRƏT HİSSİ (2026-10-07, istifadəçi tələbi: "PC-də hissiyatı artırmaq üçün filtr/post").
+// Arkada yarışlarında sürət hissini verən əsas ekran effektləri: kənarların radial bulanması
+// (ən güclüsü), boost anında rəng ayrılması, sürətlə sıxılan vinyet. Üçü də SON keçidin
+// içindədir (əlavə render keçidi yoxdur) və sürət 0-da tam sönür — əsas görüntü dəyişmir.
 const KEY = 'apexPost';
 
 const read = (k) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } };
@@ -45,12 +50,34 @@ const FRAG = /* glsl */ `
   uniform float uContrast;
   uniform vec3 uShadows;
   uniform vec3 uHighlights;
+  uniform float uBlur;    // sürət bulanıqlığı 0..1
+  uniform float uChroma;  // boost: rəng ayrılması 0..1
+  uniform float uVig;     // sürət vinyeti 0..1
+  uniform float uAspect;
   varying vec2 vUv;
   float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
   void main() {
     // Hədəf artıq ekran (sRGB) fəzasındadır — qradasiya əvvəlki CSS filtri kimi işləyir
-    gl_FragColor = vec4(texture2D(tDiffuse, vUv).rgb, 1.0);
-    vec3 c = gl_FragColor.rgb;
+    vec3 c;
+    // SÜRƏT HİSSİ: kadrın kənarları mərkəzə doğru (hərəkət istiqamətində) bulanır, mərkəz —
+    // maşın və yolun qabağı — iti qalır. Ayrıca keçid deyil: eyni teksturadan 8 nümunə.
+    vec2 d = vUv - vec2(0.5, 0.52);
+    float r = length(vec2(d.x * uAspect, d.y)) / max(uAspect, 1.0) * 2.0;   // 0 mərkəz … ~1 künc
+    float m = smoothstep(0.38, 1.0, r);
+    if (uBlur > 0.002) {
+      float amt = uBlur * 0.085 * m;
+      vec3 acc = vec3(0.0);
+      for (int i = 0; i < 8; i++) acc += texture2D(tDiffuse, vUv - d * amt * (float(i) / 7.0)).rgb;
+      c = acc / 8.0;
+    } else {
+      c = texture2D(tDiffuse, vUv).rgb;
+    }
+    if (uChroma > 0.002) {
+      float ca = uChroma * 0.006 * m;
+      c.r = mix(c.r, texture2D(tDiffuse, vUv - d * ca).r, 0.85);
+      c.b = mix(c.b, texture2D(tDiffuse, vUv + d * ca).b, 0.85);
+    }
+    c *= 1.0 - uVig * 0.42 * smoothstep(0.5, 1.15, r);
     float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
     c = mix(vec3(l), c, uSat);
     c = (c - 0.5) * uContrast + 0.5;
@@ -68,6 +95,7 @@ export class PostFX {
   constructor(renderer) {
     this.renderer = renderer;
     this.enabled = read(KEY) !== '0';
+    this.speedFx = read('apexSpeedFx') !== '0';
     const size = renderer.getDrawingBufferSize(new THREE.Vector2());
     this.target = new THREE.WebGLRenderTarget(size.x, size.y, { samples: 4 });
     this.target.texture.colorSpace = THREE.SRGBColorSpace;
@@ -83,6 +111,7 @@ export class PostFX {
         uContrast: { value: 1 },
         uShadows: { value: new THREE.Color(1, 1, 1) },
         uHighlights: { value: new THREE.Color(1, 1, 1) },
+        uBlur: { value: 0 }, uChroma: { value: 0 }, uVig: { value: 0 }, uAspect: { value: size.x / size.y },
       },
       vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
       fragmentShader: FRAG,
@@ -118,6 +147,24 @@ export class PostFX {
     const size = this.renderer.getDrawingBufferSize(new THREE.Vector2());
     this.target.setSize(size.x, size.y);
     this.bloom.setSize(size.x, size.y);
+    this.final.uniforms.uAspect.value = size.x / size.y;
+  }
+
+  // Sürət effektləri: səhnə hər kadr `postMotion = { speed, boost }` (0..1) verir (Game._loop).
+  // Dəyərlər yumşaldılır ki, effekt sıçramasın. Söndürmək: localStorage `apexSpeedFx` = '0'.
+  setMotion(motion, dt) {
+    const u = this.final.uniforms;
+    const on = this.speedFx && motion;
+    const sp = on ? Math.max(0, Math.min(1, motion.speed || 0)) : 0;
+    const bo = on ? Math.max(0, Math.min(1, motion.boost || 0)) : 0;
+    const k = motion?.gain ?? 1;                       // zen: sakit (0.5)
+    const hi = Math.max(0, (sp - 0.55) / 0.45);        // yalnız yüksək sürətdə
+    const tBlur = (hi * hi * 0.55 + bo * 0.45) * k;
+    const tVig = (sp * 0.3 + bo * 0.3) * k;
+    const a = Math.min(1, dt * 5);
+    u.uBlur.value += (tBlur - u.uBlur.value) * a;
+    u.uVig.value += (tVig - u.uVig.value) * a;
+    u.uChroma.value += (bo * k - u.uChroma.value) * Math.min(1, dt * 7);
   }
 
   render(scene, camera) {

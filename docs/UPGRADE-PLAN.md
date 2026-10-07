@@ -193,6 +193,12 @@ Buz Zirvəsi (`frost`), Payız Meşəsi (`autumn`), Vulkan (`lava`) — hər bir
 
 Yan təsir (yaxşı): dekor rəngləri təpəyə yazılır və maneələrin tərpənməyən hissələri birləşdirilir — Zavod 138 → 95, Riviera 166 → 142 draw call. Onlayn `PREFIX` v19. **Yoxlanmayıb:** onlayn yarış yeni treklərdə; telefon; trek adları/təsvirləri 4 dilə çevrilməyib (mövcud treklərdə də belədir).
 
+### PC: sürət hissi üçün ekran effektləri 🔶 (2026-10-07, istifadəçi tələbi — rəy gözlənilir)
+
+Araşdırma (arkada yarışlarında sürət hissini nə verir): (1) kənarların radial bulanması — ən güclü siqnal; (2) boost anında rəng ayrılması; (3) sürətlə sıxılan vinyet; (4) FOV artımı və döngəyə baxan kamera — artıq var (`ChaseCam.js`, istifadəçi seçib); (5) sürət xətləri — var. 1–3 `PostFX`-in son keçidinə əlavə olundu (əlavə render keçidi yoxdur). Yarış tam güc, arena/futbol 0.7, zen 0.5.
+
+Ölçü (`npm run test:postfx` → 'sürət effektləri'): kadrın mərkəzində fərq 0, kənarda orta piksel fərqi 10.4 (sürət) / 14.5 (boost); CPU kadr xərci effektlə artmır (p99 5–8 ms aralığında, açıq/bağlı fərqi ölçmə səs-küyündən kiçikdir). Söndürmə: `localStorage.apexSpeedFx = '0'`. **Qalır:** sənin oynayıb qiymətləndirməyin (güc zövq məsələsidir); ayarlar menyusunda açar (Faza 5).
+
 ## Faza 5 — UI/UX 🔶
 
 | # | İş | Niyə | Ölçü |

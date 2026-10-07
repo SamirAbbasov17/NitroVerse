@@ -1581,6 +1581,7 @@ export class GameplayScene {
 
     // Sürət zolaqları (külək effekti) + mühərrik səsi
     this.speedLines?.update(dt, speedT, car.velocity.length());
+    (this.postMotion ||= {}).speed = speedT; this.postMotion.boost = car.boostTimer > 0 || car.driftBoostT > 0 ? 1 : 0; // PostFX sürət effektləri
     audio.setEngine(speedT, car.boostTimer > 0);
 
     const sideLook = B.side;
