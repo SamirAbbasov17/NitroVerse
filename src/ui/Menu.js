@@ -12,6 +12,14 @@ import { COSMETIC_GROUPS, cosmeticById, isCosmeticOwned, equippedCosmetics, carS
 import { playerCarData } from '../data/playerCar.js';
 import { audio } from '../core/AudioManager.js';
 import { t, getLang, setLang, LANGS, LANG_NAMES } from '../core/i18n.js';
+
+// Kosmetikanın adı/təsviri seçilmiş dildə: skin → `skin.<maşın>.<n>`, qalanı → `cos.<id>`.
+// Tərcümə yoxdursa (az dili və ya köhnə əşya) datadakı mətn göstərilir.
+function cosText(it, desc = false) {
+  const key = (it.i18n || 'cos.' + it.id) + (desc ? '.d' : '');
+  const v = t(key);
+  return v !== key ? v : (desc ? it.desc : it.name);
+}
 import { apiBase } from '../net/apiBase.js';
 
 // Dəstək səhifəsi (oyun pulsuz və reklamsızdır — könüllü dəstək).
@@ -1152,11 +1160,12 @@ export class Menu {
       const stockDesc = it.stock
         ? `${car?.name || 'Maşın'} — ${grp.key === 'rim' ? 'öz zavod diskləri' : 'öz orijinal rəngi'}`
         : '';
-      const sub = (it.desc || stockDesc) ? `<span class="mrow__desc">${it.desc || stockDesc}</span>` : '';
+      const desc = cosText(it, true);
+      const sub = (desc || stockDesc) ? `<span class="mrow__desc">${desc || stockDesc}</span>` : '';
       return `
       <button class="mrow mrow--cos ${on ? 'is-selected' : ''} ${owned ? '' : 'is-locked'} ${legendary ? 'is-legend' : ''}" data-cos="${it.id}">
         <span class="cos__dot ${legendary ? 'cos__dot--legend' : ''}" style="${swatch}"></span>
-        <span class="mrow__body"><span class="mrow__title">${it.name}${tag}</span>${sub}</span>
+        <span class="mrow__body"><span class="mrow__title">${cosText(it)}${tag}</span>${sub}</span>
       </button>`;
     }).join('');
 
@@ -1221,7 +1230,7 @@ export class Menu {
           await auth.equip(grpKey, id);
           await this._clearRivalLooks(it.group);
           audio.sfx('pickup');
-          this.showCosmetics(`✓ ${it.name} alındı və taxıldı`);
+          this.showCosmetics(`✓ ${cosText(it)} alındı və taxıldı`);
         } catch {
           this.showCosmetics('Alınmadı — yenidən yoxla.');
         }

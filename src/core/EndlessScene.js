@@ -12,6 +12,7 @@ import { sharedCity } from '../world/CityKit.js';
 import { disposeObject3D } from './MergeUtils.js';
 import { SkidMarks } from './SkidMarks.js';
 import { Effects } from './Effects.js';
+import { fxTrail } from './LegendaryFx.js';
 import { ImpactFeel } from './ImpactFeel.js';
 import { TouchControls, isTouchDevice } from './TouchControls.js';
 import { audio } from './AudioManager.js';
@@ -2047,6 +2048,7 @@ export class EndlessScene {
     this._updateWorld(dt);
     this.effects.update(dt);
     this.impact.update(dt);
+    fxTrail(this.playerCar, this.effects, dt);
     this.skids.update(dt);
     this._updateSkidsAndSmoke(dt);
     this._updateZenFx(dt);

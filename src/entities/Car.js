@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TUNING } from '../data/balance.js';
-import { applyLegendaryFx } from '../core/LegendaryFx.js';
+import { applyLegendaryFx, LEGENDARY_SET } from '../core/LegendaryFx.js';
 import { applyPaintPattern } from '../core/PaintPatterns.js';
 
 const tmpF = new THREE.Vector3();
@@ -75,7 +75,7 @@ export class Car {
     // Əfsanəvi skin öz rəngini gətirir və adi boyanı üstələyir
     const baseHex = cos?.fx?.hex ?? cos?.paint ?? carData.tint ?? null;
     // Disk rəngi teksturada dəyişdirilir (rezin toxunulmaz qalır) — bax applyRim
-    const inst = library.instantiate(carData.model, baseHex, cos?.rim ?? null, carData.kit ?? null);
+    const inst = library.instantiate(carData.model, baseHex, cos?.rim ?? null, carData.kit ?? null, !!cos?.skin);
     this.wheelRadius = inst.wheelRadius;
     this.wheels = inst.wheels;
     // Drift tüstüsü artıq satılmır — həmişə maşının öz rəngindədir (uyğun görünür)
@@ -83,6 +83,8 @@ export class Car {
 
     // ————— ƏFSANƏVİ ÖRTÜK (şeyder naxışı — bax LegendaryFx.js) —————
     this._fx = applyLegendaryFx(inst.root, cos?.fx?.kind);
+    // Əfsanəvi dəst: drift tüstüsü də örtüyün rəngindədir (bax LEGENDARY_SET)
+    if (this._fx && LEGENDARY_SET[this._fx.kind]) this.smokeColor = LEGENDARY_SET[this._fx.kind].smoke;
     // Naxışlı skin (boya dizaynı — animasiya yoxdur)
     if (cos?.skin) applyPaintPattern(inst.root, cos.skin);
     this.steerPivots = inst.steerPivots;

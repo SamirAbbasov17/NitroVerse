@@ -182,11 +182,13 @@ export class ModelLibrary {
 
   // Klon + təkər qovşaqlarını tap (fırlanma üçün hər təkəri spinner qrupuna bük)
   // tint: gövdə boyasını dəyişir (ən böyük doymuş rəngli material klonlanıb boyanır)
-  instantiate(name, tint = null, rim = null, kit = null) {
+  // fullPaint: livreyalı modeldə (polis) də BÜTÜN gövdə boyanır — skin taxılanda lazımdır,
+  // yoxsa naxış yalnız nazik zolağın içində qalır və görünmür
+  instantiate(name, tint = null, rim = null, kit = null, fullPaint = false) {
     const entry = this.cars.get(name);
     if (!entry) throw new Error(`Model tapılmadı: ${name}`);
     const root = entry.object.clone(true);
-    if (tint != null) this._applyTint(root, tint, name + '@' + tint.toString(16), name);
+    if (tint != null) this._applyTint(root, tint, name + '@' + tint.toString(16) + (fullPaint ? 'F' : ''), fullPaint ? null : name);
     if (rim != null) this.applyRim(root, rim, name + '#' + rim.toString(16));
     // Gövdə dəsti boyadan SONRA qurulur ki, hissələr eyni (boyanmış) materialı
     // paylaşsın — naxış və əfsanəvi örtük də avtomatik onlara düşür

@@ -10,6 +10,7 @@ import { SkidMarks } from './SkidMarks.js';
 import { disposeObject3D } from './MergeUtils.js';
 import { playFinishFx } from './FinishFx.js';
 import { Effects } from './Effects.js';
+import { fxTrail } from './LegendaryFx.js';
 import { ImpactFeel } from './ImpactFeel.js';
 import { SpeedLines } from './SpeedLines.js';
 import { TouchControls, isTouchDevice } from './TouchControls.js';
@@ -1481,6 +1482,7 @@ export class ArenaScene {
 
     this.effects.update(dt);
     this.impact.update(dt);
+    for (const c of this.cars) if (c.alive !== false) fxTrail(c, this.effects, dt);
     this.skids.update(dt);
     this._updateCamera(dt);
     const pc = this.playerCar;

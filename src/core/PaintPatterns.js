@@ -83,6 +83,139 @@ const PATTERN = {
                   * smoothstep(0.35, 0.65, abs(ny));
     float ptM = max(disc * side, topLine);
   `,
+  // ————— 2026-10-07: maşına xas skinlər üçün yeni naxışlar —————
+  // Diaqonal bölgü: ön yarı bir rəng, arxa yarı o biri
+  split: `
+    float ptM = smoothstep(-0.04, 0.04, pz + py * 0.85 - 0.05);
+  `,
+  // Klassik yarış livreyası: enli mərkəz zolağı + yanlarında nazik xətt + alt kəmər
+  gulf: `
+    float a = abs(px);
+    float centre = 1.0 - smoothstep(0.20, 0.24, a);
+    float line = smoothstep(0.31, 0.33, a) * (1.0 - smoothstep(0.38, 0.40, a));
+    float belt = (1.0 - smoothstep(0.07, 0.11, abs(py + 0.38))) * smoothstep(0.3, 0.6, abs(nx));
+    float ptM = max(max(centre, line) * smoothstep(0.3, 0.6, abs(ny) + abs(nz)), belt);
+  `,
+  // Pələng: yan panellərdə dalğalı şaquli zolaqlar
+  tiger: `
+    float w = sin(pz * 9.5 + sin(py * 4.2 + pz * 1.5) * 1.3 + px * 1.6);
+    float taper = smoothstep(-0.9, 0.2, py);
+    float ptM = smoothstep(0.30, 0.62, w) * taper;
+  `,
+  // Zebra: bütün gövdə boyu nazik diaqonal zolaqlar
+  zebra: `
+    float ptM = smoothstep(0.42, 0.50, abs(fract((pz + py * 0.8 + px * 0.25) * 4.2) - 0.5) * 2.0);
+  `,
+  // Dalğa: yan boyunca sinus kimi axan enli lent
+  wave: `
+    float band = abs(py + 0.02 - sin(pz * 4.6) * 0.20);
+    float ptM = (1.0 - smoothstep(0.15, 0.21, band)) * smoothstep(0.2, 0.5, abs(nx));
+  `,
+  // Çevron: arxaya açılan V şəkilləri
+  chevron: `
+    float v = fract(pz * 2.4 + abs(py + 0.05) * 1.5);
+    float ptM = smoothstep(0.50, 0.56, v) * smoothstep(0.2, 0.5, abs(nx));
+  `,
+  // Boya sıçraması: müxtəlif ölçülü dairəvi ləkələr
+  splat: `
+    vec2 uv = vec2(pz * 3.2 + px * 1.1, py * 2.6 + px * 0.7);
+    vec2 g = floor(uv);
+    vec2 f = fract(uv) - 0.5;
+    vec2 o = (vec2(ptHash(g), ptHash(g + 17.3)) - 0.5) * 0.5;
+    float r = 0.14 + 0.24 * ptHash(g + 5.1);
+    float ptM = 1.0 - smoothstep(r, r + 0.04, length(f - o));
+  `,
+  // Günəş şüaları: kapotun ortasından (üstdə) və qapının ortasından (yanda) açılan şüalar
+  rays: `
+    float top = smoothstep(0.35, 0.65, abs(ny));
+    float a1 = atan(px, pz - 0.15);
+    float a2 = atan(py + 0.55, pz + 0.1);
+    float ptM = step(0.5, fract(mix(a2, a1, top) * 2.55));
+  `,
+  // Şanə: arxaya doğru böyüyən nöqtələr
+  hex: `
+    vec2 v = vec2(pz * 6.0, py * 5.0 + px * 1.5);
+    v.y += mod(floor(v.x), 2.0) * 0.5;
+    float r = 0.12 + 0.30 * (0.5 - pz * 0.5);
+    float ptM = 1.0 - smoothstep(r, r + 0.05, length(fract(v) - 0.5));
+  `,
+  // Dövrə lövhəsi: düzbucaqlı texno xətlər
+  circuit: `
+    vec2 v = vec2(pz * 5.0, py * 4.0 + px * 2.0);
+    vec2 g = floor(v);
+    vec2 f = abs(fract(v) - 0.5);
+    float hx2 = step(0.45, ptHash(g + 3.7));
+    float hy2 = step(0.55, ptHash(g + 9.1));
+    float ptM = max((1.0 - smoothstep(0.03, 0.06, f.y)) * hx2, (1.0 - smoothstep(0.03, 0.06, f.x)) * hy2);
+    ptM = max(ptM, (1.0 - smoothstep(0.09, 0.12, length(f))) * hx2 * hy2);
+  `,
+  // Ulduz: kapotda və qapıda iri beşguşə ulduz
+  star: `
+    float top = smoothstep(0.35, 0.65, abs(ny));
+    vec2 q = mix(vec2(pz + 0.05, py + 0.10) * vec2(2.3, 1.7), vec2(px, pz - 0.50) * vec2(1.9, 2.6), top);
+    float ang = atan(q.x, q.y);
+    float ptM = 1.0 - smoothstep(0.50, 0.55, length(q) / (0.62 + 0.38 * cos(ang * 5.0)));
+  `,
+  // Səpələnmiş keçid: burundan arxaya rəng dənə-dənə dəyişir
+  fade: `
+    vec2 g = floor(vec2(pz * 16.0, py * 10.0 + px * 5.0));
+    float ptM = step(ptHash(g), smoothstep(-0.55, 0.65, -pz));
+  `,
+  // Panda: qapılar və kapot ikinci rəngdə (xidmət maşını görkəmi)
+  panda: `
+    float door = (1.0 - smoothstep(0.40, 0.44, abs(pz + 0.02))) * smoothstep(0.25, 0.55, abs(nx));
+    float hood = smoothstep(0.50, 0.56, pz) * smoothstep(0.4, 0.7, abs(ny));
+    float ptM = max(door, hood);
+  `,
+  // İldırım: yan boyunca ziqzaq xətt
+  bolt: `
+    float zig = abs(fract(pz * 2.6) - 0.5) * 0.62 - 0.20;
+    float ptM = (1.0 - smoothstep(0.075, 0.11, abs(py - zig))) * smoothstep(0.2, 0.5, abs(nx));
+  `,
+  // Palçıq: alt hissədən yuxarı sıçramış kələ-kötür örtük
+  mud: `
+    float edge = -0.20 + sin(pz * 13.0) * 0.07 + sin(pz * 31.0 + 1.7) * 0.04 + (ptHash(floor(vec2(pz * 22.0, py * 22.0))) - 0.5) * 0.16;
+    float ptM = 1.0 - smoothstep(edge - 0.03, edge + 0.05, py);
+  `,
+  // Sürüşdürülmüş cüt zolaq (assimetrik): sürücü tərəfində iki enli xətt
+  bumble: `
+    float a = px - 0.34;
+    float ptM = max(1.0 - smoothstep(0.10, 0.13, abs(a)), 1.0 - smoothstep(0.035, 0.055, abs(a + 0.24)));
+  `,
+  // Nazik xətt: kəmər boyu ikiqat incə zolaq + kapotun kənar xətti
+  pinstripe: `
+    float side = smoothstep(0.25, 0.55, abs(nx));
+    float l1 = 1.0 - smoothstep(0.025, 0.045, abs(py + 0.02));
+    float l2 = 1.0 - smoothstep(0.012, 0.028, abs(py - 0.11));
+    float hood = (1.0 - smoothstep(0.02, 0.04, abs(abs(px) - 0.62))) * smoothstep(0.4, 0.7, abs(ny));
+    float ptM = max(max(l1, l2) * side, hood);
+  `,
+  // Arlekin: almaz şəbəkəsi
+  harlequin: `
+    vec2 v = vec2(pz * 3.2 + py * 2.4 + px * 0.6, pz * 3.2 - py * 2.4 - px * 0.6);
+    float ptM = mod(floor(v.x) + floor(v.y), 2.0);
+  `,
+  // Köpəkbalığı ağzı: ön yarıda alt kənar boyu iri dişlər, burunda göz
+  shark: `
+    float side = smoothstep(0.2, 0.5, abs(nx));
+    float front = smoothstep(-0.05, 0.08, pz);
+    float jaw = -0.12 + abs(fract(pz * 4.0) - 0.5) * 0.56;
+    float teeth = step(py, jaw) * step(-0.80, py);
+    float eye = 1.0 - smoothstep(0.10, 0.12, length(vec2((pz - 0.66) * 0.8, py - 0.30)));
+    float ptM = max(teeth * front, eye) * side;
+  `,
+  // Xəbərdarlıq lenti: alt kəmərdə diaqonal zolaqlar
+  hazard: `
+    float belt = 1.0 - smoothstep(0.20, 0.24, abs(py + 0.30));
+    float ptM = step(0.5, fract((pz + py * 0.9) * 3.4)) * belt;
+  `,
+  // Retro: yan boyunca arxaya qalxan üç paralel xətt
+  retro: `
+    float base = py + 0.10 - pz * 0.16;
+    float l = 0.0;
+    for (int i = 0; i < 3; i++) l = max(l, 1.0 - smoothstep(0.035, 0.05, abs(base - float(i) * 0.14)));
+    float ptM = l * smoothstep(0.2, 0.5, abs(nx));
+  `,
 };
 
 export const PATTERN_KEYS = Object.keys(PATTERN);
@@ -149,7 +282,7 @@ ${glsl}
   diffuseColor.rgb = mix(diffuseColor.rgb, uPtB * ptShade, ptK);
 }`);
   };
-  mat.customProgramCacheKey = () => 'nvpt2_' + skin.pattern + (swap ? '_s' : '') + (mask ? '_m' : '');
+  mat.customProgramCacheKey = () => 'nvpt4_' + skin.pattern + (swap ? '_s' : '') + (mask ? '_m' : '');
   mat.needsUpdate = true;
 
   const parts = [];

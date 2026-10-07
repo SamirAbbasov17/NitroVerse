@@ -18,6 +18,7 @@ import { PowerUpManager } from '../race/PowerUpManager.js';
 import { disposeObject3D, mergeStaticGroup } from './MergeUtils.js';
 import { playFinishFx } from './FinishFx.js';
 import { Effects } from './Effects.js';
+import { fxTrail } from './LegendaryFx.js';
 import { ImpactFeel } from './ImpactFeel.js';
 import { SpeedLines } from './SpeedLines.js';
 import { SkidMarks } from './SkidMarks.js';
@@ -915,6 +916,7 @@ export class GameplayScene {
     }
     this.environment.update?.(dt);
     this._updateSkidsAndSmoke(dt);
+    for (const c of this.cars) fxTrail(c, this.effects, dt);   // əfsanəvi örtüyün izi
     this.skids.update(dt);
 
     // Vurulmuş / sürüşən maşınlardan tüstü

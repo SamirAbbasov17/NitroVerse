@@ -69,7 +69,7 @@ export class ShowcaseScene {
     this.carModel = carData.model;
     if (this.carRoot) this.scene.remove(this.carRoot);
     const baseHex = cos?.fx?.hex ?? cos?.paint ?? carData.tint ?? null;
-    const inst = this.library.instantiate(carData.model, baseHex, cos?.rim ?? null, carData.kit ?? null);
+    const inst = this.library.instantiate(carData.model, baseHex, cos?.rim ?? null, carData.kit ?? null, !!cos?.skin);
     this.carRoot = inst.root;
     // Əfsanəvi örtük — oyundakı Car ilə EYNİ şeyder (bax LegendaryFx.js)
     this._fx = applyLegendaryFx(inst.root, cos?.fx?.kind);

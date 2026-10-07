@@ -65,34 +65,35 @@ export const FINISHES = [
 ];
 
 // ————— ƏFSANƏVİ EFFEKTLƏR: canlı, animasiyalı gövdə örtükləri —————
-// Hər biri maşının materialını hər kadr dəyişdirir (nəbz, parıltı, rəng axını).
+// Hər biri TAM DƏSTDİR: öz gövdə materialı + arxada qalan iz + yer işığı + drift tüstüsünün
+// rəngi (bax core/LegendaryFx.js → LEGENDARY_SET). Adi boyadan fərqi məhz budur.
 // Bunlar bütün maşınlara uyğun gəlir və ən bahalı kosmetikadır.
 // QEYD: 'e_none' SİYAHIDA YOXDUR — aktiv örtüyə basmaq onu çıxarır.
 // Daxildə 'e_none' hələ də "söndürülmüş" dəyəridir (server və playerCar).
 export const EFFECTS = [
   {
     id: 'e_fire', name: '🔥 Alovlu', kind: 'fire', hex: 0xff5a1a, glow: 0xff9a2b, price: 900,
-    desc: 'Gövdə od kimi nəbz vurur, arxadan qığılcım qalır',
+    desc: 'Kömür qabıq, çatlarında lava közərir · qığılcım izi · narıncı yer işığı',
   },
   {
     id: 'e_ice', name: '❄️ Buz', kind: 'ice', hex: 0x8fd8ff, glow: 0xdcf4ff, price: 900,
-    desc: 'Şaxta örtüyü, soyuq parıltı və buz tozu',
+    desc: 'Sayrışan buz kristalından gövdə · buz tozu izi · mavi yer işığı',
   },
   {
     id: 'e_volt', name: '⚡ Elektrik', kind: 'volt', hex: 0x35e0ff, glow: 0xd6faff, price: 1100,
-    desc: 'Cərəyan titrəyişi — qeyri-müntəzəm çaxnaşma',
+    desc: 'Qara gövdədə qaçan ildırım qolları · göy qığılcım izi',
   },
   {
     id: 'e_holo', name: '🌈 Holoqram', kind: 'holo', hex: 0xff4df0, glow: 0x66f0ff, price: 1400,
-    desc: 'Rəng spektri gövdə boyunca axır',
+    desc: 'Güzgü-xrom: rəng baxış bucağına görə dəyişir · göy qurşağı izi',
   },
   {
     id: 'e_void', name: '🕳 Boşluq', kind: 'void', hex: 0x1a1030, glow: 0x7a3cff, price: 1600,
-    desc: 'Qara gövdə, bənövşəyi kənar işığı',
+    desc: 'İşığı udan mütləq qara, gövdədən keçən halqa · kölgə izi',
   },
   {
     id: 'e_galaxy', name: '✨ Qalaktika', kind: 'galaxy', hex: 0x2b1b6b, glow: 0xffd9f2, price: 2000,
-    desc: 'Ulduz tozu — ən nadir örtük',
+    desc: 'Dumanlıq, ulduzlar və axan ulduz · ulduz tozu izi — ən nadir örtük',
   },
 ];
 
@@ -114,30 +115,66 @@ const SKIN_DESIGNS = [
 ];
 const SKIN_PRICES = [420, 620];
 
-// Maşın id → 2 imza dizaynı (determinist: eyni maşın həmişə eyni cütü alır)
-export function carSkinsFor(carId) {
+// HƏR MAŞININ ÖZ İKİ SKİNİ (2026-10-07). Əvvəl 8 ümumi naxış maşınlara təsadüfi (hash ilə)
+// paylanırdı — "maşına xas" yalnız adda idi, eyni "Kamuflyaj" 5 maşında çıxırdı. İndi hər skin
+// maşının xarakterindən çıxır və adı, naxışı, rəngləri özünə məxsusdur (36 skin, 29 naxış;
+// təkrarlanan naxışlar fərqli maşında fərqli rənglə). a = əsas boya, b = naxış rəngi.
+const CAR_SKINS = {
+  blaze: [['Çempion livreyası', 'gulf', 0x7fd0ff, 0xff7a1a], ['Start nömrəsi', 'rally', 0xe23a2e, 0xffffff]],
+  titan: [['İldırım izi', 'bolt', 0x2a55e0, 0xffe14d], ['Karbon dövrə', 'circuit', 0x3a4a66, 0x35e0ff]],
+  inferno: [['Alov dili', 'flames', 0xffc21c, 0xe8261c], ['Köpəkbalığı', 'shark', 0xd9dde6, 0xc8102e]],
+  venom: [['Zəhər sıçraması', 'splat', 0x7be33a, 0x6a1fb5], ['Gürzə', 'tiger', 0x2e9e5b, 0xf2e85c]],
+  cruiser: [['Klassik iki ton', 'twotone', 0xc8372e, 0xf6ecd6], ['Nazik xətt', 'pinstripe', 0x7a1f1f, 0xf2c14e]],
+  ranger: [['Meşə kamuflyajı', 'camo', 0x4e9c2a, 0xf7e9b5], ['Palçıqlı', 'mud', 0xe0b040, 0x6b4a2a]],
+  goldrush: [['Qızıl zolaq', 'stripes', 0x1f2430, 0xf5c518], ['Arlekin', 'harlequin', 0xf5c518, 0xfff4c2]],
+  cargo: [['Kuryer', 'panda', 0x2f6fe0, 0xffffff], ['Tikinti lenti', 'hazard', 0xf5c518, 0x23262e]],
+  interceptor: [['Yol patrulu', 'checker', 0xffffff, 0x1f5fd0], ['Gizli əməliyyat', 'split', 0x3a4050, 0xb9c2d0]],
+  taxi: [['Dama zolağı', 'blocks', 0xffc21c, 0x23262e], ['Gecə növbəsi', 'retro', 0x5b2fd6, 0xffd34d]],
+  lagoon: [['Sahil dalğası', 'wave', 0x21c9a8, 0xffffff], ['Yan ox', 'sweep', 0x0f8f9c, 0xffe9a8]],
+  sunburst: [['Günəş şüası', 'rays', 0xffc21c, 0xff7a1a], ['Zebra', 'zebra', 0xffffff, 0x23262e]],
+  flamingo: [['Cüt zolaq', 'bumble', 0xff5fa2, 0xffffff], ['Ulduz', 'star', 0x2f6fe0, 0xffffff]],
+  sequoia: [['Səhra kamuflyajı', 'camo', 0xd9b36a, 0x8a5a2e], ['Ralli basqını', 'chevron', 0x2e8b3a, 0xffd34d]],
+  crimson: [['Çiçək uşaqları', 'hex', 0x35c8c8, 0xff8ad0], ['Retro iki ton', 'twotone', 0xc21f3a, 0xfff2d6]],
+  midnight: [['Smokinq', 'split', 0x1c2240, 0xd9dde6], ['Qızıl xətt', 'pinstripe', 0x1c2240, 0xf5c518]],
+  violetta: [['Dözüm yarışı', 'fade', 0x8a3df0, 0xffe14d], ['Piksel keçid', 'blocks', 0x1fc48c, 0x0d3350]],
+  frost: [['Buz dövrəsi', 'circuit', 0xd6f1ff, 0x1f8fd0], ['Şimal işığı', 'wave', 0x1a2a55, 0x5dffc0]],
+};
+
+// Skin İD-ləri DƏYİŞMİR: oyunçuların aldığı skinlər profildə bu İD ilə saxlanır. İD köhnə
+// (hash) düsturu ilə hesablanır, görünüş isə yuxarıdakı cədvəldən gəlir.
+function legacySkinIds(carId) {
   let h = 0;
   for (let i = 0; i < carId.length; i++) h = (h * 31 + carId.charCodeAt(i)) >>> 0;
   // DİQQƏT: `h >> 5` İŞARƏLİ sürüşmədir — hash 2^31-i keçəndə (məs. 'midnight')
   // mənfi çıxır və indeks mənfi olurdu → qarajda "Skinlər" tabı ÇÖKÜRDÜ.
-  // İşarəsiz sürüşmə + təhlükəsiz modul. Digər maşınlarda nəticə DƏYİŞMİR
-  // (h < 2^31 üçün >> və >>> eynidir).
   const N = SKIN_DESIGNS.length;
   const mod = (n, m) => ((n % m) + m) % m;
   const iA = mod(h, N);
   const iB = mod(iA + 1 + mod(h >>> 5, N - 1), N);
-  return [SKIN_DESIGNS[iA], SKIN_DESIGNS[iB]].map((d, i) => ({
-    id: `sk_${carId}_${d.pattern}`,
-    name: d.name,
-    pattern: d.pattern,
-    hex: d.a,
-    glow: d.b,      // UI nümunəsində ikinci rəng kimi işlənir
-    colA: d.a,
-    colB: d.b,
-    price: SKIN_PRICES[i],
-    car: carId,
-    group: 'skin',
-  }));
+  return [SKIN_DESIGNS[iA], SKIN_DESIGNS[iB]].map((d) => `sk_${carId}_${d.pattern}`);
+}
+
+export function carSkinsFor(carId) {
+  const ids = legacySkinIds(carId);
+  const own = CAR_SKINS[carId];
+  return ids.map((id, i) => {
+    // cədvəldə olmayan (gələcək) maşın köhnə ümumi dizayna düşür
+    const [name, pattern, a, b] = own?.[i]
+      ?? (() => { const d = SKIN_DESIGNS.find((x) => id.endsWith('_' + x.pattern)); return [d.name, d.pattern, d.a, d.b]; })();
+    return {
+      id,
+      name,
+      i18n: `skin.${carId}.${i}`,   // tərcümə açarı (UI: Menu → cosText)
+      pattern,
+      hex: a,
+      glow: b,      // UI nümunəsində ikinci rəng kimi işlənir
+      colA: a,
+      colB: b,
+      price: SKIN_PRICES[i],
+      car: carId,
+      group: 'skin',
+    };
+  });
 }
 
 export const COSMETIC_GROUPS = [

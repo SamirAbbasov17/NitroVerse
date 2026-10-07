@@ -146,3 +146,61 @@ test('maşın cədvəli: yeni gövdələr', async ({ page }) => {
   await page.waitForTimeout(400);
   fs.writeFileSync(path.join(DIR, 'new-bodies.png'), await page.screenshot({ fullPage: true }));
 });
+
+// KOSMETİKA CƏDVƏLİ: altı əfsanəvi örtük (iki maşında) və hər maşının iki öz skini —
+// tests/out/cars/legendary.png, skins.png. Bir-birindən seçilirlərmi? (istifadəçi tələbi)
+test('maşın cədvəli: əfsanəvi örtüklər və maşına xas skinlər', async ({ page }) => {
+  test.setTimeout(400_000);
+  const { EFFECTS, carSkinsFor } = await import('../src/data/cosmetics.js');
+  await page.setViewportSize({ width: 1000, height: 620 });
+  await boot(page);
+  await page.evaluate(() => {
+    const cv = document.querySelector('canvas');
+    document.querySelectorAll('body *').forEach((e) => { if (e !== cv && !e.contains(cv)) e.style.visibility = 'hidden'; });
+  });
+  const snap = async (data, side, up, fwd) => {
+    await page.evaluate(([c, sd, h, fw]) => {
+      const sc = window.__showcase;
+      sc.setCar(c);
+      sc.__upd = sc.__upd || sc.update;
+      sc.update = (dt) => {
+        sc.__upd.call(sc, dt);
+        const p = sc.carRoot.position, a = sc._carHeading;
+        const s = Math.sin(a), co = Math.cos(a);
+        sc.camera.position.set(p.x + co * sd + s * fw, h, p.z - s * sd + co * fw);
+        sc.camera.lookAt(p.x, 0.7, p.z);
+      };
+    }, [data, side, up, fwd]);
+    await page.waitForTimeout(450);
+    return (await page.screenshot({ type: 'jpeg', quality: 88, clip: { x: 250, y: 150, width: 500, height: 320 } })).toString('base64');
+  };
+  const sheet = async (cells, cols, file) => {
+    await page.setViewportSize({ width: 1920, height: 1000 });
+    await page.setContent(`<style>body{margin:0;background:#111;display:grid;grid-template-columns:repeat(${cols},1fr);gap:3px;padding:3px;font:13px sans-serif;color:#eee}
+      figure{margin:0;position:relative}img{width:100%;display:block}figcaption{position:absolute;left:5px;bottom:3px;text-shadow:0 0 4px #000}</style>`
+      + cells.map((c) => `<figure><img src="data:image/jpeg;base64,${c.b64}"><figcaption>${c.cap}</figcaption></figure>`).join(''));
+    await page.waitForTimeout(400);
+    fs.writeFileSync(path.join(DIR, file), await page.screenshot({ fullPage: true }));
+    await page.setViewportSize({ width: 1000, height: 620 });
+    await boot(page);
+    await page.evaluate(() => {
+      const cv = document.querySelector('canvas');
+      document.querySelectorAll('body *').forEach((e) => { if (e !== cv && !e.contains(cv)) e.style.visibility = 'hidden'; });
+    });
+  };
+  const leg = [];
+  for (const carId of ['inferno', 'ranger']) {
+    const car = CARS.find((c) => c.id === carId);
+    for (const fx of EFFECTS) {
+      leg.push({ cap: `${fx.name} · ${car.name}`, b64: await snap({ ...car, cosmetics: { fx } }, 4.6, 2.3, 5.0) });
+    }
+  }
+  await sheet(leg, 6, 'legendary.png');
+  const sk = [];
+  for (const car of CARS) {
+    for (const skin of carSkinsFor(car.id)) {
+      sk.push({ cap: `${car.name} · ${skin.name}`, b64: await snap({ ...car, cosmetics: { skin, paint: skin.colA } }, 4.6, 2.6, 4.6) });
+    }
+  }
+  await sheet(sk, 6, 'skins.png');
+});

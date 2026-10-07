@@ -8,6 +8,7 @@ import { SkidMarks } from './SkidMarks.js';
 import { disposeObject3D } from './MergeUtils.js';
 import { playFinishFx } from './FinishFx.js';
 import { Effects } from './Effects.js';
+import { fxTrail } from './LegendaryFx.js';
 import { ImpactFeel } from './ImpactFeel.js';
 import { SpeedLines } from './SpeedLines.js';
 import { TouchControls, isTouchDevice } from './TouchControls.js';
@@ -1288,6 +1289,7 @@ export class FootballScene {
     this.effects.update(dt);
     this.impact.update(dt);
     this._kickFxCd = Math.max(0, (this._kickFxCd ?? 0) - dt);
+    for (const c of this.cars) fxTrail(c, this.effects, dt);
     this.skids.update(dt);
     this._updateCamera(dt);
     // Matç bitəndə motor səsi qalib ekranında da davam edirdi
