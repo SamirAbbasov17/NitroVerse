@@ -48,6 +48,12 @@ function toWebRequest(req, body) {
   for (const [k, v] of Object.entries(req.headers)) {
     if (typeof v === 'string') headers.set(k, v);
   }
+  // Müştərinin ünvanı (sürət limitləri üçün). X-Forwarded-For-a yalnız sorğu öz maşınımızdakı
+  // Caddy-dən gələndə inanılır — birbaşa qoşulan müştəri onu saxtalaşdıra bilər.
+  const peer = req.socket?.remoteAddress || '';
+  const local = /^(::1|127\.|::ffff:127\.)/.test(peer);
+  const fwd = String(req.headers['x-forwarded-for'] || '').split(',').pop().trim();
+  headers.set('x-nv-ip', local && fwd ? fwd : peer);
   return new Request(url, {
     method: req.method,
     headers,

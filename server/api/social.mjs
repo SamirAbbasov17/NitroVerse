@@ -32,6 +32,31 @@ const WHO_MAX = 40;      // siyahıda göstərilən maksimum oyunçu
 const DM_KEEP = 80;      // söhbət başına saxlanan mesaj
 const INBOX_TTL = 180000; // çatdırılmamış bildirişin ömrü
 
+// SÜRƏT LİMİTİ (spam): sürüşən pəncərə, prosesin yaddaşında (tək Node prosesi; Netlify
+// ehtiyatında hər nüsxə ayrıca sayır — orada təxminidir). Hər göndəriş iki açarla sayılır:
+// kimlik (hesab / qonağın cid-i) və IP — qonaq cid-i dəyişməklə limiti keçə bilməsin.
+const LIMITS = {
+  chat: { win: 15000, id: 5, ip: 15 },     // ümumi çat: 15 s-də 5 mesaj
+  send: { win: 30000, id: 12, ip: 40 },    // şəxsi mesaj / dəvət / dostluq
+};
+const hits = new Map();   // açar → vaxt möhürləri
+function tooFast(kind, keys, now) {
+  const L = LIMITS[kind];
+  let wait = 0;
+  const lists = [];
+  for (const [key, max] of keys) {
+    if (!key) continue;
+    const k = kind + '|' + key;
+    const list = (hits.get(k) || []).filter((ts) => now - ts < L.win);
+    if (list.length >= max) wait = Math.max(wait, Math.ceil((L.win - (now - list[list.length - max])) / 1000));
+    lists.push([k, list]);
+  }
+  if (wait) return wait;
+  for (const [k, list] of lists) { list.push(now); hits.set(k, list); }
+  if (hits.size > 5000) for (const [k, list] of hits) if (now - list[list.length - 1] > 60000) hits.delete(k);
+  return 0;
+}
+
 const cleanUser = (v) => String(v || '').toLowerCase().replace(/[^\p{L}0-9_-]/gu, '').slice(0, 16);
 const cleanNick = (v) => String(v || '').trim().slice(0, 14);
 
@@ -56,6 +81,13 @@ export function makeSocial(getStore) {
         if (ses.error) return json({ error: ses.error }, 401);
         me = { u: cleanUser(ses.key), n: cleanNick(ses.user.nick) };
       }
+      const ip = req.headers.get('x-nv-ip') || req.headers.get('x-nf-client-connection-ip') || '';
+      const cidOk = (v) => (/^[a-z0-9-]{6,24}$/.test(String(v || '')) ? String(v) : '');
+      // limit keçilibsə 429 + neçə saniyə gözləmək lazımdır
+      const slow = (kind, cid) => {
+        const wait = tooFast(kind, [[me ? 'u:' + me.u : cidOk(cid) && 'c:' + cidOk(cid), LIMITS[kind].id], [ip && 'ip:' + ip, LIMITS[kind].ip]], now);
+        return wait ? json({ error: 'slow', wait }, 429) : null;
+      };
       const guestNick = async (raw) => {
         const n = cleanNick(raw) || 'Oyunçu';
         return (await nickTaken(getStore, n)) ? ('~' + n).slice(0, 14) : n;
@@ -140,6 +172,7 @@ export function makeSocial(getStore) {
           if (!ev.text) return json({ error: 'empty' }, 400);
         }
         if (kind === 'invroom') ev.code = String(b.code || '').toUpperCase().slice(0, 4);
+        { const lim = slow('send', from.cid); if (lim) return lim; }
         const key = `i/${to}/${String(now).padStart(13, '0')}-${Math.random().toString(36).slice(2, 6)}`;
         await store.setJSON(key, ev);
 
@@ -237,6 +270,7 @@ export function makeSocial(getStore) {
         const nick = me ? me.n : await guestNick(b.nick);
         const text = String(b.text || '').trim().slice(0, 140);
         if (!text) return json({ error: 'empty' }, 400);
+        { const lim = slow('chat', b.cid); if (lim) return lim; }
         const key = `c/${String(now).padStart(13, '0')}-${Math.random().toString(36).slice(2, 6)}`;
         await store.setJSON(key, { nick, text, t: now, u: me?.u || null });
         // Seyrək təmizlik: həm SAY, həm YAŞ limiti

@@ -174,3 +174,50 @@ test('sosial: hesabla girən oyunçunun çatı, mesajı və dostluğu tokenlə i
   // qonaq hesab tələb edən şeyləri ala bilmir (boş qayıdır, xəta atmır)
   expect(await guest.evaluate(() => window.__social.dmList())).toEqual([]);
 });
+
+// SÜRƏT LİMİTİ: ümumi çat 15 s-də 5 mesaj (kimlik başına), şəxsi göndəriş 30 s-də 12;
+// qonaq cid-i dəyişməklə keçə bilmir (IP də sayılır). Ən sonda işləyir — IP sayğacını doldurur.
+test('sosial: sürət limiti — spam rədd olunur, gözləmə vaxtı deyilir', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const SOC = API.replace('/auth', '/social');
+  const soc = async (body) => {
+    const r = await fetch(SOC, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    return { status: r.status, ...(await r.json()) };
+  };
+  await new Promise((r) => setTimeout(r, 15_500));   // əvvəlki testlərin çat sayğacı boşalsın
+  const id = Date.now().toString(36).slice(-5);
+  const a = await call({ action: 'register', nick: 'Spm' + id, pass: 'parol1' });
+  const b = await call({ action: 'register', nick: 'Nrm' + id, pass: 'parol1' });
+  const st = [];
+  for (let i = 0; i < 7; i++) st.push(await soc({ action: 'chat', text: 'spam ' + i, token: a.token }));
+  expect(st.map((r) => r.status), 'hesab: 5 keçir, sonrası rədd').toEqual([200, 200, 200, 200, 200, 429, 429]);
+  expect(st[5].error).toBe('slow');
+  expect(st[5].wait, 'gözləmə vaxtı (s)').toBeGreaterThan(0);
+  expect(st[5].wait).toBeLessThanOrEqual(15);
+  expect((await soc({ action: 'chat', text: 'mən spam deyiləm', token: b.token })).status, 'başqa oyunçu yaza bilir').toBe(200);
+  // qonaq hər mesajda yeni cid ilə: IP limiti (15) dayandırır — 6 artıq sayılıb
+  const g = [];
+  for (let i = 0; i < 14; i++) g.push((await soc({ action: 'chat', nick: 'Qonaq', text: 'g' + i, cid: 'cid-rot-' + String(i).padStart(3, '0') })).status);
+  expect(g.filter((x) => x === 200).length, 'cid dəyişmək limiti keçmir').toBe(9);
+  expect(g.slice(9).every((x) => x === 429)).toBe(true);
+  const stored = (await soc({ action: 'feed', since: 0 })).msgs.filter((m) => /^spam \d$/.test(m.text)).length;
+  expect(stored, 'rədd olunan mesaj çata düşmür').toBe(5);
+  // şəxsi göndəriş (dəvət): 12 keçir, 13-cü rədd
+  const inv = [];
+  for (let i = 0; i < 13; i++) inv.push((await soc({ action: 'send', kind: 'inv', to: 'cid-target1', token: b.token, from: { cid: 'cid-sender1' } })).status);
+  expect(inv.filter((x) => x === 200).length).toBe(12);
+  expect(inv[12]).toBe(429);
+  // brauzer: oyunçuya səbəb və gözləmə vaxtı deyilir
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  await page.addInitScript(([api, s]) => { window.__AUTH_API = api; window.__SOCIAL_API = s; }, [API, SOC]);
+  await boot(page);
+  const ui = await page.evaluate(async () => {
+    const sent = await window.__social.send('Qonaq', 'salam');
+    return { sent, wait: window.__social.lastSlow, text: window.__menu._sendFail() };
+  });
+  expect(ui.sent, 'limit zamanı göndərilmir').toBeNull();
+  expect(ui.wait).toBeGreaterThan(0);
+  expect(ui.text).toContain('saniyə gözlə');
+  console.log(JSON.stringify({ wait6th: st[5].wait, ui }));
+});

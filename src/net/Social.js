@@ -40,6 +40,9 @@ class Social {
       signal: AbortSignal.timeout(7000),
     });
     if (r.status === 401) { try { this.onAuthError?.(); } catch { /* boş */ } }
+    // sürət limiti: neçə saniyə gözləmək lazım olduğu UI-yə çatsın (bax Menu._sendFail)
+    this.lastSlow = 0;
+    if (r.status === 429) { this.lastSlow = (await r.json().catch(() => ({}))).wait || 5; }
     if (!r.ok) throw new Error('social');
     return r.json();
   }
@@ -154,7 +157,7 @@ class Social {
   // Göndərilən mesajın server vaxtını qaytarır (dedupe üçün); xəta → null
   async send(nick, text) {
     try {
-      const r = await this._post({ action: 'chat', nick, text });
+      const r = await this._post({ action: 'chat', nick, text, cid: this.cid });
       return r.t || null;
     } catch {
       return null;

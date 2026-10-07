@@ -15,6 +15,7 @@ paths:
 - Server env `/etc/nitroverse.env`-dədir. **`AUTH_SECRET` dəyişsə bütün girişlər ölür.** Sirləri repo-ya yazma; `.env.production` yalnız açıq `VITE_*` dəyərləri saxlayır.
 - **Bir hesab — bir cihaz** (istifadəçi tələbi, 2026-10-07): hər giriş hesaba yeni `sid` yazır, token onu daşıyır; token tələb edən hər əməliyyat `sid`-i tutuşdurur (`server/api/auth.mjs` → `openSession`). Yeni giriş köhnə cihazı çıxarır (`error: 'session'` → `Auth._kick` → bildiriş). Yeni token verən hər yol `openSession`-dan keçməlidir. Yoxlama: `npm run test:session`.
 - **Sosial API-də kimlik tokendəndir** (`server/api/social.mjs`): müştərinin dediyi `user`/`from.u` nəzərə alınmır — ad `sessionOf(token)`-dən çıxır. Tokensiz sorğu qonaqdır (hesab adı daşımır, DM tarixçəsi/dostluq 401). Qonağın adı qeydiyyatlı hesab adı ilə eynidirsə əvvəlinə `~` qoyulur. Yeni sosial əməliyyat yazanda adı `me`-dən götür.
+- **Sürət limiti** (`social.mjs` → `LIMITS`, `tooFast`): ümumi çat 15 s-də 5 (kimlik) / 15 (IP), şəxsi göndəriş 30 s-də 12 / 40. Aşanda `429 {error:'slow', wait}` → müştəri `ntc.slow` göstərir. IP `x-nv-ip` başlığından gəlir (`server/index.mjs` yazır; X-Forwarded-For-a yalnız yerli Caddy-dən gələndə inanılır). Sayğac prosesin yaddaşındadır.
 - İstifadəçi adı normallaşdırması klient (`main.js` `cleanUser`) və serverdə eyni olmalıdır (`İ` → `i̇` tələsi).
 - Qızıl mükafatı server tərəfdə tavanla yoxlanır — klientə etibar etmə.
 - Onlayn test: iki ayrı brauzer prosesi. Eyni brauzerdə iki tab işləmir (gizli tabda `requestAnimationFrame` donur).

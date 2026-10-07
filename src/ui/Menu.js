@@ -200,7 +200,7 @@ export class Menu {
         this._gSeen.add(sentAt);
         this._appendGchat({ nick, text, t: sentAt }, true);
       } else {
-        this._appendGchat({ nick: 'Sistem', text: t('online.msgFail'), t: 0 }, false);
+        this._appendGchat({ nick: 'Sistem', text: social.lastSlow ? t('ntc.slow', { n: social.lastSlow }) : t('online.msgFail'), t: 0 }, false);
       }
     };
     this.root.querySelector('[data-gchat-send]').onclick = sendG;
@@ -307,7 +307,7 @@ export class Menu {
       b.onclick = async () => {
         b.disabled = true;
         const ok = await social.sendTo(b.dataset.wInv, 'inv');
-        window.__notices?.show({ icon: '🎮', text: ok ? t('ntc.invSent') : t('ntc.sendFail'), life: 4 });
+        window.__notices?.show({ icon: '🎮', text: ok ? t('ntc.invSent') : this._sendFail(), life: 4 });
       };
     });
     // DM — sıranın altında mini yazma sətri
@@ -329,7 +329,7 @@ export class Menu {
           // Login istifadəçiyə username ünvanı (tarixçəyə düşsün), qonağa cid
           const to = b.dataset.u && auth.isLoggedIn ? 'u:' + b.dataset.u : b.dataset.wDm;
           const ok = await social.sendTo(to, 'dm', { text });
-          window.__notices?.show({ icon: '✉️', text: ok ? t('ntc.msgSent') : t('ntc.sendFail'), life: 4 });
+          window.__notices?.show({ icon: '✉️', text: ok ? t('ntc.msgSent') : this._sendFail(), life: 4 });
         };
         c.querySelector('button').onclick = doSend;
         inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doSend(); } });
@@ -341,7 +341,7 @@ export class Menu {
         if (!auth.isLoggedIn) { this.showAuth(t('ntc.needLogin')); return; }
         b.disabled = true;
         const ok = await social.frRequest(b.dataset.wFr);
-        window.__notices?.show({ icon: '👥', text: ok ? t('ntc.frSent') : t('ntc.sendFail'), life: 4 });
+        window.__notices?.show({ icon: '👥', text: ok ? t('ntc.frSent') : this._sendFail(), life: 4 });
         this._refreshWho();
       };
     });
@@ -421,7 +421,7 @@ export class Menu {
         b.onclick = async () => {
           b.disabled = true;
           const ok = await social.sendTo('u:' + b.dataset.fInv, 'inv');
-          window.__notices?.show({ icon: '🎮', text: ok ? t('ntc.invSent') : t('ntc.sendFail'), life: 4 });
+          window.__notices?.show({ icon: '🎮', text: ok ? t('ntc.invSent') : this._sendFail(), life: 4 });
           setTimeout(() => { b.disabled = false; }, 3000);
         };
       });
@@ -629,7 +629,7 @@ export class Menu {
       const ok = await social.sendTo('u:' + withUser, 'dm', { text });
       this._dmSending = false;
       if (ok) this._refreshConvo();
-      else window.__notices?.show({ icon: '⚠️', text: t('ntc.sendFail'), life: 4 });
+      else window.__notices?.show({ icon: '⚠️', text: this._sendFail(), life: 4 });
     };
     this.root.querySelector('[data-dm-send]').onclick = doSend;
     this.root.querySelector('#dm-input').addEventListener('keydown', (e) => {
@@ -1722,6 +1722,11 @@ export class Menu {
   // və nə etmək lazımdır, yanında "Daxil ol" düyməsi. Oyunçu olduğu yerdə qalır (əvvəl ya
   // soruşmadan giriş ekranına atılırdı, ya da demək olar gözə dəyməyən kiçik yazı çıxırdı —
   // istifadəçi rəyi: "klikləyəndə heç nə olmur").
+  // Göndəriş alınmadı: sürət limitidirsə səbəbi və gözləmə vaxtını de, yoxsa ümumi xəta
+  _sendFail() {
+    return social.lastSlow ? t('ntc.slow', { n: social.lastSlow }) : t('ntc.sendFail');
+  }
+
   _needAccount(key, vars = null) {
     window.__notices?.show({
       icon: '🔒',
