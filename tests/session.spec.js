@@ -91,3 +91,86 @@ test('tək sessiya: köhnə cihaz çıxarılır və bildiriş görür (brauzer)'
   const gold = await p2.evaluate(async () => (await window.__auth.award(40, 'race'))?.gold ?? null);
   expect(gold, '2-ci cihazda mükafat yazılır').not.toBeNull();
 });
+
+// ÇAT / SOSİAL: istifadəçi adı tokendən götürülür — başqasının adı ilə yazmaq, onun
+// mesajlarını oxumaq və ya dost siyahısını dəyişmək olmur.
+test('sosial: kimlik tokendəndir — ad oğurlamaq, özgə mesajını oxumaq olmur (server)', async () => {
+  const SOC = API.replace('/auth', '/social');
+  const soc = async (body) => {
+    const r = await fetch(SOC, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    return { status: r.status, ...(await r.json()) };
+  };
+  const id = Date.now().toString(36).slice(-5);
+  const [na, nb, nc] = ['Ali' + id, 'Bal' + id, 'Cem' + id];
+  const [a, b, c] = await Promise.all([na, nb, nc].map((nick) => call({ action: 'register', nick, pass: 'parol1' })));
+  const [ua, ub, uc] = [na, nb, nc].map((n) => n.toLowerCase());
+
+  // 1) A B-yə yazır (tokenlə) → B tarixçədə görür
+  expect((await soc({ action: 'send', kind: 'dm', to: 'u:' + ub, text: 'salam', token: a.token, from: { cid: 'cid-aaaaaa', n: 'Saxta', u: uc } })).status).toBe(200);
+  const hb = await soc({ action: 'dmhist', token: b.token, with: ua });
+  expect(hb.msgs.map((m) => [m.f, m.text]), 'göndərən tokendəki addır, deyilən ad yox').toEqual([[ua, 'salam']]);
+  // 2) tokensiz: özgə mesajları və dost siyahısı oxunmur
+  for (const body of [{ action: 'dmhist', user: ua, with: ub }, { action: 'dmlist', user: ua }, { action: 'frlist', user: ua }, { action: 'frq', user: ua, with: ub }, { action: 'fracc', user: ua, with: ub }]) {
+    const r = await soc(body);
+    expect([body.action, r.status], 'tokensiz rədd').toEqual([body.action, 401]);
+  }
+  // 3) C öz tokeni ilə A-nın adını deyir → yalnız ÖZ məlumatını alır
+  expect((await soc({ action: 'dmhist', token: c.token, user: ua, with: ub })).msgs, 'C A–B söhbətini oxuya bilmir').toEqual([]);
+  expect((await soc({ action: 'dmlist', token: c.token, user: ua })).convos).toEqual([]);
+  await soc({ action: 'frq', token: c.token, user: ua, with: ub });
+  const frb = await soc({ action: 'frlist', token: b.token });
+  expect(frb.in, 'dostluq istəyi A-nın yox, C-nin adından gedir').toEqual([uc]);
+  // 4) qonaq hesab sahibinin adı ilə: presence və ümumi çat
+  await soc({ action: 'pulse', cid: 'cid-guest1', presence: true, nick: na, user: ua });
+  await soc({ action: 'pulse', cid: 'cid-realaa', presence: true, nick: 'nəsə', user: 'nəsə', token: a.token });
+  const who = (await soc({ action: 'who' })).players;
+  expect(who.find((p) => p.cid === 'cid-guest1'), 'qonaq: hesab adı yoxdur, ad işarələnir').toEqual({ cid: 'cid-guest1', n: '~' + na, u: null });
+  expect(who.find((p) => p.cid === 'cid-realaa'), 'hesab: ad tokendən').toEqual({ cid: 'cid-realaa', n: na, u: ua });
+  await soc({ action: 'chat', nick: na, text: 'mən Aliyəm (yalan)' });
+  await soc({ action: 'chat', nick: 'başqa ad', text: 'mən Aliyəm', token: a.token });
+  await soc({ action: 'chat', nick: 'Qonaq' + id, text: 'salam' });
+  const feed = (await soc({ action: 'feed', since: 0 })).msgs.map((m) => [m.nick, m.u, m.text]);
+  // eyni millisaniyədə yazılanların sırası təsadüfidir — sıra yox, məzmun yoxlanır
+  const byText = (x, y) => x[2].localeCompare(y[2]);
+  expect(feed.sort(byText)).toEqual([['~' + na, null, 'mən Aliyəm (yalan)'], [na, ua, 'mən Aliyəm'], ['Qonaq' + id, null, 'salam']].sort(byText));
+  // 5) qonağa göndərilən hadisədə saxta hesab adı çatmır
+  await soc({ action: 'send', kind: 'inv', to: 'cid-guest1', from: { cid: 'cid-evil01', n: nb, u: ub } });
+  const ev = (await soc({ action: 'pulse', cid: 'cid-guest1', presence: false })).events;
+  expect(ev.map((e) => e.from), 'saxta göndərən').toEqual([{ cid: 'cid-evil01', n: '~' + nb, u: null }]);
+  // 6) başqa cihazdan girişdən sonra köhnə token çatda da keçmir
+  await call({ action: 'login', nick: na, pass: 'parol1' });
+  const old = await soc({ action: 'chat', nick: na, text: 'köhnə cihaz', token: a.token });
+  expect([old.status, old.error]).toEqual([401, 'session']);
+  expect((await soc({ action: 'pulse', cid: 'cid-realaa', token: a.token })).error).toBe('session');
+});
+
+test('sosial: hesabla girən oyunçunun çatı, mesajı və dostluğu tokenlə işləyir (brauzer)', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const id = Date.now().toString(36).slice(-5);
+  const open = async (nick) => {
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+    await page.addInitScript(([api, soc]) => { window.__AUTH_API = api; window.__SOCIAL_API = soc; }, [API, API.replace('/auth', '/social')]);
+    await boot(page);
+    if (nick) await page.evaluate((n) => window.__auth.register(n, 'parol1'), nick);
+    return page;
+  };
+  const [pa, pb, guest] = [await open('Xan' + id), await open('Yar' + id), await open(null)];
+  const [ua, ub] = ['xan' + id, 'yar' + id];
+  // dostluq: A istək göndərir, B qəbul edir
+  expect(await pa.evaluate((u) => window.__social.frRequest(u), ub)).toBe(true);
+  expect((await pb.evaluate(() => window.__social.frList())).in).toEqual([ua]);
+  expect(await pb.evaluate((u) => window.__social.frAccept(u), ua)).toBe(true);
+  expect((await pa.evaluate(() => window.__social.frList())).f).toEqual([ub]);
+  // şəxsi mesaj + tarixçə
+  expect(await pa.evaluate((u) => window.__social.sendTo('u:' + u, 'dm', { text: 'yarışaq?' }), ub)).toBeTruthy();
+  expect((await pb.evaluate((u) => window.__social.dmHist(u), ua)).map((m) => [m.f, m.text])).toEqual([[ua, 'yarışaq?']]);
+  expect((await pb.evaluate(() => window.__social.dmList())).map((c) => c.with)).toEqual([ua]);
+  // ümumi çat: hesab öz adı ilə, qonaq hesab adını götürə bilmir
+  await pa.evaluate(() => window.__social.send('nə yazsam da', 'hamıya salam'));
+  await guest.evaluate((n) => window.__social.send(n, 'mən Xanam'), 'Xan' + id);
+  const feed = (await guest.evaluate(() => window.__social.feed(0))).msgs.filter((m) => /hamıya salam|mən Xanam/.test(m.text)).map((m) => [m.nick, m.u]);
+  expect(feed.sort((x, y) => x[0].localeCompare(y[0]))).toEqual([['Xan' + id, ua], ['~Xan' + id, null]].sort((x, y) => x[0].localeCompare(y[0])));
+  // qonaq hesab tələb edən şeyləri ala bilmir (boş qayıdır, xəta atmır)
+  expect(await guest.evaluate(() => window.__social.dmList())).toEqual([]);
+});

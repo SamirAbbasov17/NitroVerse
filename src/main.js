@@ -359,6 +359,8 @@ function syncSocialIdentity() {
   };
   social.refreshPresence(); // ad/istifadəçi dərhal siyahıya düşsün
 }
+social.tokenOf = () => auth.token;
+social.onAuthError = () => auth.check();
 syncSocialIdentity();
 auth.onChange(syncSocialIdentity);
 

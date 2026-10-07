@@ -33,13 +33,17 @@ class AuthManager {
     for (const h of this._kickHandlers || []) h();
   }
 
+  // Sessiya hələ keçərlidirmi? ('session' xətasında _call cihazı özü çıxarır)
+  check() {
+    if (!this.token || !this.profile || this._checking) return;
+    this._checking = true;
+    this._call({ action: 'me', token: this.token }).catch(() => null).finally(() => { this._checking = false; });
+  }
+
   _watch() {
     if (this._watching || typeof document === 'undefined') return;
     this._watching = true;
-    const check = () => {
-      if (!this.token || !this.profile || document.hidden) return;
-      this._call({ action: 'me', token: this.token }).catch(() => null);   // 'session' → _call özü çıxarır
-    };
+    const check = () => { if (!document.hidden) this.check(); };
     setInterval(check, 30000);
     document.addEventListener('visibilitychange', check);
   }

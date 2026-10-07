@@ -27,15 +27,19 @@ class Social {
     this._pulseN = 0;
     this.onEvent = null; // (ev) => {} — dm/inv/invacc/invroom/frq/fracc bildirişləri
     this.identity = { nick: '', user: null }; // main.js auth-dan yeniləyir
+    // Hesab tokeni (main.js verir): server istifadəçi adını YALNIZ tokendən götürür.
+    this.tokenOf = null;      // () => token | null
+    this.onAuthError = null;  // server tokeni rədd etdi (başqa cihazdan giriş və s.)
   }
 
   async _post(body) {
     const r = await fetch(socialUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify(this.identity.user ? { ...body, token: this.tokenOf?.() || undefined } : body),
       signal: AbortSignal.timeout(7000),
     });
+    if (r.status === 401) { try { this.onAuthError?.(); } catch { /* boş */ } }
     if (!r.ok) throw new Error('social');
     return r.json();
   }

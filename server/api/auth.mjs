@@ -118,6 +118,24 @@ function openSession(key, user) {
   return sign({ nick: key, sid: user.sid, exp: Date.now() + 30 * 24 * 3600 * 1000 });
 }
 
+// Başqa API-lər (çat/sosial) üçün: token kimindir? Qaytarır { key, user } və ya { error }.
+// 'auth' — token saxtadır/vaxtı bitib; 'session' — hesaba sonradan başqa cihazdan girilib.
+export async function sessionOf(getStore, token) {
+  const session = verify(String(token || ''));
+  if (!session) return { error: 'auth' };
+  const user = await getStore('users').get(session.nick, { type: 'json' }).catch(() => null);
+  if (!user) return { error: 'auth' };
+  if (user.sid && session.sid !== user.sid) return { error: 'session' };
+  return { key: session.nick, user };
+}
+
+// Bu ad qeydiyyatlı hesaba məxsusdurmu? (qonaq hesab sahibinin adı ilə yaza bilməsin)
+export async function nickTaken(getStore, nick) {
+  const key = String(nick || '').trim().toLowerCase();
+  if (!/^[a-z0-9_əüöıiğçş-]{3,16}$/i.test(key)) return false;
+  return !!(await getStore('users').get(key).catch(() => null));
+}
+
 function hashPass(pass, saltHex = null) {
   const salt = saltHex ? Buffer.from(saltHex, 'hex') : randomBytes(16);
   const hash = scryptSync(String(pass), salt, 32);

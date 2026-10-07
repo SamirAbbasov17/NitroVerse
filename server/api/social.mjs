@@ -4,6 +4,13 @@
 // İnbox: "i/<ünvan>/<ts13>-<rand>" — ünvan cid və ya u:<username>; oxunanda silinir.
 // DM tarixçəsi (yalnız login): "dm/<a>|<b>/<ts13>-<rand>" + indeks "dmi/<user>".
 // Dostluq: "fr/<user>" → {f:[...], in:[...], out:[...]}.
+// KİMLİK (2026-10-07): istifadəçi adı artıq müştərinin dediyi ad DEYİL — hesab tokenindən
+// çıxarılır (auth.mjs → sessionOf, tək sessiya yoxlaması ilə). Tokensiz sorğu qonaqdır:
+// ümumi çata yaza, cid-ə dəvət/mesaj göndərə bilər, amma hesab adı daşıya bilməz, DM
+// tarixçəsini və dost siyahısını oxuya/dəyişə bilməz. Qonağın adı qeydiyyatlı hesabın adı
+// ilə eynidirsə, əvvəlinə '~' qoyulur.
+import { sessionOf, nickTaken } from './auth.mjs';
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -42,6 +49,18 @@ export function makeSocial(getStore) {
     try {
       const store = getStore('social');
 
+      // token varsa — kimlik ondan; etibarsızdırsa sorğu rədd olunur (müştəri hesabdan çıxarılır)
+      let me = null;
+      if (b.token) {
+        const ses = await sessionOf(getStore, b.token);
+        if (ses.error) return json({ error: ses.error }, 401);
+        me = { u: cleanUser(ses.key), n: cleanNick(ses.user.nick) };
+      }
+      const guestNick = async (raw) => {
+        const n = cleanNick(raw) || 'Oyunçu';
+        return (await nickTaken(getStore, n)) ? ('~' + n).slice(0, 14) : n;
+      };
+
       const countOnline = async () => {
         const ids = new Set();
         for (const bk of [bucket, bucket - 1]) {
@@ -70,9 +89,9 @@ export function makeSocial(getStore) {
       if (action === 'ping' || action === 'pulse') {
         const cid = String(b.cid || '');
         if (!/^[a-z0-9-]{6,24}$/.test(cid)) return json({ error: 'cid' }, 400);
-        const user = cleanUser(b.user);
+        const user = me?.u || null;
         if (b.presence !== false) {
-          await store.setJSON(`p/${bucket}/${cid}`, { n: cleanNick(b.nick) || 'Oyunçu', u: user || null });
+          await store.setJSON(`p/${bucket}/${cid}`, { n: me ? me.n : await guestNick(b.nick), u: user });
           // Seyrək təmizlik: köhnə bucket açarları
           if (Math.random() < 0.06) {
             const { blobs } = await store.list({ prefix: 'p/' });
@@ -112,8 +131,8 @@ export function makeSocial(getStore) {
         if (!/^([a-z0-9-]{6,24}|u:[\p{L}0-9_-]{3,16})$/u.test(to)) return json({ error: 'to' }, 400);
         const from = {
           cid: String(b.from?.cid || '').slice(0, 24),
-          n: cleanNick(b.from?.n) || 'Oyunçu',
-          u: cleanUser(b.from?.u) || null,
+          n: me ? me.n : await guestNick(b.from?.n),
+          u: me?.u || null,
         };
         const ev = { kind, from, t: now };
         if (kind === 'dm') {
@@ -148,8 +167,8 @@ export function makeSocial(getStore) {
 
       // ————— Söhbətlərim (Mesajlar bölməsi) —————
       if (action === 'dmlist') {
-        const user = cleanUser(b.user);
-        if (!user) return json({ error: 'user' }, 400);
+        if (!me) return json({ error: 'auth' }, 401);
+        const user = me.u;
         const idx = await store.get(`dmi/${user}`, { type: 'json' }).catch(() => null) || { c: {} };
         const convos = Object.entries(idx.c)
           .map(([w, v]) => ({ with: w, t: v.t, last: v.last, f: v.f }))
@@ -159,8 +178,9 @@ export function makeSocial(getStore) {
 
       // ————— Bir söhbətin tarixçəsi —————
       if (action === 'dmhist') {
-        const user = cleanUser(b.user), other = cleanUser(b.with);
-        if (!user || !other) return json({ error: 'user' }, 400);
+        if (!me) return json({ error: 'auth' }, 401);
+        const user = me.u, other = cleanUser(b.with);
+        if (!other) return json({ error: 'user' }, 400);
         const pair = [user, other].sort().join('|');
         const { blobs } = await store.list({ prefix: `dm/${pair}/` });
         const keys = blobs.map((x) => x.key).sort().slice(-50);
@@ -174,8 +194,8 @@ export function makeSocial(getStore) {
 
       // ————— Dostluq: istək / qəbul / siyahı —————
       if (action === 'frq' || action === 'fracc' || action === 'frlist') {
-        const user = cleanUser(b.user);
-        if (!user) return json({ error: 'user' }, 400);
+        if (!me) return json({ error: 'auth' }, 401);
+        const user = me.u;
         const load = async (u) => await store.get(`fr/${u}`, { type: 'json' }).catch(() => null) || { f: [], in: [], out: [] };
         if (action === 'frlist') return json(await load(user));
         const other = cleanUser(b.with);
@@ -214,11 +234,11 @@ export function makeSocial(getStore) {
 
       // ————— Mesaj göndər —————
       if (action === 'chat') {
-        const nick = cleanNick(b.nick) || 'Oyunçu';
+        const nick = me ? me.n : await guestNick(b.nick);
         const text = String(b.text || '').trim().slice(0, 140);
         if (!text) return json({ error: 'empty' }, 400);
         const key = `c/${String(now).padStart(13, '0')}-${Math.random().toString(36).slice(2, 6)}`;
-        await store.setJSON(key, { nick, text, t: now });
+        await store.setJSON(key, { nick, text, t: now, u: me?.u || null });
         // Seyrək təmizlik: həm SAY, həm YAŞ limiti
         if (Math.random() < 0.12) {
           const { blobs } = await store.list({ prefix: 'c/' });
