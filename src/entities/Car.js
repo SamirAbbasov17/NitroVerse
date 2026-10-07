@@ -45,6 +45,7 @@ export class Car {
       this.turnRate *= 1 + ((s.handling - 76) / 100) * F2.turnSpread;
       this.maxSpeed = F2.speedPivot + (s.topSpeed - 82) * F2.speedPer;
     }
+    this._stats = s;
     this.driftT = 0;       // cari driftin müddəti (s)
     this.driftBoostT = 0;  // drift çıxışı təkanının qalan vaxtı (s)
 
@@ -157,6 +158,17 @@ export class Car {
   // Yeni irəli sürəti qaytarır, yan sürəti `this._vR2`-yə yazır.
   //
   // Köhnə modeldən əsas fərq: yan sürət ENERJİ İTİRMƏDƏN düzlənir — sürət
+  // REJİMƏ MƏXSUS SÜRÜŞ TƏNZİMİ: v2 modelinin əmsallarını bu maşın üçün dəyişir (zen — sərbəst,
+  // rahat drift; bax EndlessScene ZEN_FEEL). Yarışın TUNING.feel2-si toxunulmaz qalır.
+  tuneFeel(mod) {
+    if (!this.feel) return;
+    const F2 = (this.feel = { ...TUNING.feel2, ...mod });
+    const s = this._stats;
+    this.driftGrip2 = F2.driftGrip + ((s.grip - 70) / 30) * F2.driftGripPer;
+    this.cornerScrub2 = F2.cornerScrub - ((s.grip - 70) / 100) * F2.scrubPerGrip;
+    this.offRoadCut2 = this.data?.class === 'Offroad' ? Math.min(F2.offRoadCutOffroad, F2.offRoadCut) : F2.offRoadCut;
+  }
+
   // vektoru burun istiqamətinə doğru fırlanır, uzunluğu dəyişmir. Köhnədə yan
   // sürət sadəcə sönürdü, ona görə drift sürəti yeyirdi və "yana fırlanma" olurdu.
   _driveV2(dt, drive, vF, vR, vMaxBase, sigPow, boosting, drifting) {
@@ -346,7 +358,7 @@ export class Car {
     const steerTarget = drive.steer * (this.slipTimer > 0 ? 0.4 : 1);
     const returning = Math.abs(steerTarget) < Math.abs(this._steerSmooth) ||
       Math.sign(steerTarget) !== Math.sign(this._steerSmooth || steerTarget);
-    const rampRate = returning ? TUNING.car.steerRampOut : TUNING.car.steerRampIn * (this.steerRampMul ?? 1);
+    const rampRate = returning ? TUNING.car.steerRampOut : TUNING.car.steerRampIn * (drifting ? 1 : (this.steerRampMul ?? 1));
     this._steerSmooth += (steerTarget - this._steerSmooth) * Math.min(1, dt * rampRate);
 
     // Yüksək sürətdə dönmə həssaslığı azalır (stabil, axıcı idarə)
@@ -356,7 +368,8 @@ export class Car {
     const driftSteer = F ? (drifting ? F.driftSteer : 1) : (drive.handbrake ? 1.4 : 1);
     // SAKİT SÜKAN (zen): sürətdə dönmə əlavə olaraq yumşalır, aşağı sürətdə (manevr, yola qayıtma)
     // tam qalır. `steerCalm` 0 = yarış davranışı (dəyişmir).
-    const calmK = this.steerCalm ? Math.max(0, Math.min(1, (Math.abs(vF) - 12) / 16)) : 0;
+    // Driftdə sükan TAM qalır — sürüşməni idarə etmək üçün (sakit sükan driftin burnunu "kütləşdirirdi").
+    const calmK = this.steerCalm && !drifting ? Math.max(0, Math.min(1, (Math.abs(vF) - 12) / 16)) : 0;
     const calm = 1 - (this.steerCalm || 0) * calmK * calmK * (3 - 2 * calmK);
     const steerFactor = Math.min(Math.abs(vF) / 6, 1) * highSpeedDamp * driftSteer * calm;
     this.heading -= this._steerSmooth * this.turnRate * steerFactor * dt * Math.sign(vF || 1);

@@ -61,6 +61,18 @@ function obstaclePush(o, cx, cz, r, out) {
 }
 // Təkərlərin maşın mərkəzindən yerli məsafəsi (yan, irəli) — model 4.4 m-ə normallaşdırılıb
 const WHEEL_X = 0.82, WHEEL_Z = 1.32;
+// Zen-ə məxsus sürüş əmsalları (yarışdakı dəyər mötərizədə). Ölçmə: tests/zen-steer.spec.js → 'zen drifti'
+const ZEN_FEEL = {
+  driftMinSpeed: 6,    // (9) aşağı sürətdə də sürüşmək olur
+  driftGrip: 1.5,      // (3.8) daha geniş sürüşmə bucağı, uzun sürüşmə
+  driftGripPer: 0.7,   // (1.4) maşınlar arası fərq yarıya enir — heç biri fırlanıb getmir
+  // (1.35) Driftdə sakit sükan sönür, ona görə burun onsuz da adi zen dönməsindən iti dönür;
+  // əmsal 1-dən kiçikdir ki, tam sükanda maşın fırlanmasın (sürüşmə bucağı ≈ dönmə tempi / tutum)
+  driftSteer: 0.75,
+  driftTarget: 1.0,    // (0.9) drift sürəti yemir
+  cornerScrub: 0.2,    // (0.34) döngədə sürət az itir
+  offRoadCut: 0.3,     // (0.55) yoldan kənarda sürətin 70%-i qalır — sərbəst sürüş
+};
 const ZEN_STEER_CALM = 0.38;  // sürətdə dönmənin nə qədər yumşaldığı (0 = yarışdakı kimi)
 const ZEN_STEER_RAMP = 0.8;   // sükanın açılma sürəti (1 = yarışdakı kimi)
 // Asfalt yol nöqtələrindən bu qədər yuxarı çəkilir (EndlessRoad: `_ribbon(…, 0.08)`) — əvvəl
@@ -327,6 +339,10 @@ export class EndlessScene {
     // 6.5 dəfə iti: xəfif toxunuş maşını yolun o başına atırdı (istifadəçi: "çox kəskin dönür").
     // İndi sürətdə dönmə 40%-ə enir (aşağı sürətdə — manevr — tam qalır), sükan da yumşaq açılır.
     // Köhnə ilə müqayisə: localStorage `apexZenSteer` = 'old'.
+    // ZEN SÜRÜŞ HİSSİ (istifadəçi: "zen-də sürüş hissini artır, drift olsun, oyunçu sərbəst olsun,
+    // rahat chill sürə bilsin"): drift asan başlayır, uzun və geniş sürüşür, sürət yemir; döngədə
+    // və yoldan kənarda sürət az itir. Müqayisə: localStorage `apexZenFeel` = 'old' (yarış tənzimi).
+    if ((() => { try { return localStorage.getItem('apexZenFeel') !== 'old'; } catch { return true; } })()) this.playerCar.tuneFeel(ZEN_FEEL);
     // 2-ci tənzim (istifadəçi: "indi də çox yavaşdır"): ilk variant (0.6 / 0.55) həddən artıq
     // sakit idi → orta nöqtə. Müqayisə: `apexZenSteer` = 'old' (yarışdakı kimi) | 'calm' (ilk variant).
     {

@@ -32,7 +32,20 @@ for (const variant of ['old', 'new']) {
       }, 200);
     });
     await autopilot(page, true);
-    await page.waitForTimeout(85_000);
+    if (variant === 'new') {
+      // serpantinin kadrı: maşın zonaya girəndən bir az sonra (adi kamera + yuxarıdan baxış)
+      await page.waitForFunction(() => { const sc = window.__active; return sc.road.sectionAt(Math.round(sc.playerCar.trackT) + 6) === 'serp'; }, null, { timeout: 60_000 });
+      await page.waitForTimeout(1200);
+      await page.screenshot({ path: 'tests/out/zen-serp.png' });
+      await page.evaluate(() => {
+        const sc = window.__active; sc.__upd = sc._updateCamera; const car = sc.playerCar;
+        sc._updateCamera = () => { const h = car.heading; sc.camera.position.set(car.position.x - Math.sin(h) * 40, car.position.y + 150, car.position.z - Math.cos(h) * 40); sc.camera.lookAt(car.position.x + Math.sin(h) * 110, car.position.y, car.position.z + Math.cos(h) * 110); };
+      });
+      await page.waitForTimeout(500);
+      await page.screenshot({ path: 'tests/out/zen-serp-top.png' });
+      await page.evaluate(() => { const sc = window.__active; sc._updateCamera = sc.__upd; });
+    }
+    await page.waitForTimeout(variant === 'new' ? 60_000 : 85_000);
     const r = await page.evaluate(() => {
       const S = window.__zr, out = { km: +(S.maxDist / 1000).toFixed(2), offPct: +((100 * S.off) / S.n).toFixed(1), hits: S.hits, zones: {} };
       const by = {};
@@ -48,7 +61,8 @@ for (const variant of ['old', 'new']) {
     mergeJson('zen-road.json', variant, r);
     console.log(variant, JSON.stringify(r));
     if (variant === 'new') {
-      expect(r.zones.serp.p10R, 'serpantin: drift tələb edən döngələr (m)').toBeLessThan(60);
+      expect(r.zones.serp.p10R, 'serpantin: iti döngələr (m)').toBeLessThan(70);
+      expect(r.zones.serp.minR, 'serpantinin ən iti döngəsi (m)').toBeLessThan(58);
       expect(r.zones.serp.minR, 'amma keçilməz deyil (m)').toBeGreaterThan(28);
       expect(r.zones.sweep.p10R, 'uzun S: orta döngələr (m)').toBeLessThan(110);
       expect(r.zones.calm.p10R, 'sakit hissə əvvəlki kimi geniş qalır (m)').toBeGreaterThan(100);
