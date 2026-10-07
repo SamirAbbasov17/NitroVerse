@@ -47,13 +47,13 @@ export class ModelLibrary {
   async loadCars(modelNames) {
     await Promise.all(modelNames.map(async (name) => {
       const gltf = await this.loader.loadAsync(`models/cars/${name}.glb`);
-      const template = this._normalize(gltf.scene);
+      const template = this._normalize(gltf.scene, name);
       this.cars.set(name, template);
     }));
   }
 
   // Modeli TARGET_LENGTH uzunluğuna gətir, yerə oturt, kölgə/materyal sazla
-  _normalize(scene) {
+  _normalize(scene, name = '') {
     const box = new THREE.Box3().setFromObject(scene);
     const size = box.getSize(new THREE.Vector3());
     const scale = TARGET_LENGTH / size.z;
@@ -80,6 +80,7 @@ export class ModelLibrary {
           // İndi yüngül parıltı var: lak təbəqəsi hissi, xrom deyil.
           o.material.roughness = 0.58;
           o.material.metalness = 0.22;
+          this._applyDetail(o.material, name === 'police');   // yanan fara/stop, tünd parlaq şüşə
           // Şablon materialı bütün səhnələrdə təkrar işlənir — səhnə
           // təmizlənməsi ona toxunmamalıdır (bax disposeObject3D)
           o.material.userData = { ...(o.material.userData || {}), shared: true };
@@ -93,6 +94,90 @@ export class ModelLibrary {
     });
 
     return { object: wrapper, scale, wheelRadius };
+  }
+
+  // ————— DETAL KEÇİDİ (Faza 3.8) —————
+  // Kenney modellərində fara, stop işığı və şüşə ayrıca həndəsə deyil — palitra atlasındakı
+  // rəng ailələridir (ölçüldü: fara #ffc61b…#ffe54c, stop #d93c3d…#ed573f, şüşə #def1ff…#f5fbff).
+  // Əvvəl hamısı eyni mat boya kimi çəkilirdi: işıqlar yanmır, şüşə açıq-boz qutu idi; üstəlik
+  // boya dəyişəndə stop işığı gövdə ailəsinə düşüb boyanırdı. İndi atlasdan üç xəritə çıxır:
+  //   map         — şüşə tünd tonlanır (yuxarı açıq, aşağı tünd qradiyent saxlanır)
+  //   emissiveMap — fara isti ağ, stop qırmızı, polis çırağı mavi/qırmızı (boyadan asılı deyil)
+  //   roughness/metalness (G/B) — şüşə və işıqlar hamar və parlaq, qalan səth əvvəlki kimi
+  // Bütün modellər eyni atlası işlədir — xəritələr bir dəfə qurulur və paylaşılır.
+  _applyDetail(mat, siren = false) {
+    if (mat.userData?.detail || !mat.map?.image?.width) return;
+    const img = mat.map.image;
+    const W = img.width, H = img.height;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const cx = cv.getContext('2d', { willReadFrequently: true });
+    cx.drawImage(img, 0, 0);
+    const im = cx.getImageData(0, 0, W, H);
+    const d = im.data;
+    const orig = document.createElement('canvas');   // toxunulmamış atlas — boya analizi bunun üstündə gedir
+    orig.width = W; orig.height = H;
+    orig.getContext('2d').drawImage(img, 0, 0);
+    const cls = new Uint8Array(W * H);               // 1 = detal keçidinin dəyişdiyi teksel (stop, şüşə)
+    // eyni atlas → eyni xəritələr (hər GLB teksturanı ayrıca yükləyir)
+    let key = W + 'x' + H + (siren ? 's' : '');
+    for (let q = 0; q < 48; q++) { const o = ((q * 5471) % (W * H)) * 4; key += ':' + d[o] + d[o + 1] + d[o + 2]; }
+    this._detailCache = this._detailCache || new Map();
+    let maps = this._detailCache.get(key);
+    if (!maps) {
+      const ecv = document.createElement('canvas'), ocv = document.createElement('canvas');
+      ecv.width = ocv.width = W; ecv.height = ocv.height = H;
+      const ex = ecv.getContext('2d'), ox = ocv.getContext('2d');
+      const eim = ex.createImageData(W, H), oim = ox.createImageData(W, H);
+      const e = eim.data, r = oim.data;
+      for (let o = 0; o < d.length; o += 4) {
+        const R = d[o], G = d[o + 1], B = d[o + 2];
+        let er = 0, eg = 0, eb = 0, rough = 0.58, metal = 0.22;
+        if (R >= 250 && G >= 190 && G <= 235 && B <= 90) {            // fara
+          er = 255; eg = 226; eb = 150; rough = 0.25; metal = 0;
+        } else if (R >= 210 && G >= 52 && G <= 90 && B >= 58 && B <= 64) {   // stop işığı
+          er = 255; eg = 30; eb = 22; rough = 0.3; metal = 0;
+          d[o] = 200; d[o + 1] = 26; d[o + 2] = 30;
+          cls[o >> 2] = 1;
+        } else if (siren && B >= 195 && R <= 110 && G >= 90 && G <= 150) { // polis çırağı (mavi) — yalnız polisdə:
+          // furqon və hiperkarın GÖVDƏSİ də bu mavi ailədəndir, onlarda bütün gövdə közərirdi
+          er = 60; eg = 120; eb = 255; rough = 0.3; metal = 0;
+        } else if (B === 255 && R >= 215 && G >= 235) {                // şüşə
+          const k = (R - 215) / 40;                                   // atlasdakı açıq/tünd çalar
+          d[o] = 22 + k * 30; d[o + 1] = 34 + k * 40; d[o + 2] = 50 + k * 52;
+          rough = 0.1; metal = 0.55;
+          cls[o >> 2] = 1;
+        }
+        e[o] = er; e[o + 1] = eg; e[o + 2] = eb; e[o + 3] = 255;
+        r[o] = 255; r[o + 1] = Math.round(rough * 255); r[o + 2] = Math.round(metal * 255); r[o + 3] = 255;
+      }
+      cx.putImageData(im, 0, 0); ex.putImageData(eim, 0, 0); ox.putImageData(oim, 0, 0);
+      const mk = (canvas, colorSpace) => {
+        const t = new THREE.CanvasTexture(canvas);
+        t.flipY = mat.map.flipY; t.wrapS = mat.map.wrapS; t.wrapT = mat.map.wrapT;
+        t.colorSpace = colorSpace;
+        // palitra atlası: qonşu teksellər qarışmasın (işıq tekselinin yanı boyadır)
+        t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false;
+        t.userData = { shared: true };
+        t.needsUpdate = true;
+        return t;
+      };
+      maps = { base: mk(cv, mat.map.colorSpace), emis: mk(ecv, THREE.SRGBColorSpace), orm: mk(ocv, THREE.NoColorSpace) };
+      // Boya dəyişimi (_recolor) ORİJİNAL atlası analiz edir, sonra bu teksellər geri yazılır —
+      // əks halda tünd şüşə "doymuş rəng ailəsi" sayılır və boya gövdəyə yox, şüşəyə düşür
+      maps.base.userData = { shared: true, detail: { orig, cls, base: d } };
+      maps.base.magFilter = mat.map.magFilter; maps.base.minFilter = mat.map.minFilter;
+      maps.base.generateMipmaps = mat.map.generateMipmaps;
+      this._detailCache.set(key, maps);
+    }
+    mat.map = maps.base;
+    mat.emissiveMap = maps.emis;
+    mat.emissive = new THREE.Color(0xffffff);
+    mat.emissiveIntensity = 1.5;
+    mat.roughnessMap = maps.orm; mat.metalnessMap = maps.orm;
+    mat.roughness = 1; mat.metalness = 1;      // dəyərlər xəritədədir (boya: 0.58 / 0.22)
+    mat.userData = { ...(mat.userData || {}), detail: true };
+    mat.needsUpdate = true;
   }
 
   // Klon + təkər qovşaqlarını tap (fırlanma üçün hər təkəri spinner qrupuna bük)
@@ -179,7 +264,8 @@ export class ModelLibrary {
     const cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
     const cx = cv.getContext('2d', { willReadFrequently: true });
-    cx.drawImage(img, 0, 0);
+    const det = srcTex.userData?.detail || null;   // detal keçidi: analiz orijinal atlasda (bax _applyDetail)
+    cx.drawImage(det ? det.orig : img, 0, 0);
     const im = cx.getImageData(0, 0, W, H);
     const d = im.data;
     const flip = srcTex.flipY; // GLTF-də adətən false
@@ -268,6 +354,15 @@ export class ModelLibrary {
       md[o] = on; md[o + 1] = on; md[o + 2] = on; md[o + 3] = 255;
       if (hit >= 0) { d[o] = (hit >> 16) & 255; d[o + 1] = (hit >> 8) & 255; d[o + 2] = hit & 255; }
     }
+    // detal keçidinin tekselləri (tünd şüşə, stop işığı) boyadan SONRA geri yazılır və maskadan çıxır
+    if (det) {
+      for (let q = 0; q < det.cls.length; q++) {
+        if (!det.cls[q]) continue;
+        const o = q * 4;
+        d[o] = det.base[o]; d[o + 1] = det.base[o + 1]; d[o + 2] = det.base[o + 2];
+        md[o] = 0; md[o + 1] = 0; md[o + 2] = 0;
+      }
+    }
     cx.putImageData(im, 0, 0);
     const tex = new THREE.CanvasTexture(cv);
     tex.flipY = srcTex.flipY;
@@ -336,17 +431,50 @@ export class ModelLibrary {
       geos.push(geo);
     };
 
-    // Kompakt spoyler: gövdənin QUYRUĞUNA OTURUR (havada asılı qalmır)
+    // SƏTH SORĞULARI. Hissələr əvvəl gövdənin sərhəd qutusunun faizləri ilə yerləşdirilirdi:
+    // sedanda "bagaj üstü" tavanın hündürlüyündə çıxırdı — qanad havada asılı qalırdı,
+    // egzoz isə gövdənin arxasında, yerdə uzanırdı (kadr: tests/out/cars/sheet-rear).
+    // İndi yer gövdənin ÖZ həndəsəsindən oxunur: nöqtənin üstündəki/arxasındakı səth.
+    const P = body.geometry.attributes.position, I = body.geometry.index;
+    const nT = (I ? I.count : P.count) / 3;
+    const vi = (t, k) => (I ? I.getX(t * 3 + k) : t * 3 + k);
+    // (u, v) nöqtəsi üçbucağın (a, b) müstəvisindəki proyeksiyasındadırsa w oxu üzrə dəyəri
+    const probe = (ua, va, wa, u, v, pick) => {
+      let best = null;
+      for (let t = 0; t < nT; t++) {
+        const i0 = vi(t, 0), i1 = vi(t, 1), i2 = vi(t, 2);
+        const x0 = ua(i0), y0 = va(i0), x1 = ua(i1), y1 = va(i1), x2 = ua(i2), y2 = va(i2);
+        const den = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2);
+        if (Math.abs(den) < 1e-9) continue;
+        const l0 = ((y1 - y2) * (u - x2) + (x2 - x1) * (v - y2)) / den;
+        const l1 = ((y2 - y0) * (u - x2) + (x0 - x2) * (v - y2)) / den;
+        const l2 = 1 - l0 - l1;
+        if (l0 < -0.001 || l1 < -0.001 || l2 < -0.001) continue;
+        const w = l0 * wa(i0) + l1 * wa(i1) + l2 * wa(i2);
+        if (best == null || pick(w, best)) best = w;
+      }
+      return best;
+    };
+    const gx = (i) => P.getX(i), gy = (i) => P.getY(i), gz = (i) => P.getZ(i);
+    const topY = (x, z) => probe(gx, gz, gy, x, z, (w, q) => w > q) ?? bb.max.y;
+    const rearZ = (x, y) => probe(gx, gy, gz, x, y, (w, q) => w < q);
+    const frontZ = (x, y) => probe(gx, gy, gz, x, y, (w, q) => w > q);
+    const topOf = (z, xs) => Math.max(...xs.map((x) => topY(cx + x, z)));
+
+    // Kompakt spoyler: quyruğun səthinə dayaqlarla oturur
     if (kit.wing === 'spoiler') {
-      const wy = bb.max.y + H * 0.035;
-      add(W * 0.66, H * 0.045, L * 0.075, cx, wy, bb.min.z + L * 0.10);
+      const z = bb.min.z + L * 0.10;
+      const base = topOf(z, [-W * 0.24, W * 0.24]);
+      const wy = base + H * 0.11;
+      add(W * 0.66, H * 0.045, L * 0.075, cx, wy, z);
       for (const s of [-1, 1]) {
-        add(W * 0.05, H * 0.10, L * 0.05, cx + s * W * 0.24, wy - H * 0.055, bb.min.z + L * 0.10);
+        add(W * 0.05, H * 0.11, L * 0.05, cx + s * W * 0.24, base + H * 0.052, z);
       }
     }
-    // Lip spoyler: bagajın kənarında incə qalxma
+    // Lip spoyler: bagajın kənarında incə qalxma — səthin üstündə
     if (kit.wing === 'lip') {
-      add(W * 0.60, H * 0.035, L * 0.055, cx, bb.max.y - H * 0.02, bb.min.z + L * 0.07);
+      const z = bb.min.z + L * 0.075;
+      add(W * 0.60, H * 0.035, L * 0.055, cx, topOf(z, [0, -W * 0.25, W * 0.25]) + H * 0.014, z);
     }
     // Formula yan qutuları — F1 gövdəsinə yaraşan yeganə detal
     if (kit.pods) {
@@ -354,17 +482,26 @@ export class ModelLibrary {
         add(W * 0.13, H * 0.22, L * 0.26, cx + s * W * 0.40, bb.min.y + H * 0.30, bb.min.z + L * 0.46);
       }
     }
-    // Tavan relsləri — İNCƏ (əvvəl qalın lövhə kimi idi)
+    // Tavan relsləri — tavanın ÖZÜNÜN üstündə və onun uzunluğu qədər
     if (kit.rails) {
+      let z0 = Infinity, z1 = -Infinity, roof = -Infinity;
+      const zs = [];
+      for (let q = 0; q <= 24; q++) zs.push(bb.min.z + (L * q) / 24);
+      // səth tapılmayan yer (gövdədən kənar) tavan sayılmır
+      const hs = zs.map((z) => Math.min(...[-W * 0.3, W * 0.3].map((x) => probe(gx, gz, gy, cx + x, z, (w, q) => w > q) ?? -Infinity)));
+      for (const h of hs) roof = Math.max(roof, h);
+      hs.forEach((h, q) => { if (h >= roof - H * 0.035) { z0 = Math.min(z0, zs[q]); z1 = Math.max(z1, zs[q]); } });
+      const len = Math.max(L * 0.16, (z1 - z0) * 0.9), zc = (z0 + z1) / 2;
       for (const s of [-1, 1]) {
-        add(W * 0.045, H * 0.028, L * 0.44, cx + s * W * 0.30, bb.max.y + H * 0.018, bb.min.z + L * 0.46);
+        add(W * 0.045, H * 0.028, len, cx + s * W * 0.30, roof + H * 0.012, zc);
       }
     }
-    // Ön bufer — nazik və alçaq
+    // Ön bufer — nazik və alçaq, burnun ÖN səthinə söykənir
     if (kit.bar) {
-      add(W * 0.80, H * 0.055, L * 0.035, cx, bb.min.y + H * 0.30, bb.max.z + L * 0.008);
+      const fz = (frontZ(cx, bb.min.y + H * 0.32) ?? bb.max.z) + L * 0.012;
+      add(W * 0.80, H * 0.055, L * 0.035, cx, bb.min.y + H * 0.30, fz);
       for (const s of [-1, 1]) {
-        add(W * 0.045, H * 0.20, L * 0.035, cx + s * W * 0.28, bb.min.y + H * 0.38, bb.max.z + L * 0.008);
+        add(W * 0.045, H * 0.20, L * 0.035, cx + s * W * 0.28, bb.min.y + H * 0.38, fz);
       }
     }
     // Yan ətəklər
@@ -374,9 +511,13 @@ export class ModelLibrary {
       }
     }
     // Cüt egzoz
+    // Cüt egzoz: arxa buferin səthindən azca çıxır (əvvəl gövdədən aralı, yerdə idi)
     if (kit.exhaust) {
       for (const s of [-1, 1]) {
-        add(W * 0.075, H * 0.06, L * 0.05, cx + s * W * 0.19, bb.min.y + H * 0.15, bb.min.z - L * 0.008);
+        const x = cx + s * W * 0.19;
+        let y = bb.min.y + H * 0.16, rz = null;
+        for (const k of [0.16, 0.2, 0.25, 0.3]) { y = bb.min.y + H * k; rz = rearZ(x, y); if (rz != null) break; }
+        add(W * 0.075, H * 0.06, L * 0.05, x, y, (rz ?? bb.min.z) - L * 0.012);
       }
     }
 
