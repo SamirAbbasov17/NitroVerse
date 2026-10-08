@@ -66,6 +66,9 @@ test('zen: maşın görünən səthdə oturur (yol, çiyin, torpaq, tunel)', asy
         const hit = rc.intersectObjects(meshes, false)[0];
         n++;
         if (!hit) { floatN++; worstFloat.push({ d: 9, lat: +lat.toFixed(1), inTun, x: Math.round(pos.x), z: Math.round(pos.z) }); continue; }
+        // körpü sürahisi (yoldan 0.95 m hündür, açıq boz lent): maşın ora çata bilmir — səth deyil.
+        // Şüa onun üstünə düşəndə sabit "0.87 m batma" oxunurdu (təsadüfi qırılmaların mənbəyi).
+        if (hit.object.material?.color?.getHex?.() === 0xc7ccd8 && hit.point.y - phys > 0.6) continue;
         const d = hit.point.y - phys; // + : səth yuxarıdadır (batma) · − : səth aşağıdadır (asılma)
         const m = Math.round((((near.index * 8) % 2600) + 2600) % 2600); // tunel dövründəki yer (tunel: 1480–1710)
         const row = { d: +d.toFixed(2), lat: +lat.toFixed(1), inTun, m, job: !!(sc._cutJob || sc._twBusy), roadY: +road.heightAtPos(pos, car.wpHint).toFixed(2), physY: +phys.toFixed(2), x: Math.round(pos.x), z: Math.round(pos.z), on: hit.object === sc.ground ? 'yer' : 'yol' };
