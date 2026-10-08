@@ -5,7 +5,6 @@ import './styles.css';
 import { Game } from './core/Game.js';
 import { Input } from './core/Input.js';
 import { audio } from './core/AudioManager.js';
-import { isTouchDevice } from './core/TouchControls.js';
 import { auth } from './net/Auth.js';
 import { social } from './net/Social.js';
 import { Notices } from './ui/Notices.js';
@@ -85,13 +84,16 @@ if (import.meta.env.DEV) {
 // Telefonda tam ekran + landşaft kilidi. Yalnız istifadəçi jestinin içində işləyir (brauzer qaydası);
 // artıq tam ekrandadırsa və ya cəhd gedirsə heç nə etmir. Android-də işləyir; iPhone Safari tam
 // ekranı dəstəkləmir — orada "ana ekrana əlavə et" (manifest: fullscreen) və CSS "telefonu çevir" qalır.
+// "Telefon kimi" cihaz: ƏSAS göstərici barmaqdır. Toxunma ekranlı noutbuk (siçanla işlənir) bura
+// düşmür — əvvəl `isTouchDevice()` onu da tuturdu və masaüstündə hər klik oyunu tam ekrana salırdı.
+const phoneLike = () => !!window.matchMedia?.('(pointer: coarse)').matches;
 const fsEl = document.documentElement;
 const fsReq = fsEl.requestFullscreen || fsEl.webkitRequestFullscreen;
 export const inFullscreen = () => !!(document.fullscreenElement || document.webkitFullscreenElement)
   || !!window.matchMedia?.('(display-mode: fullscreen)').matches;
 let fsPending = null;   // gedən sorğu: eyni toxunuşun pointerup + click-i iki sorğu göndərməsin
 export function tryLandscapeFullscreen() {
-  if (!isTouchDevice() || !fsReq) return Promise.resolve(false);
+  if (!phoneLike() || !fsReq) return Promise.resolve(false);
   if (fsPending) return fsPending;
   if (inFullscreen()) { screen.orientation?.lock?.('landscape')?.catch?.(() => {}); return Promise.resolve(true); }
   let req;
@@ -119,7 +121,7 @@ function startGate() {
   let force = false;
   try { force = localStorage.getItem('apexGate') === '1'; } catch { /* gizli rejim */ }
   if (import.meta.env.DEV && !force) return;
-  if (!isTouchDevice() || !fsReq || inFullscreen()) return;
+  if (!phoneLike() || !fsReq || inFullscreen()) return;
   const gate = document.createElement('div');
   gate.id = 'start-gate';
   gate.innerHTML = `
