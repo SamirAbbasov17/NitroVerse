@@ -1826,8 +1826,15 @@ export class ArenaScene {
     );
     // zərbə itələnməsi əvvəlki kadrdan çıxılır ki, hamarlamaya qarışmasın
     this.camera.position.x -= this._impX || 0; this.camera.position.z -= this._impZ || 0;
-    this.camera.position.lerp(desired, 1 - Math.exp(-dt * 7));
     const look = new THREE.Vector3(car.position.x + fx * 6, 1.1, car.position.z + fz * 6);
+    // İLK KADR: kamera dərhal maşının arxasında durur. Əvvəl meydanın mərkəzindən (0,0) başlayıb
+    // ~0.7 s-ə maşına uçurdu — oyun açılanda "bir anlıq başqa yer" görünürdü (oyunçu rəyi).
+    if (!this._camInit) {
+      this._camInit = true;
+      this.camera.position.copy(desired);
+      this._camTarget.copy(look);
+    }
+    this.camera.position.lerp(desired, 1 - Math.exp(-dt * 7));
     this._camTarget.lerp(look, 1 - Math.exp(-dt * 7));
     this.camera.lookAt(this._camTarget);
     this._impX = this.impact.x; this._impZ = this.impact.z;

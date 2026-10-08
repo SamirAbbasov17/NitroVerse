@@ -181,7 +181,7 @@ async function startArena(browser) {
   for (const p of [host.page, guest.page]) {
     await p.evaluate(() => {
       const sc = window.__active;
-      sc.obstacles.length = 0;
+      sc.obstacles.length = 0; sc.turrets.forEach((T) => { T.on = false; });   /* sütun lazerləri test mövqelərinə düşməsin */
       sc.pickups.forEach((pk, i) => { sc.scene.remove(pk.mesh); sc.pickups.delete(i); });
       window.__seen = { proj: 0, mines: 0, bolts: 0 };
       const f = sc._applyEffect.bind(sc);
@@ -302,7 +302,7 @@ test('onlayn arena: üç oyunçu — qonaqlar bir-birini görür, zərər və el
     sc._hostSpawnPickups = () => {};
     sc.racers.filter((x) => x.isBot).forEach((b, i) => { b.car.position.set(-85 + i * 5, 0, -40); });
   });
-  for (const p of all) await p.evaluate(() => { const sc = window.__active; sc.obstacles.length = 0; sc.pickups.forEach((pk, i) => { sc.scene.remove(pk.mesh); sc.pickups.delete(i); }); });
+  for (const p of all) await p.evaluate(() => { const sc = window.__active; sc.obstacles.length = 0; sc.turrets.forEach((T) => { T.on = false; });   /* sütun lazerləri test mövqelərinə düşməsin */ sc.pickups.forEach((pk, i) => { sc.scene.remove(pk.mesh); sc.pickups.delete(i); }); });
   const roster = await Promise.all(all.map((p) => p.evaluate(() => { const sc = window.__active; return { total: sc.racers.length, humans: sc.racers.filter((r) => !r.isBot).length, bots: sc.racers.filter((r) => r.isBot).length }; })));
   expect(roster, 'hər ekranda 3 oyunçu + 3 bot').toEqual([{ total: 6, humans: 3, bots: 3 }, { total: 6, humans: 3, bots: 3 }, { total: 6, humans: 3, bots: 3 }]);
   // mövqelər: A (60, 0) şimala baxır, B onun 18 m qabağında, host uzaqda

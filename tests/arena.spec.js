@@ -16,7 +16,7 @@ test('arena: silahlar, mina, şimşək, lazer, vuruş sayğacı', async ({ page 
     const me = sc.racers.find((x) => x.isLocal);
     const foes = sc.racers.filter((x) => !x.isLocal);
     sc._botDrive = () => {};                       // botlar tərpənməsin
-    sc.obstacles.length = 0;
+    sc.obstacles.length = 0; sc.turrets.forEach((T) => { T.on = false; });   /* sütun lazerləri test mövqelərinə düşməsin */
     sc.pickups.forEach((pk, i) => { sc.scene.remove(pk.mesh); sc.pickups.delete(i); });
     sc._hostSpawnPickups = () => {};
     const park = () => foes.forEach((f, i) => { f.car.position.set(-80 + i * 6, 0, -80); f.car.velocity.set(0, 0, 0); f.car.vF = 0; });
