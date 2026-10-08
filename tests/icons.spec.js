@@ -18,7 +18,8 @@ for (const [name, vp, mobile] of [['d', { width: 1440, height: 900 }, false], ['
       return {
         svgs: document.querySelectorAll('.menu-brandrow .ic, .mrow__icon .ic, .menu-foot .ic').length,
         emojiLeft: zone.filter((e) => emo.test(e.textContent)).map((e) => e.textContent.trim().slice(0, 30)),
-        sized: [...document.querySelectorAll('.ic')].every((e) => { const b = e.getBoundingClientRect(); return b.width >= 12 && b.width <= 40 && b.height >= 12; }),
+        // gizli elementlərin (telefonda üzən səs düyməsi) ikonu 0 ölçülüdür — sayılmır
+        sized: [...document.querySelectorAll('.ic')].filter((e) => e.getBoundingClientRect().width > 0).every((e) => { const b = e.getBoundingClientRect(); return b.width >= 12 && b.width <= 40 && b.height >= 12; }),
       };
     });
     expect(r.svgs, 'başlıq + rejimlər + altlıq ikonları').toBeGreaterThanOrEqual(10);
