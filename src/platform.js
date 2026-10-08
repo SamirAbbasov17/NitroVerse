@@ -85,6 +85,44 @@ export function tryLandscapeFullscreen() {
     .catch(() => { /* dəstəklənmirsə sakitcə keç */ });
 }
 
+// BAŞLANĞIC QAPISI (telefon): brauzer tam ekrana yalnız toxunuşla keçməyə icazə verir. Əvvəl menyu
+// brauzer zolaqları ilə kiçik açılırdı və tam ekran ilk toxunuşda, menyunun ortasında gəlirdi
+// (istifadəçi rəyi: "menyudakılar balaca görsənir"). İndi menyudan ƏVVƏL bir toxunuşluq qapı durur:
+// toxunuş → tam ekran + landşaft → qapı açılır; menyu artıq tam ekranda görünür. Oyun bu vaxt
+// arxada yüklənir. Tam ekranı dəstəkləməyən brauzerdə (iPhone Safari) qapı göstərilmir.
+// DEV-də yalnız `localStorage apexGate='1'` ilə (testlər toxunuş gözləməsin).
+function startGate() {
+  let force = false;
+  try { force = localStorage.getItem('apexGate') === '1'; } catch { /* gizli rejim */ }
+  if (import.meta.env.DEV && !force) return;
+  const el = document.documentElement;
+  if (!isTouchDevice() || !el.requestFullscreen || document.fullscreenElement) return;
+  if (window.matchMedia?.('(display-mode: fullscreen)').matches) return;
+  const gate = document.createElement('button');
+  gate.id = 'start-gate';
+  gate.innerHTML = `<span class="start-gate__logo">NITRO<b>VERSE</b></span>
+    <span class="start-gate__tap">${t('gate.tap')}</span>
+    <span class="start-gate__sub">${t('gate.sub')}</span>`;
+  document.body.appendChild(gate);
+  let done = false;
+  const open = () => {
+    if (done) return; done = true;
+    gate.classList.add('is-out');
+    setTimeout(() => gate.remove(), 260);
+  };
+  gate.addEventListener('click', () => {
+    audio.resume();
+    gate.classList.add('is-busy');
+    Promise.resolve(el.requestFullscreen())
+      .then(() => screen.orientation?.lock?.('landscape'))
+      .catch(() => { /* icazə verilmədi — oyun yenə açılır */ })
+      // ekran ölçüsü oturana qədər bir an gözlə ki, menyu köhnə ölçüdə görünməsin
+      .finally(() => setTimeout(open, 180));
+    setTimeout(open, 1500);   // söz (promise) heç qayıtmasa da qapı bağlı qalmır
+  });
+}
+startGate();
+
 // ————— Bildirişlər və sosial kimlik (bütün oyunlar üçün ortaq) —————
 export const notices = new Notices();
 window.__notices = notices; // menyular bildirişləri buradan göstərir
