@@ -2580,3 +2580,11 @@ body.flt-sepia #filter-fx {
 .menu-profile .ic { width: 17px; height: 17px; margin-right: 4px; }
 .menu-gold .ic { width: 15px; height: 15px; margin-right: 2px; }
 .menu-foot__btn .ic { width: 16px; height: 16px; margin-right: 6px; opacity: 0.85; }
+
+/* avtomatik çevrilən ikonlar: mətnlə eyni sətirdə, yanında nəfəs */
+.toast .ic, .notice__icon .ic { width: 1.1em; height: 1.1em; }
+.notice__icon .ic { width: 22px; height: 22px; color: var(--accent); }
+.tbtn .ic { width: 46%; height: 46%; vertical-align: middle; }
+.tbtn--small .ic { width: 56%; height: 56%; }
+.menu-step .ic { width: 16px; height: 16px; color: var(--accent); }
+.screen__heading .ic { vertical-align: -0.12em; }

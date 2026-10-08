@@ -17,7 +17,7 @@ Mənbə: `docs/UI.md`, `docs/MOBILE.md`.
 - **4 dil məcburidir:** yeni açar az/en/ru/tr-in dördündə yazılır. Sərt kodlanmış mətn yazma, `t(key, {vars})`.
 - `t` adlı lokal dəyişən i18n funksiyasını kölgələyir — map/loop parametrini `tr`, `it` adlandır.
 - İstifadəçi mətnini HTML-ə qoyanda `esc()`.
-- Düymələrdə emoji istifadəsini artırma; mövcud ikon üslubuna uy.
+- **İkonlar:** `src/ui/icons.js` — `icon('ad')` (Phosphor "fill", MIT). Mətnə yazılan tanınan emoji avtomatik həmin dəstdən ikona çevrilir (`installIconizer`); yeni nişan lazımdırsa eyni dəstdən əlavə et, başqa üslub qarışdırma. Oyunçu mətni (çat, DM) çevrilmir; çevrilməməli qaba `data-noicon` qoy.
 - Font: Russo One (başlıq), Rajdhani (mətn). Rəng: `--accent`, `--good` CSS dəyişənləri — yeni sərt rəng yazma.
 
 ## Mobil

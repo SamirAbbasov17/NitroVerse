@@ -14,6 +14,7 @@ import { auth } from './net/Auth.js';
 import { social } from './net/Social.js';
 import { Notices } from './ui/Notices.js';
 import { t } from './core/i18n.js';
+import { installIconizer } from './ui/icons.js';
 import { raceGold } from './data/economy.js';
 import { installErrorReporter } from './core/ErrorReporter.js';
 import { equippedCosmetics, isCosmeticOwned } from './data/cosmetics.js';
@@ -50,6 +51,7 @@ function ensureScene(mode, retry) {
   return false;
 }
 
+installIconizer();   // emoji → vahid ikon dəsti (bax ui/icons.js)
 const canvas = document.getElementById('game-canvas');
 const uiRoot = document.getElementById('ui-root');
 
