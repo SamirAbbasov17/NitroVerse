@@ -1732,14 +1732,17 @@ export class ArenaScene {
     // Minalar: qurulma, yanıb-sönmə, tətik
     for (let i = this.mines.length - 1; i >= 0; i--) {
       const m = this.mines[i];
-      m.arm -= dt; m.life -= dt;
+      m.arm -= dt; m.life -= dt; m.age = (m.age || 0) + dt;
       m.lamp.material.color.setHex(m.arm > 0 ? 0x55606e : (Math.sin(this._time * 9) > 0 ? 0xff3b2e : 0x5a1410));
       if (m.life <= 0 || Math.hypot(m.x, m.z) > this.safeR + 6) { this.mines.splice(i, 1); this.scene.remove(m.mesh); m.lamp.material.dispose(); continue; }
       if (m.arm > 0 || !inPlay) continue;
       const own = m.owner.isLocal || (m.owner.isBot && this._simBots) || !this.online;
       if (!own) continue;
       for (const r of this.racers) {
-        if (r === m.owner || !r.car.alive || r.gone) continue;
+        // ÖZ MİNAN da partlayır (yarı zərərlə) — əvvəl sahibi üstündən keçəndə heç nə olmurdu
+        // (oyunçu rəyi: "minaya dəyəndə heç nə olmur"). Yalnız qoyulandan sonrakı ilk 2.5 s sahibinə
+        // toxunmur ki, mina atan kimi öz altında partlamasın.
+        if (!r.car.alive || r.gone || (r === m.owner && m.age < 2.5)) continue;
         if (Math.hypot(r.car.position.x - m.x, r.car.position.z - m.z) < 2.7) { this._explodeMine(m); break; }
       }
     }

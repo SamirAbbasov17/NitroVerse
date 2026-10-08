@@ -47,6 +47,18 @@ test('arena: silahlar, mina, şimşək, lazer, vuruş sayğacı', async ({ page 
     await frames(10);
     out.mineDmg = hp0 - foes[1].car.hp;
     out.minesLeft = sc.mines.length;
+    // 3b) ÖZ minan: qoyan kimi (2.5 s-dək) sənə toxunmur, sonra üstündən keçəndə yarı zərərlə partlayır
+    park(); place(me.car, 60, 0, 0);
+    me.item = 'mine'; sc._useItem();
+    const own = sc.mines[0];
+    await frames(60);                              // ~1 s: qurulub, amma sahibinə hələ toxunmur
+    place(me.car, own.x, own.z); await frames(6);
+    out.ownEarly = sc.mines.length;
+    place(me.car, 60, 30); await frames(120);      // 2.5 s keçsin
+    hp0 = me.car.hp;
+    place(me.car, own.x, own.z); await frames(10);
+    out.ownDmg = hp0 - me.car.hp; out.ownLeft = sc.mines.length;
+    me.car.hp = 100;
     // 4) şimşək: ən yaxın rəqib
     park(); place(me.car, 60, 0, 0); place(foes[2].car, 62, 25);
     hp0 = foes[2].car.hp;
@@ -84,6 +96,9 @@ test('arena: silahlar, mina, şimşək, lazer, vuruş sayğacı', async ({ page 
   expect(r.mineDropped, 'mina düşür').toBe(1);
   expect(r.mineDmg, 'mina zərəri').toBe(26);
   expect(r.minesLeft, 'mina partlayandan sonra silinir').toBe(0);
+  expect(r.ownEarly, 'öz minan qoyulan kimi partlamır').toBe(1);
+  expect(r.ownDmg, 'öz minan sonra yarı zərərlə partlayır').toBe(13);
+  expect(r.ownLeft).toBe(0);
   expect(r.boltDmg, 'şimşək zərəri').toBe(14);
   expect(r.boltSlow, 'şimşək yavaşladır').toBe(true);
   expect(r.foeDead, 'rəqib elenir').toBe(true);
