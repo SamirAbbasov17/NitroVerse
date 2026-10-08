@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { makeDecor, makeFence, makeSignpost, makeUtilityPole } from '../core/AssetFactory.js';
+import { makeDecor, makeFence, makeSignpost, makeUtilityPole, makeCurveSign } from '../core/AssetFactory.js';
 import { mergeStaticGroup } from '../core/MergeUtils.js';
 import { CITY_ROWS } from './CityKit.js';
 
@@ -14,10 +14,10 @@ const SEG = 8;         // nöqtələr arası (m)
 // yeyirdi və hər ~7 saniyədə bir 36-40 ms-lik kadr donması verirdi (ölçülüb:
 // spike vaxtları chunk vaxtları ilə üst-üstə düşür). Yarıya bölünəndə hər
 // qurulma ~6-11 ms olur və kadr büdcəsinə sığır; draw-call artımı cüzidir.
-// Ritm zonalarında əyrilik HƏDƏFİ (rad/seqment). Yol hamarlandığı üçün faktiki pik bundan aşağı olur —
-// ölçülmüş radiuslar: tests/zen-road.spec.js
-const SERP_CURV = 0.28;
-const SWEEP_CURV = 0.12;
+// Ritm zonaları — ölçülmüş radiuslar: tests/zen-road.spec.js
+const SERP_SWING = 0.42, SERP_PERIOD = 20;     // istiqamət dalğasının amplitudu (rad) və dövrü (seqment)
+const SWEEP_SWING = 0.35, SWEEP_PERIOD = 44;
+const HEAD_LIMIT = 0.9;                       // yolun ümumi istiqamətdən ən böyük aralanması (rad)
 const CHUNK = 12;      // chunk başına seqment (≈96 m)
 // Chunk-ın dekoru yolun bu qədər İRƏLİDƏKİ nöqtələrini bilərək qoyulur (seqment). Əvvəl dekor
 // yalnız öz chunk-ının yoluna baxırdı; yol sonradan döndükdə dekora ilişir, "sərt zəmanət"
@@ -374,18 +374,30 @@ export class EndlessRoad {
     if (this.rhythm) {
       const kind = this.sectionAt(this.base + this.points.length);
       if (kind) {
+        const serp = kind === 'serp';
         const id = Math.floor(((this.base + this.points.length) * SEG) / 1300);
-        if (this._secId !== id) { this._secId = id; this._secSign = Math.random() < 0.5 ? 1 : -1; this._secLeft = 0; }
-        if (--this._secLeft <= 0) {
-          this._secSign *= -1;   // növbəti döngə əks tərəfə — yol ümumi istiqamətini saxlayır
-          const serp = kind === 'serp';
-          this._secLeft = serp ? 5 + Math.floor(Math.random() * 3) : 9 + Math.floor(Math.random() * 5);
-          this._curvTarget = this._secSign * (serp ? SERP_CURV : SWEEP_CURV) * (0.88 + Math.random() * 0.24);
+        if (this._secId !== id) {
+          this._secId = id;
+          this._secDir = Math.random() < 0.5 ? 1 : -1;
+          this._secPhase = 0;
+          // zonanın orta istiqaməti irəliyə yaxın saxlanır — dalğa ilə birlikdə 90°-ni keçməsin
+          this._secHead0 = Math.max(-0.45, Math.min(0.45, this._heading));
         }
+        // Yol ORTA İSTİQAMƏT ətrafında dalğalanır: istiqamət = orta + A·sin(faza). Əvvəl döngələr
+        // açıq dövrə ilə (sağ-sol növbə) qurulurdu — təsadüfi uzunluqlar yığılıb yolu geri çevirir
+        // və yol öz köhnə hissəsinin üstündən keçirdi (tests/zen-road → 'yol özünə yaxınlaşmır').
+        if (this._secPhase % (Math.PI * 2) < 1e-6 || !this._secPer) this._secPer = serp ? SERP_PERIOD * (0.9 + Math.random() * 0.25) : SWEEP_PERIOD * (0.9 + Math.random() * 0.3);
+        const w = (Math.PI * 2) / this._secPer;
+        this._secPhase += w;
+        if (this._secPhase >= Math.PI * 2) this._secPhase = 0;
+        const A = serp ? SERP_SWING : SWEEP_SWING;
+        const want = this._secHead0 + this._secDir * A * Math.sin(this._secPhase);
+        const ff = this._secDir * A * Math.cos(this._secPhase) * w;          // istənən istiqamətin törəməsi
+        this._curvTarget = Math.max(-0.3, Math.min(0.3, ff + (want - this._heading) * 0.2));
         this._sinceTurn = 0;     // zonada təsadüfi "sakit viraj" seçimi işləmir
       } else if (this._secId != null) {
         this._secId = null;
-        this._curvTarget = 0;    // zonadan çıxanda yol düzəlir (iti hədəf qalsa yol öz üstünə qıvrılırdı)
+        this._curvTarget = 0;    // zonadan çıxanda yol düzəlir
       }
     }
     // Tuneldə yol DÜZDÜR (qazma düz gedir)
@@ -410,6 +422,7 @@ export class EndlessRoad {
         const d = dx * dx + dz * dz - lim * lim;
         if (d < worst) { worst = d; tx = sp.x; tz = sp.z; found = d < 0; }
       }
+      this._avoiding = found;
       if (found) {
         const hx = Math.sin(this._heading), hz = Math.cos(this._heading);
         const cross = hx * (tz - this._pos.z) - hz * (tx - this._pos.x);
@@ -442,6 +455,17 @@ export class EndlessRoad {
       this._pos.x += nx * addım;
       this._pos.z += nz * addım;
       if (ənDərin <= 1.8) break;
+    }
+    // İSTİQAMƏT HƏDDİ: yol ümumi istiqamətindən (başlanğıc: +z) ±52°-dən çox aralananda geri dönür.
+    // Bunsuz istiqamət təsadüfi gəzirdi (16 km-də 300–700° dönmə ölçüldü) və yol 1–2 km sonra öz
+    // köhnə hissəsinin üstündən keçə bilirdi — dirəklər/dekor asfaltın üstündə qalırdı. Hədd bütün
+    // qərarlardan (təsadüfi viraj, zona, yayınma) SONRA tətbiq olunur; hamarlama gecikməsi ilə
+    // birlikdə istiqamət 90°-yə çatmır, yəni yol həmişə irəli gedir.
+    // Dekordan yayınma gedərkən hədd bir az genişdir — yol dekorun içinə məcbur edilməsin (diş-diş olur).
+    {
+      const lim = this._avoiding ? HEAD_LIMIT + 0.3 : HEAD_LIMIT;
+      if (this._heading > lim) this._curvTarget = Math.min(this._curvTarget, -0.05);
+      else if (this._heading < -lim) this._curvTarget = Math.max(this._curvTarget, 0.05);
     }
     this._curv += (this._curvTarget - this._curv) * 0.16;
     this._heading += this._curv;
@@ -519,6 +543,9 @@ export class EndlessRoad {
         this._backSinceTurn = -14;
       }
     }
+    // İstiqamət həddi (arxa generator): arxa yol da ümumi istiqamətdə qalır — qabaq yolla kəsişmir
+    if (h1 > HEAD_LIMIT) this._backCurvTarget = Math.max(this._backCurvTarget, 0.05);
+    else if (h1 < -HEAD_LIMIT) this._backCurvTarget = Math.min(this._backCurvTarget, -0.05);
     this._backCurv += (this._backCurvTarget - this._backCurv) * 0.1;
     const hb = h1 - this._backCurv; // bir seqment əvvəlki istiqamət
     const t = new THREE.Vector3(Math.sin(hb), 0, Math.cos(hb));
@@ -1502,6 +1529,33 @@ export class EndlessRoad {
         sg.position.set(px, gy, pz);
         sg.rotation.y = Math.atan2(-nrms[i].x * side, -nrms[i].z * side);
         g.add(sg);
+      }
+    }
+
+    // Döngə xəbərdarlığı: ritm zonasından ~90 m əvvəl, hərəkət istiqamətinin SAĞINDA, üzü sürücüyə
+    if (this.rhythm) {
+      // Zonadan 56–88 m əvvəlki 5 nöqtədən ilk yararlısına qoyulur (su/körpü olsa növbətisi sınanır);
+      // hər zonaya bir nişan (`_signed`). i = 0..n−2: chunk-lar bir nöqtə üst-üstə düşür.
+      this._signed = this._signed || new Set();
+      for (let i = 0; i < pts.length - 1; i++) {
+        const abs = absStart + i;
+        const kind = this.sectionAt(abs + 11);
+        if (!kind || this.sectionAt(abs + 6) || this.sectionAt(abs)) continue;
+        const zoneId = Math.floor(((abs + 11) * SEG) / 1300);
+        if (this._signed.has(zoneId)) continue;
+        const tx = pts[i + 1].x - pts[i].x, tz = pts[i + 1].z - pts[i].z;
+        const off = hw + 3.4;
+        const px = pts[i].x - nrms[i].x * off, pz = pts[i].z - nrms[i].z * off;
+        const gy = groundYAt(px, pz, pts[i].y, off);
+        if (gy < WATER_LEVEL + 0.3 || pts[i].y - terrainY(pts[i].x, pts[i].z) > 2.0) continue;   // su / körpü
+        const sg = makeCurveSign(kind === 'serp');
+        sg.scale.setScalar(1.35);   // 40 m-dən də oxunsun
+        sg.position.set(px, gy, pz);
+        sg.rotation.y = Math.atan2(-tx, -tz);
+        { const ob = { x: px, z: pz, r: 0.45, kind: 'sign' }; chunkObstacles.push(ob); this.obstacles.push(ob); }
+        g.add(sg);
+        this._signed.add(zoneId);
+        if (this._signed.size > 40) this._signed.delete(this._signed.values().next().value);
       }
     }
 

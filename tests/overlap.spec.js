@@ -37,9 +37,27 @@ const scan = () => {
       const li = n.index - tr.base;
       if (li < 4 || li > tr.points.length - 5) continue;
     }
-    const edge = Math.abs(n.lateral) - o.r; // obyektin yola ən yaxın kənarı
+    let latAbs = Math.abs(n.lateral);
+    // Zen-in iti döngələrində (serpantin, R ≈ 47 m) "ən yaxın NÖQTƏNİN normalına proyeksiya" yan
+    // məsafəni kiçildir (dirək 9 m-dədir, 5.7 m oxunurdu) — orada ox xəttinin seqmentlərinə
+    // HƏQİQİ məsafə götürülür
+    if (tr.base != null) {
+      const li = n.index - tr.base;
+      let best = Infinity;
+      for (let q = Math.max(0, li - 6); q < Math.min(tr.points.length - 1, li + 6); q++) {
+        const a = tr.points[q], b = tr.points[q + 1];
+        const ex = b.x - a.x, ez = b.z - a.z;
+        const tt = Math.max(0, Math.min(1, ((o.x - a.x) * ex + (o.z - a.z) * ez) / (ex * ex + ez * ez || 1)));
+        best = Math.min(best, Math.hypot(o.x - (a.x + ex * tt), o.z - (a.z + ez * tt)));
+      }
+      latAbs = best;
+    }
+    const edge = latAbs - o.r; // obyektin yola ən yaxın kənarı
     if (edge < tr.halfWidth - 1.0) { // körpü məhəccəri kimi kənar maneələr (0.5 m içəri) normaldır
-      onRoad.push({ x: Math.round(o.x), z: Math.round(o.z), r: +o.r.toFixed(1), lateral: +n.lateral.toFixed(1), half: tr.halfWidth, kind: o.kind });
+      // diaqnostika: obyektin 12 m-liyindəki yol nöqtələrinin indeksləri (iki ayrı aralıq = yol öz yanından keçir)
+      const nearIdx = tr.base != null ? tr.points.map((p, q) => (Math.hypot(p.x - o.x, p.z - o.z) < 12 ? tr.base + q : null)).filter((v) => v != null) : undefined;
+      const chunk = tr.chunks?.find((c) => c.obstacles.includes(o));
+      onRoad.push({ x: Math.round(o.x), z: Math.round(o.z), r: +o.r.toFixed(1), lateral: +n.lateral.toFixed(1), dist: +latAbs.toFixed(1), half: tr.halfWidth, kind: o.kind, nearIdx, chunk: chunk ? [chunk.startAbs, chunk.endAbs] : undefined, base: tr.base, tip: tr.base != null ? tr.base + tr.points.length : undefined });
     }
   }
   // Şaxə (yan) yollar: obyektin kənarı şaxə asfaltının içinə girməməlidir

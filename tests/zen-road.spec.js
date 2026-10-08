@@ -32,7 +32,13 @@ for (const variant of ['old', 'new']) {
       }, 200);
     });
     await autopilot(page, true);
+    await page.evaluate(() => { const a = window.__audio; window.__pass = []; const f = a.passBy.bind(a); a.passBy = (side, k) => { window.__pass.push([side, +k.toFixed(2)]); return f(side, k); }; window.__active._trafNextT = 0; });
     if (variant === 'new') {
+      // xəbərdarlıq nişanı: serpantindən ~90 m əvvəl, sağda (kadr: zen-sign.png)
+      await page.waitForFunction(() => window.__active.playerCar.trackT >= 79, null, { timeout: 60_000 });
+      await page.screenshot({ path: 'tests/out/zen-sign.png' });
+      const firstSign = await page.evaluate(() => { const rd = window.__active.road; return rd.obstacles.filter((ob) => ob.kind === 'sign').map((ob) => rd.getNearest({ x: ob.x, y: 0, z: ob.z }).index).filter((ix) => ix >= 84 && ix <= 89); });
+      expect(firstSign.length, 'ilk serpantindən əvvəl bir nişan').toBe(1);
       // serpantinin kadrı: maşın zonaya girəndən bir az sonra (adi kamera + yuxarıdan baxış)
       await page.waitForFunction(() => { const sc = window.__active; return sc.road.sectionAt(Math.round(sc.playerCar.trackT) + 6) === 'serp'; }, null, { timeout: 60_000 });
       await page.waitForTimeout(1200);
@@ -47,7 +53,9 @@ for (const variant of ['old', 'new']) {
     }
     await page.waitForTimeout(variant === 'new' ? 60_000 : 85_000);
     const r = await page.evaluate(() => {
-      const S = window.__zr, out = { km: +(S.maxDist / 1000).toFixed(2), offPct: +((100 * S.off) / S.n).toFixed(1), hits: S.hits, zones: {} };
+      const sc0 = window.__active, rd = sc0.road;
+      const signs = rd.obstacles.filter((o) => o.kind === 'sign').map((o) => rd.getNearest({ x: o.x, y: 0, z: o.z }).index).filter((ix) => rd.sectionAt(ix + 11) && !rd.sectionAt(ix));
+      const S = window.__zr, out = { signs, passes: window.__pass,  km: +(S.maxDist / 1000).toFixed(2), offPct: +((100 * S.off) / S.n).toFixed(1), hits: S.hits, zones: {} };
       const by = {};
       for (const [abs, v] of S.seen) { if (abs * 8 > 2700) continue; (by[v.kind] ||= []).push(v); }
       out.sharp = [...S.seen].filter(([abs, v]) => abs * 8 <= 2700 && v.r < 40).map(([abs, v]) => `${abs * 8}:${Math.round(v.r)}`).join(' ');
@@ -60,12 +68,65 @@ for (const variant of ['old', 'new']) {
     });
     mergeJson('zen-road.json', variant, r);
     console.log(variant, JSON.stringify(r));
+    expect(r.passes.length, 'trafikin yanından keçəndə hava səsi çalınır').toBeGreaterThan(0);
+    expect(r.passes.every(([sd, k]) => Math.abs(sd) === 1 && k >= 0 && k <= 1)).toBe(true);
     if (variant === 'new') {
-      expect(r.zones.serp.p10R, 'serpantin: iti döngələr (m)').toBeLessThan(70);
-      expect(r.zones.serp.minR, 'serpantinin ən iti döngəsi (m)').toBeLessThan(58);
-      expect(r.zones.serp.minR, 'amma keçilməz deyil (m)').toBeGreaterThan(28);
-      expect(r.zones.sweep.p10R, 'uzun S: orta döngələr (m)').toBeLessThan(110);
+      expect(r.zones.serp.p10R, 'serpantin: aydın döngələr (m)').toBeLessThan(90);
+      expect(r.zones.serp.minR, 'serpantinin ən iti döngəsi (m)').toBeLessThan(75);
+      expect(r.zones.serp.minR, 'amma sərt deyil — rahat sürüş (m)').toBeGreaterThan(48);
+      expect(r.zones.sweep.p10R, 'uzun S: geniş döngələr (m)').toBeLessThan(150);
+      expect(r.zones.sweep.minR, 'uzun S serpantin qədər iti deyil (m)').toBeGreaterThan(70);
       expect(r.zones.calm.p10R, 'sakit hissə əvvəlki kimi geniş qalır (m)').toBeGreaterThan(100);
     }
   });
 }
+
+// YOL ÖZÜNƏ YAXINLAŞMIR: generator oyunsuz, ayrıca işlədilir (hər variant üçün 6 yol × 16 km) və yeni
+// nöqtələrin pəncərədəki KÖHNƏ nöqtələrə (≥ 40 indeks əvvəl) ən kiçik məsafəsi ölçülür. Yol öz köhnə
+// hissəsinin üstündən keçəndə dirəklər/dekor asfaltın üstündə qalır.
+test('zen yolu: yol özünə yaxınlaşmır (generator, 6 × 16 km)', async ({ page }) => {
+  test.setTimeout(400_000);
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const { EndlessRoad } = await import('/src/world/EndlessRoad.js');
+    const T = window.__THREE;
+    const out = {};
+    for (const rhythm of [false, true]) {
+      const runs = [];
+      for (let k = 0; k < 6; k++) {
+        const road = new EndlessRoad(new T.Scene(), { rhythm });
+        let minD = 1e9, at = 0, seenTip = road.base + road.points.length, turn = 0, maxTurn = 0, h0 = null, kinks = 0, minR = 1e9, zoneMinR = 1e9;
+        for (let dist = 0; dist <= 16000; dist += 40) {
+          road.ensure(dist);
+          const P = road.points, tip = road.base + P.length;
+          for (let a = Math.max(seenTip, road.base + 41); a < tip; a++) {
+            const p = P[a - road.base];
+            for (let q = 0; q < a - road.base - 40; q++) {
+              const d = Math.hypot(P[q].x - p.x, P[q].z - p.z);
+              if (d < minD) { minD = d; at = a * 8; }
+            }
+            if (a - road.base >= 1) {
+              const pp = P[a - road.base - 1]; const h = Math.atan2(p.x - pp.x, p.z - pp.z);
+              if (h0 != null) {
+                let dd = h - h0; while (dd > Math.PI) dd -= 2 * Math.PI; while (dd < -Math.PI) dd += 2 * Math.PI; turn += dd; maxTurn = Math.max(maxTurn, Math.abs(turn));
+                const R = Math.abs(dd) < 1e-4 ? 9999 : 8 / Math.abs(dd);
+                if (road.sectionAt(a)) zoneMinR = Math.min(zoneMinR, R); else { minR = Math.min(minR, R); if (R < 40) kinks++; }
+              }
+              h0 = h;
+            }
+          }
+          seenTip = tip;
+          if (dist % 400 === 0) await new Promise((res) => setTimeout(res, 0));
+        }
+        road.dispose?.();
+        runs.push({ minD: Math.round(minD), atM: at, maxTurnDeg: Math.round(maxTurn * 180 / Math.PI), kinks, calmMinR: Math.round(minR), zoneMinR: Math.round(zoneMinR) });
+      }
+      out[rhythm ? 'new' : 'old'] = runs;
+    }
+    return out;
+  });
+  mergeJson('zen-road.json', 'selfDistance', r);
+  for (const k of ['old', 'new']) console.log(k, 'ən kiçik məsafə (m):', r[k].map((x) => x.minD).join(' '), '· ən böyük ümumi dönmə (°):', r[k].map((x) => x.maxTurnDeg).join(' '), '· sakit hissədə R<40 m nöqtə sayı:', r[k].map((x) => x.kinks).join(' '), '· sakit ən kiçik R:', r[k].map((x) => x.calmMinR).join(' '), '· zona ən kiçik R:', r[k].map((x) => x.zoneMinR).join(' '));
+  // yolun eni 15 m + çiyin/dirək: 30 m-dən yaxın keçid artıq üst-üstə düşmədir
+  expect(Math.min(...r.new.map((x) => x.minD)), 'yeni yol özünə 30 m-dən yaxın gəlmir').toBeGreaterThan(30);
+});

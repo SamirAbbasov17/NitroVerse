@@ -1157,6 +1157,31 @@ export function makeSignpost(color = 0x2e7d5b) {
   return g;
 }
 
+// Döngə xəbərdarlığı nişanı (zen): sarı romb, üstündə qara döngə işarəsi. serp = ardıcıl
+// iti döngələr (ziqzaq), əks halda uzun döngə (tək qövs). Üzü yerli +z-ə baxır.
+export function makeCurveSign(serp = true) {
+  const g = new THREE.Group();
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3.0, 6), flatMat(0x9aa2b3));
+  pole.position.y = 1.5;
+  g.add(pole);
+  const plate = new THREE.Mesh(new THREE.BoxGeometry(1.35, 1.35, 0.08), flatMat(0xf5b81f, { roughness: 0.7 }));
+  plate.position.y = 2.75;
+  plate.rotation.z = Math.PI / 4;
+  g.add(plate);
+  const ink = flatMat(0x16181d, { roughness: 0.9 });
+  // işarə: aşağıdan yuxarı gedən əyri xətt — bir neçə maili parça
+  const segs = serp
+    ? [[0, -0.42, 0], [-0.17, -0.15, 0.6], [0.17, 0.12, -0.6], [0, 0.4, 0]]
+    : [[-0.14, -0.4, 0], [-0.12, -0.12, 0.25], [0.02, 0.14, 0.6], [0.2, 0.36, 0.85]];
+  for (const [x, y, rot] of segs) {
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.36, 0.1), ink);
+    bar.position.set(x, 2.75 + y, 0.02);
+    bar.rotation.z = -rot;
+    g.add(bar);
+  }
+  return g;
+}
+
 // Telefon dirəyi — traverslə (uzun yol boyu ritm yaradır)
 export function makeUtilityPole(h = 7.5) {
   const g = new THREE.Group();

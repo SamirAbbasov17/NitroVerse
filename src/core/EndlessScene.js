@@ -778,6 +778,23 @@ export class EndlessScene {
       // sürüşdürülür — sıçrayış yoxdur.
       const car = this.playerCar;
       const dx = car.position.x - x, dz = car.position.z - z;
+      // YANINDAN KEÇMƏ: trafik maşını oyunçunun yanından ötən an (qabaqdan arxaya keçir) yaxındırsa
+      // — yumşaq hava səsi və kameranın cüzi yellənməsi. Xal/sayğac yoxdur, yalnız hiss.
+      {
+        const fs0 = Math.sin(car.heading), fc0 = Math.cos(car.heading);
+        const along = -(dx * fs0 + dz * fc0);            // trafik oyunçudan nə qədər irəlidədir
+        const side = -(dx * fc0 - dz * fs0);             // + : sağda
+        if (tt._along != null && tt._along > 0 && along <= 0 && Math.abs(side) < 5.2 && performance.now() - (tt._hitAt || 0) > 1500) {
+          const rel = Math.hypot(car.velocity.x - Math.sin(tt.root.rotation.y) * tt.spd, car.velocity.z - Math.cos(tt.root.rotation.y) * tt.spd);
+          if (rel > 9) {
+            const k = Math.min(1, (rel - 9) / 40) * (1 - Math.max(0, Math.abs(side) - 2.6) / 3.2);
+            audio.passBy(Math.sign(side), k);
+            this._passSway = Math.sign(side) * (0.004 + 0.006 * k);
+            this.passes = (this.passes || 0) + 1;   // yalnız test üçün
+          }
+        }
+        tt._along = along;
+      }
       // GÖVDƏ–GÖVDƏ: əvvəl mərkəzlər arası sabit 3.3 m idi — maşınlar isə 4.4 m uzundur:
       // arxadan dəyəndə burun qabaqdakının içinə 1.1 m girirdi, yan-yana isə 1.1 m
       // görünməz boşluq qalırdı. İndi oyunçunun gövdə dairələri (BODY) trafik maşınının
@@ -797,6 +814,7 @@ export class EndlessScene {
         }
       }
       if (örtüşmə > 0) {
+        tt._hitAt = performance.now();   // toqquşma "yanından keçmə" sayılmır
         // Sıxışdırma YUMŞAQ: bir kadrda tam yox, örtüşmənin 45%-i
         car.position.x += nx * örtüşmə * 0.45;
         car.position.z += nz * örtüşmə * 0.45;
@@ -2226,6 +2244,12 @@ export class EndlessScene {
     this.camera.lookAt(this._camTarget);
     this.impact.apply(this.camera); // zərbə istiqamətində itələnmə (ImpactFeel)
     this.camera.rotateZ(-(car._steerSmooth || 0) * 0.018 * lookBack);
+    // yanından maşın keçəndə cüzi yellənmə (≤ 0.6°, 0.4 s-də sönür)
+    if (this._passSway) {
+      this.camera.rotateZ(this._passSway);
+      this._passSway *= Math.exp(-dt * 6);
+      if (Math.abs(this._passSway) < 0.0004) this._passSway = 0;
+    }
     const fov = 58 + speedT * 11 + B.fov;
     if (Math.abs(this.camera.fov - fov) > 0.1) {
       this.camera.fov = fov;
