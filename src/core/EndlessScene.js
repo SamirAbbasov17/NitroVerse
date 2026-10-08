@@ -10,6 +10,7 @@ import { EndlessRoad, waterMaterial, terrainY, groundYAt, RAIL_ABOVE, CUT_OUT, W
 import { sharedNature, NATURE_BY_BIOME } from '../world/NatureKit.js';
 import { sharedCity } from '../world/CityKit.js';
 import { disposeObject3D } from './MergeUtils.js';
+import { followShadow } from './ShadowFollow.js';
 import { SkidMarks } from './SkidMarks.js';
 import { Effects } from './Effects.js';
 import { fxTrail } from './LegendaryFx.js';
@@ -1750,14 +1751,9 @@ export class EndlessScene {
       const bucaq = 0.16 + el * 0.95;                    // ~9° … ~63°
       const az = 2.42;                                   // sabit azimut (arxa-sağ)
       const D = 160;
-      this.sun.position.set(
-        c.x + Math.cos(az) * Math.cos(bucaq) * D,
-        Math.max(12, Math.sin(bucaq) * D),
-        c.z + Math.sin(az) * Math.cos(bucaq) * D,
-      );
+      // hədəf teksel şəbəkəsinə oturur, istiqamət maşının hündürlüyündən asılı deyil — kölgə titrəmir
+      followShadow(this.sun, c, Math.cos(az) * Math.cos(bucaq) * D, Math.max(12, Math.sin(bucaq) * D), Math.sin(az) * Math.cos(bucaq) * D);
     }
-    this.sun.target.position.copy(c);
-    this.sun.target.updateMatrixWorld();
     // Kölgə çərçivəsi maşınla birlikdə hərəkət edir; matris yenilənməsə
     // kölgə səhnədən "qopur" (dünya boyu sürüşən ləkə kimi görünür)
     if (this.sun.castShadow) this.sun.shadow.camera.updateProjectionMatrix();

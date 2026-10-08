@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { followShadow } from './ShadowFollow.js';
 import { TrackBuilder } from '../world/TrackBuilder.js';
 import { Environment } from '../world/Environment.js';
 import { applyLegendaryFx, makeUnderglow } from './LegendaryFx.js';
@@ -99,9 +100,7 @@ export class ShowcaseScene {
     // Günəşi maşının üstünə yönəlt (kölgə görünsün)
     const sun = this.environment?.sun;
     if (sun) {
-      sun.position.set(p.x + 60, 110, p.z + 40);
-      sun.target.position.set(p.x, 0, p.z);
-      sun.target.updateMatrixWorld();
+      followShadow(sun, this._carPos, 60, 110, 40);   // teksel şəbəkəsinə oturur — kölgə titrəmir
     }
     // Avtosalon işığı maşının üstündə
     this.spot.position.set(p.x + 5, 15, p.z + 5);

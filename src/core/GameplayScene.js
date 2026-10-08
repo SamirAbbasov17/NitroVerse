@@ -21,6 +21,7 @@ import { Effects } from './Effects.js';
 import { fxTrail } from './LegendaryFx.js';
 import { ImpactFeel } from './ImpactFeel.js';
 import { SpeedLines } from './SpeedLines.js';
+import { followShadow } from './ShadowFollow.js';
 import { SkidMarks } from './SkidMarks.js';
 import { audio } from './AudioManager.js';
 import { TouchControls, isTouchDevice } from './TouchControls.js';
@@ -1543,9 +1544,7 @@ export class GameplayScene {
     const sun = this.environment.sun;
     if (sun) {
       const o = sun.userData.offset; // trekin günəş istiqaməti (palette.sunDir)
-      sun.position.set(car.position.x + o[0], o[1], car.position.z + o[2]);
-      sun.target.position.copy(car.position);
-      sun.target.updateMatrixWorld();
+      followShadow(sun, car.position, o[0], o[1], o[2]);   // teksel şəbəkəsinə oturur — kölgə titrəmir
     }
     // Günəş diski kameranı izləyir — sonsuz uzaqda kimi (bax Environment._celestialBody)
     this.environment.celestial?.position.set(this.camera.position.x, 0, this.camera.position.z);
