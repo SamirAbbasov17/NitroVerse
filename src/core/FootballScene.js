@@ -580,6 +580,7 @@ export class FootballScene {
       r.car.reset(pos, heading);
       // Qol anında havada olan maşın "asılı" qalırdı — sıçrayış sıfırlanır
       r.car._hopT = 0;
+      r.car._ballLiftT = -9;
       r.car.root.position.y = 0;
       r.car.root.rotation.x = 0;
     }
@@ -864,7 +865,12 @@ export class FootballScene {
         const push = Math.max(9, Math.min(48, carSpeed * 1.32));
         v.x = nx * push + car.velocity.x * 0.4;
         v.z = nz * push + car.velocity.z * 0.4;
-        v.y = Math.min(15, 3 + carSpeed * 0.3);
+        // Yuxarı təkan BİR zərbədə BİR dəfə verilir. Tullanış zərbəsində maşın topla bir neçə kadr
+        // təmasda qalır; əvvəl hər kadr top yenidən yuxarı atılırdı (zirvə 7 m əvəzinə 10+ m) və
+        // başlanğıc zərbəsi bütün rəqiblərin üstündən keçib qapıya düşürdü.
+        const lift = Math.min(15, 3 + carSpeed * 0.3);
+        if (this._time - (car._ballLiftT ?? -9) > 0.35) v.y = lift;
+        car._ballLiftT = this._time;
         this._capBall();
         if (push > 18) {
           this.effects.spawnSparkle(new THREE.Vector3(p.x, 1.6, p.z), 0xfff2c0);
@@ -968,7 +974,25 @@ export class FootballScene {
     const isChaser = myDist <= Math.min(...dists) + 0.01;
     let target;
     let clearThreat = false;
-    if (isChaser) {
+    // UZAQ ZƏRBƏYƏ QARŞI QAPIÇI: top qapıma sürətlə uçursa, qapıya ən yaxın bot "topa ən yaxın" olsa da
+    // topun üstünə QAÇMIR — xətdə qalıb düşəcəyi yeri tutur. (Əvvəl başlanğıcda nitro + zərbə hər dəfə
+    // qol idi: qövslə uçan top hücumçunun üstündən keçir, qapıçı da ona tərəf çıxıb altından buraxırdı.)
+    const toMe = Math.sign(myGoalZ);
+    const keepLine = this.ballVel.z * toMe > 18 && (bp.z - car.position.z) * toMe < 0
+      && mates.every((m) => m === r || Math.abs(m.car.position.z - myGoalZ) >= Math.abs(car.position.z - myGoalZ));
+    if (keepLine) {
+      const bv = this.ballVel;
+      const tHit = Math.max(0, (car.position.z - bp.z) / bv.z);            // topun mənə çatma vaxtı
+      const gx = Math.max(-(GOAL_W / 2 - 2), Math.min(GOAL_W / 2 - 2, bp.x + bv.x * tHit));
+      // qapıdan uzaqdadırsa xəttə çəkilir, xətdədirsə yalnız yana sürüşür
+      target = new THREE.Vector3(gx, 0, Math.abs(car.position.z) > Math.abs(myGoalZ) * 0.8 ? car.position.z : myGoalZ * 0.93);
+      // top hündürdən gəlirsə tullanıb çıxarır (zərbə sıçrayışı ilə eyni hərəkət, irəli təkansız)
+      const yHit = bp.y + bv.y * tHit - 11 * tHit * tHit;
+      if (tHit < 0.34 && yHit > 2.6 && yHit < 8 && Math.abs(gx - car.position.x) < 4.5 && (car._hopT ?? 0) <= 0) {
+        car._hopT = HOP_T;
+        car._lungeCd = Math.max(car._lungeCd ?? 0, LUNGE_CD);
+      }
+    } else if (isChaser) {
       // Künclərə vur: top→künc xəttində topun arxasında mövqe tut
       const cornerX = (bp.x >= 0 ? 1 : -1) * (GOAL_W / 2 - 3);
       const aim = new THREE.Vector3(cornerX - bp.x, 0, oppGoalZ - bp.z).normalize();
@@ -988,7 +1012,6 @@ export class FootballScene {
         } else {
           // Top qapıma doğru uçursa: xəttə çatacağı x-i PROQNOZLA və orada dur
           const bv = this.ballVel;
-          const toMe = Math.sign(myGoalZ);
           let px = bp.x * 0.7;
           if (bv.z * toMe > 6) {
             const tHit = Math.max(0, (myGoalZ * 0.93 - bp.z) / bv.z);
@@ -1009,9 +1032,11 @@ export class FootballScene {
     const distT = car.position.distanceTo(target);
     const throttle = Math.abs(err) > 2.2 ? -0.5 : (distT < 4 ? 0.5 : (isChaser ? 0.94 : 0.85));
     const drive = { throttle, steer: Math.max(-1, Math.min(1, -err * 2.4)), handbrake: false };
+    // xətdəki qapıçı yerindədirsə DAYANIR (hədəf öz yeri olanda istiqamət mənasızdır — irəli sürünürdü)
+    if (keepLine && distT < 1.5) { drive.throttle = 0; drive.steer = 0; drive.handbrake = true; }
     car.update(dt, drive, this._fakeTrack);
     // Yaxın + istiqamətdə → lunge
-    if ((isChaser || clearThreat) && (this._kickT ?? 9) > 3
+    if (!keepLine && (isChaser || clearThreat) && (this._kickT ?? 9) > 3
       && myDist < 6 && Math.abs(err) < 0.35 && (car._lungeCd ?? 0) <= 0) {
       car._lungeCd = LUNGE_CD + 1.5 + Math.random() * 2.5;
       car._hopT = HOP_T;
