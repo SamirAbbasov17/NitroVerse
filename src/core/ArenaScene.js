@@ -1313,41 +1313,117 @@ export class ArenaScene {
     }
   }
 
+  // ————— LAZER ŞÜASI (görünüş) —————
+  // Şüa düz qutu deyil: ağ-isti nüvə + kənara doğru sönən rəngli parıltı (toxuma), içində axan enerji
+  // zolaqları, döşəmədə geniş əks, çıxışda və ucda parıltı nöqtəsi. Bir şüa = 1 mesh + 2 sprite.
+  _beamTex(hex) {
+    // Atlas: yuxarı yarı — şüa (ağ nüvə + parıltı), aşağı yarı — döşəmədəki əks (nüvəsiz yumşaq ləkə;
+    // nüvə ilə birlikdə əks ikinci şüa kimi görünürdü)
+    const cv = document.createElement('canvas'); cv.width = 128; cv.height = 128;
+    const cx = cv.getContext('2d'), img = cx.createImageData(128, 128);
+    const c = new THREE.Color(hex);
+    for (let y = 0; y < 128; y++) {
+      const beam = y < 64;
+      const d = Math.abs((y % 64) / 63 - 0.5) * 2;                // 0 ox … 1 kənar
+      const core = beam ? Math.exp(-((d / 0.11) ** 2)) : 0;
+      const glow = beam ? Math.exp(-((d / 0.5) ** 2)) * 0.8 : Math.exp(-((d / 0.42) ** 2)) * 0.5;
+      for (let x = 0; x < 128; x++) {
+        // uzununa enerji zolaqları (dövri — toxuma sürüşəndə tikiş görünmür)
+        const flow = 0.78 + 0.22 * Math.sin((x / 128) * Math.PI * 6) * Math.sin((x / 128) * Math.PI * 2 + y * 0.3);
+        const o = (y * 128 + x) * 4;
+        img.data[o] = 255 * Math.min(1, c.r + core * 1.2);
+        img.data[o + 1] = 255 * Math.min(1, c.g + core * 1.2);
+        img.data[o + 2] = 255 * Math.min(1, c.b + core * 1.2);
+        img.data[o + 3] = 255 * Math.min(1, (glow + core) * flow);
+      }
+    }
+    cx.putImageData(img, 0, 0);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    (this._beamTexes ||= []).push(tex);
+    return tex;
+  }
+
+  // Şüa +z boyunca r0 … r0+len; qaytarır: { g, mat (şüa), spr (parıltı nöqtələri), dots }
+  _makeBeam(r0, len, hex, shared = null) {
+    const pos = [], uv = [], idx = [];
+    const quad = (ax, ay, hw, y, v0 = 0.5, v1 = 1) => {     // v: atlasın hansı yarısı (şüa / əks)
+      const b = pos.length / 3, z0 = r0, z1 = r0 + len, ur = len / 9;
+      pos.push(-ax * hw, y - ay * hw, z0, ax * hw, y + ay * hw, z0, ax * hw, y + ay * hw, z1, -ax * hw, y - ay * hw, z1);
+      uv.push(0, v0, 0, v1, ur, v1, ur, v0);
+      idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
+    };
+    quad(1, 0, 1.15, 0.85);       // üfüqi lay (yuxarıdan)
+    quad(0, 1, 1.0, 1.0);         // şaquli lay (yandan; döşəmədən başlayır)
+    quad(1, 0, 3.2, 0.07, 0, 0.5);   // döşəmədə geniş, yumşaq əks
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    geo.setIndex(idx);
+    const mat = shared?.mat || new THREE.MeshBasicMaterial({ map: this._beamTex(hex), transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+    const spr = shared?.spr || new THREE.SpriteMaterial({ map: this._padGlowTex(), color: hex, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+    const g = new THREE.Group();
+    const mesh = new THREE.Mesh(geo, mat); mesh.renderOrder = 4;
+    const src = new THREE.Sprite(spr); src.position.set(0, 0.95, r0 - 0.3); src.scale.setScalar(3.4);
+    const tip = new THREE.Sprite(spr); tip.position.set(0, 0.9, r0 + len); tip.scale.setScalar(2.2);
+    g.add(mesh, src, tip);
+    return { g, mat, spr, dots: [src, tip] };
+  }
+
+  // Təhlükə radiusu: şüanın çatdığı yeri döşəmədə nazik halqa göstərir
+  _dangerRing(radius, hex) {
+    const m = new THREE.Mesh(new THREE.RingGeometry(radius - 0.22, radius, 72),
+      new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+    m.rotation.x = -Math.PI / 2; m.position.y = 0.09;
+    return m;
+  }
+
   // ————— SÜTUN LAZERLƏRİ —————
   // Bucaq oyun vaxtından (`_playT`) hesablanır — onlaynda hamıda eynidir; zərəri hər kəs öz maşını
   // üçün sayır (mərkəzi lazerlə eyni qayda). Zona sütunun həddinə daralanda lazer həmişəlik sönür.
   _updateTurrets(dt, inPlay) {
     if (!this._tur) {
-      const mat = new THREE.MeshBasicMaterial({ color: 0xffa23a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
-      const glow = new THREE.MeshBasicMaterial({ color: 0xff8a2a, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false });
-      const beamGeo = new THREE.BoxGeometry(0.36, 0.36, TURRET_LEN), haloGeo = new THREE.BoxGeometry(2.4, 0.05, TURRET_LEN);   // uzaqdan da oxunsun
+      let shared = null;
       for (const T of this.turrets) {
-        const g = new THREE.Group();
-        g.position.set(T.x, 0, T.z);
-        const beam = new THREE.Mesh(beamGeo, mat); beam.position.set(0, 0.85, TURRET_R0 + TURRET_LEN / 2);
-        const halo = new THREE.Mesh(haloGeo, glow); halo.position.set(0, 0.06, TURRET_R0 + TURRET_LEN / 2);
-        g.add(beam, halo);
-        g.visible = false;
-        this.scene.add(g);
-        T.g = g;
+        const B = this._makeBeam(TURRET_R0, TURRET_LEN, 0xff9a2e, shared);
+        shared ||= B;
+        B.g.position.set(T.x, 0, T.z);
+        B.g.visible = false;
+        this.scene.add(B.g);
+        T.g = B.g; T.dots = B.dots;
+        // sütunun dibində işıqlı halqa — hansı sütunun lazer daşıdığı uzaqdan bilinsin
+        T.band = new THREE.Mesh(this._turBandGeo ||= new THREE.TorusGeometry(3.25, 0.22, 6, 20),
+          new THREE.MeshBasicMaterial({ color: 0xffb040, fog: false }));
+        T.band.rotation.x = Math.PI / 2; T.band.position.set(T.x, 0.95, T.z);
+        this.scene.add(T.band);
+        T.ring = this._dangerRing(TURRET_R0 + TURRET_LEN, 0xff9a2e);
+        T.ring.position.x = T.x; T.ring.position.z = T.z;
+        T.ring.visible = false;
+        this.scene.add(T.ring);
       }
-      this._tur = { mat, glow };
+      this._tur = { mat: shared.mat, glow: shared.spr };
     }
     const tt = this._playT - TURRET_ON;
     const warn = tt <= 0;
     if (inPlay && this._playT > 0.4 && !this._turWarned) { this._turWarned = true; this._toast(t('ar.turrets')); }
-    this._tur.mat.opacity = warn ? 0.3 + 0.2 * Math.sin(this._time * 12) : 0.85 + 0.15 * Math.sin(this._time * 20);
-    this._tur.glow.opacity = warn ? 0.1 : 0.34;
+    // xəbərdarlıqda solğun yanıb-sönür; aktiv olanda tam güc, yüngül titrəyiş
+    this._tur.mat.opacity = warn ? 0.22 + 0.16 * Math.sin(this._time * 12) : 0.9 + 0.1 * Math.sin(this._time * 23);
+    this._tur.glow.opacity = warn ? 0.25 : 0.85 + 0.15 * Math.sin(this._time * 31);
     let live = 0;
     for (const T of this.turrets) {
       if (T.on && inPlay && this.safeR < T.offR) {
         // zona bura çatdı — lazer sönür, sütunun başlığı qaralır
         T.on = false;
         T.cap.material.emissiveIntensity = 0.12;
+        T.band.material.color.setHex(0x3a2a1a);
         this.effects.spawnSparks({ x: T.x, y: 8.6, z: T.z }, 0, 0, 14, 1);
       }
       T.g.visible = T.on && inPlay && this._playT > 0.4;
+      T.ring.visible = T.g.visible;
       if (!T.on) continue;
+      const pulse = 1 + 0.12 * Math.sin(this._time * 9 + T.phase);
+      T.dots[0].scale.setScalar((warn ? 2.2 : 3.4) * pulse); T.dots[1].scale.setScalar((warn ? 1.2 : 2.2) * pulse);
       live++;
       T.ang = T.phase + Math.max(0, tt) * TURRET_SPEED * T.dir;
       T.g.rotation.y = T.ang;
@@ -1383,31 +1459,30 @@ export class ArenaScene {
   _updateSweeper(dt, inPlay) {
     if (!this._sweep) {
       const g = new THREE.Group();
-      const len = SWEEP_R1 - SWEEP_R0;
-      const mat = new THREE.MeshBasicMaterial({ color: 0xff3b5c, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
-      const glow = new THREE.MeshBasicMaterial({ color: 0xff3b5c, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false });
-      for (const sd of [1, -1]) {
-        const beam = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, len), mat);
-        beam.position.set(0, 0.85, sd * (SWEEP_R0 + len / 2));
-        const halo = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.05, len), glow);
-        halo.position.set(0, 0.06, sd * (SWEEP_R0 + len / 2));
-        g.add(beam, halo);
-      }
+      const A = this._makeBeam(SWEEP_R0, SWEEP_R1 - SWEEP_R0, 0xff2d55);
+      const B = this._makeBeam(SWEEP_R0, SWEEP_R1 - SWEEP_R0, 0xff2d55, A);
+      B.g.rotation.y = Math.PI;
+      g.add(A.g, B.g);
       g.visible = false;
       this.scene.add(g);
-      this._sweep = { g, mat, glow };
+      const ring = this._dangerRing(SWEEP_R1, 0xff2d55);
+      ring.visible = false;
+      this.scene.add(ring);
+      this._sweep = { g, mat: A.mat, glow: A.spr, ring, dots: [...A.dots, ...B.dots] };
     }
     const S = this._sweep;
     const tt = this._playT - SWEEP_START;
     const warn = tt > -4 && tt <= 0;
     if (warn && !this._sweepWarned) { this._sweepWarned = true; this._toast(t('ar.sweep')); if (this.playerCar.alive) audio.sfx('warn'); }
     S.g.visible = inPlay && tt > -4;
+    S.ring.visible = S.g.visible;
     if (!S.g.visible) return;
     const ang = Math.max(0, tt) * SWEEP_SPEED;
     S.g.rotation.y = ang;
     // xəbərdarlıqda solğun yanıb-sönür, sonra tam güc
-    S.mat.opacity = warn ? 0.25 + 0.2 * Math.sin(this._time * 12) : 0.8 + 0.15 * Math.sin(this._time * 20);
-    S.glow.opacity = warn ? 0.08 : 0.22;
+    S.mat.opacity = warn ? 0.22 + 0.16 * Math.sin(this._time * 12) : 0.9 + 0.1 * Math.sin(this._time * 23);
+    S.glow.opacity = warn ? 0.25 : 0.85 + 0.15 * Math.sin(this._time * 31);
+    { const pulse = 1 + 0.12 * Math.sin(this._time * 9); S.dots.forEach((d, i) => d.scale.setScalar((i % 2 ? 2.4 : 3.6) * (warn ? 0.6 : 1) * pulse)); }
     if (tt <= 0) return;
     const dx = Math.sin(ang), dz = Math.cos(ang);       // qolun istiqaməti (yerli +z)
     for (const r of this.racers) {
@@ -1748,6 +1823,7 @@ export class ArenaScene {
     }
     this._updateTurrets(dt, inPlay);
     this._updateSweeper(dt, inPlay);
+    if (this._beamTexes) for (const tx of this._beamTexes) tx.offset.x -= dt * 1.7;   // enerji şüa boyunca axır
 
     // Təhlükə vinyeti: oyunçu zonadan kənardadırsa qırmızı kənar parıltısı
     const meR = this.racers.find((r) => r.isLocal);

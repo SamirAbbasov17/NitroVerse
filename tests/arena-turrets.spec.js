@@ -46,16 +46,25 @@ test('arena: sütun lazerləri işləyir, zona ilə sönür, mərkəzi lazer qal
   expect(errs).toEqual([]);
 });
 
-test('arena: sütun lazerləri kadrı', async ({ page }) => {
+test('arena: lazer kadrları (sütun, mərkəz, oyunçu gözündən)', async ({ page }) => {
   test.setTimeout(120_000);
   await boot(page);
   await startMode(page, MODES.find((m) => m.name === 'arena').config);
   await page.waitForFunction(() => window.__active._playT > 7, null, { timeout: 60_000 });
-  await page.evaluate(() => {
-    const sc = window.__active, T = sc.turrets[0];
-    sc.__upd = sc.update;
-    sc.update = (dt) => { sc.__upd.call(sc, dt); sc.camera.position.set(T.x * 1.9, 30, T.z * 1.9); sc.camera.up.set(0, 1, 0); sc.camera.lookAt(T.x * 0.55, 0, T.z * 0.55); };
-  });
-  await page.waitForTimeout(500);
-  await page.screenshot({ path: path.join(ensureDir(path.join(OUT, 'shots')), 'd-arena-turrets.png') });
+  const dir = ensureDir(path.join(OUT, 'shots'));
+  // botlar kadrı qarışdırmasın, zərər oyunu bitirməsin
+  await page.evaluate(() => { const sc = window.__active; sc._botDrive = (r) => { r.car.velocity.set(0, 0, 0); }; sc._damage = () => {}; sc.__upd = sc.update; });
+  const view = (fn) => page.evaluate(`(() => { const sc = window.__active, T = sc.turrets[0]; const cam = ${fn}; sc.update = (dt) => { sc.__upd.call(sc, dt); sc.camera.position.set(cam.p[0], cam.p[1], cam.p[2]); sc.camera.up.set(0, 1, 0); sc.camera.lookAt(cam.l[0], cam.l[1], cam.l[2]); }; })()`);
+  await view('({ p: [T.x * 1.75, 22, T.z * 1.75], l: [T.x * 0.8, 0, T.z * 0.8] })');
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: path.join(dir, 'd-arena-turrets.png') });
+  // oyunçu gözündən: şüa maşının qabağından keçir
+  await page.evaluate(() => { const sc = window.__active, T = sc.turrets[0], c = sc.playerCar; sc.update = (dt) => { c.position.set(T.x + 16, 0, T.z - 20); c.heading = -0.5; c.velocity.set(0, 0, 0); T.phase = Math.atan2(c.position.x - T.x, c.position.z - T.z) - 0.55 - (sc._playT - 5) * 0.5 * T.dir;   /* şüa maşının qabağından keçir */ sc.__upd.call(sc, dt); }; });
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: path.join(dir, 'd-arena-turrets-chase.png') });
+  // mərkəzi lazer (40-cı saniyə)
+  await page.evaluate(() => { window.__active._playT = 40; });
+  await view('({ p: [34, 20, -52], l: [0, 0, 0] })');
+  await page.waitForTimeout(700);
+  await page.screenshot({ path: path.join(dir, 'd-arena-sweeper.png') });
 });
