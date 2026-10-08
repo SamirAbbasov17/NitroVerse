@@ -35,6 +35,20 @@ const NITRO_REGEN_T = 8; // saniyədə bir yığım
 
 const TEAM_COLORS = { blue: 0x37b8ff, red: 0xff4544 };
 
+const LEGACY_FEEL = (() => { try { return localStorage.getItem('apexArenaFeel') === 'old'; } catch { return false; } })();
+// Futbola məxsus v2 əmsalları. Ölçmə: tests/feel-arena.spec.js
+const FOOTBALL_FEEL = {
+  // Qapalı, kiçik meydan: maşın gecikməsiz cavab verməlidir — cəld sürətlənmə, güclü əyləc, qazı
+  // buraxanda tez yavaşlama. (Köhnə modeldə sürətin 90 faizinə 1.3 s, əyləc yolu 12 m idi; v2-nin
+  // yarış tənzimi ilə 2.5 s və 22 m çıxırdı — meydan üçün ağır.)
+  tauMax: 2.0, tauRange: 1.65,   // (2.6 / 1.9)
+  brake: 46,                     // (30) m/s²
+  coast: 0.42,                   // (0.18) qaz buraxılanda sürət tez düşür
+  // Drift: idarə olunan sürüşmə (köhnə modeldə əl əyləci maşını 85° çevirib sürətin 40 faizini yeyirdi)
+  driftGrip: 3.4,
+  driftTarget: 0.88,
+};
+
 export class FootballScene {
   constructor(config, { input, uiRoot, renderer = null, library, onLeave = null, onQuit, onRestart = null }) {
     this.config = config;
@@ -505,7 +519,9 @@ export class FootballScene {
     seats.forEach((seat, i) => {
       const data = seat.isLocal ? playerCarData(seat.carId) : getCarById(seat.carId);
       if (seat.isLocal) this._playerData = data;   // finiş animasiyası üçün
-      const car = new Car(data, this.library, { isPlayer: !!seat.isLocal, legacyFeel: true });
+      // Sürüş modeli: v2 (yarışla eyni), futbol profili ilə. Köhnə ilə müqayisə: `apexArenaFeel` = 'old'.
+      const car = new Car(data, this.library, { isPlayer: !!seat.isLocal, legacyFeel: LEGACY_FEEL });
+      if (!LEGACY_FEEL) car.tuneFeel(FOOTBALL_FEEL);
       car.isRemote = !seat.isLocal && !seat.isBot ? true : (seat.isBot && !this._simBots);
       car.team = seat.team;
       car._rname = seat.name; // qol müəllifi göstərmək üçün

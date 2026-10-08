@@ -61,6 +61,21 @@ const BOLT_RANGE = 46;
 // Mərkəzi lazer: oyunun 35-ci saniyəsindən fırlanan iki qol (mərkəz meydanı "təhlükəsiz düşərgə" olmasın)
 const SWEEP_START = 35, SWEEP_R0 = 7, SWEEP_R1 = 36, SWEEP_SPEED = 0.42, SWEEP_DMG = 14;
 
+const LEGACY_FEEL = (() => { try { return localStorage.getItem('apexArenaFeel') === 'old'; } catch { return false; } })();
+// Arenaya məxsus v2 əmsalları (yarışdakı dəyər mötərizədə). Ölçmə: tests/feel-arena.spec.js
+const ARENA_FEEL = {
+  // Qapalı, kiçik meydan: maşın gecikməsiz cavab verməlidir — cəld sürətlənmə, güclü əyləc, qazı
+  // buraxanda tez yavaşlama. (Köhnə modeldə sürətin 90 faizinə 1.3 s, əyləc yolu 12 m idi; v2-nin
+  // yarış tənzimi ilə 2.5 s və 22 m çıxırdı — meydan üçün ağır.)
+  tauMax: 2.0, tauRange: 1.65,   // (2.6 / 1.9)
+  brake: 46,                     // (30) m/s²
+  coast: 0.42,                   // (0.18) qaz buraxılanda sürət tez düşür
+  // Drift: idarə olunan sürüşmə (köhnə modeldə əl əyləci maşını 85° çevirib sürətin 40 faizini yeyirdi)
+  driftGrip: 3.2,
+  driftTarget: 0.85,
+  driftSteer: 1.1,               // (1.35) arenada dönmə onsuz da ×1.34-dür — driftdə fırlanmasın
+};
+
 export class ArenaScene {
   constructor(config, { input, uiRoot, renderer = null, library, onLeave = null, onQuit, onRestart = null }) {
     this.config = config;
@@ -462,14 +477,18 @@ export class ArenaScene {
     seats.forEach((seat, i) => {
       const data = seat.isLocal ? playerCarData(seat.carId) : getCarById(seat.carId);
       if (seat.isLocal) this._playerData = data;   // finiş animasiyası üçün
-      const car = new Car(data, this.library, { isPlayer: !!seat.isLocal, legacyFeel: true });
+      // SÜRÜŞ MODELİ: yarış və zen ilə eyni v2 (arcade-drift) — arena profili ilə (bax ARENA_FEEL).
+      // Köhnə modellə müqayisə: localStorage `apexArenaFeel` = 'old'.
+      const car = new Car(data, this.library, { isPlayer: !!seat.isLocal, legacyFeel: LEGACY_FEEL });
       // ARENA İDARƏ PROFİLİ — hamıya eyni (bax TUNING.arena)
       {
         const A = TUNING.arena;
         car.turnRate *= A.turnMul;
-        car.latFriction = Math.min(car.latFriction, A.gripCap);
-        car.driftScrub = A.driftScrub;
         car.maxSpeed *= A.speedMul;
+        if (LEGACY_FEEL) {
+          car.latFriction = Math.min(car.latFriction, A.gripCap);
+          car.driftScrub = A.driftScrub;
+        } else car.tuneFeel(ARENA_FEEL);
       }
       car.isRemote = (!seat.isLocal && !seat.isBot) || (seat.isBot && !this._simBots);
       car.hp = HP_MAX;

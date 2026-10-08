@@ -164,6 +164,9 @@ export class Car {
     if (!this.feel) return;
     const F2 = (this.feel = { ...TUNING.feel2, ...mod });
     const s = this._stats;
+    this.tau = F2.tauMax - (s.accel / 100) * F2.tauRange;
+    this.grip2 = F2.gripMin + (s.grip / 100) * F2.gripRange;
+    this.brake2 = F2.brake - ((s.armor ?? 55) - 55) * F2.brakePerArmor;
     this.driftGrip2 = F2.driftGrip + ((s.grip - 70) / 30) * F2.driftGripPer;
     this.cornerScrub2 = F2.cornerScrub - ((s.grip - 70) / 100) * F2.scrubPerGrip;
     this.offRoadCut2 = this.data?.class === 'Offroad' ? Math.min(F2.offRoadCutOffroad, F2.offRoadCut) : F2.offRoadCut;

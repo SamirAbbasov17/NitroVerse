@@ -38,9 +38,9 @@ export const TUNING = {
   },
 
   // ————— SÜRÜŞ MODELİ v2 (arcade-drift) — STANDART —————
-  // Yarış və zen bu modeli işlədir (istifadəçi 2026-10-05-də köhnə ilə yan-yana
-  // sınayıb seçdi). Arena və futbol hələ yuxarıdakı köhnə modeldədir
-  // (`new Car(…, { legacyFeel: true })`) — onların tənzimi ayrıdır.
+  // Bütün rejimlər bu modeli işlədir (yarış və zen 2026-10-05-dən; arena və futbol 2026-10-08-dən,
+  // öz profili ilə — ArenaScene ARENA_FEEL, FootballScene FOOTBALL_FEEL, zen ZEN_FEEL → `car.tuneFeel`).
+  // Yuxarıdakı köhnə model yalnız müqayisə üçün qalır (`legacyFeel`, localStorage `apexArenaFeel`='old').
   // Hər rəqəm `npm run test:feel` ilə ölçülür (docs/UPGRADE-PLAN.md).
   feel2: {
     // Sürətlənmə: v → vmax-a eksponensial yaxınlaşma, τ = tauMax − (accel/100)·tauRange.

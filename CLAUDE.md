@@ -42,6 +42,7 @@ npm run test:coach   # ilk yarış ipucları: görünür, itir, təkrarlanmır
 npm run test:results # nəticə ekranı: dövrə vaxtları, şəxsi rekord, telefonda sığır
 npm run test:settings # ayarlar ekranı: seçimlər tətbiq olunur, telefonda sığır
 npm run test:session # bir hesab — bir cihaz: yeni giriş köhnə cihazı çıxarır (öz backend-i müvəqqəti qaldırır)
+npm run test:feel-arena # arena/futbol sürüş rəqəmləri və bot davranışı (köhnə ↔ v2) — ~5 dəq
 npm run test:feel    # sürüş modelinin rəqəmləri → tests/out/feel.json (fizika dəyişəndə əvvəl/sonra)
 npm run serve:dev    # öz backend (SQLite) yerli
 ```
@@ -59,7 +60,7 @@ src/core/            Game.js (renderer+loop), səhnələr, audio, i18n, effektl�
   FootballScene.js   futbol 3v3     ArenaScene.js     battle royale
   ShowcaseScene.js   menyu fonu
 src/world/           TrackBuilder, EndlessRoad, Environment, NatureKit/CityKit
-src/entities/        Car.js (arcade fizika: v2 model yarış/zen, köhnə model arena/futbol), Player/AI/Network controller
+src/entities/        Car.js (arcade fizika: v2 model bütün rejimlərdə; zen/arena/futbol öz profili ilə — `car.tuneFeel`), Player/AI/Network controller
 src/race/            RaceManager, PowerUpManager, SignatureAbility
 src/net/             NetRoom (PeerJS P2P, host-avtoritativ), Auth, Social
 src/ui/              Menu.js (bütün ekranlar _panel-dən keçir), HUD, Results
