@@ -15,6 +15,7 @@ import { t, getLang, setLang, LANGS, LANG_NAMES } from '../core/i18n.js';
 import { soundControlsHTML, bindSoundControls } from './SoundControls.js';
 import { coachPending, resetCoach } from './Coach.js';
 import { icon } from './icons.js';
+import { formatTime } from '../race/RaceManager.js';
 
 // Kosmetikanın adı/təsviri seçilmiş dildə: skin → `skin.<maşın>.<n>`, qalanı → `cos.<id>`.
 // Tərcümə yoxdursa (az dili və ya köhnə əşya) datadakı mətn göstərilir.
@@ -1689,30 +1690,54 @@ export class Menu {
     (map[this._authFrom] || map.modes)();
   }
 
-  // ————— LİDERLƏR CƏDVƏLİ —————
-  async showTop() {
+  // ————— LİDERLƏR CƏDVƏLİ: qızıl (hesab tələb edir) · trek üzrə ən yaxşı dövrələr (hamıya açıq) —————
+  async showTop(tab = null, track = null) {
     this._here = 'top';
+    this._topTab = tab || this._topTab || 'laps';
+    this._topTrack = track || this._topTrack || this.sel.trackId;
+    const laps = this._topTab === 'laps';
+    const tabs = [['laps', 'top.laps'], ['gold', 'top.gold']]
+      .map(([k, key]) => `<button class="set-tab ${k === this._topTab ? 'is-selected' : ''}" data-top-tab="${k}">${t(key)}</button>`).join('');
+    const chips = laps ? `<div class="top-tracks">${TRACKS.map((tr) => `<button class="set-opt ${tr.id === this._topTrack ? 'is-selected' : ''}" data-top-track="${tr.id}">${t('trk.' + tr.id)}</button>`).join('')}</div>` : '';
     this._panel({
-      step: '🏆', stepLabel: 'Liderlər',
-      title: 'Liderlər cədvəli',
-      body: `<div class="menu-list menu-list--scroll" id="top-list"><div class="rooms-note">Yüklənir…</div></div>`,
-      nav: `<button class="btn btn--ghost" data-back>Geri</button>`,
+      step: '🏆', stepLabel: t('top.step'),
+      title: t('top.title'),
+      body: `<div class="set-tabs">${tabs}</div>${chips}<div class="menu-list menu-list--scroll" id="top-list"><div class="rooms-note">${t('top.loading')}</div></div>`,
+      nav: `<button class="btn btn--ghost" data-back>${t('ui.back')}</button>`,
     });
-    this.root.querySelector('[data-back]').onclick = () => this.showAuth();
+    this.root.querySelector('[data-back]').onclick = () => (auth.isLoggedIn ? this.showAuth() : this.showModes());
+    this.root.querySelectorAll('[data-top-tab]').forEach((b) => { b.onclick = () => this.showTop(b.dataset.topTab); });
+    this.root.querySelectorAll('[data-top-track]').forEach((b) => { b.onclick = () => this.showTop('laps', b.dataset.topTrack); });
+    const fill = (html) => { const el = this.root.querySelector('#top-list'); if (el && this._here === 'top') el.innerHTML = html; };
+    const medal = (i) => ['🥇', '🥈', '🥉'][i] || '#' + (i + 1);
     try {
-      const { top, me } = await auth.top();
-      const el = this.root.querySelector('#top-list');
-      if (!el) return; // ekran dəyişib
-      el.innerHTML = top.length ? top.map((r, i) => `
-        <div class="top-row ${r.nick === me.nick ? 'is-me' : ''}">
-          <b class="top-row__rank">${['🥇', '🥈', '🥉'][i] || '#' + (i + 1)}</b>
-          <span class="top-row__nick">${esc(r.nick)}</span>
-          <span class="top-row__cars">🚗${(STARTER_CARS.length + r.cars)}</span>
-          <span class="top-row__gold">🪙${r.gold}</span>
-        </div>`).join('') : '<div class="rooms-note">Hələ heç kim yoxdur.</div>';
+      if (laps) {
+        const want = this._topTrack;
+        const { top, me } = await auth.trackTop(want);
+        if (want !== this._topTrack || this._topTab !== 'laps') return;   // bu arada başqa trek seçilib
+        const myNick = auth.profile?.nick;
+        fill((top.length ? top.map((r, i) => `
+          <div class="top-row ${r.nick === myNick ? 'is-me' : ''}">
+            <b class="top-row__rank">${medal(i)}</b>
+            <span class="top-row__nick">${esc(r.nick)}</span>
+            <span class="top-row__gold">${formatTime(r.lap)}</span>
+          </div>`).join('') : `<div class="rooms-note">${t('top.noLap')}</div>`)
+          + (me && me.rank > 10 ? `<div class="top-row is-me"><b class="top-row__rank">#${me.rank}</b><span class="top-row__nick">${esc(myNick || '')}</span><span class="top-row__gold">${formatTime(me.lap)}</span></div>` : '')
+          + (!auth.isLoggedIn ? `<div class="rooms-note">${t('res.loginForBoard')}</div>` : ''));
+      } else if (!auth.isLoggedIn) {
+        fill(`<div class="rooms-note">${t('top.needLogin')}</div>`);
+      } else {
+        const { top, me } = await auth.top();
+        fill(top.length ? top.map((r, i) => `
+          <div class="top-row ${r.nick === me.nick ? 'is-me' : ''}">
+            <b class="top-row__rank">${medal(i)}</b>
+            <span class="top-row__nick">${esc(r.nick)}</span>
+            <span class="top-row__cars">🚗${(STARTER_CARS.length + r.cars)}</span>
+            <span class="top-row__gold">🪙${r.gold}</span>
+          </div>`).join('') : `<div class="rooms-note">${t('top.empty')}</div>`);
+      }
     } catch {
-      const el = this.root.querySelector('#top-list');
-      if (el) el.innerHTML = '<div class="rooms-note">Siyahı alınmadı — sonra yenə yoxla.</div>';
+      fill(`<div class="rooms-note">${t('top.fail')}</div>`);
     }
   }
 
@@ -1845,6 +1870,7 @@ export class Menu {
           ${foot ? `
           <div class="menu-foot">
             ${SUPPORT_URL ? `<a class="menu-foot__btn" href="${SUPPORT_URL}" target="_blank" rel="noopener noreferrer">${icon('coffee')}${t('sup.coffee')}</a>` : ''}
+            <button class="menu-foot__btn" data-leaders>${icon('trophy')}${t('top.step')}</button>
             <button class="menu-foot__btn" data-bug>${icon('bug')}${t('sup.bug')}</button>
             ${auth.profile?.nick?.toLowerCase() === 'samir'
               ? '<button class="menu-foot__btn" data-inbox>📥 Bildirişlər</button>' : ''}
@@ -1855,6 +1881,8 @@ export class Menu {
       </div>`;
     const setb = this.root.querySelector('[data-settings]');
     if (setb) setb.onclick = () => this.showSettings();
+    const ldb = this.root.querySelector('[data-leaders]');
+    if (ldb) ldb.onclick = () => this.showTop();
     const bugb = this.root.querySelector('[data-bug]');
     if (bugb) bugb.onclick = () => this.showBugReport();
     const inb = this.root.querySelector('[data-inbox]');

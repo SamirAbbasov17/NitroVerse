@@ -85,6 +85,10 @@ const priceOf = (id) => (id in COSMETIC_PRICES ? COSMETIC_PRICES[id] : carSkinPr
 const AWARD_MAX = 320;          // bir çağırışda maksimum qızıl
 const AWARD_WINDOW_MS = 10 * 60 * 1000;
 const AWARD_MAX_IN_WINDOW = 8;  // 10 dəqiqədə maksimum mükafat sayı
+// Trek rekordları (bax 'record'): treklərin siyahısı src/data/tracks.js ilə eyni olmalıdır
+const TRACK_IDS = ['desert', 'neon', 'alpine', 'canyon', 'riviera', 'zavod', 'frost', 'autumn', 'lava'];
+const LAP_MIN = 15;             // saniyə — ən qısa trekdə ən sürətli dövrə ~30 s-dir
+const REC_MAX_IN_WINDOW = 20;   // 10 dəqiqədə maksimum rekord göndərişi
 
 const SECRET = process.env.AUTH_SECRET || '';
 
@@ -151,6 +155,7 @@ const pubProfile = (u) => ({
   cosmetics: u.cosmetics || [],
   equip: u.equip || {},
   daily: { last: u.dailyLast || 0, streak: u.dailyStreak || 0 },
+  records: u.records || {},   // { [trek]: { lap, race: { [dövrə sayı]: s } } }
 });
 
 // UTC gün nömrəsi — günlük mükafatın açarı
@@ -283,6 +288,21 @@ export function makeAuth(getStore, env = process.env) {
       return json({ token, profile: pubProfile(user) });
     }
 
+    // ————— TREK REKORDLARI: cədvəl (hamıya açıq) —————
+    // Ən yaxşı dövrə vaxtları, trek üzrə top 10. Token verilibsə oyunçunun öz rekordu və yeri də gəlir.
+    if (action === 'records') {
+      const track = String(b.track || '');
+      if (!TRACK_IDS.includes(track)) return json({ error: 'track' }, 400);
+      const board = (await getStore('records').get(`lb/${track}`, { type: 'json' }).catch(() => null)) || [];
+      let me = null;
+      const ses = b.token ? verify(String(b.token)) : null;
+      if (ses) {
+        const i = board.findIndex((r) => r.key === ses.nick);
+        if (i >= 0) me = { rank: i + 1, lap: board[i].lap };
+      }
+      return json({ track, top: board.slice(0, 10).map((r) => ({ nick: r.nick, lap: r.lap })), me });
+    }
+
     // ————— Token tələb edən əməliyyatlar —————
     const session = verify(String(b.token || ''));
     if (!session) return json({ error: 'auth' }, 401);
@@ -400,6 +420,44 @@ export function makeAuth(getStore, env = process.env) {
       user.gold += amount;
       await store.setJSON(session.nick, user);
       return json({ amount, streak: user.dailyStreak, profile: pubProfile(user) });
+    }
+
+    // ————— TREK REKORDU göndər —————
+    // Vaxtı müştəri ölçür (yarış brauzerdə gedir) — server yalnız ağlabatanlığı yoxlayır: dövrə
+    // LAP_MIN-dən qısa ola bilməz, yarış vaxtı dövrələrin cəmindən az ola bilməz, 10 dəqiqədə ən çox
+    // REC_MAX_IN_WINDOW göndəriş. Yalnız əvvəlkindən YAXŞI nəticə yazılır.
+    if (action === 'record') {
+      const track = String(b.track || '');
+      const laps = Math.floor(Number(b.laps) || 0);
+      const lap = Number(b.lap);
+      const race = b.race == null ? null : Number(b.race);
+      if (!TRACK_IDS.includes(track)) return json({ error: 'track' }, 400);
+      if (!(laps >= 1 && laps <= 9) || !(lap >= LAP_MIN && lap <= 900)) return json({ error: 'time' }, 400);
+      if (race != null && !(race >= lap * laps - 0.01 && race <= 9000)) return json({ error: 'time' }, 400);
+      const now = Date.now();
+      user.recT = (user.recT || []).filter((ts) => now - ts < AWARD_WINDOW_MS);
+      if (user.recT.length >= REC_MAX_IN_WINDOW) return json({ error: 'rate' }, 429);
+      user.recT.push(now);
+      user.records = user.records || {};
+      const rec = user.records[track] || { lap: null, race: {} };
+      const newLap = rec.lap == null || lap < rec.lap;
+      if (newLap) rec.lap = +lap.toFixed(3);
+      if (race != null && (rec.race?.[laps] == null || race < rec.race[laps])) { rec.race = rec.race || {}; rec.race[laps] = +race.toFixed(3); }
+      user.records[track] = rec;
+      await store.setJSON(session.nick, user);
+      let rank;
+      {
+        // trek cədvəli: hər oyunçudan bir sətir (ən yaxşı dövrəsi), ilk 50 saxlanır
+        const lb = getStore('records');
+        const board = (await lb.get(`lb/${track}`, { type: 'json' }).catch(() => null)) || [];
+        const i = board.findIndex((r) => r.key === session.nick);
+        if (i >= 0) board[i].lap = Math.min(board[i].lap, rec.lap); else board.push({ key: session.nick, nick: user.nick, lap: rec.lap });
+        board.sort((x, y) => x.lap - y.lap);
+        if (newLap || i < 0) await lb.setJSON(`lb/${track}`, board.slice(0, 50));
+        const at = board.findIndex((r) => r.key === session.nick);
+        rank = at >= 0 && at < 50 ? at + 1 : null;
+      }
+      return json({ ok: true, rank, profile: pubProfile(user) });
     }
 
     // Liderlər cədvəli — qızıla görə top 10

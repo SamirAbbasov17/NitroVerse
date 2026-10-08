@@ -192,6 +192,21 @@ class AuthManager {
     return this.isLoggedIn && Math.floor(last / 86400000) < Math.floor(Date.now() / 86400000);
   }
 
+  // Trek rekordu (yalnız hesabla): serverə göndərir, cədvəldəki yeri qaytarır. Xəta atmır.
+  async submitRecord(track, laps, lap, race) {
+    if (!this.token || !this.profile) return null;
+    try {
+      const r = await this._call({ action: 'record', token: this.token, track, laps, lap, race });
+      if (r.profile) { this.profile = r.profile; this._emit(); }
+      return r.rank ?? null;
+    } catch { return null; }
+  }
+
+  // Trek üzrə ən yaxşı dövrələr (hamıya açıq): { top: [{nick, lap}], me: {rank, lap} | null }
+  async trackTop(track) {
+    return this._call({ action: 'records', track, token: this.token || undefined });
+  }
+
   // Liderlər cədvəli (top 10, qızıla görə)
   async top() {
     return this._call({ action: 'top', token: this.token });

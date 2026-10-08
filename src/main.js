@@ -15,6 +15,7 @@ import { social } from './net/Social.js';
 import { Notices } from './ui/Notices.js';
 import { t } from './core/i18n.js';
 import { installIconizer } from './ui/icons.js';
+import { mergeRecords } from './data/records.js';
 import { raceGold } from './data/economy.js';
 import { installErrorReporter } from './core/ErrorReporter.js';
 import { equippedCosmetics, isCosmeticOwned } from './data/cosmetics.js';
@@ -25,6 +26,7 @@ audio.packProvider = () => {
   return id && isCosmeticOwned(id, auth.profile) ? id : null;
 };
 auth.onChange(() => audio.refreshMusicPack());   // giriş/çıxışda seçim dəyişir
+auth.onChange((p) => mergeRecords(p?.records));   // hesabdakı rekordlar bu cihaza gəlir
 
 // SƏHNƏLƏR AYRICA YÜKLƏNİR (Faza 5.7): dörd oyun səhnəsi ilk yükləmədə gəlmir — menyu
 // açılandan sonra arxa fonda yüklənir. Oyunçu ondan tez "Başla"ya bassa, start həmin

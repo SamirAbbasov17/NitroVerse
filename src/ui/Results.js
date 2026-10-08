@@ -1,5 +1,6 @@
 import { formatTime } from '../race/RaceManager.js';
 import { updateRecords } from '../data/records.js';
+import { auth } from '../net/Auth.js';
 
 const hex = (n) => '#' + n.toString(16).padStart(6, '0');
 const MEDAL = { 1: 'gold', 2: 'silver', 3: 'bronze' };
@@ -40,7 +41,9 @@ export class Results {
           <div class="laps">
             <div class="laps__chips">${chips}</div>
             <div class="laps__recs"><div>${lapRec}</div>${raceRec ? `<div>${raceRec}</div>` : ''}</div>
+            <div class="laps__board" data-board></div>
           </div>`;
+        this._board = { track: this.config.trackId, laps: this.config.laps ?? player.lapTimes.length, lap: rec.bestLap, race: player.finishTime };
       }
     }
 
@@ -71,8 +74,31 @@ export class Results {
           </div>
         </div>
       </div>`;
+    this._loadBoard();
     this.root.querySelector('[data-restart]').onclick = onRestart;
     this.root.querySelector('[data-menu]').onclick = onMenu;
+  }
+
+  // TREK CƏDVƏLİ: hesabla oynayanın nəticəsi serverə gedir, sonra trekin ən yaxşı 3 dövrəsi və
+  // oyunçunun yeri göstərilir. Şəbəkə yoxdursa sətir sadəcə görünmür — nəticə ekranı gözləmir.
+  async _loadBoard() {
+    const B = this._board;
+    const el = this.root.querySelector('[data-board]');
+    if (!B || !el) return;
+    try {
+      const rank = auth.isLoggedIn ? await auth.submitRecord(B.track, B.laps, B.lap, B.race) : null;
+      const { top, me } = await auth.trackTop(B.track);
+      if (!el.isConnected || !top?.length) return;
+      const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      const myNick = auth.profile?.nick;
+      const list = top.slice(0, 3).map((r, i) => `<span class="${r.nick === myNick ? 'is-me' : ''}">${i + 1}. ${esc(r.nick)} <b>${formatTime(r.lap)}</b></span>`).join('');
+      const place = rank ?? me?.rank;
+      const mine = auth.isLoggedIn
+        ? (place ? `<em>${t('res.yourRank', { n: place })}</em>` : '')
+        : `<em>${t('res.loginForBoard')}</em>`;
+      el.innerHTML = `<i>${t('res.trackTop')}</i>${list}${mine}`;
+      el.classList.add('is-on');
+    } catch { /* cədvəl alınmadı — göstərilmir */ }
   }
 
   destroy() {

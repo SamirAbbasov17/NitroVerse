@@ -1,5 +1,6 @@
 // ŞƏXSİ REKORDLAR (yarış): hər trek üçün ən yaxşı dövrə və (dövrə sayına görə) ən yaxşı yarış vaxtı.
-// Bu cihazda saxlanır (localStorage `apexRecords`) — hesaba bağlı deyil.
+// Bu cihazda saxlanır (localStorage `apexRecords`); hesabla girən oyunçuda serverdəki rekordlarla
+// birləşdirilir (`mergeRecords`) — başqa cihazda qoyulan rekord burada da görünür.
 const KEY = 'apexRecords';
 const MIN_LAP = 5;   // saniyə — bundan qısa "dövrə" ölçmə xətasıdır, rekord sayılmır
 
@@ -9,6 +10,22 @@ function load() {
 
 export function getRecords(trackId) {
   return load()[trackId] || null;
+}
+
+// Serverdəki rekordları (profil.records) yerli ilə birləşdirir: hər dəyər üçün daha yaxşısı qalır.
+export function mergeRecords(remote) {
+  if (!remote || typeof remote !== 'object') return;
+  const all = load();
+  let changed = false;
+  for (const [track, r] of Object.entries(remote)) {
+    const mine = all[track] || { lap: null, race: {} };
+    if (isFinite(r?.lap) && r.lap >= MIN_LAP && (mine.lap == null || r.lap < mine.lap)) { mine.lap = r.lap; changed = true; }
+    for (const [laps, v] of Object.entries(r?.race || {})) {
+      if (isFinite(v) && (mine.race?.[laps] == null || v < mine.race[laps])) { mine.race = mine.race || {}; mine.race[laps] = v; changed = true; }
+    }
+    all[track] = mine;
+  }
+  if (changed) { try { localStorage.setItem(KEY, JSON.stringify(all)); } catch { /* gizli rejim */ } }
 }
 
 // Yarışın nəticəsini rekordlarla tutuşdurur və lazım olsa yeniləyir.

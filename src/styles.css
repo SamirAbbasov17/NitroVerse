@@ -2597,3 +2597,15 @@ body.flt-sepia #filter-fx {
 .tbtn--small .ic { width: 56%; height: 56%; }
 .menu-step .ic { width: 16px; height: 16px; color: var(--accent); }
 .screen__heading .ic { vertical-align: -0.12em; }
+
+
+/* Trek cədvəli: nəticə ekranında bir sətir, liderlər ekranında trek çipləri */
+.laps__board { display: none; width: 100%; gap: 6px 14px; flex-wrap: wrap; align-items: baseline; padding-top: 8px; border-top: 1px solid var(--stroke); font-size: 13px; font-weight: 600; color: var(--muted); }
+.laps__board.is-on { display: flex; }
+.laps__board i { font-style: normal; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.laps__board b { color: #fff; font-variant-numeric: tabular-nums; }
+.laps__board .is-me { color: var(--accent); }
+.laps__board em { font-style: normal; margin-left: auto; color: var(--good); }
+.top-tracks { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.top-tracks .set-opt { min-width: 0; padding: 7px 10px; }
+@media (max-height: 560px) { .top-tracks { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; } .top-tracks .set-opt { flex: none; } }

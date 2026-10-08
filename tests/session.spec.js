@@ -239,3 +239,50 @@ test('sosial: sürət limiti — spam rədd olunur, gözləmə vaxtı deyilir', 
   await page.locator('#gchat').scrollIntoViewIfNeeded();
   await page.screenshot({ path: 'tests/out/chat-slow-mobile.png' });
 });
+
+// TREK REKORDLARI: hesabla qoyulan dövrə rekordu serverdə saxlanır, trek cədvəlinə düşür, başqa
+// cihazda (girişdən sonra) görünür; ağlabatan olmayan vaxt rədd edilir.
+test('rekordlar: server cədvəli, yoxlama, cihazlar arası (server + brauzer)', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const id = Date.now().toString(36).slice(-5);
+  const [a, b] = await Promise.all(['Rec' + id, 'Fst' + id].map((nick) => call({ action: 'register', nick, pass: 'parol1' })));
+  const rec = (token, body) => call({ action: 'record', token, track: 'desert', laps: 3, ...body });
+  expect((await rec(a.token, { lap: 33.5, race: 104.2 })).rank).toBe(1);
+  expect((await rec(b.token, { lap: 31.9, race: 99.0 })).rank).toBe(1);
+  const r2 = await rec(a.token, { lap: 34.9, race: 110 });           // daha pis nəticə rekordu dəyişmir
+  expect([r2.rank, r2.profile.records.desert.lap, r2.profile.records.desert.race['3']]).toEqual([2, 33.5, 104.2]);
+  // ağlabatan olmayanlar
+  for (const bad of [{ lap: 4, race: 60 }, { lap: 33, race: 50 }, { lap: -1 }, { lap: 33, race: 100, track: 'yox' }, { lap: 33, race: 100, laps: 40 }]) {
+    expect([JSON.stringify(bad), (await rec(a.token, bad)).status]).toEqual([JSON.stringify(bad), 400]);
+  }
+  expect((await call({ action: 'record', track: 'desert', laps: 3, lap: 30, race: 95 })).status, 'tokensiz yazmaq olmur').toBe(401);
+  // cədvəl hamıya açıqdır; tokenlə öz yerin də gəlir
+  const pub = await call({ action: 'records', track: 'desert' });
+  expect(pub.top.slice(0, 2)).toEqual([{ nick: 'Fst' + id, lap: 31.9 }, { nick: 'Rec' + id, lap: 33.5 }]);
+  expect((await call({ action: 'records', track: 'desert', token: a.token })).me).toEqual({ rank: 2, lap: 33.5 });
+  expect((await call({ action: 'records', track: 'neon' })).top).toEqual([]);
+  // brauzer: başqa cihazda giriş → rekord yerli yaddaşa gəlir; nəticə ekranı cədvəli göstərir
+  const ctx = await browser.newContext({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+  const page = await ctx.newPage();
+  await page.addInitScript((api) => { window.__AUTH_API = api; }, API);
+  await boot(page);
+  await page.evaluate((n) => window.__auth.login(n, 'parol1'), 'Rec' + id);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('apexRecords') || '{}').desert)).toEqual({ lap: 33.5, race: { 3: 104.2 } });
+  await page.evaluate(async () => {
+    const { Results } = await import('/src/ui/Results.js');
+    new Results(document.getElementById('ui-root'), { config: { mode: 'race', trackId: 'desert', laps: 3 }, onRestart() {}, onMenu() {},
+      standings: [{ name: 'Bot', color: 0x3aa0ff, position: 1, finishTime: 97 }, { name: 'Sən', isPlayer: true, color: 0xff6a3d, position: 2, finishTime: 98.4, lapTimes: [33.9, 31.2, 32.6] }] });
+  });
+  await expect(page.locator('.laps__board.is-on')).toContainText('Rec' + id, { timeout: 15_000 });
+  await expect(page.locator('.laps__board')).toContainText('0:31.20');
+  await expect(page.locator('.laps__board')).toContainText('#1');
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: 'tests/out/results-screen/m-board.png' });
+  // liderlər ekranı: dövrə rekordları
+  await page.evaluate(() => window.__menu.showTop('laps', 'desert'));
+  await expect(page.locator('#top-list .top-row')).toHaveCount(2, { timeout: 10_000 });
+  await expect(page.locator('#top-list .top-row').first()).toContainText('Rec' + id);
+  await page.waitForTimeout(700);
+  await page.screenshot({ path: 'tests/out/results-screen/m-leaders.png' });
+  await ctx.close();
+});
