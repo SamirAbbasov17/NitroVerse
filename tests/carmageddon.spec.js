@@ -95,6 +95,44 @@ test('carmageddon: menyudan açılır, qəhrəman canlıdır, geri qayıdır (ma
   expect(errs).toEqual([]);
 });
 
+// KİÇİK TELEFONLAR: alçaq landşaft ekranlarda (740×340, 667×375) üst nişan və son düymə kəsilirdi.
+// Menyu bloku bütöv ekranın içində qalmalıdır; şaquli tutanda "telefonu yana çevir" ekranı çıxır.
+test('carmageddon: kiçik telefon ekranlarında menyu kəsilmir', async ({ browser }) => {
+  test.setTimeout(180_000);
+  for (const [w, h, lang] of [[740, 340, 'az'], [740, 340, 'ru'], [667, 375, 'ru'], [640, 320, 'tr'], [915, 412, 'en']]) {
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+    const page = await ctx.newPage();
+    await boot(page, { lang });
+    await page.evaluate(() => window.__menu.onOpenGame('carmageddon'));
+    await page.waitForSelector('.cg.is-ready', { timeout: 30_000 });
+    await page.waitForTimeout(600);
+    const r = await page.evaluate(() => {
+      const box = (e) => { const b = e.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), h: Math.round(b.height) }; };
+      const ui = box(document.querySelector('.cg__ui'));
+      const btns = [...document.querySelectorAll('.cg__btn')].map(box);
+      const foot = document.querySelector('.cg__foot'), fb = foot.getBoundingClientRect();
+      const last = document.querySelectorAll('.cg__btn')[2].getBoundingClientRect();
+      return { ui, btnMin: Math.min(...btns.map((b) => b.h)), footOverlap: fb.height > 0 && fb.top < last.bottom && fb.bottom > last.top, H: innerHeight };
+    });
+    console.log(`${w}×${h} ${lang}`, JSON.stringify(r));
+    if (lang === 'ru' && w === 667) await page.screenshot({ path: path.join(DIR, 'm-small-ru.png') });
+    expect([w, h, lang, r.ui.top >= 0], 'menyunun üstü ekrandadır').toEqual([w, h, lang, true]);
+    expect([w, h, lang, r.ui.bottom <= r.H], 'menyunun altı ekrandadır').toEqual([w, h, lang, true]);
+    expect(r.footOverlap, 'altbilgi düymənin üstünə düşmür').toBe(false);
+    expect(r.btnMin, 'düymələr toxunmaq üçün kifayət qədər hündürdür').toBeGreaterThanOrEqual(30);
+    await ctx.close();
+  }
+  // şaquli: oyun landşaftdır — "telefonu yana çevir" ekranı Carmageddon-un da üstündə görünür
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
+  const page = await ctx.newPage();
+  await boot(page);
+  await page.evaluate(() => window.__menu.onOpenGame('carmageddon'));
+  await page.waitForSelector('.cg.is-ready', { timeout: 30_000 });
+  const top = await page.evaluate(() => document.elementFromPoint(innerWidth / 2, innerHeight / 2)?.closest('#rotate-hint') != null);
+  expect(top, 'şaquli tutanda "yana çevir" ekranı üstdədir').toBe(true);
+  await ctx.close();
+});
+
 test('carmageddon: telefon (844×390) — dörd dildə sığır, düymələr əlçatandır', async ({ browser }) => {
   test.setTimeout(180_000);
   for (const lang of ['az', 'en', 'ru', 'tr']) {

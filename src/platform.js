@@ -85,6 +85,13 @@ export function tryLandscapeFullscreen() {
     .catch(() => { /* dəstəklənmirsə sakitcə keç */ });
 }
 
+// "Telefonu yana çevir" ekranı index.html-də Azərbaycanca yazılıb — seçilmiş dilə keçirilir
+{
+  const rt = document.querySelector('.rotate-hint__text'), rs = document.querySelector('.rotate-hint__sub');
+  if (rt) rt.textContent = t('rot.text');
+  if (rs) rs.textContent = t('rot.sub');
+}
+
 // BAŞLANĞIC QAPISI (telefon): brauzer tam ekrana yalnız toxunuşla keçməyə icazə verir. Əvvəl menyu
 // brauzer zolaqları ilə kiçik açılırdı və tam ekran ilk toxunuşda, menyunun ortasında gəlirdi
 // (istifadəçi rəyi: "menyudakılar balaca görsənir"). İndi menyudan ƏVVƏL bir toxunuşluq qapı durur:

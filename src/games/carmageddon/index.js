@@ -101,6 +101,16 @@ class TitleScreen {
     addEventListener('pointermove', this._onMove);
     addEventListener('pointerdown', this._onDown);
     addEventListener('keydown', this._onKey);
+    this.ui = el.querySelector('.cg__ui');
+    this._fit = this._fit.bind(this);
+    addEventListener('resize', this._fit);
+    this._fit();
+  }
+
+  // Menyu bloku ekrana sığmırsa (alçaq telefon, uzun tərcümə) bütöv kiçilir — yuxarıdan/aşağıdan kəsilmir
+  _fit() {
+    const room = innerHeight - 12, need = this.ui.offsetHeight;
+    this.ui.style.setProperty('--cg-fit', need > room ? Math.max(0.6, room / need).toFixed(3) : '1');
   }
 
   async _load() {
@@ -119,7 +129,8 @@ class TitleScreen {
     this._buildCity();
     await Promise.race([fonts, new Promise((r) => setTimeout(r, 2500))]);
     this._drawLogo();
-    fonts.then(() => { if (this.el.isConnected) this._drawLogo(); });   // şrift gec gəlsə loqo yenidən çəkilir
+    this._fit();
+    fonts.then(() => { if (this.el.isConnected) { this._drawLogo(); this._fit(); } });   // şrift gec gəlsə loqo yenidən çəkilir
     this.el.classList.add('is-ready');
     this.raf = requestAnimationFrame(this._loop);
   }
@@ -344,6 +355,7 @@ class TitleScreen {
   dispose() {
     cancelAnimationFrame(this.raf);
     clearTimeout(this._qt);
+    removeEventListener('resize', this._fit);
     removeEventListener('pointermove', this._onMove);
     removeEventListener('pointerdown', this._onDown);
     removeEventListener('keydown', this._onKey);
