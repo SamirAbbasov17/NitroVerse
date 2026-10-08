@@ -19,6 +19,13 @@ test('canlı: menyu, ayarlar, liderlər, zen və yarış açılır — xətasız
   await page.waitForFunction(() => !/…/.test(document.querySelector('#top-list').textContent), null, { timeout: 15_000 });
   const board = await page.locator('#top-list').innerText();
   await page.click('[data-back]');
+  // Carmageddon: ayrıca oyun kimi açılır və geri qayıdır
+  await page.click('[data-mode="carmageddon"]');
+  await page.waitForSelector('.cg.is-ready', { timeout: 30_000 });
+  await page.waitForTimeout(1200);
+  await page.screenshot({ path: 'tests/out/live-carmageddon.png' });
+  await page.keyboard.press('Escape');
+  await page.waitForSelector('.menu-list .mrow', { timeout: 30_000 });
   // zen
   await page.click('[data-mode="free"]');
   for (let i = 0; i < 4 && !(await page.locator('.ehud').count()); i++) {
