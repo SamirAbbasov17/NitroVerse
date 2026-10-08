@@ -1283,6 +1283,11 @@ export class FootballScene {
     pc._lungeCd = Math.max(0, (pc._lungeCd ?? 0) - dt);
     this._el.charges.textContent = '⚡'.repeat(Math.max(0, pc.nitroCharges | 0)) || '·';
     this._el.lunge.style.opacity = pc._lungeCd > 0 ? 0.3 : 1;
+    // Telefon düymələri: dolana qədər boz + dolma halqası, hazır olanda parıltı
+    if (this.touchControls) {
+      this.touchControls.setReady('back', 1 - pc._lungeCd / LUNGE_CD);
+      this.touchControls.setReady('use', (pc.nitroCharges | 0) > 0 ? 1 : pc._nitroT / NITRO_REGEN_T);
+    }
 
     // Matç vaxtı (host idarə edir)
     if (this._state === 'play') {

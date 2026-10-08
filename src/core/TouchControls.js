@@ -172,6 +172,23 @@ export class TouchControls {
     }
   }
 
+  // DÜYMƏNİN HAZIRLIĞI (futbol: nitro və zərbə): k = 0…1 — dolma payı, 1 = hazır. Dolana qədər düymə
+  // bozarır və ətrafında dolma halqası gedir; hazır olan an bir dəfə parıldayır, sonra işıqlı qalır.
+  setReady(t, k) {
+    const b = this.el.querySelector(`[data-t="${t}"]`);
+    if (!b) return;
+    const st = (this._rdy ||= {});
+    const ready = k >= 1, q = ready ? 1 : Math.min(0.98, Math.round(Math.max(0, k) * 50) / 50);   // 1 yalnız hazır olanda
+    if (st[t] === q) return;
+    const was = st[t]; st[t] = q;
+    b.classList.toggle('is-cool', !ready);
+    b.classList.toggle('is-ready', ready);
+    b.style.setProperty('--cd', String(q));
+    if (ready && was !== undefined && was < 1) {
+      b.classList.remove('is-flash'); void b.offsetWidth; b.classList.add('is-flash');
+    }
+  }
+
   // 🚩 yalnız yoldan çıxanda aktivləşir
   setRescueEnabled(v) {
     if (this._rescueOn === v) return;
