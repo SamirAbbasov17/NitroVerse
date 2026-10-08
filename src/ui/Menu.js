@@ -42,6 +42,9 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
 
 // Sol panel menyu — arxa fonda canlı 3D showcase (main.js idarə edir).
 // Seçimlər dəyişdikcə onPreviewTrack/onPreviewCar çağırılır.
+// Qaraj bölməsinin adı: data faylındakı ad Azərbaycancadır — tərcümə açarı varsa o götürülür
+const grpTitle = (g) => (['cars', 'skin'].includes(g.key) ? g.title : t('cos.grp.' + g.key));
+
 export class Menu {
   constructor(root, { onStart, onStartOnline, thumbs = {}, onPreviewTrack, onPreviewCar, onPreviewDemo, gfx = null }) {
     this.root = root;
@@ -131,7 +134,7 @@ export class Menu {
           ${errMsg ? `<div class="online-err">${errMsg}</div>` : ''}
           <label class="field">
             <span class="field__label">${t('online.name')}</span>
-            <input class="field__input" id="on-name" maxlength="14" placeholder="məs. Samir" value="${savedName}" />
+            <input class="field__input" id="on-name" maxlength="14" placeholder="${t('on.namePh')}" value="${savedName}" />
           </label>
           <button class="btn btn--primary" data-create>${t('online.create')}</button>
           <div class="online-divider"><i></i>${t('online.bycode')}<i></i></div>
@@ -145,7 +148,7 @@ export class Menu {
           <div class="who-list" id="who-list"><div class="who-note">${t('online.loading')}</div></div>
           <div class="online-divider"><i></i>${t('online.gchat')}<i></i></div>
           <div class="online-now">🟢 <b id="gc-online">–</b> ${t('online.count')}</div>
-          <div class="lobby-chat gchat" id="gchat"><div class="chat-empty">Yüklənir…</div></div>
+          <div class="lobby-chat gchat" id="gchat"><div class="chat-empty">${t('top.loading')}</div></div>
           <div class="chat-row">
             <input class="field__input" id="gchat-input" maxlength="140" placeholder="${t('online.writeAll')}" autocomplete="off" />
             <button class="btn" data-gchat-send>➤</button>
@@ -242,7 +245,7 @@ export class Menu {
       appended = true;
     }
     if (!appended && box.querySelector('.chat-empty') && (res.msgs || []).length === 0 && this._gSince === 0) {
-      box.innerHTML = '<div class="chat-empty">Hələ sakitlikdir — ilk mesajı sən yaz! 👋</div>';
+      box.innerHTML = `<div class="chat-empty" data-noicon>${t('chat.empty')}</div>`;
     }
   }
 
@@ -261,7 +264,7 @@ export class Menu {
 
   _onlineName() {
     const el = this.root.querySelector('#on-name');
-    const name = ((el ? el.value : '') || localStorage.getItem('apexName') || 'Oyunçu').trim().slice(0, 14) || 'Oyunçu';
+    const name = ((el ? el.value : '') || localStorage.getItem('apexName') || t('cmn.player')).trim().slice(0, 14) || t('cmn.player');
     localStorage.setItem('apexName', name);
     return name;
   }
@@ -672,16 +675,16 @@ export class Menu {
       return;
     }
     const roomIcon = (r) => (r.mode === 'football' ? '⚽' : r.mode === 'arena' ? '⚔️' : (getTrackById(r.track)?.icon || '🏁'));
-    const meta = (r) => (r.mode === 'football' ? 'Futbol 3v3' : r.mode === 'arena' ? 'Arena BR' : `${r.laps} dövrə`);
+    const meta = (r) => (r.mode === 'football' ? t('mode.football') : r.mode === 'arena' ? t('mode.arena') : t('room.laps', { n: r.laps }));
     el.innerHTML = [
       ...open.map((r) => `
         <button class="room-row" data-room="${r.code}">
           <span class="room-row__icon">${roomIcon(r)}</span>
           <span class="room-row__body">
-            <span class="room-row__name">${r.host} otağı ${r.inGame ? '<em class="room-row__status">🏁 oyundadır</em>' : '<em class="room-row__status room-row__status--lobby">lobbidədir</em>'}</span>
+            <span class="room-row__name">${t('room.of', { n: esc(r.host) })} ${r.inGame ? `<em class="room-row__status">${t('room.inGame')}</em>` : `<em class="room-row__status room-row__status--lobby">${t('room.inLobby')}</em>`}</span>
             <span class="room-row__meta">${r.players}/6 oyunçu · ${meta(r)} · kod ${r.code}</span>
           </span>
-          <span class="room-row__join">${r.inGame ? 'LOBBİYƏ →' : 'QOŞUL →'}</span>
+          <span class="room-row__join">${r.inGame ? t('room.toLobby') : t('room.join')}</span>
         </button>`),
       ...busy.map((r) => `
         <div class="room-row room-row--busy">
@@ -727,10 +730,10 @@ export class Menu {
     }
     if (this._busyCancelled) return;
     const notFound = lastErr?.type === 'peer-unavailable';
-    const detail = lastErr?.type || lastErr?.message || 'naməlum';
+    const detail = lastErr?.type || lastErr?.message || t('on.errUnknown');
     this.showOnline(notFound
-      ? 'Bu kodla otaq tapılmadı — kodu yoxla (host otağı açıq saxlamalıdır).'
-      : `Şəbəkə xətası (${detail}) — bir daha yoxla. Alınmasa, başqa şəbəkə/hotspot sınayın.`);
+      ? t('on.errNoRoom')
+      : t('on.errNet', { d: detail }));
   }
 
   _onlineBusy(text) {
@@ -824,10 +827,10 @@ export class Menu {
       const car = p.carId ? getCarById(p.carId) : null;
       const racing = (net.racingIds || []).includes(p.id);
       const status = anyRacing
-        ? (racing ? '<span class="lobby-player__racing">🏁 oyundadır</span>' : '<span class="lobby-player__waiting">lobbidə</span>')
+        ? (racing ? `<span class="lobby-player__racing">${t('room.inGame')}</span>` : `<span class="lobby-player__waiting">${t('lobby.inLobby')}</span>`)
         : (p.isHost ? '' : (p.ready
-          ? '<span class="lobby-player__ready">✅ hazır</span>'
-          : '<span class="lobby-player__notready">⌛ hazır deyil</span>'));
+          ? `<span class="lobby-player__ready">${t('lobby.pReady')}</span>`
+          : `<span class="lobby-player__notready">${t('lobby.pNotReady')}</span>`));
       const team = net.lobbyMode === 'football'
         ? `<span class="lobby-player__team">${p.team === 'red' ? '🔴' : p.team === 'blue' ? '🔵' : '⚪'}</span>`
         : '';
@@ -835,7 +838,7 @@ export class Menu {
         <div class="lobby-player">
           <span class="lobby-player__dot" style="background:${car ? hex(car.bodyColor) : '#555'}"></span>
           ${team}
-          <span class="lobby-player__name">${esc(p.name)}${p.id === net.selfId ? ' <small>(sən)</small>' : ''}</span>
+          <span class="lobby-player__name">${esc(p.name)}${p.id === net.selfId ? ` <small>(${t('res.you').toLowerCase()})</small>` : ''}</span>
           ${p.isHost ? '<span class="lobby-player__host">HOST</span>' : ''}
           ${status}
           <span class="lobby-player__car">${car ? car.name : '—'}</span>
@@ -852,9 +855,9 @@ export class Menu {
       </div>`;
     return `
       <div class="lobby-stats__name">${selCar.name} <em class="mrow__class">${selCar.class}</em></div>
-      ${statBar('Sürət', selCar.stats.topSpeed)}
-      ${statBar('Cəldlik', selCar.stats.accel)}
-      ${statBar('İdarə', selCar.stats.handling)}
+      ${statBar(t('stat.speed'), selCar.stats.topSpeed)}
+      ${statBar(t('stat.accel'), selCar.stats.accel)}
+      ${statBar(t('stat.handling'), selCar.stats.handling)}
       ${statBar('Tutum', selCar.stats.grip)}
       ${statBar('Zireh', selCar.stats.armor ?? 50)}`;
   }
@@ -866,7 +869,7 @@ export class Menu {
     if (!net || !list) return; // lobby ekranda deyil
     list.innerHTML = this._playersHtml();
     const cnt = this.root.querySelector('[data-lobby-count]');
-    if (cnt) cnt.textContent = `Oyunçular (${net.players.length}/6)`;
+    if (cnt) cnt.textContent = t('lobby.players', { n: net.players.length });
     // Host trek/dövrə dəyişibsə seçim işarələrini köçür
     this.root.querySelectorAll('[data-ltrack]').forEach((b) =>
       b.classList.toggle('is-selected', b.dataset.ltrack === net.lobbyTrack));
@@ -886,7 +889,7 @@ export class Menu {
       b.classList.toggle('is-selected', b.dataset.lteam === myTeam));
     this._syncReadyBtn();
     const startBtn = this.root.querySelector('[data-start]');
-    if (startBtn) startBtn.textContent = fb ? '⚽ Matça başla' : lmode === 'arena' ? '⚔️ Döyüşə başla' : 'Yarışa başla';
+    if (startBtn) startBtn.textContent = fb ? t('lobby.startFb') : lmode === 'arena' ? t('lobby.startArena') : t('lobby.startRace');
   }
 
   _renderLobby() {
@@ -898,7 +901,7 @@ export class Menu {
       const unlocked = isCarUnlocked(c.id, auth.profile);
       return `
       <button class="lobby-car ${c.id === this._lobbyCarId ? 'is-selected' : ''} ${unlocked ? '' : 'is-locked'}"
-        data-lcar="${c.id}" title="${unlocked ? c.name : c.name + ' — kilidli (menyuda aç)'}">
+        data-lcar="${c.id}" title="${unlocked ? c.name : c.name + t('lobby.carLocked')}">
         ${this.thumbs[carSkin(c)] ? `<img src="${this.thumbs[carSkin(c)]}" alt="${c.name}" draggable="false" />` : c.name}
         ${unlocked ? '' : '<span class="lobby-car__lock">🔒</span>'}
       </button>`;
@@ -912,7 +915,7 @@ export class Menu {
     const lapBtns = [1, 3, 5].map((n) => `
       <button class="seg seg--sm ${n === net.lobbyLaps ? 'is-selected' : ''}" data-llaps="${n}" ${isHost ? '' : 'disabled'}>
         <span class="seg__num" style="font-size:20px">${n}</span>
-        <span class="seg__label">dövrə</span>
+        <span class="seg__label">${t('cmn.lap')}</span>
       </button>`).join('');
 
     this._panel({
@@ -1134,18 +1137,18 @@ export class Menu {
     this._preview();
     const isSkinTab = this._garageTab === 'skin';
     const grp = isSkinTab
-      ? { key: 'skin', title: 'Skinlər', items: carSkinsFor(this.sel.carId) }
+      ? { key: 'skin', title: t('garage.skins'), items: carSkinsFor(this.sel.carId) }
       : (COSMETIC_GROUPS.find((g) => g.key === this._garageTab) || COSMETIC_GROUPS[0]);
     const eq = equippedCosmetics(auth.profile);
     const curSkin = equippedSkin(this.sel.carId, auth.profile);
     const gold = auth.profile?.gold ?? 0;
     const car = getCarById(this.sel.carId);
 
-    const tabs = [{ key: 'cars', title: 'Maşınlar', icon: '🏎️' },
-      { key: 'skin', title: 'Skinlər', icon: '🎭' }, ...COSMETIC_GROUPS]
+    const tabs = [{ key: 'cars', title: t('garage.cars'), icon: '🏎️' },
+      { key: 'skin', title: t('garage.skins'), icon: '🎭' }, ...COSMETIC_GROUPS]
       .map((tb) => `<button class="seg seg--sm ${tb.key === this._garageTab ? 'is-selected' : ''}" data-gtab="${tb.key}">
           <span class="seg__num" style="font-size:19px">${tb.icon}</span>
-          <span class="seg__label">${tb.title}</span>
+          <span class="seg__label">${grpTitle(tb)}</span>
         </button>`).join('');
 
     const rows = grp.items.map((it) => {
@@ -1178,7 +1181,7 @@ export class Menu {
           : `<span class="mrow__lock">${t('cars.lockAcc')}</span>`);
       // yalnız boya və disk üçün (yer işığı/iz/musiqinin "zavod" variantı sadəcə "yoxdur")
       const stockDesc = it.stock && (grp.key === 'paint' || grp.key === 'rim')
-        ? `${car?.name || 'Maşın'} — ${grp.key === 'rim' ? 'öz zavod diskləri' : 'öz orijinal rəngi'}`
+        ? t(grp.key === 'rim' ? 'cos.stockRim' : 'cos.stockPaint', { n: car?.name || '' })
         : '';
       const desc = cosText(it, true);
       const sub = (desc || stockDesc) ? `<span class="mrow__desc">${desc || stockDesc}</span>` : '';
@@ -1218,10 +1221,10 @@ export class Menu {
       // Skin taxılıbsa boya/əfsanəvi görünmür — istifadəçi bunu bilməlidir,
       // yoxsa "rəngi dəyişirəm, heç nə olmur" təəssüratı yaranır
       sub: notice || (isSkinTab
-        ? `🪙 ${gold} · ${car?.name} üçün imza skinlər`
+        ? t('garage.subSkins', { g: gold, n: car?.name })
         : (curSkin && (grp.key === 'paint' || grp.key === 'effect')
           ? `🪙 ${gold} · ${t('cos.skinOverrides')}`
-          : `🪙 ${gold} · ${grp.title} — seç və ya al`)),
+          : t('garage.subGroup', { g: gold, n: grpTitle(grp) }))),
       body: `<div class="menu-seg menu-seg--wrap" style="margin-bottom:10px">${tabs}</div>
              ${nowCard}
              <div class="menu-list menu-list--scroll">${rows}</div>`,
@@ -1248,9 +1251,9 @@ export class Menu {
         await auth.equip('music', it.id);
         stopPreview();
         audio.sfx('pickup');
-        this.showCosmetics(`✓ ${cosText(it)} alındı və taxıldı`);
+        this.showCosmetics(t('cos.bought', { n: cosText(it) }));
       } catch {
-        this.showCosmetics('Alınmadı — yenidən yoxla.');
+        this.showCosmetics(t('cos.buyFail'));
       }
     };
 
@@ -1310,9 +1313,9 @@ export class Menu {
           await auth.equip(grpKey, id);
           await this._clearRivalLooks(it.group);
           audio.sfx('pickup');
-          this.showCosmetics(`✓ ${cosText(it)} alındı və taxıldı`);
+          this.showCosmetics(t('cos.bought', { n: cosText(it) }));
         } catch {
-          this.showCosmetics('Alınmadı — yenidən yoxla.');
+          this.showCosmetics(t('cos.buyFail'));
         }
       };
     });
@@ -1346,7 +1349,7 @@ export class Menu {
         <span class="mrow__thumb">${img}</span>
         <span class="mrow__body">
           <span class="mrow__title">${c.name} <em class="mrow__class">${c.class}</em>${lockBadge}</span>
-          <span class="mrow__bars" title="Sürət · Cəldlik · İdarə · Tutum · Zireh">${bars}</span>
+          <span class="mrow__bars" title="${t('stat.all')}">${bars}</span>
           ${sig}
         </span>
       </button>`;
@@ -1358,11 +1361,11 @@ export class Menu {
       title: this._garage ? t('garage.title') : t('cars.title'),
       sub: notice || (this._garage ? t('garage.sub') : t('cars.sub')),
       body: `${this._garage ? `<div class="menu-seg menu-seg--wrap" style="margin-bottom:10px">${
-        [{ key: 'cars', title: 'Maşınlar', icon: '🏎️' },
-          { key: 'skin', title: 'Skinlər', icon: '🎭' }, ...COSMETIC_GROUPS].map((tb) => `
+        [{ key: 'cars', title: t('garage.cars'), icon: '🏎️' },
+          { key: 'skin', title: t('garage.skins'), icon: '🎭' }, ...COSMETIC_GROUPS].map((tb) => `
           <button class="seg seg--sm ${tb.key === (this._garageTab || 'cars') ? 'is-selected' : ''}" data-gtab="${tb.key}">
             <span class="seg__num" style="font-size:19px">${tb.icon}</span>
-            <span class="seg__label">${tb.title}</span>
+            <span class="seg__label">${grpTitle(tb)}</span>
           </button>`).join('')
       }</div>` : ''}<div class="menu-list menu-list--scroll">${rows}</div>`,
       nav: this._garage
@@ -1398,10 +1401,10 @@ export class Menu {
         try {
           await auth.buy(id);
           this.sel.carId = id;
-          this.showCars(`✅ ${getCarById(id).name} açıldı!`);
+          this.showCars(t('garage.unlocked', { n: getCarById(id).name }));
           this._preview();
         } catch (e) {
-          this.showCars(e.message === 'poor' ? '🪙 Qızıl çatmır.' : 'Alış alınmadı — yenidən yoxla.');
+          this.showCars(e.message === 'poor' ? t('garage.poor') : t('cos.buyFail'));
         }
       };
     });
@@ -1488,7 +1491,7 @@ export class Menu {
       <button class="btn" data-top style="margin-top:8px">${t('auth.leaders')}</button>
       <div class="menu-sub" style="margin-top:14px">${t('auth.earnHint')}</div>` : `
       <div class="field"><label>${t('auth.nickLabel')}</label>
-        <input class="field__input" id="auth-nick" maxlength="16" autocomplete="username" placeholder="məs: SuretliShahin" value="${esc(localStorage.getItem('apexLastNick') || '')}" /></div>
+        <input class="field__input" id="auth-nick" maxlength="16" autocomplete="username" placeholder="${t('auth.nickPh')}" value="${esc(localStorage.getItem('apexLastNick') || '')}" /></div>
       <div class="field" style="margin-top:10px"><label>${t('auth.passLabel')}</label>
         <input class="field__input" id="auth-pass" type="password" maxlength="64" autocomplete="current-password" placeholder="••••" /></div>
       ${msg ? `<div class="auth-msg">${msg}</div>` : ''}
@@ -1588,7 +1591,7 @@ export class Menu {
       step: '••', stepLabel: t('auth.stepSignup'), title: t('auth.titleSignup'),
       body: `<div class="auth-body">
         <div class="field"><label>${t('auth.nickLabel')}</label>
-          <input class="field__input" id="su-nick" maxlength="16" autocomplete="username" placeholder="məs: SuretliShahin" /></div>
+          <input class="field__input" id="su-nick" maxlength="16" autocomplete="username" placeholder="${t('auth.nickPh')}" /></div>
         <div class="field" style="margin-top:10px"><label>${t('auth.passLabel')}</label>
           <input class="field__input" id="su-pass" type="password" maxlength="64" autocomplete="new-password" placeholder="••••" /></div>
         <div class="field" style="margin-top:10px"><label>${t('auth.emailLabel')}</label>
@@ -1903,7 +1906,7 @@ export class Menu {
   }
 
   _start() {
-    this.root.innerHTML = `<div class="loading"><div class="spinner"></div><div>Trek yüklənir…</div></div>`;
+    this.root.innerHTML = `<div class="loading"><div class="spinner"></div><div>${t('load.track')}</div></div>`;
     requestAnimationFrame(() => requestAnimationFrame(() => {
       this.onStart({ ...this.sel });
     }));

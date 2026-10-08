@@ -634,12 +634,12 @@ export class EndlessScene {
       <div class="ehud">
         <div class="ehud__score"><b id="ehud-score">0</b><span id="ehud-dist">0.0 km</span></div>
         <div class="ehud__btns">
-          <button class="ehud__btn" id="ehud-weather" title="Hava">🌦</button>
-          <button class="ehud__btn" id="ehud-time" title="Günün vaxtı">🕐</button>
-          <button class="ehud__btn" id="ehud-biome" title="Mühit">🌍</button>
-          <button class="ehud__btn" id="ehud-music" title="Növbəti lofi trek">⏭</button>
-          <button class="ehud__btn" id="ehud-retro" title="Retro filtr">📺</button>
-          <button class="ehud__btn" id="ehud-pause" title="Pauza">⏸</button>
+          <button class="ehud__btn" id="ehud-weather" title="${t('zen.weather')}">🌦</button>
+          <button class="ehud__btn" id="ehud-time" title="${t('zen.time')}">🕐</button>
+          <button class="ehud__btn" id="ehud-biome" title="${t('zen.biome')}">🌍</button>
+          <button class="ehud__btn" id="ehud-music" title="${t('zen.nextTrack')}">⏭</button>
+          <button class="ehud__btn" id="ehud-retro" title="${t('zen.filter')}">📺</button>
+          <button class="ehud__btn" id="ehud-pause" title="${t('zen.pause')}">⏸</button>
         </div>
         <div class="ehud__speed"><b id="ehud-speed">0</b><span>${t('hud.kmh')}</span></div>
         <div class="ehud__toast" id="ehud-toast"></div>
@@ -857,7 +857,7 @@ export class EndlessScene {
     this._camMode = order[(order.indexOf(this._camMode) + 1) % order.length];
     localStorage.setItem('apexCamMode', this._camMode);
     this.playerCar.root.visible = this._camMode !== 'fps';
-    this._toast({ tps: '🎥 Arxadan görünüş', fps: '🎥 Sükan arxası', hood: '🎥 Kapot görünüşü' }[this._camMode]);
+    this._toast(t('cam.' + this._camMode));
   }
 
   // ————— Oyun içi mühit idarəsi: hər düymə öz dəyərini yumşaq dəyişir —————
@@ -893,33 +893,27 @@ export class EndlessScene {
   // Hava: avto → açıq → buludlu → duman → yağış → qar → avto (hamısı yumşaq keçir)
   _cycleWeather() {
     const opts = [null, 'clear', 'cloud', 'fog', 'rain', 'snow'];
-    const names = {
-      clear: '☀️ Açıq', cloud: '☁️ Buludlu', fog: '🌫 Duman',
-      rain: '🌧 Yağış', snow: '🌨 Qar',
-    };
     const i = (opts.indexOf(this._weatherOverride ?? null) + 1) % opts.length;
     this._setWeather(opts[i]);
-    this._toast(opts[i] ? names[opts[i]] : '🌦 Avto hava');
+    this._toast(t('zen.w.' + (opts[i] || 'auto')));
   }
 
   // Günün vaxtı: avto → səhər → gündüz → qürub → gecə → avto
   _cycleDayTime() {
     const opts = [null, 'dawn', 'day', 'dusk', 'night'];
-    const names = { dawn: '🌅 Səhər', day: '🌞 Gündüz', dusk: '🌇 Qürub', night: '🌙 Gecə' };
     const i = (opts.indexOf(this._timeOverride ?? null) + 1) % opts.length;
     this._setDayTime(opts[i]);
-    this._toast(opts[i] ? names[opts[i]] : '🕐 Avto vaxt');
+    this._toast(t('zen.t.' + (opts[i] || 'auto')));
   }
 
   // Ətraf mühiti əl ilə dəyiş: avto → səhra → dağ → sahil → kanyon → avto
   _cycleBiome() {
-    const names = { desert: 'Səhra', alpine: 'Dağlar', coast: 'Sahil', canyon: 'Kanyon', snow: 'Qarlıq' };
     if (this._biomeOverride == null) this._biomeOverride = 0;
     else if (this._biomeOverride >= BIOMES.length - 1) this._biomeOverride = null;
     else this._biomeOverride++;
     this._toast(this._biomeOverride == null
-      ? '🌍 Avto (yol boyu dəyişir)'
-      : '🌍 ' + names[BIOMES[this._biomeOverride].id]);
+      ? t('zen.b.auto')
+      : '🌍 ' + t('zen.b.' + BIOMES[this._biomeOverride].id));
   }
 
   // 📺 Filtr dövrü: yox → retro → kino → noir → sepiya. Hamısı CSS-dir —
@@ -940,7 +934,7 @@ export class EndlessScene {
     const f = F[this._fltIdx];
     if (f.id) document.body.classList.add(f.id);
     localStorage.setItem('apexZenFilter', String(this._fltIdx));
-    if (!sakit) this._toast(`📺 Filtr: ${f.ad}`);
+    if (!sakit) this._toast(t('zen.f.label', { n: f.id ? f.ad : t('zen.f.off') }));
   }
 
   _toggleRetro() { this._applyFilter((this._fltIdx ?? 0) + 1); }
@@ -970,11 +964,11 @@ export class EndlessScene {
     this.touchControls?.setVisible(false);
     this._el.overlay.innerHTML = `
       <div class="pause">
-        <div class="screen__heading">Pauza</div>
-        <div class="menu-sub" style="text-align:center">🎵 N — trek · 📺 T — filtr (retro/kino/noir/sepiya)</div>
+        <div class="screen__heading">${t('pause.title')}</div>
+        <div class="menu-sub" style="text-align:center">${t('zen.pauseHint')}</div>
         <div class="btn-row">
           <button class="btn btn--primary" data-resume>${t('pause.resume')}</button>
-          <button class="btn btn--ghost" data-quit>Menyu</button>
+          <button class="btn btn--ghost" data-quit>${t('ui.menu')}</button>
         </div>
         ${soundControlsHTML()}
       </div>`;
@@ -1421,7 +1415,7 @@ export class EndlessScene {
     const { cur, nxt, k, seg } = this._biomeAt(dist);
     if (seg !== this._lastSeg) {
       this._lastSeg = seg;
-      this._toast('🌍 ' + { desert: 'Səhra', alpine: 'Dağlar', coast: 'Sahil', canyon: 'Kanyon', snow: 'Qarlıq' }[cur.id]);
+      this._toast('🌍 ' + t('zen.b.' + cur.id));
     }
     // Keçidin ortasında chunk stili yenisinə keçir
     this._applyBiomeStyle(k > 0.5 ? nxt : cur);

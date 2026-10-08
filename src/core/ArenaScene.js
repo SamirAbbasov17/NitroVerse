@@ -465,7 +465,7 @@ export class ArenaScene {
           isLocal: pl.id === this.online.net.selfId, isBot: false });
       }
     } else {
-      seats.push({ tid: 'me', netId: null, name: 'Sən', carId: this.config.carId, isLocal: true, isBot: false });
+      seats.push({ tid: 'me', netId: null, name: t('res.you'), carId: this.config.carId, isLocal: true, isBot: false });
     }
     let bi = 0;
     while (seats.length < 6) {
@@ -603,12 +603,12 @@ export class ArenaScene {
     this.touchControls?.setVisible(false);
     this._el.overlay.innerHTML = `
       <div class="pause">
-        <div class="screen__heading">Pauza</div>
+        <div class="screen__heading">${t('pause.title')}</div>
         <div class="btn-row">
           <button class="btn btn--primary" data-resume>${t('pause.resume')}</button>
           ${this.online ? `<button class="btn" data-lobby>${t('pause.backRoom')}</button>` : ''}
           ${!this.online && this.onRestart ? `<button class="btn" data-restart>${t('ui.again')}</button>` : ''}
-          <button class="btn btn--ghost" data-quit>${this.online ? 'Otaqdan çıx' : 'Menyu'}</button>
+          <button class="btn btn--ghost" data-quit>${this.online ? t('res.leaveRoom') : t('ui.menu')}</button>
         </div>
         ${soundControlsHTML()}
       </div>`;
@@ -867,11 +867,11 @@ export class ArenaScene {
     const davamEdir = this._aliveList().length >= 2;
     this._toast(r.isLocal
       ? (davamEdir
-        ? (by ? `☠️ ${by} səni vurdu — tamaşa edirsən` : '☠️ Elendin — tamaşa edirsən')
-        : (by ? `☠️ ${by} səni vurdu` : '☠️ Elendin'))
-      : (by === 'zona' ? `☠️ ${r.name} zonada yandı`
-        : by === 'lazer' ? `☠️ ${r.name} lazerdə yandı`
-        : by ? `☠️ ${by} → ${r.name}` : `☠️ ${r.name} elendi`));
+        ? (by ? t('ar.youHitSpec', { n: by }) : t('ar.outSpec'))
+        : (by ? t('ar.youHit', { n: by }) : t('ar.out')))
+      : (by === 'zona' ? t('ar.zoneKill', { n: r.name })
+        : by === 'lazer' ? t('ar.laserKill', { n: r.name })
+        : by ? `☠️ ${by} → ${r.name}` : t('ar.outOther', { n: r.name })));
     if (broadcast && this.online && (r.isLocal || (r.isBot && this._simBots))) {
       this.online.net.sendEvent({ kind: 'adead', tid: r.tid, by: r.car._lastBy || null });
     }
@@ -891,10 +891,10 @@ export class ArenaScene {
     const extra = this.online
       ? `<button class="btn btn--ghost" data-spec-lobby>${t('pause.backRoom')}</button>`
       : `<button class="btn" data-spec-retry>${t('ui.again')}</button>
-         <button class="btn btn--ghost" data-spec-end>🏁 Nəticələndir</button>`;
+         <button class="btn btn--ghost" data-spec-end>${t('ar.finishNow')}</button>`;
     el.innerHTML = `
       <div class="spec-bar">
-        <div class="spec-title">👁 Tamaşa: <b id="spec-name">—</b></div>
+        <div class="spec-title">${t('ar.spectate')} <b id="spec-name">—</b></div>
         <div class="spec-btns">
           <button class="btn btn--ghost" data-spec-prev>◀</button>
           <button class="btn btn--ghost" data-spec-next>▶</button>
@@ -966,8 +966,8 @@ export class ArenaScene {
     const winner = this.racers.find((x) => x.tid === order[order.length - 1]);
     this._el.overlay.innerHTML = `
       <div class="winbanner ${place === 1 ? 'winbanner--win' : ''}">
-        <div class="winbanner__title">${place === 1 ? '👑 QALİBSƏN!' : `${winner?.name || 'Rəqib'} QALİB`}</div>
-        <div class="winbanner__sub">${place === 1 ? 'son qalan sən oldun' : `sənin yerin: #${place}`}</div>
+        <div class="winbanner__title">${place === 1 ? t('ar.youWin') : t('ar.otherWin', { n: winner?.name || t('cmn.rival') })}</div>
+        <div class="winbanner__sub">${place === 1 ? t('ar.lastOne') : t('ar.yourPlace', { n: place })}</div>
       </div>`;
     if (place === 1) for (let i = 0; i < 5; i++) this.effects.spawnConfetti(this.playerCar.position, true);
     if (place === 1) this._playFinishFx();
@@ -978,8 +978,8 @@ export class ArenaScene {
   _showResult(place, gold, rows) {
     this._el.overlay.innerHTML = `
       <div class="pause">
-        <div class="screen__heading">${place === 1 ? '👑 Qalibsən!' : `Yerin: #${place}`}
-          <small>${auth.isLoggedIn ? `🪙+${gold}` : 'Qonaq — qızıl hesabla qazanılır'}</small>
+        <div class="screen__heading">${place === 1 ? t('ar.youWinT') : t('ar.placeT', { n: place })}
+          <small>${auth.isLoggedIn ? `🪙+${gold}` : t('cmn.guestGold')}</small>
         </div>
         <div class="arena-standings">${rows}</div>
         <div class="btn-row">
@@ -1164,7 +1164,7 @@ export class ArenaScene {
           if (r && !r.gone) {
             r.gone = true;
             if (r.car.alive) { r.car.alive = false; r.car.root.visible = false; this._elimOrder.unshift(r.tid); }
-            this._toast(r.name + ' otağa qayıtdı');
+            this._toast(r.name + t('net.backSfx'));
             this._checkEnd();
           }
           break;
@@ -1414,11 +1414,11 @@ export class ArenaScene {
     this.zoneWall.scale.set(this.safeR, 1, this.safeR);
     this.zoneRing.scale.set(this.safeR, this.safeR, 1);
     if (zt <= ZONE_HOLD) {
-      this._el.zone.textContent = '⭕ zona ' + Math.ceil(ZONE_HOLD - zt) + 's sonra daralır';
+      this._el.zone.textContent = t('ar.zoneIn', { n: Math.ceil(ZONE_HOLD - zt) });
     } else if (this.safeR <= ZONE_MIN_R + 0.5) {
-      this._el.zone.textContent = '⭕ zona minimumdadır!';
+      this._el.zone.textContent = t('ar.zoneMin');
     } else {
-      this._el.zone.textContent = '⭕ zona daralır';
+      this._el.zone.textContent = t('ar.zoneShrink');
     }
 
     // İdarə

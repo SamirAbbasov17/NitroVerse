@@ -71,7 +71,7 @@ game.start();
 // ————— Səs: mute düyməsi + brauzer jest tələbi —————
 const muteBtn = document.createElement('button');
 muteBtn.id = 'mute-btn';
-muteBtn.title = 'Səs aç/bağla (M)';
+muteBtn.title = t('snd.toggle');
 muteBtn.textContent = audio.muted ? '🔇' : '🔊';
 muteBtn.onclick = () => { muteBtn.textContent = audio.toggleMute() ? '🔇' : '🔊'; };
 document.body.appendChild(muteBtn);
@@ -368,7 +368,7 @@ function awardRaceGold(standings, config) {
 
 // ————— Boot: modelləri yüklə → menyu —————
 async function boot() {
-  uiRoot.innerHTML = `<div class="loading"><div class="spinner"></div><div>Modellər yüklənir…</div></div>`;
+  uiRoot.innerHTML = `<div class="loading"><div class="spinner"></div><div>${t('load.models')}</div></div>`;
   // Sessiya bərpası (paralel, boot-u max 2.5s ləngidir)
   const authReady = Promise.race([
     auth.restore().catch(() => null),

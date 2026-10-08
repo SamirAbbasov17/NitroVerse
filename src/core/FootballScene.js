@@ -505,7 +505,7 @@ export class FootballScene {
         });
       }
     } else {
-      seats.push({ team: 'blue', netId: null, name: 'Sən', carId: this.config.carId, isLocal: true, isBot: false });
+      seats.push({ team: 'blue', netId: null, name: t('res.you'), carId: this.config.carId, isLocal: true, isBot: false });
     }
     // Botlarla 3v3-ə doldur
     const count = (tt) => seats.filter((s) => s.team === tt).length;
@@ -693,12 +693,12 @@ export class FootballScene {
     this.touchControls?.setVisible(false);
     this._el.overlay.innerHTML = `
       <div class="pause">
-        <div class="screen__heading">Pauza</div>
+        <div class="screen__heading">${t('pause.title')}</div>
         <div class="btn-row">
           <button class="btn btn--primary" data-resume>${t('pause.resume')}</button>
           ${this.online ? `<button class="btn" data-lobby>${t('pause.backRoom')}</button>` : ''}
           ${!this.online && this.onRestart ? `<button class="btn" data-restart>${t('ui.again')}</button>` : ''}
-          <button class="btn btn--ghost" data-quit>${this.online ? 'Otaqdan çıx' : 'Menyu'}</button>
+          <button class="btn btn--ghost" data-quit>${this.online ? t('res.leaveRoom') : t('ui.menu')}</button>
         </div>
         ${soundControlsHTML()}
       </div>`;
@@ -781,7 +781,7 @@ export class FootballScene {
         this._finish(m.scores);
       } else if (m.kind === 'gleave') {
         const r = this.racers.find((x) => x.netId === m.id);
-        if (r) { r.car.root.visible = false; r.gone = true; this._toast(r.name + ' otağa qayıtdı'); }
+        if (r) { r.car.root.visible = false; r.gone = true; this._toast(r.name + t('net.backSfx')); }
       }
     });
     net.on('left', (id) => {
@@ -926,8 +926,8 @@ export class FootballScene {
       : (this.scores.blue > this.scores.red ? 'blue' : 'red');
     this._el.overlay.innerHTML = `
       <div class="winbanner ${draw ? '' : (win ? 'winbanner--win' : 'winbanner--loss')}">
-        <div class="winbanner__title">${draw ? 'BƏRABƏRLİK' : (winTeam === 'blue' ? '🔵 MAVİ QALİB' : '🔴 QIRMIZI QALİB')}</div>
-        <div class="winbanner__sub">🔵 ${this.scores.blue} — ${this.scores.red} 🔴${win ? ' · sən qalib gəldin!' : (draw ? '' : ' · növbəti dəfə!')}</div>
+        <div class="winbanner__title">${draw ? t('fb.drawBanner') : (winTeam === 'blue' ? t('fb.blueWin') : t('fb.redWin'))}</div>
+        <div class="winbanner__sub">🔵 ${this.scores.blue} — ${this.scores.red} 🔴${win ? t('fb.youWon') : (draw ? '' : t('fb.nextTime'))}</div>
       </div>`;
     if (win) {
       for (let i = 0; i < 5; i++) this.effects?.spawnConfetti?.(this.playerCar.position, true);
@@ -941,7 +941,7 @@ export class FootballScene {
     this._el.overlay.innerHTML = `
       <div class="pause">
         <div class="screen__heading">${win ? t('fb.win') : draw ? t('fb.draw') : t('fb.loss')}
-          <small>🔵 ${this.scores.blue} — ${this.scores.red} 🔴 ${auth.isLoggedIn ? ` · 🪙+${gold}` : ` · Hesabla 🪙+${gold} qazanardın`}</small>
+          <small>🔵 ${this.scores.blue} — ${this.scores.red} 🔴 ${auth.isLoggedIn ? ` · 🪙+${gold}` : t('fb.goldMissed', { n: gold })}</small>
         </div>
         <div class="btn-row">
           <button class="btn btn--primary" data-quit>${this.online ? t('pause.backRoom') : t('pause.menu')}</button>

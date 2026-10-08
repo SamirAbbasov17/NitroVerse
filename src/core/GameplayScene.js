@@ -221,8 +221,8 @@ export class GameplayScene {
     this.powerups.onSlotsFull = () => {
       if ((this._fullToastT ?? -9) > this._time - 5) return;
       this._fullToastT = this._time;
-      this.hud?.showToast(isTouchDevice() ? '🎒 Slotların doludur — ✕ ilə birini at'
-        : '🎒 Slotların doludur — X: aktivi at');
+      this.hud?.showToast(isTouchDevice() ? t('tst.slotsFullTouch')
+        : t('tst.slotsFull'));
     };
     this.powerups.onScore = (shooter, kind, target) => {
         // Hədəfin qalxanı udubsa — xal YOX
@@ -350,8 +350,8 @@ export class GameplayScene {
     this.powerups.onSlotsFull = () => {
       if ((this._fullToastT ?? -9) > this._time - 5) return;
       this._fullToastT = this._time;
-      this.hud?.showToast(isTouchDevice() ? '🎒 Slotların doludur — ✕ ilə birini at'
-        : '🎒 Slotların doludur — X: aktivi at');
+      this.hud?.showToast(isTouchDevice() ? t('tst.slotsFullTouch')
+        : t('tst.slotsFull'));
     };
     this.powerups.onScore = (shooter, kind, target) => {
       // Hədəfin qalxanı udubsa — xal YOX
@@ -384,7 +384,7 @@ export class GameplayScene {
     rm.onLap = (r) => {
       if (r.isPlayer) {
         const left = this.config.laps - r.lap;
-        this.hud.showToast(left === 1 ? 'Son dövrə!' : `Dövrə ${r.lap + 1}`);
+        this.hud.showToast(left === 1 ? t('tst.lastLap') : t('res.lap', { n: r.lap + 1 }));
         audio.sfx('lap');
       }
     };
@@ -514,7 +514,7 @@ export class GameplayScene {
       }
     };
     net.on('left', (id) => {
-      dropRacer(id, ' ayrıldı');
+      dropRacer(id, t('net.leftSfx'));
       if (net.isHost && this._hostResultsTimer) this._hostCheckAllDone();
     });
     this._dropRacer = dropRacer; // gleave hadisəsi _onNetEvent-də işlənir
@@ -551,7 +551,7 @@ export class GameplayScene {
 
   _onNetEvent(m) {
     if (m.kind === 'gleave') {
-      this._dropRacer?.(m.id, ' otağa qayıtdı');
+      this._dropRacer?.(m.id, t('net.backSfx'));
       if (this._net.isHost && this._hostResultsTimer) this._hostCheckAllDone();
     } else if (m.kind === 'giveup') {
       this._onGiveUp(m.id);
@@ -728,7 +728,7 @@ export class GameplayScene {
     this._camMode = order[(order.indexOf(this._camMode) + 1) % order.length];
     localStorage.setItem('apexCamMode', this._camMode);
     if (!this._playerDone) this.playerCar.root.visible = this._camMode !== 'fps';
-    this.hud?.showToast({ tps: '🎥 Arxadan görünüş', fps: '🎥 Sükan arxası', hood: '🎥 Kapot görünüşü' }[this._camMode]);
+    this.hud?.showToast(t('cam.' + this._camMode));
   }
 
   _bindKeys() {
@@ -1278,7 +1278,7 @@ export class GameplayScene {
       (b) => b.targets?.some((tt) => tt.isPlayer)
     );
     const inbound = missileIn || !!boltIn;
-    const text = missileIn ? '🚀 RAKET GƏLİR!' : '🌩 ŞİMŞƏK GƏLİR!';
+    const text = missileIn ? t('hud.missile') : t('hud.boltIn');
     if (inbound !== this._missileWarn || (inbound && text !== this._warnText)) {
       this._missileWarn = inbound;
       this._warnText = text;

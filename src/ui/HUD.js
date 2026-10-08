@@ -42,7 +42,7 @@ export class HUD {
           <div class="hud__item-key">E</div>
           <div class="hud__item-x" title="${t('hud.dropAb')}">X</div>
         </div>
-        <div class="hud__item2" id="hud-item2" title="R — slotlar arası keçid">
+        <div class="hud__item2" id="hud-item2" title="${t('hud.swapTitle')}">
           <div class="hud__item2-icon" id="hud-item2-icon"></div>
           <div class="hud__item2-key">R</div>
         </div>
