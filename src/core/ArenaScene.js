@@ -62,6 +62,12 @@ const MINE_R = 4.6;        // partlayış radiusu
 const BOLT_DMG = 14;
 const BOLT_RANGE = 46;
 // Mərkəzi lazer: oyunun 35-ci saniyəsindən fırlanan iki qol (mərkəz meydanı "təhlükəsiz düşərgə" olmasın)
+// SÜTUN LAZERLƏRİ (2026-10-08, oyunçu istəyi: "mərkəzi lazerdən başqa maneələr də başlanğıcda olsun,
+// yer daraldıqca sönsünlər, yalnız mərkəzi lazer qalsın"): üç sütundan fırlanan bir şüa çıxır.
+// Oyunun 5-ci saniyəsindən işləyir; zona TURRET_OFF_R həddinə daralanda bir-bir sönür
+// (təxminən 51 / 71 / 90-cı saniyə) — son mərhələdə meydanda yalnız mərkəzi lazer qalır.
+const TURRET_ON = 5, TURRET_R0 = 4, TURRET_LEN = 20, TURRET_SPEED = 0.5, TURRET_DMG = 8;
+const TURRET_OFF_R = [100, 86, 72];
 const SWEEP_START = 35, SWEEP_R0 = 7, SWEEP_R1 = 36 * K, SWEEP_SPEED = 0.42, SWEEP_DMG = 14;
 
 const LEGACY_FEEL = (() => { try { return localStorage.getItem('apexArenaFeel') === 'old'; } catch { return false; } })();
@@ -282,6 +288,7 @@ export class ArenaScene {
 
     // Sığınacaq sütunları və yeşiklər (örtük obyektləri) — toqquşma dairələri
     this.obstacles = [];
+    this.turrets = [];
     const pillarMat = new THREE.MeshStandardMaterial({ color: 0x4a3a63, flatShading: true, roughness: 0.7 });
     const crateMat = new THREE.MeshStandardMaterial({ color: 0xb06a2a, flatShading: true, roughness: 0.8 });
     for (let i = 0; i < 6; i++) {
@@ -309,6 +316,8 @@ export class ArenaScene {
         this.scene.add(halqa);
       }
       this.obstacles.push({ x: p.position.x, z: p.position.z, r: 3.4 });
+      // hər ikinci sütun lazer daşıyır (bax TURRET_*)
+      if (i % 2 === 0) this.turrets.push({ x: p.position.x, z: p.position.z, cap, offR: TURRET_OFF_R[i / 2], dir: i % 4 === 0 ? 1 : -1, phase: a + Math.PI, on: true });
     }
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2;
@@ -1304,6 +1313,70 @@ export class ArenaScene {
     }
   }
 
+  // ————— SÜTUN LAZERLƏRİ —————
+  // Bucaq oyun vaxtından (`_playT`) hesablanır — onlaynda hamıda eynidir; zərəri hər kəs öz maşını
+  // üçün sayır (mərkəzi lazerlə eyni qayda). Zona sütunun həddinə daralanda lazer həmişəlik sönür.
+  _updateTurrets(dt, inPlay) {
+    if (!this._tur) {
+      const mat = new THREE.MeshBasicMaterial({ color: 0xffa23a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
+      const glow = new THREE.MeshBasicMaterial({ color: 0xff8a2a, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false });
+      const beamGeo = new THREE.BoxGeometry(0.36, 0.36, TURRET_LEN), haloGeo = new THREE.BoxGeometry(2.4, 0.05, TURRET_LEN);   // uzaqdan da oxunsun
+      for (const T of this.turrets) {
+        const g = new THREE.Group();
+        g.position.set(T.x, 0, T.z);
+        const beam = new THREE.Mesh(beamGeo, mat); beam.position.set(0, 0.85, TURRET_R0 + TURRET_LEN / 2);
+        const halo = new THREE.Mesh(haloGeo, glow); halo.position.set(0, 0.06, TURRET_R0 + TURRET_LEN / 2);
+        g.add(beam, halo);
+        g.visible = false;
+        this.scene.add(g);
+        T.g = g;
+      }
+      this._tur = { mat, glow };
+    }
+    const tt = this._playT - TURRET_ON;
+    const warn = tt <= 0;
+    if (inPlay && this._playT > 0.4 && !this._turWarned) { this._turWarned = true; this._toast(t('ar.turrets')); }
+    this._tur.mat.opacity = warn ? 0.3 + 0.2 * Math.sin(this._time * 12) : 0.85 + 0.15 * Math.sin(this._time * 20);
+    this._tur.glow.opacity = warn ? 0.1 : 0.34;
+    let live = 0;
+    for (const T of this.turrets) {
+      if (T.on && inPlay && this.safeR < T.offR) {
+        // zona bura çatdı — lazer sönür, sütunun başlığı qaralır
+        T.on = false;
+        T.cap.material.emissiveIntensity = 0.12;
+        this.effects.spawnSparks({ x: T.x, y: 8.6, z: T.z }, 0, 0, 14, 1);
+      }
+      T.g.visible = T.on && inPlay && this._playT > 0.4;
+      if (!T.on) continue;
+      live++;
+      T.ang = T.phase + Math.max(0, tt) * TURRET_SPEED * T.dir;
+      T.g.rotation.y = T.ang;
+    }
+    if (!live && inPlay && !this._turOffSaid) { this._turOffSaid = true; this._toast(t('ar.turretsOff')); }
+    if (!inPlay || tt <= 0 || !live) return;
+    for (const r of this.racers) {
+      if (!r.car.alive || r.gone) continue;
+      const own = r.isLocal || (r.isBot && this._simBots) || !this.online;
+      if (!own) continue;
+      r._turCd = Math.max(0, (r._turCd || 0) - dt);
+      if (r._turCd > 0) continue;
+      for (const T of this.turrets) {
+        if (!T.on) continue;
+        const rx = r.car.position.x - T.x, rz = r.car.position.z - T.z;
+        const dx = Math.sin(T.ang), dz = Math.cos(T.ang);
+        const along = rx * dx + rz * dz, across = Math.abs(rx * dz - rz * dx);
+        if (along > TURRET_R0 - 1 && along < TURRET_R0 + TURRET_LEN + 1 && across < 1.5) {
+          r._turCd = 1.2;
+          this._damage(r, TURRET_DMG, false, 'lazer');
+          r.car.hitTimer = Math.max(r.car.hitTimer || 0, 0.4);
+          this.effects.spawnSparks({ x: r.car.position.x, y: 0.8, z: r.car.position.z }, 0, 0, 8, 1);
+          if (r.isLocal) audio.sfx('bolt');
+          break;
+        }
+      }
+    }
+  }
+
   // ————— MƏRKƏZİ LAZER —————
   // Oyunun 35-ci saniyəsindən mərkəzdən iki qol çıxıb yavaş fırlanır. Bucaq oyun vaxtından
   // (`_playT` — onlaynda sinxrondur) hesablanır, zərəri hər kəs öz maşını üçün sayır.
@@ -1670,6 +1743,7 @@ export class ArenaScene {
         if (Math.hypot(r.car.position.x - m.x, r.car.position.z - m.z) < 2.7) { this._explodeMine(m); break; }
       }
     }
+    this._updateTurrets(dt, inPlay);
     this._updateSweeper(dt, inPlay);
 
     // Təhlükə vinyeti: oyunçu zonadan kənardadırsa qırmızı kənar parıltısı
