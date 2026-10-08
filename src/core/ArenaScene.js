@@ -719,14 +719,19 @@ export class ArenaScene {
     m.lamp.material.dispose();
     this.effects.spawnExplosion(new THREE.Vector3(m.x, 0.8, m.z));
     if (Math.hypot(m.x - this.playerCar.position.x, m.z - this.playerCar.position.z) < 90) audio.sfx('explosion');
-    const own = m.owner.isLocal || (m.owner.isBot && this._simBots) || !this.online;
-    if (!own) return;
     if (broadcast) this.online?.net.sendEvent({ kind: 'aboom', mid: m.id });
+    // ZƏRƏRİ HƏR KƏS ÖZ MAŞINI ÜÇÜN SAYIR (lazerlərlə eyni qayda). Əvvəl həm tətiyi, həm zərəri minanın
+    // SAHİBİ hesablayırdı — rəqibin gecikmiş (şəbəkə) mövqeyinə görə. Onlaynda oyunçu öz ekranında
+    // minanın üstündən keçirdi, sahibin ekranında isə hələ çatmamışdı: "minaya dəyirəm, heç nə olmur".
+    let others = false;
     for (const r of this.racers) {
       if (!r.car.alive || r.gone) continue;
       if (Math.hypot(r.car.position.x - m.x, r.car.position.z - m.z) > MINE_R) continue;
-      this._hit(m.owner, r, r === m.owner ? MINE_DMG * 0.5 : MINE_DMG);   // öz minan da səni yaralayır (yarı)
+      if (r !== m.owner) others = true;
+      const mine = r.isLocal || (r.isBot && this._simBots) || !this.online;
+      if (mine) this._damage(r, r === m.owner ? MINE_DMG * 0.5 : MINE_DMG, false, m.owner.name);   // öz minan da səni yaralayır (yarı)
     }
+    if (m.owner.isLocal && others) this._hitMarker(MINE_DMG);
   }
 
   // Şimşək: qabaq yarımdairədə ən yaxın rəqibə ani zərbə — zəif, amma yayınmaq olmur və yavaşladır
@@ -1161,7 +1166,7 @@ export class ArenaScene {
           if (r && !r.isLocal && !(r.isBot && this._simBots)) this._applyEffect(m.it || 'missile', r, m);
           break;
         }
-        case 'aboom': { // sahibinin simulyasiyasında partlayan mina — bizdə yalnız görüntü
+        case 'aboom': { // başqasının ekranında partlayan mina — bizdə görüntü + ÖZ maşınlarımıza zərər
           const mn = this.mines.find((x) => x.id === m.mid);
           if (mn) this._explodeMine(mn, false);
           break;
@@ -1811,9 +1816,9 @@ export class ArenaScene {
       m.lamp.material.color.setHex(m.arm > 0 ? 0x55606e : (Math.sin(this._time * 9) > 0 ? 0xff3b2e : 0x5a1410));
       if (m.life <= 0 || Math.hypot(m.x, m.z) > this.safeR + 6) { this.mines.splice(i, 1); this.scene.remove(m.mesh); m.lamp.material.dispose(); continue; }
       if (m.arm > 0 || !inPlay) continue;
-      const own = m.owner.isLocal || (m.owner.isBot && this._simBots) || !this.online;
-      if (!own) continue;
+      // tətik: öz simulyasiyamdakı maşın (mən, hostdamsa botlar) minaya dəyibsə — kimin minası olsa da
       for (const r of this.racers) {
+        if (!(r.isLocal || (r.isBot && this._simBots) || !this.online)) continue;
         // ÖZ MİNAN da partlayır (yarı zərərlə) — əvvəl sahibi üstündən keçəndə heç nə olmurdu
         // (oyunçu rəyi: "minaya dəyəndə heç nə olmur"). Yalnız qoyulandan sonrakı ilk 2.5 s sahibinə
         // toxunmur ki, mina atan kimi öz altında partlamasın.

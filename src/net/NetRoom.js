@@ -4,7 +4,7 @@ import { announceRoom } from './RoomDirectory.js';
 // PeerJS (WebRTC P2P) otaq sistemi — server tələb etmir.
 // Host otaq yaradır (qısa kod), qonaqlar kodla qoşulur (ulduz topologiyası: host relay edir).
 // QEYD: prefiksdəki versiya köhnə client-lərin yeni otaqlara düşməsinin qarşısını alır.
-const PREFIX = 'apex-drift-v22-'; // v22: arena sütun lazerləri · v21: arena radiusu 104→124 (divar/pad yerləri) · v18: silah zərəri və zirehə görə can · v17: can qutusunun çəkisi (rulet cədvəli) · v16: 'giveup' hadisəsi, 30 s finiş gözləməsi · v15: sürət aralığı + imza gücləri balansı (v14: yeni sürüş modeli)
+const PREFIX = 'apex-drift-v23-'; // v23: arena minasını dəyən tərəf hesablayır · v22: arena sütun lazerləri · v21: arena radiusu 104→124 (divar/pad yerləri) · v18: silah zərəri və zirehə görə can · v17: can qutusunun çəkisi (rulet cədvəli) · v16: 'giveup' hadisəsi, 30 s finiş gözləməsi · v15: sürət aralığı + imza gücləri balansı (v14: yeni sürüş modeli)
 
 // STUN + pulsuz TURN relay-lər — sərt NAT/korporativ şəbəkələrdə də bağlantı qurulsun.
 // Bir neçə müstəqil TURN provayderi: biri işləməsə, digəri relay edir.
