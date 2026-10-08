@@ -1838,7 +1838,7 @@ export class Menu {
     window.__notices?.show({
       icon: '🔒',
       text: t(key, vars) + (why ? ' ' + t('acc.why') : ''),
-      life: 5,
+      life: 4,
       actions: [{ label: t('auth.chip'), primary: true, onClick: () => { this._musicPreview = null; audio.previewPack(null); this.showAuth(); } }],
     });
     audio.sfx('discard');
