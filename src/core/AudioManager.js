@@ -96,6 +96,7 @@ class AudioManagerImpl {
   // hələ hazır deyilsə, səs sintez variantı ilə çalınır — heç nə səssiz qalmır.
   static SAMPLES = {
     birds: ['sfx/amb-birds.mp3'],
+    skid: ['sfx/tyre-skid.wav'],
   };
 
   _loadSamples() {
@@ -363,9 +364,14 @@ class AudioManagerImpl {
   // Fayllar yüklənənə qədər (və ya yüklənməsə) köhnə sintez mühərrik işləyir.
   // Müqayisə üçün köhnəni saxlamaq: localStorage `apexEngine` = 'synth'.
   static ENGINE_LOOPS = [
-    { src: 'sfx/engine-low.wav', f0: 43, at: 0 },
-    { src: 'sfx/engine-mid.wav', f0: 65, at: 0.5 },
-    { src: 'sfx/engine-high.wav', f0: 76, at: 1 },
+    // Real maşın yazısı (Porsche 911 SC, salondan, sabit dövrlərdə — Sonniss GDC paketi, bax
+    // public/sfx/LICENSE.txt). rpm: döngənin yazıldığı dövr; oyun dövrü qonşu iki döngə arasında
+    // keçidlə və səsləndirmə sürəti ilə verilir. (Əvvəlki 0.5 s-lik oyun döngələri "matora
+    // bənzəmirdi" — istifadəçi rəyi.)
+    { src: 'sfx/eng-1100.wav', rpm: 1104 },
+    { src: 'sfx/eng-2570.wav', rpm: 2570 },
+    { src: 'sfx/eng-3610.wav', rpm: 3612 },
+    { src: 'sfx/eng-5030.wav', rpm: 5028 },
   ];
 
   _loadEngineLoops() {
@@ -389,7 +395,7 @@ class AudioManagerImpl {
   _startRecEngine() {
     const ctx = this.ctx;
     const out = ctx.createGain(); out.gain.value = 0;
-    const tone = ctx.createBiquadFilter(); tone.type = 'lowpass'; tone.frequency.value = 900; tone.Q.value = 0.4;
+    const tone = ctx.createBiquadFilter(); tone.type = 'lowpass'; tone.frequency.value = 2500; tone.Q.value = 0.4;
     tone.connect(out); out.connect(this.fxBus);
     const layers = AudioManagerImpl.ENGINE_LOOPS.map((l, i) => {
       const src = ctx.createBufferSource();
@@ -397,7 +403,7 @@ class AudioManagerImpl {
       const g = ctx.createGain(); g.gain.value = 0;
       src.connect(g); g.connect(tone);
       src.start();
-      return { src, g, f0: l.f0, at: l.at };
+      return { src, g, rpm: l.rpm };
     });
     this._engine = { rec: true, out, tone, layers, rpm: 0.2, gear: 0, load: 0, prev: 0 };
   }
@@ -566,18 +572,25 @@ class AudioManagerImpl {
         src.start();
         return { f, g };
       };
-      // cığıltı: iki dar zolaq (rezinin "oxuması") — biri əsas ton, biri onun üstündəki fit
-      const sq1 = mk('bandpass', 1050, 9), sq2 = mk('bandpass', 1680, 12);
-      const lfo = ctx.createOscillator(); lfo.frequency.value = 6.5;
-      const lg = ctx.createGain(); lg.gain.value = 55;
-      lfo.connect(lg); lg.connect(sq1.f.frequency); lg.connect(sq2.f.frequency); lfo.start();
-      this._tyres = { sq1, sq2, dirt: mk('lowpass', 210, 0.6) };
+      // Cığıltı REAL yazıdır (yaş asfaltda təkər sürüşməsi — Sonniss GDC, bax LICENSE.txt). Əvvəlki
+      // sintez (iki dar küy zolağı) çıxarıldı (istifadəçi: "drift səsini bəyənmədim"). Yazı hələ
+      // yüklənməyibsə cığıltı sadəcə çalınmır.
+      this._tyres = { dirt: mk('lowpass', 210, 0.6), skid: null };
+    }
+    if (!this._tyres.skid && this._smp?.skid?.[0]) {
+      const src = ctx.createBufferSource();
+      src.buffer = this._smp.skid[0]; src.loop = true;
+      const g = ctx.createGain(); g.gain.value = 0;
+      src.connect(g); g.connect(this.fxBus);
+      src.start();
+      this._tyres.skid = { src, g };
     }
     const T = this._tyres, t = ctx.currentTime;
     const k = this._pausedGame ? 0 : (this._zenMix ? 0.35 : 1);
-    T.sq1.g.gain.setTargetAtTime(slip * 0.21 * k, t, 0.06);
-    T.sq2.g.gain.setTargetAtTime(slip * 0.1 * k, t, 0.06);
-    T.sq1.f.frequency.setTargetAtTime(950 + slip * 260, t, 0.1);
+    if (T.skid) {
+      T.skid.g.gain.setTargetAtTime(slip * 0.24 * k, t, 0.09);
+      T.skid.src.playbackRate.setTargetAtTime(0.9 + slip * 0.14, t, 0.15);   // güclü sürüşmədə bir az zil
+    }
     T.dirt.g.gain.setTargetAtTime(dirt * 0.16 * k, t, 0.1);
     // Sürət küləyi (500–1400 Hz küy) ÇIXARILDI: sürüş boyu fasiləsiz xışıltı verirdi (istifadəçi:
     // "sürəndəki xışıltı səsi pisdir"). Sürət hissini mühərrik səsi daşıyır. `wind` parametri qalır
@@ -608,15 +621,24 @@ class AudioManagerImpl {
       const acc = speedT - e.prev; e.prev = speedT;
       e.load += ((acc > 0.0004 || boosting ? 1 : acc < -0.0004 ? 0 : 0.45) - e.load) * 0.08;
       const voice = this._engVoice || 1;
-      const hz = (40 + e.rpm * 62 + (boosting ? 8 : 0)) * voice;
-      for (const L of e.layers) {
-        L.src.playbackRate.setTargetAtTime(Math.max(0.4, Math.min(3, hz / L.f0)), t, 0.04);
-        const w = Math.max(0, 1 - Math.abs(e.rpm - L.at) / 0.5);          // üçbucaq keçid
-        L.g.gain.setTargetAtTime(w, t, 0.05);
+      // oyun dövrü (0..1) → real dövr: 1000 … 5300 dövr/dəq (maşının xarakteri ±, nitroda bir az yuxarı)
+      const real = (1000 + e.rpm * 4300 + (boosting ? 250 : 0)) * voice;
+      const Ls = e.layers;
+      let hi = 1;
+      while (hi < Ls.length - 1 && real > Ls[hi].rpm) hi++;
+      const lo = hi - 1;
+      // qonşu iki döngə arasında bərabər güclü keçid (dövrün loqarifminə görə)
+      const x = Math.max(0, Math.min(1, Math.log(real / Ls[lo].rpm) / Math.log(Ls[hi].rpm / Ls[lo].rpm)));
+      for (let i = 0; i < Ls.length; i++) {
+        const w = i === lo ? Math.cos(x * Math.PI / 2) : i === hi ? Math.sin(x * Math.PI / 2) : 0;
+        Ls[i].g.gain.setTargetAtTime(w, t, 0.05);
+        Ls[i].src.playbackRate.setTargetAtTime(Math.max(0.5, Math.min(2, real / Ls[i].rpm)), t, 0.04);
       }
-      e.tone.frequency.setTargetAtTime(520 + e.rpm * 1500 + e.load * 1400, t, 0.08);
+      // qaz buraxılanda səs bir az boğulur (yük), qaz veriləndə açılır
+      e.tone.frequency.setTargetAtTime(1300 + e.rpm * 2200 + e.load * 4500, t, 0.08);
       // səviyyə köhnə sintez mühərriklə eyni sırada (ölçüldü: 0.8 sürətdə sintez −27 dB)
-      let g = (0.09 + e.rpm * 0.1) * (0.62 + 0.38 * e.load);
+      // (yazılar −20 dBFS-ə normallaşdırılıb; əmsal elə seçilib ki, səviyyə əvvəlki ilə eyni qalsın)
+      let g = (0.28 + e.rpm * 0.3) * (0.62 + 0.38 * e.load);
       if (this._zenMix) g *= 0.12;   // zen: mühərrik arxa fonda
       e.out.gain.setTargetAtTime(g, t, 0.07);
       return;

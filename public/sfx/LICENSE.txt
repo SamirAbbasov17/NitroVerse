@@ -1,11 +1,15 @@
-Engine loops in this folder: "racing car engine sound loops" by domasx2
-https://opengameart.org/content/racing-car-engine-sound-loops
-Licence: CC0 1.0 (stated on the page; checked 2026-10-07). Made for www.banditracer.eu.
+Engine loops and tyre skid (added 2026-10-08) — Sonniss #GameAudioGDC bundles (free, royalty-free,
+commercial use and editing allowed, no attribution required; not to be redistributed as standalone
+sound files). Licence: https://sonniss.com/gdc-bundle-license/ (bundle "Licensing.pdf" read 2026-10-08).
+Downloaded from the official mirror ftpmirror.your.org/pub/misc/sonniss2016|2018/individual/.
 
-engine-low.wav  = loop_0.wav   (fundamental ~43 Hz)
-engine-mid.wav  = loop_2_0.wav (~65 Hz)
-engine-high.wav = loop_5_0.wav (~76 Hz)
-Files are unmodified (renamed only). No attribution required; kept as a record of provenance.
+eng-1100.wav, eng-2570.wav, eng-3610.wav, eng-5030.wav — Pole Position Production, "Porsche 911 SC 1981"
+  (Porsche_911_SC_-81_t5_onboard_driving_constant_rpms_exhausts.wav, GDC 2016 bundle). Steady-rpm sections
+  at 47.0 / 131.6 / 184.5 / 393.3 s, cut to 2.3–3.2 s, ends cross-faded for looping, 22.05 kHz mono,
+  normalised to -20 dBFS RMS. File name = engine speed (rpm) measured from the harmonic spacing.
+tyre-skid.wav — Pole Position, "Skids & Screeches Tarmac"
+  (Skids_Tarmac_t3_exterior_skidding_wet_tires_CSS5_handheld.wav, GDC 2018 bundle), 17.65–19.55 s,
+  high-passed at 450 Hz, looped, 22.05 kHz mono.
 
 Added 2026-10-07:
 amb-birds.mp3 — "Park ambiences" (park_ambience_birds.wav), opengameart.org/content/park-ambiences
