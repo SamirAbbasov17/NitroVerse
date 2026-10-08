@@ -852,7 +852,30 @@ export class GameplayScene {
     this.effects.spawnExplosion(uzaq);
     this.effects.spawnSmoke({ x: 0, y: -140, z: 0 });
     this.effects.spawnSparkle(uzaq);
+    // GEC GÖRÜNƏN VARİANTLAR (tester keçidi: yarışın ortasında 12–127 ms donma ölçüldü): maşınların
+    // gizli hissələri (qalxan qabarcığı və s.) bir anlıq göstərilir, şimşək qəlpəsi kimi yalnız
+    // işlədiləndə yaranan materialların nümunələri yerin altına qoyulur. Nümunələr silinmir (yalnız
+    // gizlənir) — material dispose olunsa three proqramı da buraxır və isidilmə boşa gedir.
+    const shown = [];
+    for (const c of this.cars) c.root.traverse((o) => { if (!o.visible) { o.visible = true; shown.push(o); } });
+    if (!this._warmGroup) {
+      const g = this._warmGroup = new THREE.Group();
+      g.position.y = -140;
+      const geo = new THREE.TetrahedronGeometry(0.2);
+      for (const m of [
+        new THREE.MeshStandardMaterial({ color: 0xbfe4ff, emissive: 0x8fd0ff, emissiveIntensity: 2, flatShading: true, transparent: true }),   // şimşək qəlpəsi
+        new THREE.MeshStandardMaterial({ color: 0xff6b1a, emissive: 0xff8438, emissiveIntensity: 1.6 }),                                       // raket
+        new THREE.MeshStandardMaterial({ color: 0x23262e, roughness: 0.6, flatShading: true }),                                                // mina
+        new THREE.MeshBasicMaterial({ color: 0xeaf2ff }),                                                                                      // güllə
+        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 }),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }),
+      ]) g.add(new THREE.Mesh(geo, m));
+      this.scene.add(g);
+    }
+    this._warmGroup.visible = true;
     try { this.renderer.compile(this.scene, this.camera); } catch { /* boş */ }
+    this._warmGroup.visible = false;
+    for (const o of shown) o.visible = false;
     // Şəffaf ("ghost") maşın materialı ayrı şeyder variantıdır — ilk dəfə yarışın
     // ortasında kompilyasiya olunmasın deyə indi isidilir
     for (const c of this.cars) if (c !== this.playerCar) c.setGhost(true);

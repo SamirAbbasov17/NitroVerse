@@ -1508,9 +1508,48 @@ export class ArenaScene {
     }
   }
 
+  // ŞEYDER İSİDİLMƏSİ: oyun boyu İLK DƏFƏ görünən hər material şeyderini həmin kadrda kompilyasiya
+  // edir və kadr donur (ölçüldü: lazerlər açılanda 22–49 ms, ilk üçlü atəş, ilk qalxan, ilk şimşək).
+  // İlk kadrdan əvvəl gizli/gec yaranan hər şey bir dəfə göstərilib kompilyasiya olunur — bu vaxt
+  // ekran açılış örtüyünün arxasındadır.
+  _warmShaders() {
+    const r = this.renderer;
+    if (!r?.compile) return;
+    this._updateTurrets(0, false); this._updateSweeper(0, false);   // lazer görünüşləri qurulsun
+    const shown = [];
+    const show = (o) => { if (o && !o.visible) { o.visible = true; shown.push(o); } };
+    for (const T of this.turrets) { show(T.g); show(T.ring); }
+    show(this._sweep?.g); show(this._sweep?.ring);
+    for (const p of this.pads) { show(p.beam); show(p.shaft); }
+    for (const rc of this.racers) rc.car.root.traverse(show);       // qalxan, alov və digər gizli hissələr
+    // gec yaranan silah/effekt materiallarının nümunələri (döşəmənin altında; proqram açarı rəngdən asılı deyil)
+    const tmp = new THREE.Group(); tmp.position.y = -60;
+    const add = (geo, mat) => { tmp.add(new THREE.Mesh(geo, mat)); };
+    const sph = this._shotGeo ||= new THREE.SphereGeometry(0.32, 6, 5);
+    add(sph, this._shotMat ||= new THREE.MeshBasicMaterial({ color: 0xeaf2ff }));                                   // üçlü atəş
+    add(sph, this._mineMat ||= new THREE.MeshStandardMaterial({ color: 0x23262e, roughness: 0.6, flatShading: true }));   // mina gövdəsi
+    add(sph, new THREE.MeshBasicMaterial({ color: 0xffb02e }));                                                               // mina lampası
+    add(sph, new THREE.MeshStandardMaterial({ color: 0xff6b1a, emissive: 0xff8438, emissiveIntensity: 1.6 }));                // raket
+    add(sph, new THREE.MeshStandardMaterial({ color: 0xbfe4ff, emissive: 0x8fd0ff, emissiveIntensity: 2, flatShading: true, transparent: true })); // şimşək qəlpəsi (Effects)
+    { // bonus ikonu (alphaTest-li sprite) — ilk bonus çıxanda kompilyasiya olunurdu
+      const sm = new THREE.SpriteMaterial({ map: this._padGlowTex(), transparent: true, alphaTest: 0.08 });
+      tmp.add(new THREE.Sprite(sm));
+    }
+    add(sph, new THREE.MeshStandardMaterial({ color: 0x37b8ff, transparent: true, opacity: 0.4 }));                            // qalxan
+    add(sph, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 }));                               // tüstü/qığılcım
+    add(sph, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    this.scene.add(tmp);
+    try { r.compile(this.scene, this.camera); } catch { /* boş */ }
+    // Nümunələr SİLİNMİR, yalnız gizlənir: material dispose olunsa three onun proqramını da buraxır
+    // (başqa istifadəçisi yoxdursa) və isidilmə boşa gedir. Səhnə bağlananda birlikdə təmizlənir.
+    tmp.visible = false;
+    for (const o of shown) o.visible = false;
+  }
+
   // ————— Əsas dövr —————
   update(dt) {
     if (this._state === 'paused' || this._state === 'done') return;
+    if (!this._warmed) { this._warmed = true; this._warmShaders(); }
     this._time += dt;
 
     // SİNXRON START gözləməsi
