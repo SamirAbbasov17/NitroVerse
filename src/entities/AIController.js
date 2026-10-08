@@ -48,7 +48,7 @@ export class AIController {
       // wpHint köhnəlmiş ola bilər (maşın 40+ m kənarda) — ƏN YAXIN
       // nöqtəni tapıb ora qaytarırıq, yoxsa yenidən kənarda düşür
       // Trekin öz axtarışı (Car.update də bunu işlədir) — dəqiq və ucuz
-      const ən = track.getNearest?.(car.position, car.wpHint)?.index ?? car.wpHint;
+      const ən = (track.locate ? track.getNearest(car.position) : track.getNearest?.(car.position, car.wpHint))?.index ?? car.wpHint;   // trekdə tam axtarış
       car.wpHint = ən;
       // DİQQƏT: getWaypoint sadə obyekt qaytara bilər — `new p0.constructor`
       // Vector3 yaratmır və reset səssizcə işləmirdi (ölçüldü: qayıdış 10 s).

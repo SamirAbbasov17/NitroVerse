@@ -567,7 +567,25 @@ export class TrackBuilder {
       t: best / this.N,
       lateral,
       onRoad: Math.abs(lateral) <= this.halfWidth + 0.5,
+      d2: bestD,
     };
+  }
+
+  // MAŞININ TREKDƏKİ YERİ (hər kadr): `hint` ətrafında dar axtarış sürətlidir və trek öz yanından
+  // keçən yerlərdə qonşu hissəyə atlamır. Amma maşın yoldan uzaqlaşanda (qısayol şaxəsi, çöl) dar
+  // pəncərədəki "ən yaxın" nöqtə pəncərənin uzaq ucu olur və göstərici əsas yol boyu QAÇIB GEDİR —
+  // Payız Meşəsində qısayola girən maşına pulsuz dövrə yazılırdı, qısayoldan sonra isə göstərici
+  // arxada ilişib qalırdı (maşın yolda olsa da "yoldan çıxdın", sonra "yola qayıt" çox geriyə atırdı).
+  // Qayda: maşın hint-in göstərdiyi hissənin yanındadırsa — ona inan; deyilsə bütün trekdə axtar və
+  // başqa hissənin üstündədirsə ora keç; heç bir hissənin yanında deyilsə göstərici YERİNDƏ DONUR.
+  locate(position, hint) {
+    const near = this.getNearest(position, hint);
+    const lim = this.halfWidth + 10;
+    if (near.d2 <= lim * lim) return near;
+    const full = this.getNearest(position);
+    if (full.d2 <= lim * lim) return full;
+    const i = ((hint ?? full.index) % this.N + this.N) % this.N;
+    return { index: i, t: i / this.N, lateral: full.lateral, onRoad: false, d2: full.d2 };
   }
 
   // AI üçün lookahead hədəf nöqtəsi

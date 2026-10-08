@@ -90,6 +90,52 @@ for (const trackId of TRACKS) {
   });
 }
 
+// QISAYOLDAN REAL KEÇİD: maşın yalnız MÖVQE ilə aparılır (yer göstəricisinə — wpHint — toxunulmur,
+// onu real sürüşdəki kimi Car.update hesablayır). Buq: qısayolda göstərici əsas yol boyu qaçıb
+// pulsuz dövrə yazırdı, sonra arxada ilişib qalırdı — maşın yolda olsa da "yoldan çıxdın" deyilir,
+// "yola qayıt" isə çox geriyə atırdı (Payız Meşəsi).
+for (const trackId of ['canyon', 'riviera', 'frost', 'autumn', 'lava']) {
+  test(`yarış: qısayoldan sonra yer göstəricisi düzgündür — ${trackId}`, async ({ page }) => {
+    test.setTimeout(240_000);
+    await boot(page);
+    await startMode(page, { mode: 'race', trackId, carId: 'blaze', laps: 9, difficulty: 'normal' });
+    await page.waitForFunction(() => window.__active.raceManager?.state === 'racing', null, { timeout: 30_000 });
+    const r = await page.evaluate(async () => {
+      const sc = window.__active, tr = sc.track, N = tr.points.length, car = sc.playerCar, me = sc.raceManager.getPlayer(), out = [];
+      const frame = () => new Promise((res) => requestAnimationFrame(res));
+      me.controller = null;
+      const at = (p, tg) => { car.position.set(p.x, 0, p.z); car.heading = Math.atan2(tg.x, tg.z); car.velocity.set(tg.x * 30, 0, tg.z * 30); };
+      const main = async (from, to) => { for (let i = from; i !== to; i = (i + 1) % N) { at(tr.points[i], tr.tangents[i]); await frame(); } };
+      let cur = Math.round(0.97 * N), maxLap = -9, cutFrames = 0;
+      for (const b of [...tr.branches].sort((x, y) => x.t0 - y.t0)) {
+        const i0 = Math.round(b.t0 * N), i1 = Math.round(b.t1 * N);
+        await main(cur, (i0 - 4 + N) % N);
+        for (let i = 0; i < b.points.length; i++) { at(b.points[i], b.tangents[i]); await frame(); if (me.cut) cutFrames++; maxLap = Math.max(maxLap, me.lap); }
+        cur = (i1 + 6) % N;
+        await main(cur, (i1 + 22) % N); cur = (i1 + 22) % N;
+        const full = tr.getNearest(car.position);
+        out.push({ br: b.t0, hintErr: +Math.abs(car.trackT - full.t).toFixed(3), onRoad: car.onRoad, offRoad: +car.offRoad.toFixed(2), cut: me.cut, lap: me.lap });
+      }
+      const lapBefore = me.lap;
+      await main(cur, Math.round(0.03 * N));
+      sc._rescueCooldown = 0; sc._rescueVisible = true; const tBefore = car.trackT; sc._rescuePlayer(true);
+      return { out, maxLap, cutFrames, lapBefore, lapAfter: me.lap, rescueMove: +Math.abs(car.trackT - tBefore).toFixed(3) };
+    });
+    console.log(trackId, JSON.stringify(r));
+    for (const b of r.out) {
+      expect(b.hintErr, `${trackId} şaxə ${b.br}: göstərici maşının real yerindədir`).toBeLessThan(0.01);
+      expect(b.onRoad, `${trackId} şaxə ${b.br}: maşın yolda sayılır`).toBe(true);
+      expect(b.offRoad).toBe(0);
+      expect(b.cut).toBe(false);
+    }
+    expect(r.cutFrames, 'qısayolda "yolu kəsdin" sayılmır').toBe(0);
+    expect(r.maxLap, 'qısayol pulsuz dövrə yazmır').toBe(0);
+    expect(r.lapBefore).toBe(0);
+    expect(r.lapAfter, 'dövrə yalnız xətt keçiləndə sayılır').toBe(1);
+    expect(r.rescueMove, 'yolda ikən "yola qayıt" geriyə atmır').toBeLessThan(0.02);
+  });
+}
+
 test('yarış: "yolu kəsdin" xəbərdarlığı telefonda sığır (ru — ən uzun mətn)', async ({ browser }) => {
   test.setTimeout(120_000);
   const ctx = await browser.newContext({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });

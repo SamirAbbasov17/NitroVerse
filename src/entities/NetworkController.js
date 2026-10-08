@@ -90,7 +90,7 @@ export class NetworkController {
     c._shield.visible = c.shieldTimer > 0;
 
     // Trek proqresi (dövrə sayımı + canlı sıralama üçün)
-    const near = track.getNearest(c.position, c.wpHint);
+    const near = track.locate ? track.locate(c.position, c.wpHint) : track.getNearest(c.position, c.wpHint);
     c.wpHint = near.index;
     c.trackT = near.t;
     c.lateral = near.lateral;

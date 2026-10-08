@@ -402,7 +402,7 @@ export class Car {
     }
 
     // Trek proqresi + yol yoxlaması
-    const near = track.getNearest(this.position, this.wpHint);
+    const near = track.locate ? track.locate(this.position, this.wpHint) : track.getNearest(this.position, this.wpHint);
     this.wpHint = near.index;
     this.trackT = near.t;
     this.lateral = near.lateral;
