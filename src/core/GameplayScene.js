@@ -1604,7 +1604,8 @@ export class GameplayScene {
     this.camera.position.lerp(desired, k);
 
     // Sürət zolaqları (külək effekti) + mühərrik səsi
-    this.speedLines?.update(dt, speedT, car.velocity.length());
+    // yağışda sürət xətləri çəkilmir: damcılarla qarışırdı — sürəti yağış özü göstərir (bax Weather)
+    this.speedLines?.update(dt, this.weather?.showsSpeed ? 0 : speedT, car.velocity.length());
     (this.postMotion ||= {}).speed = speedT; this.postMotion.boost = car.boostTimer > 0 || car.driftBoostT > 0 ? 1 : 0; // PostFX sürət effektləri
     audio.setEngine(speedT, car.boostTimer > 0);
     // Təkər cığıltısı (drift), yoldan kənar uğultu, sürət küləyi

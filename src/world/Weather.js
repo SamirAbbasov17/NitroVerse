@@ -65,6 +65,8 @@ export class Weather {
     this.mesh.renderOrder = 5;
     scene.add(this.mesh);
     this._t = 0;
+    this._cvx = 0; this._cvz = 0;          // kameranın hamarlanmış sürəti
+    this.showsSpeed = !!K.streak;          // yağış sürəti özü göstərir → sürət xətləri lazım deyil
   }
 
   update(dt, camera) {
@@ -73,6 +75,19 @@ export class Weather {
     const cx = camera.position.x, cz = camera.position.z;
     const half = BOX / 2;
     const wx = K.wind ? K.wind[0] : 0, wz = K.wind ? K.wind[2] : 0;
+    // KAMERANIN SÜRƏTİ (hamarlanmış): yağış damcısı kameraya NİSBƏTƏN hərəkəti boyunca çəkilir —
+    // maşın sürətləndikcə damcılar ona doğru əyilir və uzanır (real yağışda olduğu kimi). Yağışlı
+    // trekdə sürət hissini bu verir; ayrıca ağ "sürət xətləri" yağışla qarışırdı (oyunçu rəyi) və
+    // yağışda çəkilmir (bax GameplayScene: weather.showsSpeed).
+    if (this._lx !== undefined && dt > 0) {
+      const jx = (cx - this._lx) / dt, jz = (cz - this._lz) / dt;
+      if (Math.hypot(jx, jz) < 140) {          // teleport/yenidən yerləşdirmə sayılmır
+        const a = Math.min(1, dt * 6);
+        this._cvx += (jx - this._cvx) * a; this._cvz += (jz - this._cvz) * a;
+      }
+    }
+    this._lx = cx; this._lz = cz;
+    const rvx = wx - this._cvx, rvz = wz - this._cvz;     // damcının kameraya nisbi üfüqi sürəti
     for (let i = 0; i < n; i++) {
       const j = i * 3;
       p[j + 1] -= this.v[i] * dt;
@@ -91,9 +106,13 @@ export class Weather {
       if (Math.abs(cz - z) > half) z = cz + (Math.random() - 0.5) * BOX;
       p[j] = x; p[j + 2] = z;
       if (K.streak) {
+        // quyruq = damcının (kameraya nisbətən) bir an əvvəlki yeri; üfüqi pay 2.6 m-lə məhdudlanır
         const k = i * 6, s = K.streak / this.v[i];
+        let tx = -rvx * s * 1.15, tz = -rvz * s * 1.15;
+        const th = Math.hypot(tx, tz);
+        if (th > 2.6) { tx *= 2.6 / th; tz *= 2.6 / th; }
         out[k] = x; out[k + 1] = p[j + 1]; out[k + 2] = z;
-        out[k + 3] = x + wx * s; out[k + 4] = p[j + 1] + K.streak; out[k + 5] = z + wz * s;
+        out[k + 3] = x + tx; out[k + 4] = p[j + 1] + K.streak; out[k + 5] = z + tz;
       } else {
         out[j] = x; out[j + 1] = p[j + 1]; out[j + 2] = z;
       }
