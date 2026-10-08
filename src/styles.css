@@ -2719,3 +2719,22 @@ body.flt-sepia #filter-fx {
   .cg-banner__txt b { font-size: 13px; }
   .cg-banner__txt span { font-size: 11px; }
 }
+
+
+/* ============ Tester keçidi (2026-10-09): telefonda toxunuş hədəfləri və klaviatura işarələri ============
+   Görünüş dəyişmir — düymənin ətrafına görünməz toxunuş sahəsi əlavə olunur (::after). Menyunun
+   yuxarı ikon düymələri 29×29, altbilgi düymələri 28, keçid yazıları 16 px hündürlükdə idi —
+   barmaqla tutmaq çətin idi (tövsiyə ≥ 40 px). */
+@media (pointer: coarse) {
+  .menu-sound, .menu-foot__btn, .linkbtn, .set-opt, .set-tab { position: relative; }
+  .menu-sound::after, .menu-foot__btn::after, .linkbtn::after, .set-opt::after, .set-tab::after { content: ''; position: absolute; }
+  .set-tab::after { inset: -6px 0; }
+  .who-act { position: relative; }
+  .who-act::after { content: ''; position: absolute; inset: -5px -2px; }
+  .menu-sound::after { inset: -8px -3px; }
+  .menu-foot__btn::after { inset: -8px -2px; }
+  .linkbtn::after { inset: -13px -6px; }
+  .set-opt::after { inset: -6px -2px; }
+  /* klaviatura işarələri (E, Q) və mətnli silah adı telefonda mənasızdır — düymələr özü göstərir */
+  .fhud__key, .fhud__lunge, .ahud__item { display: none; }
+}
