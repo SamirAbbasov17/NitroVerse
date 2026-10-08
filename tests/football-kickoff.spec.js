@@ -18,7 +18,7 @@ test('futbol: başlanğıcda nitro + zərbə hər dəfə qol vermir', async ({ p
       sc._state = 'goal'; sc._goalT = 0.05;
       for (let i = 0; i < 60 && sc._state !== 'play'; i++) await frame();
       const car = sc.playerCar; car.nitroCharges = 1; car._lungeCd = 0;
-      const b0 = sc.scores.blue; let lunged = false, t = 0, maxBall = 0, keeperGap = null;
+      const b0 = sc.scores.blue; let lunged = false, t, maxBall = 0;
       sc.input.touch.throttle = 1; sc.input.touch.steer = 0;
       sc._useNitro();
       const t0 = performance.now();
