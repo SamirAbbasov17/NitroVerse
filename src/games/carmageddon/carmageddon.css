@@ -1,0 +1,120 @@
+/* CARMAGEDDON — başlıq ekranı. NitroVerse-in görünüşündən qəsdən ayrıdır: piksel şrifti, isti qürub
+   palitrası, sərt künclər. Ölçülər kətanın (480×270) miqyasına bağlıdır: --px = bir oyun pikseli. */
+.cg {
+  --cg-ink: #12080c;
+  --cg-bone: #f6e7c8;
+  --cg-rust: #e2571c;
+  --cg-amber: #ffb53a;
+  --cg-blood: #b3261e;
+  --cg-dim: #c9a98a;
+  --cg-caps: 'Tiny5', 'Pixelify Sans', 'Russo One', sans-serif;   /* iri hərfli nişanlar və düymələr */
+  --px: max(2px, min(100vw / 480, 100vh / 270));
+  position: fixed; inset: 0; z-index: 500; overflow: hidden;
+  background: var(--cg-ink); color: var(--cg-bone);
+  font-family: 'Pixelify Sans', 'Rajdhani', system-ui, sans-serif;
+  opacity: 0; transition: opacity 0.45s ease;
+  user-select: none; -webkit-user-select: none;
+}
+.cg.is-ready { opacity: 1; }
+body.cg-on #game-canvas, body.cg-on #mute-btn { visibility: hidden; }
+
+/* kətan ekranı ÖRTÜR (16:9-dan fərqli ekranda kənarlar kəsilir), piksellər iti qalır */
+.cg__bg {
+  position: absolute; left: 50%; top: 50%;
+  width: max(100vw, 100vh * 16 / 9); height: max(100vh, 100vw * 9 / 16);
+  transform: translate(-50%, -50%);
+  image-rendering: pixelated; image-rendering: crisp-edges;
+}
+.cg__vignette {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(18, 8, 12, 0.88) 0%, rgba(18, 8, 12, 0.62) 30%, rgba(18, 8, 12, 0) 58%),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.16) 0, rgba(0, 0, 0, 0.16) 1px, transparent 1px, transparent 3px);
+}
+
+.cg__ui {
+  position: absolute; left: clamp(16px, 5vw, 80px); top: 50%; transform: translateY(-50%);
+  width: min(46vw, 620px); display: flex; flex-direction: column; align-items: flex-start;
+}
+.cg__top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: clamp(6px, 1.4vh, 14px); }
+.cg__studio { font-family: var(--cg-caps); font-size: clamp(12px, 1.7vh, 16px); letter-spacing: 0.2em; color: var(--cg-dim); text-transform: uppercase; }
+.cg__wip {
+  display: inline-flex; align-items: center; gap: 7px; padding: 3px 9px;
+  font-family: var(--cg-caps); font-size: clamp(12px, 1.7vh, 16px); letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--cg-ink); background: var(--cg-amber); box-shadow: 3px 3px 0 var(--cg-ink);
+}
+.cg__wip i { width: 7px; height: 7px; background: var(--cg-blood); animation: cg-blink 1.1s steps(2) infinite; }
+
+.cg__logo { width: 100%; max-width: 620px; height: auto; image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+
+.cg__tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: clamp(4px, 1vh, 10px); }
+.cg__tags span {
+  padding: 3px 9px; font-family: var(--cg-caps); font-size: clamp(12px, 1.8vh, 17px); letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--cg-bone); border: 2px solid var(--cg-rust); background: rgba(18, 8, 12, 0.55);
+}
+.cg__pitch {
+  margin: clamp(8px, 1.8vh, 18px) 0 clamp(10px, 2.4vh, 26px); max-width: 30em;
+  /* uzun mətn də Tiny5: Pixelify Sans-ın kirili (д, е) oxunmur */
+  font-family: var(--cg-caps); font-size: clamp(14px, 2.1vh, 19px); font-weight: 400; line-height: 1.45; letter-spacing: 0.03em; color: var(--cg-dim);
+}
+
+.cg__menu { display: flex; flex-direction: column; gap: clamp(5px, 1.1vh, 10px); width: min(100%, 360px); }
+.cg__btn {
+  position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: clamp(7px, 1.5vh, 13px) 16px; cursor: pointer; text-align: left;
+  font: inherit; color: var(--cg-bone);
+  background: rgba(18, 8, 12, 0.72); border: 2px solid #5a2a24; border-radius: 0;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.55);
+}
+.cg__btn b { font-family: var(--cg-caps); font-size: clamp(17px, 2.7vh, 26px); font-weight: 400; letter-spacing: 0.1em; text-transform: uppercase; line-height: 1.15; }
+.cg__btn em { font-family: var(--cg-caps); font-style: normal; font-size: clamp(11px, 1.5vh, 14px); letter-spacing: 0.1em; text-transform: uppercase; color: var(--cg-ink); background: var(--cg-dim); padding: 2px 7px; flex: none; }
+.cg__btn.is-locked b { color: var(--cg-dim); }
+.cg__btn.is-selected { border-color: var(--cg-amber); background: rgba(226, 87, 28, 0.28); transform: translateX(6px); }
+.cg__btn.is-selected::before {
+  content: ''; position: absolute; left: -18px; top: 50%; margin-top: -6px;
+  border: 6px solid transparent; border-left-color: var(--cg-amber);
+  animation: cg-nudge 0.7s steps(2) infinite;
+}
+.cg__btn:active { transform: translate(8px, 2px); box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.55); }
+
+.cg__note { font-family: var(--cg-caps); letter-spacing: 0.03em; min-height: 2.8em; margin-top: clamp(6px, 1.4vh, 14px); max-width: 30em; font-size: clamp(12px, 1.8vh, 16px); line-height: 1.4; color: var(--cg-amber); opacity: 0; }
+.cg__note.is-on { animation: cg-note 6s steps(12) forwards; }
+
+/* qəhrəmanın sözü: piksel "nitq balonu" */
+.cg__bubble {
+  position: absolute; right: clamp(16px, 26vw, 420px); top: clamp(14px, 16vh, 150px);
+  max-width: min(46vw, 320px); padding: 9px 13px;
+  font-family: var(--cg-caps); font-size: clamp(14px, 2.1vh, 19px); font-weight: 400; line-height: 1.35; letter-spacing: 0.03em;
+  color: var(--cg-ink); background: var(--cg-bone); border: 3px solid var(--cg-ink); box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+}
+.cg__bubble::after {
+  content: ''; position: absolute; right: 22px; bottom: -13px;
+  border: 7px solid transparent; border-top-color: var(--cg-ink); border-right-color: var(--cg-ink);
+}
+.cg__bubble.is-on { animation: cg-pop 0.22s steps(3); }
+
+.cg__foot {
+  position: absolute; left: clamp(16px, 5vw, 80px); bottom: clamp(8px, 2vh, 18px);
+  font-family: var(--cg-caps); font-size: clamp(11px, 1.5vh, 14px); letter-spacing: 0.14em; text-transform: uppercase; color: rgba(246, 231, 200, 0.5);
+}
+
+@keyframes cg-blink { 50% { opacity: 0.15; } }
+@keyframes cg-nudge { 50% { transform: translateX(3px); } }
+@keyframes cg-pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes cg-note { 0% { opacity: 0; } 6% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
+
+/* telefon (alçaq ekran): mətn sıxlaşır, təsvir abzası qısalır */
+@media (max-height: 480px) {
+  .cg__ui { width: min(52vw, 420px); }
+  .cg__pitch { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .cg__note { min-height: 1.4em; }
+  .cg__bubble { right: 30vw; top: 8vh; }
+}
+@media (max-aspect-ratio: 1/1) {
+  /* şaquli ekran: menyu aşağıda, qəhrəman yuxarıda görünsün */
+  .cg__ui { top: auto; bottom: 8vh; transform: none; width: 88vw; }
+  .cg__vignette { background: linear-gradient(0deg, rgba(18, 8, 12, 0.92) 0%, rgba(18, 8, 12, 0.6) 45%, rgba(18, 8, 12, 0) 70%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cg__wip i, .cg__btn.is-selected::before { animation: none; }
+}

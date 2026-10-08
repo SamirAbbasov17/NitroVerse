@@ -84,6 +84,7 @@ function goMenu() {
     onPreviewCar: (c) => showcase.setCar(c),
     onPreviewDemo: (kind, cos) => showcase.setDemo(kind, cos),
     gfx,
+    onOpenGame: openGame,
   });
   activeMenu = menu;
   if (import.meta.env.DEV) window.__menu = menu;
@@ -92,6 +93,16 @@ function goMenu() {
   try {
     if (sessionStorage.getItem('apexReopen') === 'settings') { sessionStorage.removeItem('apexReopen'); menu.showSettings('lang'); }
   } catch { /* gizli rejim */ }
+}
+
+// BAŞQA OYUNU AÇ (NitroVerse çox-oyunludur): yarış menyusu bağlanır, o biri oyun öz ekranı ilə açılır
+// və çıxanda bura qayıdır. Oyunun kodu yalnız seçiləndə yüklənir.
+function openGame(id) {
+  if (id !== 'carmageddon') return;
+  activeMenu = null;
+  social.setActivity('idle');
+  uiRoot.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  import('../carmageddon/index.js').then((m) => m.mount({ onExit: goMenu }), () => goMenu());
 }
 
 // Ayarlar ekranının qrafika körpüsü (Menu oyunu birbaşa tanımır)
@@ -124,6 +135,7 @@ function goLobby(net) {
     onPreviewCar: (c) => showcase.setCar(c),
     onPreviewDemo: (kind, cos) => showcase.setDemo(kind, cos),
     gfx,
+    onOpenGame: openGame,
   });
   menu.net = net;
   menu._lobbyCarId = net.players.find((p) => p.id === net.selfId)?.carId || null;

@@ -6,4 +6,6 @@ import { mount as mountRacing } from './racing/index.js';
 
 export const GAMES = [
   { id: 'racing', mount: mountRacing },
+  // 'carmageddon' — src/games/carmageddon/ (hazırlanır). Yarış menyusundan açılır və yalnız seçiləndə
+  // yüklənir (bax racing/index.js → openGame), ona görə burada statik idxal yoxdur.
 ];

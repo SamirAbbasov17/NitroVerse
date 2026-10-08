@@ -2,7 +2,7 @@
 
 Brauzerdə işləyən oyun dünyası. **Tək oyun deyil** — içində çoxlu oyun olacaq.
 Hazırda: 3D low-poly yarış oyunu (yarış — 9 trek, zen, futbol 3v3, arena, onlayn).
-Növbəti: 2D Carmageddon (visual novel + 2D oynanış). Sahibi: Samir Abbasov.
+Hazırlanır: Carmageddon — hekayə əsaslı post-apokaliptik yarış, piksel art (hələlik başlıq ekranı). Sahibi: Samir Abbasov.
 
 İstifadəçi ilə **Azərbaycan dilində** danış. Kod şərhləri və commit mesajları da Azərbaycan dilindədir.
 
@@ -39,6 +39,7 @@ npm run test:arena   # arena silahları, mina, lazer, vuruş sayğacı
 npm run test:track-map # trek sxemi + həndəsə (yeni trek/şaxə çəkəndə)
 npm run test:zen-contact # zen: təkərlər yerə, gövdə maneəyə girmir — ~7 dəq
 LIVE_URL=http://… npx playwright test tests/live.spec.js  # canlı saytın tüstü yoxlaması (deploydan sonra)
+npm run test:carmageddon # Carmageddon başlıq ekranı: açılır, qəhrəman canlıdır, telefonda sığır
 npm run test:coach   # ilk yarış ipucları: görünür, itir, təkrarlanmır
 npm run test:results # nəticə ekranı: dövrə vaxtları, şəxsi rekord, telefonda sığır
 npm run test:settings # ayarlar ekranı: seçimlər tətbiq olunur, telefonda sığır
@@ -59,6 +60,7 @@ src/main.js          giriş nöqtəsi: platformanı qurur, oyunu açır
 src/platform.js      bütün oyunların ortaq təməli: kətan, giriş, səs kilidi, hesab/sosial kimlik, bildirişlər
 src/games/           oyunların siyahısı (index.js) və hər oyunun öz qovluğu
   racing/index.js    yarış oyunu: goMenu / startGame / startOnlineGame, nəticə, dəvət axını
+  carmageddon/       2-ci oyun (hazırlanır): piksel başlıq ekranı; üslub — docs/CARMAGEDDON-STYLE.md
 src/core/            Game.js (renderer+loop), səhnələr, audio, i18n, effektlər
   GameplayScene.js   yarış          EndlessScene.js   zen (sonsuz yol)
   FootballScene.js   futbol 3v3     ArenaScene.js     battle royale

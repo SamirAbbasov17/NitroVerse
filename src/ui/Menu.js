@@ -46,8 +46,9 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
 const grpTitle = (g) => (['cars', 'skin'].includes(g.key) ? g.title : t('cos.grp.' + g.key));
 
 export class Menu {
-  constructor(root, { onStart, onStartOnline, thumbs = {}, onPreviewTrack, onPreviewCar, onPreviewDemo, gfx = null }) {
+  constructor(root, { onStart, onStartOnline, thumbs = {}, onPreviewTrack, onPreviewCar, onPreviewDemo, gfx = null, onOpenGame = null }) {
     this.root = root;
+    this.onOpenGame = onOpenGame;   // başqa oyunu aç (NitroVerse çox-oyunludur — bax src/games/)
     this.gfx = gfx;
     this.onStart = onStart;
     this.onStartOnline = onStartOnline;
@@ -100,7 +101,15 @@ export class Menu {
       step: '01', stepLabel: t('modes.step'),
       title: t('modes.title'),
       // --scroll: alçaq ekranlarda panel deyil, siyahının ÖZÜ sürüşür (nav düymələri görünür)
-      body: `<div class="menu-list menu-list--scroll">${rows}</div>`,
+      // AYRI OYUN zolağı (rejim siyahısının üstündə, sürüşmədən həmişə görünür): seçiləndə NitroVerse
+      // menyusu bağlanır və Carmageddon öz başlıq ekranı ilə açılır
+      body: `${this.onOpenGame ? `
+        <button class="cg-banner" data-mode="carmageddon">
+          <span class="cg-banner__icon">${icon('skull')}</span>
+          <span class="cg-banner__txt"><b>CARMAGEDDON</b><span>${t('mode.cg.d')}</span></span>
+          <em class="cg-banner__badge">${t('cg.wip')}</em>
+          <span class="cg-banner__go">${icon('arrowRight')}</span>
+        </button>` : ''}<div class="menu-list menu-list--scroll">${rows}</div>`,
       nav: `<button class="btn btn--primary" data-next>${t('ui.continue')}</button>`,
       hint: true,
       foot: true,   // ☕ dəstək + 🐞 xəta bildir (yalnız ana menyuda)
@@ -109,6 +118,7 @@ export class Menu {
     this.root.querySelectorAll('[data-mode]').forEach((el) => {
       el.onclick = () => {
         if (el.dataset.mode === 'online') { this.showOnline(); return; }
+        if (el.dataset.mode === 'carmageddon') { this.onOpenGame?.('carmageddon'); return; }
         this.sel.mode = el.dataset.mode;
         // Sonsuz/Futbol rejimlərində trek seçimi yoxdur — birbaşa maşına
         if (['free', 'football', 'arena'].includes(this.sel.mode)) this.showCars();

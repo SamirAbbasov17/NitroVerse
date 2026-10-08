@@ -44,6 +44,7 @@
     "test:results": "playwright test tests/results.spec.js",
     "test:coach": "playwright test tests/coach.spec.js",
     "test:feel-arena": "playwright test tests/feel-arena.spec.js",
+    "test:carmageddon": "playwright test tests/carmageddon.spec.js",
     "test:load": "npm run build && playwright test tests/load.spec.js"
   },
   "dependencies": {
