@@ -33,6 +33,11 @@ export class Notices {
         actions[+b.dataset.i]?.onClick?.();
       };
     });
+    // toxunuş bildirişi dərhal bağlayır (düymələrdən kənar) — gözləmək məcburi deyil
+    n.addEventListener('click', (e) => { if (!e.target.closest('.notice__btn')) this.dismiss(n); });
+    // MÜDDƏT: bildiriş məlumat verib tez getməlidir. Düyməsiz olan oxunma vaxtı qədər qalır
+    // (3–5 s, mətnin uzunluğuna görə); cavab gözləyən (düyməli) ən çox 12 s.
+    life = actions.length ? Math.min(life, 12) : Math.min(life, Math.max(3, Math.min(5, 2.2 + text.length * 0.045)));
     this.el.appendChild(n);
     // Yığın böyüməsin: maksimum 3 bildiriş
     // (dismiss elementi 250 ms sonra silir — `while (children.length > 3)` heç vaxt bitmirdi və
