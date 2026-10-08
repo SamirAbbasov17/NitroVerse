@@ -270,3 +270,65 @@ test('onlayn arena: silahlar hər iki tərəfdə görünür, zərər və elenmə
   expect(res.guestSeesHostKills, 'qonaq hostun vuruş sayını eyni görür').toBe(1);
   await host.ctx.close(); await guest.ctx.close();
 });
+
+// ÜÇ OYUNÇU (host + 2 qonaq): qonaqlar bir-birini düz görür (mövqe hostdan keçir), bir qonağın
+// atəşi o biri qonağı vurur və üç ekranda eyni nəticə görünür, elenmə hamıda sinxrondur.
+test('onlayn arena: üç oyunçu — qonaqlar bir-birini görür, zərər və elenmə üç ekranda eynidir', async ({ browser }) => {
+  test.setTimeout(240_000);
+  const host = await open(browser);
+  const g1 = await open(browser);
+  const g2 = await open(browser);
+  const all = [host.page, g1.page, g2.page];
+  const errs = [];
+  for (const p of all) p.on('pageerror', (e) => errs.push(e.message));
+  const code = await host.page.evaluate(async () => {
+    const net = new window.__online.NetRoom(); window.__net = net;
+    net.on('start', (msg) => window.__online.start(net, msg));
+    return net.createRoom('Üçlük', 'Ev sahibi');
+  });
+  for (const [g, name] of [[g1, 'Qonaq A'], [g2, 'Qonaq B']]) {
+    await g.page.evaluate(async ([c, n]) => {
+      const net = new window.__online.NetRoom(); window.__net = net;
+      net.on('start', (msg) => window.__online.start(net, msg));
+      await net.joinRoom(c, n); net.setReady(true);
+    }, [code, name]);
+  }
+  await host.page.waitForFunction(() => window.__net.players.length === 3 && window.__net.players.every((p) => p.isHost || p.ready), null, { timeout: 20_000 });
+  await host.page.evaluate(() => { window.__net.setMode('arena'); window.__net.startGame(); });
+  for (const p of all) await p.waitForFunction(() => window.__active?._state === 'play' && !!window.__active.racers, null, { timeout: 60_000 });
+  await host.page.evaluate(() => {
+    const sc = window.__active;
+    sc._botDrive = (r) => { r.car.velocity.set(0, 0, 0); r.car.vF = 0; };
+    sc._hostSpawnPickups = () => {};
+    sc.racers.filter((x) => x.isBot).forEach((b, i) => { b.car.position.set(-85 + i * 5, 0, -40); });
+  });
+  for (const p of all) await p.evaluate(() => { const sc = window.__active; sc.obstacles.length = 0; sc.pickups.forEach((pk, i) => { sc.scene.remove(pk.mesh); sc.pickups.delete(i); }); });
+  const roster = await Promise.all(all.map((p) => p.evaluate(() => { const sc = window.__active; return { total: sc.racers.length, humans: sc.racers.filter((r) => !r.isBot).length, bots: sc.racers.filter((r) => r.isBot).length }; })));
+  expect(roster, 'hər ekranda 3 oyunçu + 3 bot').toEqual([{ total: 6, humans: 3, bots: 3 }, { total: 6, humans: 3, bots: 3 }, { total: 6, humans: 3, bots: 3 }]);
+  // mövqelər: A (60, 0) şimala baxır, B onun 18 m qabağında, host uzaqda
+  await hold(host.page, -60, 60, 0);
+  await hold(g1.page, 60, 0, 0);
+  await hold(g2.page, 60, 18, 0);
+  const sees = (page, name) => page.evaluate((n) => { const r = window.__active.racers.find((x) => x.name === n); return r ? { x: +r.car.position.x.toFixed(1), z: +r.car.position.z.toFixed(1), hp: Math.round(r.car.hp), alive: r.car.alive } : null; }, name);
+  await g1.page.waitForFunction(() => { const r = window.__active.racers.find((x) => x.name === 'Qonaq B'); return r && Math.abs(r.car.position.x - 60) < 2.5 && Math.abs(r.car.position.z - 18) < 2.5; }, null, { timeout: 12_000 });
+  await g2.page.waitForFunction(() => { const r = window.__active.racers.find((x) => x.name === 'Qonaq A'); return r && Math.abs(r.car.position.x - 60) < 2.5 && Math.abs(r.car.position.z) < 2.5; }, null, { timeout: 12_000 });
+  await host.page.waitForFunction(() => { const r = window.__active.racers.find((x) => x.name === 'Qonaq B'); return r && Math.abs(r.car.position.z - 18) < 2.5; }, null, { timeout: 12_000 });
+  // A raket atır → B 30 can itirir; üç ekranda B-nin canı 70-dir
+  await g1.page.evaluate(() => { const sc = window.__active; sc.racers.find((r) => r.isLocal).item = 'missile'; sc._useItem(); });
+  for (const p of all) await p.waitForFunction(() => { const r = window.__active.racers.find((x) => x.name === 'Qonaq B'); return r && r.car.hp <= 70; }, null, { timeout: 10_000 });
+  const hpB = await Promise.all(all.map((p) => sees(p, 'Qonaq B')));
+  // B-nin canı 5-ə endirilir, A şimşəklə bitirir → hamıda B ölüdür, A-nın vuruşu 1-dir
+  await g2.page.evaluate(() => { const sc = window.__active; const me = sc.racers.find((r) => r.isLocal); me.car.hp = 5; sc._sendHp(me); });
+  await g1.page.waitForFunction(() => window.__active.racers.find((x) => x.name === 'Qonaq B').car.hp <= 5, null, { timeout: 8000 });
+  await g1.page.evaluate(() => { const sc = window.__active; sc.racers.find((r) => r.isLocal).item = 'bolt'; sc._useItem(); });
+  for (const p of all) await p.waitForFunction(() => window.__active.racers.find((x) => x.name === 'Qonaq B').car.alive === false, null, { timeout: 10_000 });
+  await host.page.waitForTimeout(600);
+  const killsA = await Promise.all(all.map((p) => p.evaluate(() => window.__active.racers.find((x) => x.name === 'Qonaq A').kills || 0)));
+  const alive = await Promise.all(all.map((p) => p.evaluate(() => window.__active.racers.filter((x) => x.car.alive !== false).length)));
+  console.log(JSON.stringify({ hpB: hpB.map((x) => x.hp), killsA, alive }));
+  expect(errs, 'səhifə xətası yoxdur').toEqual([]);
+  expect(hpB.map((x) => x.hp), 'raketdən sonra B-nin canı üç ekranda').toEqual([70, 70, 70]);
+  expect(killsA, 'A-nın vuruş sayı üç ekranda').toEqual([1, 1, 1]);
+  expect(alive, 'sağ qalanların sayı üç ekranda').toEqual([5, 5, 5]);
+  for (const g of [host, g1, g2]) await g.ctx.close();
+});
