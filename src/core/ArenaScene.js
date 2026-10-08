@@ -22,7 +22,10 @@ import { makeNameTag, makeFloodlight, makeSponsorBoard } from './AssetFactory.js
 import { mergeStaticGroup } from './MergeUtils.js';
 
 // ⚔️ ARENA — battle royale: daralan zona, təsadüfi ability-lər, son qalan qalib.
-const ARENA_R = 104;       // platforma radiusu
+// 2026-10-08: 104 → 124 (sahə ~42% böyüdü — oyunçu rəyi: "arena balacadır"). Daxili düzülüş
+// (sütunlar, bonus padləri, mərkəzi lazer) K ilə eyni nisbətdə genişlənir; zona eyni vaxtda daralır.
+const ARENA_R = 124;       // platforma radiusu
+const K = ARENA_R / 104;   // köhnə ölçüyə görə yazılmış düzülüş radiuslarının miqyası
 const HP_MAX = 100;
 const ZONE_HOLD = 18;      // ilk daralmaya qədər (s)
 const ZONE_END_T = 165;    // bu vaxta minimuma çatır (s)
@@ -59,7 +62,7 @@ const MINE_R = 4.6;        // partlayış radiusu
 const BOLT_DMG = 14;
 const BOLT_RANGE = 46;
 // Mərkəzi lazer: oyunun 35-ci saniyəsindən fırlanan iki qol (mərkəz meydanı "təhlükəsiz düşərgə" olmasın)
-const SWEEP_START = 35, SWEEP_R0 = 7, SWEEP_R1 = 36, SWEEP_SPEED = 0.42, SWEEP_DMG = 14;
+const SWEEP_START = 35, SWEEP_R0 = 7, SWEEP_R1 = 36 * K, SWEEP_SPEED = 0.42, SWEEP_DMG = 14;
 
 const LEGACY_FEEL = (() => { try { return localStorage.getItem('apexArenaFeel') === 'old'; } catch { return false; } })();
 // Arenaya məxsus v2 əmsalları (yarışdakı dəyər mötərizədə). Ölçmə: tests/feel-arena.spec.js
@@ -179,7 +182,7 @@ export class ArenaScene {
     const floorTex = new THREE.CanvasTexture(cv);
     floorTex.colorSpace = THREE.SRGBColorSpace;
     floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping;
-    floorTex.repeat.set(9, 9);
+    floorTex.repeat.set(Math.round(9 * K), Math.round(9 * K));   // plitə ölçüsü eyni qalır
     floorTex.anisotropy = 4;
     const floor = new THREE.Mesh(
       new THREE.CircleGeometry(ARENA_R, 48),
@@ -283,7 +286,7 @@ export class ArenaScene {
     const crateMat = new THREE.MeshStandardMaterial({ color: 0xb06a2a, flatShading: true, roughness: 0.8 });
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2 + 0.4;
-      const rr = 46;
+      const rr = 46 * K;
       const p = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 3.0, 9, 7), pillarMat);
       p.position.set(Math.cos(a) * rr, 4.5, Math.sin(a) * rr);
       this.scene.add(p);
@@ -309,7 +312,7 @@ export class ArenaScene {
     }
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2;
-      const rr = 24 + (i % 2) * 44;
+      const rr = (24 + (i % 2) * 44) * K;
       const c = new THREE.Mesh(new THREE.BoxGeometry(3.4, 2.2, 3.4), crateMat);
       c.position.set(Math.cos(a) * rr, 1.1, Math.sin(a) * rr);
       c.rotation.y = a * 1.7;
@@ -357,19 +360,19 @@ export class ArenaScene {
     const padCandidates = [[0, 0]];
     for (let i = 0; i < 5; i++) {
       const a = (i / 5) * Math.PI * 2 + 0.25;
-      padCandidates.push([Math.cos(a) * 20, Math.sin(a) * 20]);
+      padCandidates.push([Math.cos(a) * 20 * K, Math.sin(a) * 20 * K]);
     }
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2 + 0.4 + Math.PI / 6; // sütunların arasında
-      padCandidates.push([Math.cos(a) * 44, Math.sin(a) * 44]);
+      padCandidates.push([Math.cos(a) * 44 * K, Math.sin(a) * 44 * K]);
     }
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2 + 0.28;
-      padCandidates.push([Math.cos(a) * 72, Math.sin(a) * 72]);
+      padCandidates.push([Math.cos(a) * 72 * K, Math.sin(a) * 72 * K]);
     }
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2 + 0.15 + Math.PI / 7;
-      padCandidates.push([Math.cos(a) * 92, Math.sin(a) * 92]);
+      padCandidates.push([Math.cos(a) * 92 * K, Math.sin(a) * 92 * K]);
     }
     for (const [px, pz] of padCandidates) {
       if (this.obstacles.some((o) => Math.hypot(px - o.x, pz - o.z) < o.r + 4)) continue;
