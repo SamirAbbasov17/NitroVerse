@@ -11,7 +11,7 @@ const D = {
     // Arena: silahlar, lazer, vuruş seriyası
     'ar.empty': 'boş', 'ar.item.missile': '🚀 Raket', 'ar.item.trishot': '🔱 Üçlü atəş', 'ar.item.mine': '💣 Mina', 'ar.item.bolt': '🌩️ Şimşək', 'ar.boltMiss': '🌩️ Mənzildə rəqib yoxdur', 'ar.double': '🔥 İKİLİ VURUŞ!', 'ar.multi': '💥 SERİYA!', 'ar.sweep': '⚠️ Mərkəzi lazer işə düşür!',
     'rot.text': 'Telefonu yana çevir', 'rot.sub': 'Oyun landşaft rejimində oynanılır',
-    'gate.tap': 'Başlamaq üçün toxun', 'gate.sub': 'Oyun tam ekranda açılacaq',
+    'gate.tap': 'Başla', 'gate.sub': 'Oyun tam ekranda açılır', 'gate.tag': 'Yarış · Sonsuz sürüş · Futbol · Arena',
     'acc.kicked': 'Hesabına başqa cihazdan daxil olunub, ona görə bu cihazda hesabdan çıxıldı. Bir hesab eyni anda yalnız bir cihazda açıq ola bilər. Bu sən deyildinsə, yenidən daxil ol və parolunu dəyiş.',
     'acc.needItem': '«{n}» almaq üçün hesab lazımdır.', 'acc.needCar': '«{n}» maşınını açmaq üçün hesab lazımdır.', 'acc.why': 'Daxil ol və ya pulsuz hesab yarat — qazandığın qızıl və aldıqların hesabında saxlanır.',
     'cos.needAcc': 'Almaq üçün hesab lazımdır.', 'cos.listening': 'Dinlənilir', 'cos.buy': 'Al', 'cos.use': 'Tax', 'cos.stop': 'Dayandır',
@@ -168,7 +168,7 @@ const D = {
     // Arena: silahlar, lazer, vuruş seriyası
     'ar.empty': 'empty', 'ar.item.missile': '🚀 Missile', 'ar.item.trishot': '🔱 Triple shot', 'ar.item.mine': '💣 Mine', 'ar.item.bolt': '🌩️ Lightning', 'ar.boltMiss': '🌩️ No rival in range', 'ar.double': '🔥 DOUBLE KILL!', 'ar.multi': '💥 KILLING SPREE!', 'ar.sweep': '⚠️ Central laser powering up!',
     'rot.text': 'Rotate your phone', 'rot.sub': 'The game is played in landscape',
-    'gate.tap': 'Tap to start', 'gate.sub': 'The game opens in full screen',
+    'gate.tap': 'Start', 'gate.sub': 'Opens in full screen', 'gate.tag': 'Race · Endless drive · Football · Arena',
     'acc.kicked': 'Your account was signed in on another device, so this device has been signed out. An account can be open on only one device at a time. If that wasn’t you, sign in again and change your password.',
     'acc.needItem': 'You need an account to buy "{n}".', 'acc.needCar': 'You need an account to unlock the {n}.', 'acc.why': 'Sign in or create a free account — your gold and purchases are saved to it.',
     'cos.needAcc': 'You need an account to buy this.', 'cos.listening': 'Now playing', 'cos.buy': 'Buy', 'cos.use': 'Use', 'cos.stop': 'Stop',
@@ -335,7 +335,7 @@ const D = {
     // Arena: silahlar, lazer, vuruş seriyası
     'ar.empty': 'пусто', 'ar.item.missile': '🚀 Ракета', 'ar.item.trishot': '🔱 Тройной выстрел', 'ar.item.mine': '💣 Мина', 'ar.item.bolt': '🌩️ Молния', 'ar.boltMiss': '🌩️ Нет соперника в радиусе', 'ar.double': '🔥 ДВОЙНОЕ УБИЙСТВО!', 'ar.multi': '💥 СЕРИЯ!', 'ar.sweep': '⚠️ Центральный лазер включается!',
     'rot.text': 'Поверни телефон', 'rot.sub': 'Игра идёт в горизонтальном режиме',
-    'gate.tap': 'Нажми, чтобы начать', 'gate.sub': 'Игра откроется на весь экран',
+    'gate.tap': 'Начать', 'gate.sub': 'Откроется на весь экран', 'gate.tag': 'Гонки · Свободная езда · Футбол · Арена',
     'acc.kicked': 'В твой аккаунт вошли с другого устройства, поэтому здесь выполнен выход. Аккаунт может быть открыт только на одном устройстве одновременно. Если это был не ты — войди снова и смени пароль.',
     'acc.needItem': 'Чтобы купить «{n}», нужен аккаунт.', 'acc.needCar': 'Чтобы открыть машину «{n}», нужен аккаунт.', 'acc.why': 'Войди или создай бесплатный аккаунт — золото и покупки сохраняются в нём.',
     'cos.needAcc': 'Для покупки нужен аккаунт.', 'cos.listening': 'Сейчас играет', 'cos.buy': 'Купить', 'cos.use': 'Выбрать', 'cos.stop': 'Стоп',
@@ -502,7 +502,7 @@ const D = {
     // Arena: silahlar, lazer, vuruş seriyası
     'ar.empty': 'boş', 'ar.item.missile': '🚀 Roket', 'ar.item.trishot': '🔱 Üçlü atış', 'ar.item.mine': '💣 Mayın', 'ar.item.bolt': '🌩️ Şimşek', 'ar.boltMiss': '🌩️ Menzilde rakip yok', 'ar.double': '🔥 ÇİFTE VURUŞ!', 'ar.multi': '💥 SERİ!', 'ar.sweep': '⚠️ Merkez lazer devreye giriyor!',
     'rot.text': 'Telefonu yan çevir', 'rot.sub': 'Oyun yatay modda oynanır',
-    'gate.tap': 'Başlamak için dokun', 'gate.sub': 'Oyun tam ekranda açılacak',
+    'gate.tap': 'Başla', 'gate.sub': 'Oyun tam ekranda açılır', 'gate.tag': 'Yarış · Sonsuz sürüş · Futbol · Arena',
     'acc.kicked': 'Hesabına başka bir cihazdan giriş yapıldı, bu yüzden bu cihazda oturum kapatıldı. Bir hesap aynı anda yalnızca tek cihazda açık olabilir. Bu sen değilsen tekrar giriş yap ve şifreni değiştir.',
     'acc.needItem': '«{n}» satın almak için hesap gerekli.', 'acc.needCar': '«{n}» aracını açmak için hesap gerekli.', 'acc.why': 'Giriş yap veya ücretsiz hesap oluştur — kazandığın altın ve aldıkların hesabında saklanır.',
     'cos.needAcc': 'Satın almak için hesap gerekli.', 'cos.listening': 'Şimdi çalıyor', 'cos.buy': 'Satın al', 'cos.use': 'Kullan', 'cos.stop': 'Durdur',

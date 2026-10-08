@@ -50,11 +50,18 @@ for (const ev of ['touchstart', 'click']) {
     if (++cəhd >= 16 || (audio.ctx && audio.ctx.state === 'running' && !audio._stalled)) clearInterval(tt);
   }, 500);
 }
-window.addEventListener('pointerdown', () => {
-  audio.resume();
-  // Telefonda ilk toxunuşdan etibarən (menyuda da) tam ekran + landşaft
-  if (!document.fullscreenElement) tryLandscapeFullscreen();
-});
+window.addEventListener('pointerdown', () => audio.resume());
+// TAM EKRANI QORU (telefon): istifadəçi tam ekrandan çıxıbsa (geri jesti, bildiriş paneli, başqa
+// tətbiqə keçid, klaviatura) növbəti toxunuşda geri qayıdır. Brauzer toxunuşu yalnız barmaq
+// QALXANDA "istifadəçi jesti" sayır — əvvəl sorğu pointerdown-da gedirdi və Android-də tez-tez rədd
+// olunurdu (oyunçu rəyi: "bəzən yenə tam ekran olmur"). Yazı xanasında yazarkən toxunulmur.
+for (const ev of ['pointerup', 'touchend', 'click']) {
+  window.addEventListener(ev, () => {
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    tryLandscapeFullscreen();
+  }, { capture: true, passive: true });
+}
 window.addEventListener('keydown', (e) => {
   audio.resume();
   const tag = e.target?.tagName;
@@ -75,14 +82,25 @@ if (import.meta.env.DEV) {
   import('three').then((m) => { window.__THREE = m; });
 }
 
-// Telefonda: oyun başlayanda tam ekran + landşaft kilidi cəhdi
-// (Android-də işləyir; iOS-da CSS "telefonu çevir" ekranı kömək edir)
+// Telefonda tam ekran + landşaft kilidi. Yalnız istifadəçi jestinin içində işləyir (brauzer qaydası);
+// artıq tam ekrandadırsa və ya cəhd gedirsə heç nə etmir. Android-də işləyir; iPhone Safari tam
+// ekranı dəstəkləmir — orada "ana ekrana əlavə et" (manifest: fullscreen) və CSS "telefonu çevir" qalır.
+const fsEl = document.documentElement;
+const fsReq = fsEl.requestFullscreen || fsEl.webkitRequestFullscreen;
+export const inFullscreen = () => !!(document.fullscreenElement || document.webkitFullscreenElement)
+  || !!window.matchMedia?.('(display-mode: fullscreen)').matches;
+let fsPending = null;   // gedən sorğu: eyni toxunuşun pointerup + click-i iki sorğu göndərməsin
 export function tryLandscapeFullscreen() {
-  if (!isTouchDevice()) return;
-  const el = document.documentElement;
-  Promise.resolve(el.requestFullscreen?.())
-    .then(() => screen.orientation?.lock?.('landscape'))
-    .catch(() => { /* dəstəklənmirsə sakitcə keç */ });
+  if (!isTouchDevice() || !fsReq) return Promise.resolve(false);
+  if (fsPending) return fsPending;
+  if (inFullscreen()) { screen.orientation?.lock?.('landscape')?.catch?.(() => {}); return Promise.resolve(true); }
+  let req;
+  try { req = fsReq.call(fsEl, { navigationUI: 'hide' }); } catch { req = Promise.reject(new Error('fs')); }
+  fsPending = Promise.resolve(req)
+    .then(() => { Promise.resolve(screen.orientation?.lock?.('landscape')).catch(() => { /* kilid dəstəklənmir */ }); return true; })
+    .catch(() => false)
+    .finally(() => { fsPending = null; });
+  return fsPending;
 }
 
 // "Telefonu yana çevir" ekranı index.html-də Azərbaycanca yazılıb — seçilmiş dilə keçirilir
@@ -92,40 +110,43 @@ export function tryLandscapeFullscreen() {
   if (rs) rs.textContent = t('rot.sub');
 }
 
-// BAŞLANĞIC QAPISI (telefon): brauzer tam ekrana yalnız toxunuşla keçməyə icazə verir. Əvvəl menyu
-// brauzer zolaqları ilə kiçik açılırdı və tam ekran ilk toxunuşda, menyunun ortasında gəlirdi
-// (istifadəçi rəyi: "menyudakılar balaca görsənir"). İndi menyudan ƏVVƏL bir toxunuşluq qapı durur:
-// toxunuş → tam ekran + landşaft → qapı açılır; menyu artıq tam ekranda görünür. Oyun bu vaxt
-// arxada yüklənir. Tam ekranı dəstəkləməyən brauzerdə (iPhone Safari) qapı göstərilmir.
-// DEV-də yalnız `localStorage apexGate='1'` ilə (testlər toxunuş gözləməsin).
+// BAŞLANĞIC EKRANI (telefon): brauzer tam ekrana yalnız toxunuşla keçməyə icazə verir. Ona görə
+// menyudan ƏVVƏL başlıq ekranı durur: arxada canlı 3D səhnə, loqo və "Başla" düyməsi. Toxunuş →
+// tam ekran + landşaft → menyu artıq tam ekranda açılır. Tam ekran alınmasa oyun yenə açılır və
+// sonrakı hər toxunuş yenidən cəhd edir (yuxarıdakı qoruyucu). Tam ekranı dəstəkləməyən brauzerdə
+// göstərilmir. DEV-də yalnız `localStorage apexGate='1'` ilə (testlər toxunuş gözləməsin).
 function startGate() {
   let force = false;
   try { force = localStorage.getItem('apexGate') === '1'; } catch { /* gizli rejim */ }
   if (import.meta.env.DEV && !force) return;
-  const el = document.documentElement;
-  if (!isTouchDevice() || !el.requestFullscreen || document.fullscreenElement) return;
-  if (window.matchMedia?.('(display-mode: fullscreen)').matches) return;
-  const gate = document.createElement('button');
+  if (!isTouchDevice() || !fsReq || inFullscreen()) return;
+  const gate = document.createElement('div');
   gate.id = 'start-gate';
-  gate.innerHTML = `<span class="start-gate__logo">NITRO<b>VERSE</b></span>
-    <span class="start-gate__tap">${t('gate.tap')}</span>
-    <span class="start-gate__sub">${t('gate.sub')}</span>`;
+  gate.innerHTML = `
+    <div class="start-gate__shade"></div>
+    <div class="start-gate__box">
+      <div class="start-gate__logo">Nitro<b>Verse</b></div>
+      <div class="start-gate__tag">${t('gate.tag')}</div>
+      <button class="start-gate__btn" type="button"><span>${t('gate.tap')}</span></button>
+      <div class="start-gate__sub">${t('gate.sub')}</div>
+    </div>`;
   document.body.appendChild(gate);
+  document.body.classList.add('gate-on');     // menyu qapının arxasında görünmür, 3D səhnə görünür
   let done = false;
   const open = () => {
     if (done) return; done = true;
+    document.body.classList.remove('gate-on');
     gate.classList.add('is-out');
-    setTimeout(() => gate.remove(), 260);
+    setTimeout(() => gate.remove(), 320);
   };
+  // bütün ekran toxunuşa cavab verir (düymə — hara basmaq lazım olduğunu göstərir)
   gate.addEventListener('click', () => {
+    if (gate.classList.contains('is-busy')) return;
     audio.resume();
     gate.classList.add('is-busy');
-    Promise.resolve(el.requestFullscreen())
-      .then(() => screen.orientation?.lock?.('landscape'))
-      .catch(() => { /* icazə verilmədi — oyun yenə açılır */ })
-      // ekran ölçüsü oturana qədər bir an gözlə ki, menyu köhnə ölçüdə görünməsin
-      .finally(() => setTimeout(open, 180));
-    setTimeout(open, 1500);   // söz (promise) heç qayıtmasa da qapı bağlı qalmır
+    // ekran ölçüsü oturana qədər bir an gözlə ki, menyu köhnə ölçüdə görünməsin
+    tryLandscapeFullscreen().finally(() => setTimeout(open, 220));
+    setTimeout(open, 1600);   // söz (promise) heç qayıtmasa da qapı bağlı qalmır
   });
 }
 startGate();
