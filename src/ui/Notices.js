@@ -14,7 +14,7 @@ export class Notices {
     if (icon && text.startsWith(icon)) text = text.slice(icon.length).trimStart();
     // Eyni mətnli bildiriş təkrarlanmasın
     for (const n of this.el.children) {
-      if (n._text === text) return n;
+      if (n._text === text && !n._out) return n;
     }
     const n = document.createElement('div');
     n.className = 'notice';
@@ -35,13 +35,17 @@ export class Notices {
     });
     this.el.appendChild(n);
     // Yığın böyüməsin: maksimum 3 bildiriş
-    while (this.el.children.length > 3) this.dismiss(this.el.firstChild);
+    // (dismiss elementi 250 ms sonra silir — `while (children.length > 3)` heç vaxt bitmirdi və
+    // 4-cü bildirişdə səhifə donurdu; indi yalnız hələ çıxmayanlar sayılır, dövr yoxdur)
+    const live = [...this.el.children].filter((c) => !c._out);
+    for (const old of live.slice(0, Math.max(0, live.length - 3))) this.dismiss(old);
     n._timer = setTimeout(() => this.dismiss(n), life * 1000);
     return n;
   }
 
   dismiss(n) {
-    if (!n || !n.parentNode) return;
+    if (!n || !n.parentNode || n._out) return;
+    n._out = true;
     clearTimeout(n._timer);
     n.classList.add('notice--out');
     setTimeout(() => n.remove(), 250);
