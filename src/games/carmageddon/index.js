@@ -33,7 +33,11 @@ class TitleScreen {
   constructor({ onExit }) {
     this.onExit = onExit;
     this.t0 = performance.now();
-    this.pointer = { x: 0.5, y: 0.5 };   // 0..1, ekran üzrə
+    // Göstərici 0..1 (ekran üzrə). `aim` — real yer, `pointer` — ona YUMŞAQ yaxınlaşan dəyər: fon və
+    // qəhrəmanın paralaksı bundan oxunur. Əvvəl birbaşa real yer işlənirdi: ekran açılanda göstərici
+    // "mərkəzdə" sayılırdı və ilk siçan hərəkətində fon bir kadrda yerindən sıçrayırdı.
+    this.aim = { x: 0.5, y: 0.5 };
+    this.pointer = { x: 0.5, y: 0.5 };
     this.sel = 0;
     this.blinkAt = 1.8; this.blink = 0;  // qırpma: növbəti vaxt (s) və cari faza
     this.poke = 0;                        // toxunuşa reaksiya (s)
@@ -81,7 +85,7 @@ class TitleScreen {
     // giriş: kursor / toxunuş / klaviatura
     this._onMove = (e) => {
       const p = e.touches?.[0] || e;
-      this.pointer.x = p.clientX / innerWidth; this.pointer.y = p.clientY / innerHeight;
+      this.aim.x = p.clientX / innerWidth; this.aim.y = p.clientY / innerHeight;
     };
     this._onDown = (e) => {
       this._onMove(e);
@@ -241,6 +245,10 @@ class TitleScreen {
   }
 
   _draw(tt, dt) {
+    // göstəriciyə yumşaq yaxınlaşma (~0.25 s) — paralaks sıçramır
+    const k = Math.min(0.2, 1 - Math.exp(-dt * 6));   // yavaş kadrda da bir addım 20%-dən çox deyil
+    this.pointer.x += (this.aim.x - this.pointer.x) * k;
+    this.pointer.y += (this.aim.y - this.pointer.y) * k;
     const x = this.cx, px = this.pointer.x - 0.5, py = this.pointer.y - 0.5;
     // SƏMA: zolaqlı (dither əvəzi — pilləli) qürub
     const bands = ['#170d24', '#241232', '#3a1638', '#5a1c3a', '#8a2a36', '#bf4630', '#e8742a', '#f6a23a', '#fbd06a'];

@@ -47,11 +47,21 @@ test('carmageddon: menyudan açılır, qəhrəman canlıdır, geri qayıdır (ma
   });
   expect(life.blinked, 'gözünü qırpır').toBe(true);
   expect(life.hairFrames, 'saç yellənir (fərqli kadrlar)').toBeGreaterThan(4);
+  // İLK SİÇAN HƏRƏKƏTİ fonu sıçratmır: göstərici ekranın küncünə birdən keçir, paralaks isə
+  // kadr-kadr yumşaq gedir (bir kadrda ən çox ekranın 12%-i qədər)
+  const jump = await page.evaluate(async () => {
+    const s = window.__cg; let prev = s.pointer.x, maxStep = 0;
+    window.dispatchEvent(new PointerEvent('pointermove', { clientX: 4, clientY: 4 }));
+    for (let i = 0; i < 40; i++) { await new Promise((r) => requestAnimationFrame(r)); maxStep = Math.max(maxStep, Math.abs(s.pointer.x - prev)); prev = s.pointer.x; }
+    return { maxStep: +maxStep.toFixed(3), end: +s.pointer.x.toFixed(2) };
+  });
+  expect(jump.maxStep, 'paralaks bir kadrda sıçramır').toBeLessThan(0.12);
+  expect(jump.end, 'amma göstəriciyə çatır').toBeLessThan(0.1);
   // baxış: kursor solda → sol kadr, sağda → sağ kadr (göz yamağının piksellərindən)
-  const eyeSig = () => page.evaluate(() => { const s = window.__cg; const hx = Math.round(300 - (s.pointer.x - 0.5) * 8); return Array.from(s.cx.getImageData(hx + 64, 62 + 56, 12, 3).data).join(','); });
-  await page.mouse.move(120, 450); await page.waitForTimeout(500);
+  const eyeSig = () => page.evaluate(() => { const s = window.__cg; const hx = Math.round(300 - (s.pointer.x - 0.5) * 8);   /* yumşaldılmış göstərici */ return Array.from(s.cx.getImageData(hx + 64, 62 + 56, 12, 3).data).join(','); });
+  await page.mouse.move(120, 450); await page.waitForTimeout(900);
   const left = await page.evaluate(() => window.__cg.blink) ? null : await eyeSig();
-  await page.mouse.move(1420, 450); await page.waitForTimeout(500);
+  await page.mouse.move(1420, 450); await page.waitForTimeout(900);
   const right = await eyeSig();
   if (left) expect(left, 'gözlər kursoru izləyir').not.toBe(right);
   // toxunuş: qəhrəmana klik → söz balonu
