@@ -132,7 +132,7 @@ const NIGHT_AMB = new THREE.Color(0x8ea2e0); // ay işığı: gecə ətraf işı
 const DAY_AMB = new THREE.Color(0xffffff);
 
 const GROUND_SIZE = 1300;  // yer torunun ölçüsü (m) — duman 620 m-də bağlayır
-const GROUND_SEGS = 130;   // 10 m-lik xanalar — yol kəsiyi təmiz görünür
+const GROUND_SEGS = 112;   // 11.6 m-lik xanalar (130 idi: 33.8 min üçbucaq → 25.1 min; kəsik radiusu CUT_IN 20 m > yol yarımeni + xana)
 const GROUND_REPEAT = 26;  // tekstura kafeli (50 m) + snap addımı
 
 export class EndlessScene {
