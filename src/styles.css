@@ -2568,3 +2568,15 @@ body.flt-sepia #filter-fx {
   .coach { bottom: auto; top: 22%; font-size: 13.5px; padding: 7px 14px; max-width: 62vw; }
 }
 .set-state { font-size: 12.5px; font-weight: 700; color: var(--good); max-width: 130px; text-align: right; }
+
+
+/* ————— İKONLAR (Faza 5.1): SVG, mətnin rəngində və ölçüsündə ————— */
+.ic { width: 1.2em; height: 1.2em; fill: currentColor; flex: none; vertical-align: -0.22em; }
+.mrow__icon .ic { width: 28px; height: 28px; color: #e8ecf5; vertical-align: middle; }
+.mrow.is-selected .mrow__icon .ic, .mrow:hover .mrow__icon .ic { color: var(--accent); }
+.mrow__arrow .ic { width: 18px; height: 18px; }
+.menu-sound .ic { width: 20px; height: 20px; color: #dfe4ee; vertical-align: middle; }
+.menu-sound:hover .ic { color: var(--accent); }
+.menu-profile .ic { width: 17px; height: 17px; margin-right: 4px; }
+.menu-gold .ic { width: 15px; height: 15px; margin-right: 2px; }
+.menu-foot__btn .ic { width: 16px; height: 16px; margin-right: 6px; opacity: 0.85; }

@@ -14,6 +14,7 @@ import { audio } from '../core/AudioManager.js';
 import { t, getLang, setLang, LANGS, LANG_NAMES } from '../core/i18n.js';
 import { soundControlsHTML, bindSoundControls } from './SoundControls.js';
 import { coachPending, resetCoach } from './Coach.js';
+import { icon } from './icons.js';
 
 // Kosmetikanın adı/təsviri seçilmiş dildə: skin → `skin.<maşın>.<n>`, qalanı → `cos.<id>`.
 // Tərcümə yoxdursa (az dili və ya köhnə əşya) datadakı mətn göstərilir.
@@ -76,11 +77,11 @@ export class Menu {
     this._garage = false;
     this._preview();
     const rows = [
-      { id: 'race', icon: '🏁', title: t('mode.race'), desc: t('mode.race.d') },
-      { id: 'free', icon: '🛣️', title: t('mode.free'), desc: t('mode.free.d') },
-      { id: 'football', icon: '⚽', title: t('mode.football'), desc: t('mode.football.d') },
-      { id: 'arena', icon: '⚔️', title: t('mode.arena'), desc: t('mode.arena.d') },
-      { id: 'online', icon: '🌐', title: t('mode.online'), desc: t('mode.online.d') },
+      { id: 'race', icon: icon('flagCheckered'), title: t('mode.race'), desc: t('mode.race.d') },
+      { id: 'free', icon: icon('roadHorizon'), title: t('mode.free'), desc: t('mode.free.d') },
+      { id: 'football', icon: icon('soccerBall'), title: t('mode.football'), desc: t('mode.football.d') },
+      { id: 'arena', icon: icon('sword'), title: t('mode.arena'), desc: t('mode.arena.d') },
+      { id: 'online', icon: icon('globeHemisphereWest'), title: t('mode.online'), desc: t('mode.online.d') },
     ].map((m) => `
       <button class="mrow ${this.sel.mode === m.id ? 'is-selected' : ''}" data-mode="${m.id}">
         <span class="mrow__icon">${m.icon}</span>
@@ -88,7 +89,7 @@ export class Menu {
           <span class="mrow__title">${m.title}</span>
           <span class="mrow__desc">${m.desc}</span>
         </span>
-        <span class="mrow__arrow">→</span>
+        <span class="mrow__arrow">${icon('arrowRight')}</span>
       </button>`).join('');
 
     this._panel({
@@ -669,12 +670,12 @@ export class Menu {
       el.innerHTML = `<div class="rooms-note">${t('rooms.none')}</div>`;
       return;
     }
-    const icon = (r) => (r.mode === 'football' ? '⚽' : r.mode === 'arena' ? '⚔️' : (getTrackById(r.track)?.icon || '🏁'));
+    const roomIcon = (r) => (r.mode === 'football' ? '⚽' : r.mode === 'arena' ? '⚔️' : (getTrackById(r.track)?.icon || '🏁'));
     const meta = (r) => (r.mode === 'football' ? 'Futbol 3v3' : r.mode === 'arena' ? 'Arena BR' : `${r.laps} dövrə`);
     el.innerHTML = [
       ...open.map((r) => `
         <button class="room-row" data-room="${r.code}">
-          <span class="room-row__icon">${icon(r)}</span>
+          <span class="room-row__icon">${roomIcon(r)}</span>
           <span class="room-row__body">
             <span class="room-row__name">${r.host} otağı ${r.inGame ? '<em class="room-row__status">🏁 oyundadır</em>' : '<em class="room-row__status room-row__status--lobby">lobbidədir</em>'}</span>
             <span class="room-row__meta">${r.players}/6 oyunçu · ${meta(r)} · kod ${r.code}</span>
@@ -683,7 +684,7 @@ export class Menu {
         </button>`),
       ...busy.map((r) => `
         <div class="room-row room-row--busy">
-          <span class="room-row__icon">${icon(r)}</span>
+          <span class="room-row__icon">${roomIcon(r)}</span>
           <span class="room-row__body">
             <span class="room-row__name">${r.host} otağı</span>
             <span class="room-row__meta">doludur</span>
@@ -1827,13 +1828,13 @@ export class Menu {
             <div class="menu-brandrow__right">
               <button class="menu-profile" data-profile title="${auth.isLoggedIn ? t('auth.titleProfile') : t('auth.chip')}">
                 ${auth.isLoggedIn
-                  ? `👤 <span class="menu-profile__nick">${auth.profile.nick}</span><b class="menu-gold">🪙${auth.profile.gold}</b>`
-                  : `👤 ${t('auth.chip')}`}
+                  ? `${icon('user')} <span class="menu-profile__nick">${auth.profile.nick}</span><b class="menu-gold">${icon('coin')}${auth.profile.gold}</b>`
+                  : `${icon('user')} ${t('auth.chip')}`}
               </button>
-              <button class="menu-sound" data-friends title="${t('fr.title')}">👥</button>
-              <button class="menu-sound" data-msgs title="${t('msgs.title')}">✉️</button>
-              <button class="menu-sound" data-garage title="Qaraj">🏎️</button>
-              <button class="menu-sound" data-settings title="${t('set.title')}">⚙️</button>
+              <button class="menu-sound" data-friends title="${t('fr.title')}">${icon('users')}</button>
+              <button class="menu-sound" data-msgs title="${t('msgs.title')}">${icon('envelopeSimple')}</button>
+              <button class="menu-sound" data-garage title="${t('garage.title')}">${icon('carProfile')}</button>
+              <button class="menu-sound" data-settings title="${t('set.title')}">${icon('gearSix')}</button>
             </div>
           </div>
           <div class="menu-step"><b>${step}</b><i></i>${stepLabel.toUpperCase()}</div>
@@ -1843,8 +1844,8 @@ export class Menu {
           <div class="menu-nav">${nav}</div>
           ${foot ? `
           <div class="menu-foot">
-            ${SUPPORT_URL ? `<a class="menu-foot__btn" href="${SUPPORT_URL}" target="_blank" rel="noopener noreferrer">${t('sup.coffee')}</a>` : ''}
-            <button class="menu-foot__btn" data-bug>${t('sup.bug')}</button>
+            ${SUPPORT_URL ? `<a class="menu-foot__btn" href="${SUPPORT_URL}" target="_blank" rel="noopener noreferrer">${icon('coffee')}${t('sup.coffee')}</a>` : ''}
+            <button class="menu-foot__btn" data-bug>${icon('bug')}${t('sup.bug')}</button>
             ${auth.profile?.nick?.toLowerCase() === 'samir'
               ? '<button class="menu-foot__btn" data-inbox>📥 Bildirişlər</button>' : ''}
           </div>` : ''}
