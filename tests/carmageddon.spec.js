@@ -57,6 +57,19 @@ test('carmageddon: menyudan açılır, qəhrəman canlıdır, geri qayıdır (ma
   });
   expect(jump.maxStep, 'paralaks bir kadrda sıçramır').toBeLessThan(0.12);
   expect(jump.end, 'amma göstəriciyə çatır').toBeLessThan(0.1);
+  // SOLA hərəkətdə şəhər silueti başqa yerə TULLANMIR. Ekran təzə açılanda (tt kiçik) sürüşmə mənfi
+  // olur; eyni göstərici hərəkəti siluetdə gec vaxtdakı (tt = 40) qədər dəyişiklik verməlidir —
+  // tamam başqa binalar görünsə, pay təxminən iki dəfə böyük çıxır (düzəlişdən əvvəl 0.41 ↔ 0.20).
+  const sky = await page.evaluate(() => {
+    const s = window.__cg, keep = { a: { ...s.aim }, p: { ...s.pointer } };
+    const grab = (tt, px) => { s.aim.x = s.pointer.x = px; s._draw(tt, 0); return s.cx.getImageData(0, 100, 290, 78).data; };
+    const d = (a, b) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2]) n++; return +(n / (a.length / 4)).toFixed(3); };
+    const early = d(grab(0.1, 0.5), grab(0.1, 0.3)), late = d(grab(40, 0.5), grab(40, 0.3));
+    Object.assign(s.aim, keep.a); Object.assign(s.pointer, keep.p);
+    return { early, late };
+  });
+  console.log('siluet: sola hərəkətdə dəyişən piksel payı', JSON.stringify(sky));
+  expect(sky.early, 'sola hərəkətdə siluet tullanmır').toBeLessThan(sky.late + 0.06);
   // baxış: kursor solda → sol kadr, sağda → sağ kadr (göz yamağının piksellərindən)
   const eyeSig = () => page.evaluate(() => { const s = window.__cg; const hx = Math.round(300 - (s.pointer.x - 0.5) * 8);   /* yumşaldılmış göstərici */ return Array.from(s.cx.getImageData(hx + 64, 62 + 56, 12, 3).data).join(','); });
   await page.mouse.move(120, 450); await page.waitForTimeout(900);

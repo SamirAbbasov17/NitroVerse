@@ -160,7 +160,8 @@ class TitleScreen {
       x.fillStyle = color;
       let px = 0;
       while (px < c.width) {
-        const bw = 10 + Math.floor(r() * 22), bh = minH + Math.floor(r() * (maxH - minH));
+        // son bina kətanın kənarında bitir — lay öz eninə (2W) tikişsiz təkrarlanır
+        const bw = Math.min(10 + Math.floor(r() * 22), c.width - px), bh = minH + Math.floor(r() * (maxH - minH));
         const top = baseY - bh;
         x.fillRect(px, top, bw, bh + 40);
         // sınıq zirvə: təsadüfi dişlər
@@ -264,9 +265,16 @@ class TitleScreen {
       x.fillRect(sunX - hw, sunY + y, hw * 2, 1);
     }
     // uzaq/yaxın şəhər — paralaks
-    const far = Math.round((tt * 2 + px * 10) % W), near = Math.round((tt * 5 + px * 22) % W);
-    x.drawImage(this.cityFar, -((far + W) % W), Math.round(py * 2));
-    x.drawImage(this.cityNear, -((near + W) % W), Math.round(py * 4));
+    // Lay 2W enindədir və ÖZ eninə dövr edir (W-yə görə yox: iki yarı fərqli binalardır, sürüşmə
+    // mənfi olanda — ekran açılan kimi sola hərəkət — siluet başqa yerə tullanırdı).
+    const P = W * 2;
+    const scroll = (layer, off, y) => {
+      const o = ((Math.round(off) % P) + P) % P;
+      x.drawImage(layer, -o, y);
+      if (o > P - W) x.drawImage(layer, P - o, y);
+    };
+    scroll(this.cityFar, tt * 2 + px * 10, Math.round(py * 2));
+    scroll(this.cityNear, tt * 5 + px * 22, Math.round(py * 4));
     // YER: səhra + perspektivli yol (zolaqlar bizə doğru axır)
     x.fillStyle = '#2a1420'; x.fillRect(0, 178, W, H - 178);
     for (let y = 178; y < H; y++) {
