@@ -268,6 +268,7 @@ function startOnlineGame(net, startMsg) {
       new Results(uiRoot, {
         standings,
         thumbs,
+        config: cfg,
         restartLabel: t('cmn.backRoom'),
         menuLabel: t('res.leaveRoom'),
         onRestart: () => goLobby(net),
@@ -340,6 +341,7 @@ function showResults(standings, config) {
   new Results(uiRoot, {
     standings,
     thumbs,
+    config,
     onRestart: () => startGame(config),
     onMenu: goMenu,
   });

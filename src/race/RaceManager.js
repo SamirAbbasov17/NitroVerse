@@ -35,6 +35,7 @@ export class RaceManager {
       r.finishTime = 0;
       r.lapStart = 0;
       r.lastLapTime = 0;
+      r.lapTimes = [];       // bitirilmiş dövrələrin vaxtı (nəticə ekranı, şəxsi rekord)
       r.position = 0;
       if (r.controller) r.controller.active = false; // geri sayım vaxtı kilidli
     }
@@ -85,6 +86,7 @@ export class RaceManager {
         if (r.lap > r.maxLap) {
           r.maxLap = r.lap;
           r.lastLapTime = this.elapsed - r.lapStart;
+          r.lapTimes.push(r.lastLapTime);
           r.lapStart = this.elapsed;
           if (r.lap >= this.totalLaps) {
             r.finished = true;
@@ -149,8 +151,10 @@ export class RaceManager {
 
 export function formatTime(sec) {
   if (sec == null || !isFinite(sec)) return '--:--';
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  const ms = Math.floor((sec % 1) * 100);
+  // yüzdəbirlərə yuvarlaqlaşdırılır (əvvəl kəsilirdi: 101.30 s "1:41.29" çıxırdı)
+  const cs = Math.round(sec * 100);
+  const m = Math.floor(cs / 6000);
+  const s = Math.floor((cs % 6000) / 100);
+  const ms = cs % 100;
   return `${m}:${String(s).padStart(2, '0')}.${String(ms).padStart(2, '0')}`;
 }

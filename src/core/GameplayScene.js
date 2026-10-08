@@ -660,6 +660,8 @@ export class GameplayScene {
       ...r,
       isPlayer: r.netId === this._net.selfId,
       score: r.netId === this._net.selfId ? this.score : undefined,
+      // dövrə vaxtları şəbəkə ilə gəlmir — oyunçunun öz ölçdüyü (yalnız yarışı bitiribsə)
+      lapTimes: r.netId === this._net.selfId && pr?.finished && !pr.dnf ? pr.lapTimes.slice() : undefined,
     }));
     this.onFinish?.(marked, this.config);
   }
@@ -1691,6 +1693,7 @@ export class GameplayScene {
       name: r.name, isPlayer: r.isPlayer, color: r.color, model: carSkin(r.car.data),
       position: r.position, finishTime: r.dnf ? null : r.finishTime, // bitirməyənə uydurma vaxt yazılmır
       score: r.isPlayer ? this.score : undefined, // dəymə xalları nəticədə görünsün
+      lapTimes: r.isPlayer && !r.dnf ? r.lapTimes.slice() : undefined,
     })), this.config);
   }
 

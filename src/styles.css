@@ -1432,6 +1432,32 @@ kbd {
   gap: 12px;
 }
 .results__time { font-size: 15px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.results__time small { display: block; font-size: 12px; font-weight: 600; opacity: 0.75; text-align: right; }
+
+/* Nəticə: oyunçunun dövrə vaxtları və şəxsi rekordu */
+.laps {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  margin-bottom: 12px; padding: 10px 14px;
+  background: var(--panel); border: 1px solid var(--stroke); border-radius: 14px;
+}
+.laps__chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.laps__chip {
+  display: flex; flex-direction: column; gap: 2px; padding: 6px 12px; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid transparent;
+}
+.laps__chip span { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.laps__chip b { font-size: 16px; font-variant-numeric: tabular-nums; }
+.laps__chip.is-best { border-color: var(--good); }
+.laps__chip.is-best b { color: var(--good); }
+.laps__recs { display: flex; flex-direction: column; gap: 3px; font-size: 13px; font-weight: 600; color: var(--muted); text-align: right; }
+.laps__recs b { color: #fff; font-variant-numeric: tabular-nums; }
+.laps__recs small { margin-left: 6px; opacity: 0.8; }
+.laps__new { color: #ffd257; font-weight: 800; }
+@media (max-height: 560px) {
+  .laps { padding: 6px 10px; margin-bottom: 8px; }
+  .laps__chip { padding: 4px 9px; }
+  .laps__chip b { font-size: 14px; }
+}
 .mini-chip { width: 20px; height: 13px; border-radius: 4px; flex: none; }
 .results__car {
   width: 54px;
