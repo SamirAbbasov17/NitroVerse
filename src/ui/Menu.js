@@ -390,7 +390,7 @@ export class Menu {
 
   // ————— Dostlar ekranı: istəklər + onlayn/oflayn dostlar —————
   async showFriends() {
-    if (!auth.isLoggedIn) { this.showAuth(t('fr.needLogin')); return; }
+    if (!auth.isLoggedIn) { this._needAccount('fr.needLogin', null, false); return; }
     this._here = 'friends';
     social.setActivity('social');
     this._stopRoomsPoll();
@@ -580,7 +580,7 @@ export class Menu {
   }
 
   async showMessages() {
-    if (!auth.isLoggedIn) { this.showAuth(t('msgs.needLogin')); return; }
+    if (!auth.isLoggedIn) { this._needAccount('msgs.needLogin', null, false); return; }
     this._here = 'messages';
     social.setActivity('social');
     this._stopRoomsPoll();
@@ -606,7 +606,7 @@ export class Menu {
 
   // ————— Bir söhbət: tarixçə + cavab + poll —————
   async showConversation(withUser) {
-    if (!auth.isLoggedIn) { this.showAuth(t('msgs.needLogin')); return; }
+    if (!auth.isLoggedIn) { this._needAccount('msgs.needLogin', null, false); return; }
     this._here = 'convo';
     this._dmWith = withUser;
     this._stopRoomsPoll();
@@ -1823,10 +1823,11 @@ export class Menu {
     return social.lastSlow ? t('ntc.slow', { n: social.lastSlow }) : t('ntc.sendFail');
   }
 
-  _needAccount(key, vars = null) {
+  // why = false: "qızıl və aldıqların saxlanır" izahı əlavə olunmur (dostlar/mesajlar üçün yersizdir)
+  _needAccount(key, vars = null, why = true) {
     window.__notices?.show({
       icon: '🔒',
-      text: t(key, vars) + ' ' + t('acc.why'),
+      text: t(key, vars) + (why ? ' ' + t('acc.why') : ''),
       life: 9,
       actions: [{ label: t('auth.chip'), primary: true, onClick: () => { this._musicPreview = null; audio.previewPack(null); this.showAuth(); } }],
     });

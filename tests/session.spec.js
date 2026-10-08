@@ -286,3 +286,63 @@ test('rekordlar: server cədvəli, yoxlama, cihazlar arası (server + brauzer)',
   await page.screenshot({ path: 'tests/out/results-screen/m-leaders.png' });
   await ctx.close();
 });
+
+// ALIŞ AXINI (real hesab, öz backend): qonaq → bildiriş; hesabla qızıl qazan → boya al → avtomatik
+// taxılır, qızıl azalır; qızıl çatmayanda izah; artıq alınmışı seçmək pulsuzdur; maşın alışı.
+test('alış: qaraj — qonaq bildirişi, boya və maşın alışı, qızıl çatışmazlığı (brauzer)', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const id = Date.now().toString(36).slice(-5);
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await ctx.newPage();
+  await page.addInitScript((api) => { window.__AUTH_API = api; }, API);
+  await boot(page);
+  const cos = (tab) => page.evaluate((tb) => { window.__menu._garage = true; window.__menu._garageTab = tb; window.__menu.showCosmetics(); }, tab);
+  const prof = () => page.evaluate(() => { const p = window.__auth.profile; return p ? { gold: p.gold, cosmetics: p.cosmetics, equip: p.equip, cars: p.cars } : null; });
+  // qonaq: alış yoxdur, yerində bildiriş; dostlar düyməsi də giriş ekranına atmır
+  await cos('paint');
+  await page.click('[data-cos="p_racered"]');
+  await expect(page.locator('.notice')).toContainText('hesab lazımdır');
+  await expect(page.locator('.menu-title')).toHaveText('Qarajın');
+  await page.click('[data-friends]');
+  await expect(page.locator('.notices')).toContainText('Dostlar üçün hesaba daxil ol');
+  await expect(page.locator('.menu-title'), 'qonaq olduğu ekranda qalır').toHaveText('Qarajın');
+  // hesab + qızıl (3 yarış mükafatı)
+  await page.evaluate(async (n) => { await window.__auth.register(n, 'parol1'); for (let i = 0; i < 3; i++) await window.__auth.award(300, 'race'); }, 'Buy' + id);
+  expect((await prof()).gold).toBe(900);
+  // boya al → taxılır
+  await cos('paint');
+  await page.click('[data-cos="p_racered"]');
+  await page.waitForFunction(() => window.__auth.profile.cosmetics.includes('p_racered'), null, { timeout: 10_000 });
+  let p = await prof();
+  expect([p.gold, p.equip.paint]).toEqual([780, 'p_racered']);
+  await expect(page.locator('[data-cos="p_racered"]')).toHaveClass(/is-selected/);
+  // ikinci boya, sonra birinciyə qayıtmaq pulsuzdur
+  await page.click('[data-cos="p_mint"]');
+  await page.waitForFunction(() => window.__auth.profile.equip.paint === 'p_mint', null, { timeout: 10_000 });
+  await page.click('[data-cos="p_racered"]');
+  await page.waitForFunction(() => window.__auth.profile.equip.paint === 'p_racered', null, { timeout: 10_000 });
+  p = await prof();
+  expect(p.gold, 'alınmışı seçmək pul aparmır').toBe(660);
+  // qızıl çatmır → izah, heç nə dəyişmir
+  await cos('effect');
+  await page.click('[data-cos="e_fire"]');
+  await expect(page.locator('.menu-panel')).toContainText(/900/);
+  expect((await prof()).gold).toBe(660);
+  // maşın alışı
+  await page.evaluate(() => window.__menu.showGarage && (window.__menu._garageTab = 'cars', window.__menu.showCars()));
+  const car = await page.evaluate(async () => {
+    const { CAR_PRICES } = await import('/src/data/economy.js');
+    return Object.entries(CAR_PRICES).filter(([, v]) => v > 0 && v <= 660).sort((a, b) => a[1] - b[1])[0] || null;
+  });
+  if (car) {
+    await page.click(`[data-car="${car[0]}"]`);
+    await page.waitForFunction((c) => window.__auth.profile.cars.includes(c), car[0], { timeout: 10_000 });
+    expect((await prof()).gold).toBe(660 - car[1]);
+  }
+  // server tərəfi: eyni şeyi ikinci dəfə almaq olmur, saxta qiymət yoxdur
+  const tok = await page.evaluate(() => window.__auth.token);
+  expect((await call({ action: 'buy', token: tok, id: 'p_racered' })).status).toBe(409);
+  expect((await call({ action: 'buy', token: tok, id: 'yox_belə_şey' })).status).toBeGreaterThanOrEqual(400);
+  await page.screenshot({ path: 'tests/out/purchase-garage.png' });
+  await ctx.close();
+});
