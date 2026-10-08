@@ -26,6 +26,7 @@ import { audio } from './AudioManager.js';
 import { TouchControls, isTouchDevice } from './TouchControls.js';
 import { TUNING } from '../data/balance.js';
 import { HUD } from '../ui/HUD.js';
+import { Coach, coachPending } from '../ui/Coach.js';
 import { SignatureAbility } from '../race/SignatureAbility.js';
 import { signatureIconURL } from './SignatureIcons.js';
 
@@ -682,6 +683,8 @@ export class GameplayScene {
     });
     this._rescueVisible = false;
     this._rescueCooldown = 0;
+    // İlk yarış ipucları (yalnız hələ görülməyənlər varsa)
+    if (this.isRace && coachPending()) this.coach = new Coach(this.uiRoot.querySelector('.hud'), { touch: isTouchDevice() });
   }
 
   // Oyunçunu ən yaxın yol nöqtəsinə qaytar
@@ -789,6 +792,7 @@ export class GameplayScene {
   _useItem() {
     const r = this.racers?.find((x) => x.isPlayer);
     if (r?.items?.length && this._state === 'run') {
+      this._coachUsed = true;
       // S / ↓ basılı ikən raket ARXAYA atılır
       const backward = this.input.isDown('ArrowDown', 'KeyS');
       this.powerups.use(r, { backward });
@@ -1657,6 +1661,15 @@ export class GameplayScene {
       this.hud?.setSignature?.(ab, this.signature.ready, url);
       this.touchControls?.setSignature?.(ab, this.signature.ready, url);
     }
+    if (this.coach) {
+      const car = this.playerCar;
+      this.coach.update({
+        racing: this._state === 'run' && this.raceManager.state === 'racing' && !this._playerDone,
+        moving: car.vF > 3, steer: car._steerSmooth || 0, speedT: Math.min(1, Math.abs(car.vF) / car.maxSpeed),
+        drifting: car.isDrifting, hasItem: items.length > 0, usedItem: !!this._coachUsed,
+      });
+      if (!this.coach.active) { this.coach.dispose(); this.coach = null; }
+    }
     if (this.isRace) {
       const p = this.raceManager.getPlayer();
       this.hud.update({
@@ -1746,6 +1759,7 @@ export class GameplayScene {
     document.getElementById('app')?.classList.remove('fast', 'boosting', 'impact');
     this.input.enabled = true;
     this.input.binds.clear();
+    this.coach?.dispose();
     this.hud?.destroy();
     this.touchControls?.dispose();
     this.powerups?.dispose();

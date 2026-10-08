@@ -37,14 +37,16 @@ export function collectErrors(page) {
 // Oyunu açır və menyu hazır olana qədər gözləyir.
 // POST=0 mühit dəyişəni render sonrası cilanı (bloom + qradasiya) söndürür —
 // "əvvəl/sonra" kadrları və ölçmələri üçün.
-export async function boot(page, { lang = 'az', post = process.env.POST !== '0' } = {}) {
-  await page.addInitScript(({ l, post: p }) => {
+// coach: false → ilk yarış ipucları "görülmüş" sayılır (kadrlar və ölçmələr onlarsız, sabit qalsın)
+export async function boot(page, { lang = 'az', post = process.env.POST !== '0', coach = false } = {}) {
+  await page.addInitScript(({ l, post: p, coach: c }) => {
     try {
       localStorage.setItem('apexLang', l);
       localStorage.setItem('apexMuted', '1');
       localStorage.setItem('apexPost', p ? '1' : '0');
+      if (!c) localStorage.setItem('apexCoach', '["drive","drift","item"]');
     } catch { /* gizli rejim */ }
-  }, { l: lang, post });
+  }, { l: lang, post, coach });
   await page.goto('/');
   await page.waitForFunction(() => !!window.__menu && !!window.__showcase, null, { timeout: 60_000 });
 }

@@ -13,6 +13,7 @@ import { playerCarData } from '../data/playerCar.js';
 import { audio } from '../core/AudioManager.js';
 import { t, getLang, setLang, LANGS, LANG_NAMES } from '../core/i18n.js';
 import { soundControlsHTML, bindSoundControls } from './SoundControls.js';
+import { coachPending, resetCoach } from './Coach.js';
 
 // Kosmetikanın adı/təsviri seçilmiş dildə: skin → `skin.<maşın>.<n>`, qalanı → `cos.<id>`.
 // Tərcümə yoxdursa (az dili və ya köhnə əşya) datadakı mətn göstərilir.
@@ -1747,7 +1748,11 @@ export class Menu {
     } else if (this._setTab === 'ctl') {
       body = row(t('set.cam'), t('set.camDesc'),
         ['tps', 'fps', 'hood'].map((c) => opt('data-cam', c, t('set.cam.' + c), cam === c)).join(''))
-        + (window.matchMedia?.('(pointer: fine)').matches ? `<div class="set-keys">${t('hint')}</div>` : `<div class="set-note">${t('set.touchNote')}</div>`);
+        + row(t('set.coach'), t('set.coachDesc'), coachPending()
+          ? `<span class="set-state">${t('set.coachOn')}</span>`
+          : `<button class="set-opt" data-coach-reset>${t('set.coachReset')}</button>`)
+        // telefonda düymələrin izahını ilk yarış ipucları verir — ayrıca qeyd yer tutmasın
+        + (window.matchMedia?.('(pointer: fine)').matches ? `<div class="set-keys">${t('hint')}</div>` : '');
     } else {
       body = `<div class="set-langs">${LANGS.map((l) => `
         <button class="set-opt set-opt--lang ${l === getLang() ? 'is-selected' : ''}" data-l="${l}"><b>${l.toUpperCase()}</b>${LANG_NAMES[l]}</button>`).join('')}</div>`;
@@ -1770,6 +1775,7 @@ export class Menu {
         this.showSettings();
       };
     });
+    q('[data-coach-reset]').forEach((b) => { b.onclick = () => { resetCoach(); this.showSettings(); }; });
     q('[data-cam]').forEach((b) => { b.onclick = () => { localStorage.setItem('apexCamMode', b.dataset.cam); this.showSettings(); }; });
     q('[data-l]').forEach((b) => {
       b.onclick = () => {
