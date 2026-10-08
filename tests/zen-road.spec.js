@@ -32,7 +32,7 @@ for (const variant of ['old', 'new']) {
       }, 200);
     });
     await autopilot(page, true);
-    await page.evaluate(() => { const a = window.__audio; window.__pass = []; const f = a.passBy.bind(a); a.passBy = (side, k) => { window.__pass.push([side, +k.toFixed(2)]); return f(side, k); }; window.__active._trafNextT = 0; });
+    await page.evaluate(() => { window.__active._trafNextT = 0; });
     if (variant === 'new') {
       // xəbərdarlıq nişanı: serpantindən ~90 m əvvəl, sağda (kadr: zen-sign.png)
       await page.waitForFunction(() => window.__active.playerCar.trackT >= 79, null, { timeout: 60_000 });
@@ -55,7 +55,7 @@ for (const variant of ['old', 'new']) {
     const r = await page.evaluate(() => {
       const sc0 = window.__active, rd = sc0.road;
       const signs = rd.obstacles.filter((o) => o.kind === 'sign').map((o) => rd.getNearest({ x: o.x, y: 0, z: o.z }).index).filter((ix) => rd.sectionAt(ix + 11) && !rd.sectionAt(ix));
-      const S = window.__zr, out = { signs, passes: window.__pass,  km: +(S.maxDist / 1000).toFixed(2), offPct: +((100 * S.off) / S.n).toFixed(1), hits: S.hits, zones: {} };
+      const S = window.__zr, out = { signs, passes: sc0.passes | 0,  km: +(S.maxDist / 1000).toFixed(2), offPct: +((100 * S.off) / S.n).toFixed(1), hits: S.hits, zones: {} };
       const by = {};
       for (const [abs, v] of S.seen) { if (abs * 8 > 2700) continue; (by[v.kind] ||= []).push(v); }
       out.sharp = [...S.seen].filter(([abs, v]) => abs * 8 <= 2700 && v.r < 40).map(([abs, v]) => `${abs * 8}:${Math.round(v.r)}`).join(' ');
@@ -68,8 +68,7 @@ for (const variant of ['old', 'new']) {
     });
     mergeJson('zen-road.json', variant, r);
     console.log(variant, JSON.stringify(r));
-    expect(r.passes.length, 'trafikin yanından keçəndə hava səsi çalınır').toBeGreaterThan(0);
-    expect(r.passes.every(([sd, k]) => Math.abs(sd) === 1 && k >= 0 && k <= 1)).toBe(true);
+    expect(r.passes, 'trafikin yanından keçmə tanınır (kamera yellənməsi)').toBeGreaterThan(0);
     if (variant === 'new') {
       expect(r.zones.serp.p10R, 'serpantin: aydın döngələr (m)').toBeLessThan(90);
       expect(r.zones.serp.minR, 'serpantinin ən iti döngəsi (m)').toBeLessThan(75);

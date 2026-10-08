@@ -779,7 +779,8 @@ export class EndlessScene {
       const car = this.playerCar;
       const dx = car.position.x - x, dz = car.position.z - z;
       // YANINDAN KEÇMƏ: trafik maşını oyunçunun yanından ötən an (qabaqdan arxaya keçir) yaxındırsa
-      // — yumşaq hava səsi və kameranın cüzi yellənməsi. Xal/sayğac yoxdur, yalnız hiss.
+      // — kameranın cüzi yellənməsi. Xal/sayğac yoxdur, yalnız hiss. (Əvvəl küy əsaslı "vuuş" səsi də
+      // vardı — istifadəçi küy səslərini (sürət xışıltısı, sintez cığıltı) rədd etdiyi üçün çıxarıldı.)
       {
         const fs0 = Math.sin(car.heading), fc0 = Math.cos(car.heading);
         const along = -(dx * fs0 + dz * fc0);            // trafik oyunçudan nə qədər irəlidədir
@@ -788,7 +789,6 @@ export class EndlessScene {
           const rel = Math.hypot(car.velocity.x - Math.sin(tt.root.rotation.y) * tt.spd, car.velocity.z - Math.cos(tt.root.rotation.y) * tt.spd);
           if (rel > 9) {
             const k = Math.min(1, (rel - 9) / 40) * (1 - Math.max(0, Math.abs(side) - 2.6) / 3.2);
-            audio.passBy(Math.sign(side), k);
             this._passSway = Math.sign(side) * (0.004 + 0.006 * k);
             this.passes = (this.passes || 0) + 1;   // yalnız test üçün
           }

@@ -149,32 +149,6 @@ class AudioManagerImpl {
     this._amb.g.gain.setTargetAtTime((this._pausedGame ? 0 : this._ambLevel || 0) * 0.3, this.ctx.currentTime, 0.8);
   }
 
-  // YANINDAN KEÇMƏ (zen): maşının yanından ötən hava səsi — qısa, yumşaq "vuuş", keçən tərəfin
-  // qulağında. side: −1 sol, +1 sağ; k 0..1 — nisbi sürətə görə güc (qarşıdan gələn daha güclü).
-  passBy(side = 0, k = 0.5) {
-    if (!this._ensure() || this.muted) return;
-    const ctx = this.ctx, t = ctx.currentTime;
-    const src = ctx.createBufferSource();
-    src.buffer = this._noiseBuf; src.loop = true;
-    const flt = ctx.createBiquadFilter();
-    flt.type = 'bandpass'; flt.Q.value = 0.9;
-    flt.frequency.setValueAtTime(420, t);
-    flt.frequency.exponentialRampToValueAtTime(1100 + 500 * k, t + 0.14);
-    flt.frequency.exponentialRampToValueAtTime(300, t + 0.6);
-    const gn = ctx.createGain();
-    gn.gain.setValueAtTime(0.0001, t);
-    gn.gain.exponentialRampToValueAtTime(0.1 + 0.12 * k, t + 0.13);
-    gn.gain.exponentialRampToValueAtTime(0.0008, t + 0.62);
-    src.connect(flt); flt.connect(gn);
-    if (ctx.createStereoPanner) {
-      const pan = ctx.createStereoPanner();
-      pan.pan.setValueAtTime(side * 0.25, t);
-      pan.pan.linearRampToValueAtTime(side * 0.8, t + 0.2);
-      gn.connect(pan); pan.connect(this.sfxGain);
-    } else gn.connect(this.sfxGain);
-    src.start(t); src.stop(t + 0.7);
-  }
-
   // ——— Sintez primitivləri ———
   _tone({ type = 'sine', f0 = 440, f1 = null, t, dur = 0.15, g = 0.2, dest = null, attack = 0.005 }) {
     const ctx = this.ctx;

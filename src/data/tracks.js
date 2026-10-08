@@ -417,7 +417,7 @@ export const TRACKS = [
     ],
     river: { t: 0.93, width: 11, color: 0x5f8793 }, // şaxə qovşaqlarından uzaqda (körpü məhəccəri qovşağı kəsirdi)
     decor: [
-      { type: 'autumntree', count: 280, near: true },
+      { type: 'autumntree', count: 252, near: true },   // 280 idi: üçbucaq büdcəsini (90 min) 0.9 min aşırdı
       { type: 'pine', count: 24, near: true },
       { type: 'bush', count: 64, near: true },
       { type: 'rock', count: 30, near: true },
