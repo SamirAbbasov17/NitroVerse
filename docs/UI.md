@@ -36,6 +36,8 @@ funksiyasını kölgələyir, ondan çəkin.
 ## Vizual dil
 
 - Qalın Russo One başlıqlar, Rajdhani mətn
+- **Ölçü şkalası** (`styles.css` → `:root` şərhi): şrift 10–16, 18, 20, 22, 24, 26, 30, 34 px (yarım piksel yoxdur); künc 4 / 6 / 8 / 10 / 12 / 14 px (`--r-chip|btn|card|panel`); boşluq 4-ün misilləri. Yeni qayda yazanda şkaladan seç
+- **İkonlar** `src/ui/icons.js` (Phosphor "fill"); emoji avtomatik ikona çevrilir, çat istisna
 - Vurğu rəngi `--accent` (narıncı), yaxşı `--good`, təhlükə qırmızı
 - Kilid nişanı: `🔒 Hesab` (qonaq) / `🪙<qiymət>` (hesabla)
 - Modal YOXDUR: zen mühit idarəsi HUD düymələridir (istifadəçi qərarı)
