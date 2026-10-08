@@ -257,6 +257,10 @@ Araşdırma (arkada yarışlarında sürət hissini nə verir): (1) kənarların
 | 6.2 | Çox-oyunlu quruluş: `src/games/<ad>/` + ortaq hub (oyun seçimi); yarış oyunu ilk "oyun" olur | M |
 | 6.3 | Three.js r160 → aktual: ayrıca budaqda, tam kadr müqayisəsi ilə (**qərar lazımdır**: risk var, qazanc — yeniliklər və düzəlişlər) | M |
 
+- **6.2 ✅ (2026-10-08) — çox-oyunlu quruluş.** `main.js` (482 sətir) üç yerə bölündü: `src/platform.js` (ortaq təməl — kətan və render dövrü, giriş, səsin açılması, hesab/sosial kimlik, bildirişlər, ikonlar, xəta hesabatı), `src/games/racing/index.js` (yarış oyununun özü: menyu, səhnələrin başladılması, nəticə, qızıl, dəvət axını) və `src/games/index.js` (oyunların siyahısı). Yeni oyun `src/games/<ad>/` qovluğu + `mount()` ilə qoşulur, mövcud koda toxunmur. Seçim ekranı (hub) ikinci oyun gələndə yazılacaq — tək oyunla boş ekran olardı. Davranış dəyişməyib: check, onlayn, hesab və interfeys testləri keçir.
+- **6.1 ⬜ (qərar: indi edilmir)** — dörd 3D səhnənin ortaq nüvəsi. Carmageddon 2D-dir (ayrı render), bu səhnələrdən demək olar heç nə götürməyəcək; 7300 sətirin yenidən qurulması isə oyunçuya görünməyən yüksək riskdir. Təkrarlanan kiçik hissələr (bildiriş zolağı, pauza qabı) lazım olduqca çıxarılsın.
+- **6.3 ⬜** — Three.js r160 → aktual: qərar gözləyir (ayrıca budaq + tam kadr müqayisəsi).
+
 ---
 
 ## Tövsiyə olunan sıra

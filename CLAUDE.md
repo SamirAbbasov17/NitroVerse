@@ -54,7 +54,10 @@ Testlər Playwright-dır (`tests/`, köməkçi: `tests/helpers.js`). Yeni yoxlam
 Vanilla JS (ESM), Three.js r160, Vite 5. Framework və TypeScript yoxdur.
 
 ```
-src/main.js          boot + state machine: goMenu / startGame / startOnlineGame
+src/main.js          giriş nöqtəsi: platformanı qurur, oyunu açır
+src/platform.js      bütün oyunların ortaq təməli: kətan, giriş, səs kilidi, hesab/sosial kimlik, bildirişlər
+src/games/           oyunların siyahısı (index.js) və hər oyunun öz qovluğu
+  racing/index.js    yarış oyunu: goMenu / startGame / startOnlineGame, nəticə, dəvət axını
 src/core/            Game.js (renderer+loop), səhnələr, audio, i18n, effektlər
   GameplayScene.js   yarış          EndlessScene.js   zen (sonsuz yol)
   FootballScene.js   futbol 3v3     ArenaScene.js     battle royale
