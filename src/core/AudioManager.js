@@ -96,7 +96,6 @@ class AudioManagerImpl {
   // hələ hazır deyilsə, səs sintez variantı ilə çalınır — heç nə səssiz qalmır.
   static SAMPLES = {
     birds: ['sfx/amb-birds.mp3'],
-    skid: ['sfx/tyre-skid.wav'],
   };
 
   _loadSamples() {
@@ -562,7 +561,7 @@ class AudioManagerImpl {
   // slip 0..1 — drift/sürüşmə (rezin cığıltısı) · dirt 0..1 — yoldan kənar uğultu · wind 0..1 — sürət küləyi.
   // Hamısı süzgəclənmiş küydür (yazılmış CC0 cığıltı tapılmadı — sintezdir); düyünlər bir dəfə qurulur.
   setTyres(slip = 0, dirt = 0, wind = 0) {
-    if (!this.ctx || (!this._tyres && slip + dirt < 0.02)) return;
+    if (!this.ctx || (!this._tyres && dirt < 0.02)) return;
     if (!this._ensure()) return;
     const ctx = this.ctx;
     if (!this._tyres) {
@@ -575,25 +574,13 @@ class AudioManagerImpl {
         src.start();
         return { f, g };
       };
-      // Cığıltı REAL yazıdır (yaş asfaltda təkər sürüşməsi — Sonniss GDC, bax LICENSE.txt). Əvvəlki
-      // sintez (iki dar küy zolağı) çıxarıldı (istifadəçi: "drift səsini bəyənmədim"). Yazı hələ
-      // yüklənməyibsə cığıltı sadəcə çalınmır.
-      this._tyres = { dirt: mk('lowpass', 210, 0.6), skid: null };
-    }
-    if (!this._tyres.skid && this._smp?.skid?.[0]) {
-      const src = ctx.createBufferSource();
-      src.buffer = this._smp.skid[0]; src.loop = true;
-      const g = ctx.createGain(); g.gain.value = 0;
-      src.connect(g); g.connect(this.fxBus);
-      src.start();
-      this._tyres.skid = { src, g };
+      // DRİFT SƏSSİZDİR (istifadəçi qərarı, 2026-10-08): əvvəl sintez cığıltı, sonra yaş asfaltda real
+      // təkər yazısı sınandı — ikisi də bəyənilmədi ("drift səsini də çıxar"). `slip` parametri qalır
+      // ki, çağıranlar dəyişməsin; yeni səs yalnız əvvəlcə dinlədilib təsdiqlənəndən sonra qoşulsun.
+      this._tyres = { dirt: mk('lowpass', 210, 0.6) };
     }
     const T = this._tyres, t = ctx.currentTime;
     const k = this._pausedGame ? 0 : (this._zenMix ? 0.35 : 1);
-    if (T.skid) {
-      T.skid.g.gain.setTargetAtTime(slip * 0.24 * k, t, 0.09);
-      T.skid.src.playbackRate.setTargetAtTime(0.9 + slip * 0.14, t, 0.15);   // güclü sürüşmədə bir az zil
-    }
     T.dirt.g.gain.setTargetAtTime(dirt * 0.16 * k, t, 0.1);
     // Sürət küləyi (500–1400 Hz küy) ÇIXARILDI: sürüş boyu fasiləsiz xışıltı verirdi (istifadəçi:
     // "sürəndəki xışıltı səsi pisdir"). Sürət hissini mühərrik səsi daşıyır. `wind` parametri qalır

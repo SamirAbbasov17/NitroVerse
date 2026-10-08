@@ -271,16 +271,15 @@ test('səs: yazılmış mühərrik, ötürücülər, təkər səsləri, ayrı s�
     out.gears = { drops, maxRpm: +maxRpm.toFixed(2), centMin: Math.min(...cents.filter((x) => x > 0)), centMax: Math.max(...cents) };
     a.setEngine(0, false); await sleep(300);
     a.stopEngine(); await sleep(500);
-    // 4) təkər / torpaq / külək (mühərriksiz) — cığıltı yazıdır, yüklənməsini gözlə
-    for (let i = 0; i < 60 && !a._smp?.skid?.length; i++) await sleep(100);
-    out.skidLoaded = !!a._smp?.skid?.length;
+    // 4) təkər / torpaq / külək (mühərriksiz)
     out.silence = await db(600);
+    a.setTyres(0, 1, 0); await sleep(300);   // qatı yarat (torpaq)
     a.setTyres(1, 0, 0); await sleep(500); out.squeal = await db(900);
     a.setTyres(0, 1, 0); await sleep(600); out.dirt = await db(900);
     a.setTyres(0, 0, 1); await sleep(800); out.wind = await db(900);
     a.setTyres(0, 0, 0); await sleep(900); out.tyresOff = await db(600);
     // 5) ayrı səviyyələr: effekt sürgüsü 0 → cığıltı susur; musiqi sürgüsü ona toxunmur
-    a.setTyres(1, 0, 0); await sleep(400);
+    a.setTyres(0, 1, 0); await sleep(600);
     a.setVolume('music', 0); await sleep(300); out.fxWithMusic0 = await db(700);
     a.setVolume('fx', 0); await sleep(300); out.fx0 = await db(700);
     a.setVolume('fx', 1); a.setVolume('music', 1); a.setTyres(0, 0, 0);
@@ -296,13 +295,12 @@ test('səs: yazılmış mühərrik, ötürücülər, təkər səsləri, ayrı s�
   expect(r.rec.levels[0.8] - r.synth.db, 'həddən artıq uca deyil (dB)').toBeLessThan(12);
   expect(r.rec.levels[1.0], 'sürətdə daha uca').toBeGreaterThan(r.rec.levels[0.1]);
   expect(r.gears.drops, 'ötürücü keçidlərində dövr düşür (4 keçid)').toBeGreaterThanOrEqual(3);
-  expect(r.skidLoaded, 'təkər cığıltısı yazısı yükləndi').toBe(true);
-  expect(r.squeal, 'drift cığıltısı gəlir').toBeGreaterThan(r.silence + 20);
+  expect(r.squeal, 'drift səssizdir (cığıltı çıxarılıb)').toBeLessThan(-80);
   expect(r.dirt, 'torpaq uğultusu gəlir').toBeGreaterThan(r.silence + 20);
   expect(r.wind, 'sürət küləyi (xışıltı) yoxdur').toBeLessThan(-80);
-  expect(r.tyresOff, 'kəsiləndə susur').toBeLessThan(r.squeal - 25);
-  expect(r.fxWithMusic0, 'musiqi sürgüsü effektə toxunmur').toBeGreaterThan(r.squeal - 3);
-  expect(r.fx0, 'effekt sürgüsü 0 → susur').toBeLessThan(r.squeal - 25);
+  expect(r.tyresOff, 'kəsiləndə susur').toBeLessThan(r.dirt - 25);
+  expect(r.fxWithMusic0, 'musiqi sürgüsü effektə toxunmur').toBeGreaterThan(r.dirt - 3);
+  expect(r.fx0, 'effekt sürgüsü 0 → susur').toBeLessThan(r.dirt - 25);
 });
 
 test('səs: toqquşma (boğuq, metalsız) və quş səsi (mühit)', async ({ page }) => {
@@ -357,7 +355,7 @@ test('səs: toqquşma (boğuq, metalsız) və quş səsi (mühit)', async ({ pag
   });
   mergeJson('music.json', 'samples', r);
   console.log(JSON.stringify(r));
-  expect(r.loaded, 'quş və təkər yazıları yüklənir; metal zərbə nümunələri çıxarılıb').toEqual({ keys: 'birds,skid', birds: 1 });
+  expect(r.loaded, 'yalnız quş yazısı yüklənir').toEqual({ keys: 'birds', birds: 1 });
   expect(r.hitHard.db, 'güclü zərbə zəifdən ucadır').toBeGreaterThan(r.hitSoft.db + 3);
   expect(r.hitHard.peak, 'zərbə kəsilmir (clipping yoxdur)').toBeLessThan(0.98);
   expect(r.hitHard.bright, 'güclü zərbədə 2 kHz-dən yuxarı enerji azdır (cingilti yoxdur)').toBeLessThan(0.05);
