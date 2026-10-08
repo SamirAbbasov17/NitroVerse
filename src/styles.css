@@ -1584,6 +1584,14 @@ body.gate-on #rotate-hint { display: none; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Rejim açılışı örtüyü (bax games/racing/index.js showCover): səhnənin ilk kadrlarını gizlədir */
+#scene-cover {
+  position: fixed; inset: 0; z-index: 150; background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 1; transition: opacity 0.22s ease;
+}
+#scene-cover.is-out { opacity: 0; pointer-events: none; }
+
 ::-webkit-scrollbar { width: 7px; }
 ::-webkit-scrollbar-thumb { background: rgba(255, 107, 26, 0.5); border-radius: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }

@@ -66,8 +66,10 @@ if (import.meta.env.DEV) {
 
 // ————— State machine —————
 let activeMenu = null; // dəvət/DM axını üçün — oyun içindəykən null
+let coverEl = null, coverTok = 0; // rejim açılışı örtüyü (bax showCover)
 
 function goMenu() {
+  if (coverEl) hideCover();   // səhnə yüklənməsi alınmayıb menyuya qayıdılırsa örtük qalmasın
   audio.stopEngine();
   audio.playMusic('menu');
   input.enabled = true;
@@ -146,7 +148,12 @@ function goLobby(net) {
 
 // ————— Onlayn yarış —————
 function startOnlineGame(net, startMsg) {
+  showCover();
   if (!ensureScene(startMsg.mode, () => startOnlineGame(net, startMsg))) return;
+  try { startOnlineGameNow(net, startMsg); } finally { hideCover(); }
+}
+
+function startOnlineGameNow(net, startMsg) {
   tryLandscapeFullscreen();
   activeMenu = null;
   social.setActivity('idle');
@@ -225,8 +232,38 @@ function startOnlineGame(net, startMsg) {
   game.setActive(scene);
 }
 
+// KEÇİD ÖRTÜYÜ: rejim açılanda səhnənin ilk kadrları (kamera yerinə oturur, uzaq obyektlər və
+// şeyderlər hazır olur) tünd örtüyün arxasında qalır, sonra oyun yumşaq açılır. Əvvəl menyudan
+// birbaşa yarımhazır kadra keçilirdi — "bir anlıq başqa yer görünür, sonra oyun" (oyunçu rəyi).
+function showCover() {
+  coverTok++;
+  if (!coverEl) {
+    coverEl = document.createElement('div');
+    coverEl.id = 'scene-cover';
+    coverEl.innerHTML = '<div class="spinner"></div>';
+    document.body.appendChild(coverEl);
+  }
+  coverEl.classList.remove('is-out');
+}
+function hideCover() {
+  const tok = coverTok;
+  let n = 0;
+  const step = () => {
+    if (tok !== coverTok || !coverEl) return;
+    if (++n < 5) { requestAnimationFrame(step); return; }      // səhnə bir neçə kadr çəksin
+    coverEl.classList.add('is-out');
+    setTimeout(() => { if (tok === coverTok && coverEl) { coverEl.remove(); coverEl = null; } }, 240);
+  };
+  requestAnimationFrame(step);
+}
+
 function startGame(config) {
+  showCover();
   if (!ensureScene(config.mode, () => startGame(config))) return;
+  try { startGameNow(config); } finally { hideCover(); }
+}
+
+function startGameNow(config) {
   tryLandscapeFullscreen();
   activeMenu = null;
   social.setActivity('idle');
