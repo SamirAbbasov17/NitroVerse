@@ -1,8 +1,17 @@
 // Yarış məntiqi: geri sayım, dövrə sayımı, sıralama, vaxt, finiş.
 const COUNTDOWN = 3; // saniyə (3-2-1 sonra GO)
 
+// SEKTORLAR (nəzarət nöqtələri): trek 12 bərabər hissəyə bölünür və hissələr SIRA ilə keçilməlidir.
+// Əvvəl dövrə "trekin ortasından keçdi" şərti ilə sayılırdı: yoldan kənarla başqa hissəyə kəsdirən
+// və ya xətdən geri gedib qayıdan oyunçu dövrə və mövqe qazanırdı (oyunçu rəyi). İndi buraxılmış
+// sektor varsa proqres orada dayanır; dövrə yalnız bütün sektorlar sıra ilə keçiləndə sayılır.
+// Trekin öz qısayolları (şaxələr, t0→t1) qanunidir — üstündəki maşına aradakı sektorlar sayılır.
+export const SECTORS = 12;
+const secOf = (t) => Math.min(SECTORS - 1, Math.max(0, Math.floor(t * SECTORS)));
+
 export class RaceManager {
-  constructor(racers, totalLaps) {
+  constructor(racers, totalLaps, track = null) {
+    this.track = track;
     this.racers = racers;
     this.totalLaps = totalLaps;
     this.elapsed = 0;
@@ -27,9 +36,10 @@ export class RaceManager {
       // başlamalıdır. Əks halda ilk keçid sayılmır, progress bir dövrə
       // aşağı düşür və startdan saniyələr sonra sıralama qarışırdı
       // (P1→P6 "sıçrayışı" — istifadəçi rəyi).
-      r._half = r.lap === -1;
+      r.sec = secOf(r.car.trackT ?? 0);   // sıra ilə çatdığı son sektor
+      r.cut = false;                      // təsdiqlənmiş hissədən irəlidədir (sektor buraxıb)
+      r._cutT = 0;
       r.maxLap = 0;
-      r.lastT = r.car.trackT ?? 0;
       r.progress = 0;
       r.finished = false;
       r.finishTime = 0;
@@ -65,46 +75,52 @@ export class RaceManager {
     for (const r of this.racers) {
       if (r.finished) { r.progress = this.totalLaps + 1; continue; }
       const t = r.car.trackT;
-      const d = t - r.lastT;
-
-      // YARIM DÖVRƏ NƏZARƏTİ (checkpoint əvəzi):
-      // Dövrə yalnız trekin ORTASINDAN keçdikdən sonra sayılır. Bunsuz
-      // `trackT` sıçrayışı (yaxın maşınla toqquşma, künc kəsmə, yol öz
-      // yanından keçəndə nöqtə axtarışının atlanması) saxta "geri keçid"
-      // yaradırdı və oyunçunun dövrəsi AZALIRDI — rəqibləri bir dövrə
-      // dalayanda mövqe geri düşürdü (istifadəçi rəyi).
-      if (t > 0.35 && t < 0.75) r._half = true;
-
-      // SİMMETRİK sayma: geri keçid lap-ı azaldır — xətt üzərində
-      // geri-irəli hiyləsi ilə pulsuz dövrə qazanmaq mümkün deyil
-      if (d < -0.5 && r._half) {
-        r._half = false;
-        // İrəli keçid (t 1→0 sıçrayışı)
-        r.lap++;
-        // Start xəttinin ilk keçidi (grid arxadan gəlir) — dövrə vaxtı buradan başlasın
-        if (r.lap === 0 && r.maxLap === 0) r.lapStart = this.elapsed;
-        if (r.lap > r.maxLap) {
-          r.maxLap = r.lap;
-          r.lastLapTime = this.elapsed - r.lapStart;
-          r.lapTimes.push(r.lastLapTime);
-          r.lapStart = this.elapsed;
-          if (r.lap >= this.totalLaps) {
-            r.finished = true;
-            r.finishTime = this.elapsed;
-            r.finishPos = ++this._finishOrder;
-            this.onFinish?.(r, r.finishPos);
-            if (r.isPlayer) this.onPlayerFinish?.(r);
-          } else {
-            this.onLap?.(r);
+      const K = SECTORS, s = secOf(t);
+      // Qısayol (şaxə): t0-dakı sektora çatmış maşın şaxənin üstündədirsə, t1-ə qədərki sektorlar sayılır
+      if (this.track?.branches?.length) {
+        const br = this.track.getBranchNearest(r.car.position)?.branch;
+        if (br) {
+          const s0 = secOf(br.t0), s1 = secOf(br.t1);
+          const span = (s1 - s0 + K) % K, into = (r.sec - s0 + 1 + K) % K;
+          if (span > 0 && into <= span) r.sec = (s1 - 1 + K) % K;
+        }
+      }
+      let rel = (s - r.sec + K) % K;       // 0 öz sektorunda · 1 növbəti · 2…K/2 irəlidə (kəsib) · qalanı geridə
+      // Botlar qəsdən kəsmir: zərbə ilə başqa hissəyə atılan bot 2 s-dən sonra olduğu yerdən davam edir
+      // (yoxsa buraxdığı sektora qayıtmağı bilmir və yarışı heç vaxt bitirmir)
+      const ahead = rel >= 2 && rel <= K / 2;
+      r._cutT = ahead ? r._cutT + dt : 0;
+      if (ahead && !r.isPlayer && !r.isRemote && r._cutT > 2) { r.sec = (s - 1 + K) % K; rel = 1; }
+      if (rel === 1) {
+        r.sec = s; rel = 0;
+        if (s === 0) {
+          // Start xəttinin keçidi — bütün sektorlar sıra ilə keçilib
+          r.lap++;
+          // İlk keçid (grid arxadan gəlir) — dövrə vaxtı buradan başlasın
+          if (r.lap === 0 && r.maxLap === 0) r.lapStart = this.elapsed;
+          if (r.lap > r.maxLap) {
+            r.maxLap = r.lap;
+            r.lastLapTime = this.elapsed - r.lapStart;
+            r.lapTimes.push(r.lastLapTime);
+            r.lapStart = this.elapsed;
+            if (r.lap >= this.totalLaps) {
+              r.finished = true;
+              r.finishTime = this.elapsed;
+              r.finishPos = ++this._finishOrder;
+              this.onFinish?.(r, r.finishPos);
+              if (r.isPlayer) this.onPlayerFinish?.(r);
+            } else {
+              this.onLap?.(r);
+            }
           }
         }
-      } else if (d > 0.5 && r._half) {
-        // Geri keçid (t 0→1 sıçrayışı) — irəli qayıdanda yenidən sayılacaq
-        r._half = false;
-        r.lap--;
       }
-      r.lastT = t;
-      r.progress = r.lap + t;
+      r.cut = rel >= 2 && rel <= K / 2;
+      // Sıralama üçün proqres: kəsibsə təsdiqlənmiş sektorun sonunda dayanır; geridədirsə real yeri
+      // (xəttin arxasına qayıdıbsa bir dövrə aşağı)
+      if (rel === 0) r.progress = r.lap + t;
+      else if (r.cut) r.progress = r.lap + (r.sec + 1) / K - 1e-4;
+      else r.progress = r.lap + t - (s > r.sec ? 1 : 0);
     }
 
     this._updateStandings();
@@ -114,6 +130,11 @@ export class RaceManager {
       this.state = 'finished';
       this.onComplete?.();
     }
+  }
+
+  // Kəsmiş oyunçunun qayıtmalı olduğu yer: buraxdığı ilk sektorun başlanğıcı (trek üzrə t)
+  resumeT(r) {
+    return ((r.sec + 1) % SECTORS) / SECTORS;
   }
 
   _updateStandings() {

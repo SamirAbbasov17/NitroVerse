@@ -75,7 +75,7 @@ export class TrackBuilder {
       bb.minX = Math.min(bb.minX, p.x); bb.maxX = Math.max(bb.maxX, p.x);
       bb.minZ = Math.min(bb.minZ, p.z); bb.maxZ = Math.max(bb.maxZ, p.z);
     }
-    return { i0, i1, points, tangents, normals, halfWidth, bb };
+    return { i0, i1, t0: br.t0, t1: br.t1, points, tangents, normals, halfWidth, bb };
   }
 
   // Mövqe şaxə üzərindədirsə ən yaxın şaxə nöqtəsi + gedişat istiqaməti.

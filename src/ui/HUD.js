@@ -183,12 +183,14 @@ export class HUD {
     this._rescueShown = visible;
     this._rescueReason = reason;
     if (visible) {
-      this.el.rescue.innerHTML = reason === 'wrongway'
+      this.el.rescue.innerHTML = reason === 'cut'
+        ? `<span class="hud__rescue-warn">⛔</span> ${t('hud.cut')} <kbd>F</kbd>`
+        : reason === 'wrongway'
         ? `<span class="hud__rescue-warn">⛔</span> ${t('hud.wrongway')} <kbd>F</kbd>`
         : `<span class="hud__rescue-warn">⚠</span> ${t('hud.offroad')} <kbd>F</kbd>`;
     }
     this.el.rescue.classList.toggle('is-visible', visible);
-    this.el.rescue.classList.toggle('is-wrongway', visible && reason === 'wrongway');
+    this.el.rescue.classList.toggle('is-wrongway', visible && (reason === 'wrongway' || reason === 'cut'));
   }
 
   // Yarışın sonu zolağı (uduzdun / digərləri gözlənilir): solda geri sayım halqası,

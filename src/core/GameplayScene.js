@@ -13,7 +13,7 @@ import { PlayerController } from '../entities/PlayerController.js';
 import { AIController } from '../entities/AIController.js';
 import { chaseCamTweak } from './ChaseCam.js';
 import { NetworkController } from '../entities/NetworkController.js';
-import { RaceManager } from '../race/RaceManager.js';
+import { RaceManager, SECTORS } from '../race/RaceManager.js';
 import { PowerUpManager } from '../race/PowerUpManager.js';
 import { disposeObject3D, mergeStaticGroup } from './MergeUtils.js';
 import { playFinishFx } from './FinishFx.js';
@@ -202,7 +202,7 @@ export class GameplayScene {
         });
         if (isLocal) this.playerCar = car;
       });
-      this.raceManager = new RaceManager(this.racers, this.config.laps);
+      this.raceManager = new RaceManager(this.racers, this.config.laps, this.track);
       this._wireRace();
       this.effects = new Effects(this.scene);
       this._warmFx();
@@ -322,7 +322,7 @@ export class GameplayScene {
         slotIdx++;
       });
 
-      this.raceManager = new RaceManager(this.racers, this.config.laps);
+      this.raceManager = new RaceManager(this.racers, this.config.laps, this.track);
       this._wireRace();
     } else {
       // Sərbəst sürüş
@@ -695,17 +695,25 @@ export class GameplayScene {
     if (force) {
       // onRoad şaxə yollarını da nəzərə alır; səhv istiqamətdə həmişə icazə var
       const excess = this.playerCar.onRoad ? 0 : Math.abs(this.playerCar.lateral) - this.track.halfWidth;
-      if (excess <= 1 && !this._wrongWay) return; // yoldadır və istiqamət düzdür
+      if (excess <= 1 && !this._wrongWay && !this._cutWarn) return; // yoldadır və istiqamət düzdür
     }
     const car = this.playerCar;
     // Şaxədəyiksə şaxənin üstünə (öz istiqaməti ilə) qaytar — əsas yola sıçratma
     const onBr = this.track.branches?.length ? this.track.getBranchNearest(car.position, 6) : null;
     let p, tt;
-    if (onBr) {
+    const me = this.raceManager?.getPlayer();
+    const near = this.track.getNearest(car.position); // tam axtarış
+    // ən yaxın yol nöqtəsi buraxılmış sektordan İRƏLİDƏDİRSƏ ora qoyulmur (kəsdirmə + "yola qayıt"
+    // pulsuz irəliləmə olardı) — oyunçu buraxdığı hissənin başlanğıcına qayıdır
+    const nearRel = me ? (Math.min(SECTORS - 1, Math.floor(near.t * SECTORS)) - me.sec + SECTORS) % SECTORS : 0;
+    if (me && (me.cut || (nearRel >= 2 && nearRel <= SECTORS / 2)) && !onBr) {
+      const idx = Math.round(this.raceManager.resumeT(me) * this.track.points.length) % this.track.points.length;
+      p = this.track.points[idx];
+      tt = this.track.tangents[idx];
+    } else if (onBr) {
       p = onBr.point;
       tt = onBr.tangent;
     } else {
-      const near = this.track.getNearest(car.position); // tam axtarış
       p = this.track.points[near.index];
       tt = this.track.tangents[near.index];
     }
@@ -1324,20 +1332,24 @@ export class GameplayScene {
       this._wrongAcc = 0;
     }
     this._wrongWay = wrongWay;
+    // YOLU KƏSİB: sektor buraxılıb (bax RaceManager) — proqres dayanıb, oyunçuya səbəbi deyilir
+    const me = this.isRace && this._state === 'run' && !this._playerDone ? this.raceManager?.getPlayer() : null;
+    const cut = !!me && me.cut && me._cutT > 0.8;
+    this._cutWarn = cut;
 
-    const reason = wrongWay ? 'wrongway' : 'offroad';
-    const shouldShow = (excess > 7 || wrongWay) && this._rescueCooldown <= 0;
+    const reason = cut ? 'cut' : wrongWay ? 'wrongway' : 'offroad';
+    const shouldShow = (excess > 7 || wrongWay || cut) && this._rescueCooldown <= 0;
     if (!this._rescueVisible && shouldShow) {
       this._rescueVisible = true;
       this.hud.setRescue(true, reason);
-    } else if (this._rescueVisible && excess < 2.5 && !wrongWay) {
+    } else if (this._rescueVisible && excess < 2.5 && !wrongWay && !cut) {
       this._rescueVisible = false;
       this.hud.setRescue(false);
     } else if (this._rescueVisible) {
       this.hud.setRescue(true, reason); // mətn səbəbə görə dəyişsin (HUD keşləyir)
     }
     // Mobil 🚩 — yoldan çıxanda VƏ YA səhv istiqamətdə aktivdir
-    this.touchControls?.setRescueEnabled((excess > 1 || wrongWay) && this._rescueCooldown <= 0);
+    this.touchControls?.setRescueEnabled((excess > 1 || wrongWay || cut) && this._rescueCooldown <= 0);
   }
 
   _resolveCollisions() {
