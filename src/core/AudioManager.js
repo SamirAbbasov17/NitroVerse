@@ -95,8 +95,6 @@ class AudioManagerImpl {
   // Kiçik CC0 fayllar bir dəfə yüklənir (mənbələr: public/sfx/LICENSE.txt). Yüklənməsə və ya
   // hələ hazır deyilsə, səs sintez variantı ilə çalınır — heç nə səssiz qalmır.
   static SAMPLES = {
-    'hit-heavy': ['sfx/hit-heavy-000.mp3', 'sfx/hit-heavy-001.mp3', 'sfx/hit-heavy-002.mp3'],
-    'hit-med': ['sfx/hit-med-000.mp3', 'sfx/hit-med-001.mp3', 'sfx/hit-med-002.mp3'],
     birds: ['sfx/amb-birds.mp3'],
   };
 
@@ -319,15 +317,12 @@ class AudioManagerImpl {
         this._noise({ t, dur: 0.06, g: 0.06, type: 'bandpass', f0: 2000, q: 1.5 });
         break;
       case 'impact': {
-        // Toqquşma: gücə görə dərinləşən "thud" (sintez — gövdənin çəkisi) + REAL metal zərbəsi
-        // (Kenney Impact Sounds, CC0): güclü zərbədə ağır, zəifdə orta nümunə. Nümunə hələ
-        // yüklənməyibsə əvvəlki sintez xırıltı/cingilti çalınır.
+        // Toqquşma: gücə görə dərinləşən boğuq "gup" — gövdənin çəkisi. Metal cingiltisi YOXDUR:
+        // yazılmış metal zərbələri (Kenney) və parlaq "cingilti" zolağı çıxarıldı — yarışda maşının
+        // yanından keçəndə "cınk-cınk" verirdi (istifadəçi: "professional deyil, çox arcade").
         const g = 0.35 + 0.65 * k;
-        this._tone({ type: 'sine', f0: 170 - 50 * k, f1: 46, t, dur: 0.16 + 0.12 * k, g: 0.26 * g, attack: 0.002 });
-        if (!this._sample(k > 0.5 ? 'hit-heavy' : 'hit-med', 0.3 + 0.6 * k, 0.9 + Math.random() * 0.2 - k * 0.12)) {
-          this._noise({ t, dur: 0.07 + 0.12 * k, g: 0.2 * g, f0: 900 + 1600 * k, f1: 180 });
-          if (k > 0.5) this._noise({ t: t + 0.012, dur: 0.16, g: 0.12 * k, type: 'bandpass', f0: 2600, f1: 900, q: 3 });
-        }
+        this._tone({ type: 'sine', f0: 150 - 45 * k, f1: 44, t, dur: 0.18 + 0.12 * k, g: 0.3 * g, attack: 0.003 });
+        this._noise({ t, dur: 0.08 + 0.08 * k, g: 0.12 * g, f0: 420 + 380 * k, f1: 140 });
         break;
       }
       case 'bump': {
@@ -346,7 +341,8 @@ class AudioManagerImpl {
         break;
       }
       case 'scrape':
-        this._noise({ t, dur: 0.09, g: 0.05, type: 'bandpass', f0: 3200, f1: 1800, q: 2 });
+        // söykənib sürüşmə: alçaq, yumşaq sürtünmə (əvvəl 3.2 kHz-lik nazik "tss" idi — saniyədə 11 dəfə)
+        this._noise({ t, dur: 0.12, g: 0.05, f0: 520, f1: 260 });
         break;
       case 'tick':
         // Zərbə — qısa, dolu "thud"
@@ -557,7 +553,7 @@ class AudioManagerImpl {
   // slip 0..1 — drift/sürüşmə (rezin cığıltısı) · dirt 0..1 — yoldan kənar uğultu · wind 0..1 — sürət küləyi.
   // Hamısı süzgəclənmiş küydür (yazılmış CC0 cığıltı tapılmadı — sintezdir); düyünlər bir dəfə qurulur.
   setTyres(slip = 0, dirt = 0, wind = 0) {
-    if (!this.ctx || (!this._tyres && slip + dirt + wind < 0.02)) return;
+    if (!this.ctx || (!this._tyres && slip + dirt < 0.02)) return;
     if (!this._ensure()) return;
     const ctx = this.ctx;
     if (!this._tyres) {
@@ -575,7 +571,7 @@ class AudioManagerImpl {
       const lfo = ctx.createOscillator(); lfo.frequency.value = 6.5;
       const lg = ctx.createGain(); lg.gain.value = 55;
       lfo.connect(lg); lg.connect(sq1.f.frequency); lg.connect(sq2.f.frequency); lfo.start();
-      this._tyres = { sq1, sq2, dirt: mk('lowpass', 210, 0.6), wind: mk('bandpass', 700, 0.5) };
+      this._tyres = { sq1, sq2, dirt: mk('lowpass', 210, 0.6) };
     }
     const T = this._tyres, t = ctx.currentTime;
     const k = this._pausedGame ? 0 : (this._zenMix ? 0.35 : 1);
@@ -583,8 +579,9 @@ class AudioManagerImpl {
     T.sq2.g.gain.setTargetAtTime(slip * 0.1 * k, t, 0.06);
     T.sq1.f.frequency.setTargetAtTime(950 + slip * 260, t, 0.1);
     T.dirt.g.gain.setTargetAtTime(dirt * 0.16 * k, t, 0.1);
-    T.wind.g.gain.setTargetAtTime(wind * wind * 0.05 * k, t, 0.2);
-    T.wind.f.frequency.setTargetAtTime(520 + wind * 900, t, 0.2);
+    // Sürət küləyi (500–1400 Hz küy) ÇIXARILDI: sürüş boyu fasiləsiz xışıltı verirdi (istifadəçi:
+    // "sürəndəki xışıltı səsi pisdir"). Sürət hissini mühərrik səsi daşıyır. `wind` parametri qalır
+    // ki, çağıranlar dəyişməsin; real külək yazısı tapılsa bura qoşulacaq.
   }
 
   setZenMix(on) {

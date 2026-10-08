@@ -293,13 +293,13 @@ test('səs: yazılmış mühərrik, ötürücülər, təkər səsləri, ayrı s�
   expect(r.gears.drops, 'ötürücü keçidlərində dövr düşür (4 keçid)').toBeGreaterThanOrEqual(3);
   expect(r.squeal, 'drift cığıltısı gəlir').toBeGreaterThan(r.silence + 20);
   expect(r.dirt, 'torpaq uğultusu gəlir').toBeGreaterThan(r.silence + 20);
-  expect(r.wind, 'külək gəlir').toBeGreaterThan(r.silence + 15);
+  expect(r.wind, 'sürət küləyi (xışıltı) yoxdur').toBeLessThan(-80);
   expect(r.tyresOff, 'kəsiləndə susur').toBeLessThan(r.squeal - 25);
   expect(r.fxWithMusic0, 'musiqi sürgüsü effektə toxunmur').toBeGreaterThan(r.squeal - 3);
   expect(r.fx0, 'effekt sürgüsü 0 → susur').toBeLessThan(r.squeal - 25);
 });
 
-test('səs: toqquşma nümunələri və quş səsi (mühit)', async ({ page }) => {
+test('səs: toqquşma (boğuq, metalsız) və quş səsi (mühit)', async ({ page }) => {
   test.setTimeout(120_000);
   await page.addInitScript(() => { try { localStorage.setItem('apexMuted', '0'); localStorage.removeItem('apexVolMusic'); localStorage.removeItem('apexVolFx'); } catch { /* boş */ } });
   await page.goto('/');
@@ -320,17 +320,22 @@ test('səs: toqquşma nümunələri və quş səsi (mühit)', async ({ page }) =
       while (performance.now() < end) { await sleep(30); an.getFloatTimeDomainData(buf); for (let i = 0; i < buf.length; i++) { const v = Math.abs(buf[i]); if (v > peak) peak = v; sum += buf[i] * buf[i]; n++; } }
       return { db: +(20 * Math.log10(Math.sqrt(sum / n) || 1e-9)).toFixed(1), peak: +peak.toFixed(3) };
     };
-    for (let i = 0; i < 80 && !(a._smp?.['hit-heavy']?.length === 3 && a._smp?.['hit-med']?.length === 3 && a._smp?.birds?.length === 1); i++) await sleep(100);
-    const out = { loaded: { heavy: a._smp['hit-heavy'].length, med: a._smp['hit-med'].length, birds: a._smp.birds.length } };
+    for (let i = 0; i < 80 && !(a._smp?.birds?.length === 1); i++) await sleep(100);
+    const out = { loaded: { keys: Object.keys(a._smp).join(','), birds: a._smp.birds.length } };
+    const spec = new Float32Array(an.frequencyBinCount);
     await sleep(3000);   // musiqinin sönmə quyruğu bitsin
     out.silence = (await meas(500)).db;
     // zərbə: nümunə ilə və nümunəsiz (sintez ehtiyatı), zəif və güclü
-    const hit = async (k) => { const p = meas(700); a.sfx('impact', k); const m = await p; await sleep(500); return m; };
+    // zərbənin parlaqlığı: 2 kHz-dən yuxarı enerjinin payı (metal cingiltisi yuxarı tezliklərdədir)
+    const hit = async (k, kind = 'impact') => {
+      const p = meas(700); a.sfx(kind, k);
+      let hi = 0, all = 0; const hz = a.ctx.sampleRate / an.fftSize;
+      for (let q = 0; q < 6; q++) { await sleep(25); an.getFloatFrequencyData(spec); for (let i = 1; i < spec.length; i++) { const e = Math.pow(10, spec[i] / 10); all += e; if (i * hz > 2000) hi += e; } }
+      const m = await p; await sleep(500); return { ...m, bright: +(hi / (all || 1)).toFixed(3) };
+    };
     out.hitSoft = await hit(0.3);
     out.hitHard = await hit(1);
-    const keep = a._smp; a._smp = {};
-    out.hitHardSynth = await hit(1);
-    a._smp = keep;
+    out.scrape = await hit(0, 'scrape');
     // quş səsi: açılır, pauzada susur, sönür
     a.setAmbience(1); await sleep(2500); out.birds = (await meas(4000));
     a.setPaused(true); a._applyAmbience(); await sleep(3500); out.birdsPaused = (await meas(600)).db;
@@ -346,10 +351,11 @@ test('səs: toqquşma nümunələri və quş səsi (mühit)', async ({ page }) =
   });
   mergeJson('music.json', 'samples', r);
   console.log(JSON.stringify(r));
-  expect(r.loaded, 'nümunələr yükləndi').toEqual({ heavy: 3, med: 3, birds: 1 });
+  expect(r.loaded, 'yalnız quş yazısı yüklənir (metal zərbə nümunələri çıxarılıb)').toEqual({ keys: 'birds', birds: 1 });
   expect(r.hitHard.db, 'güclü zərbə zəifdən ucadır').toBeGreaterThan(r.hitSoft.db + 3);
   expect(r.hitHard.peak, 'zərbə kəsilmir (clipping yoxdur)').toBeLessThan(0.98);
-  expect(Math.abs(r.hitHard.db - r.hitHardSynth.db), 'nümunə sintez ehtiyatına yaxın səviyyədədir (dB)').toBeLessThan(9);
+  expect(r.hitHard.bright, 'güclü zərbədə 2 kHz-dən yuxarı enerji azdır (cingilti yoxdur)').toBeLessThan(0.05);
+  expect(r.scrape.bright, 'sürtünmə səsi də alçaqdır').toBeLessThan(0.05);
   expect(r.birds.db, 'quş səsi eşidilir').toBeGreaterThan(Math.max(r.silence + 15, -42));
   expect(r.birds.db, 'quş səsi mühərrikdən aşağıdır (arxa fon)').toBeLessThan(r.engine - 4);
   expect(r.birdsPaused, 'pauzada susur').toBeLessThan(r.birds.db - 20);

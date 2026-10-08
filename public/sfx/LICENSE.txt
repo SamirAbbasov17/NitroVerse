@@ -8,9 +8,6 @@ engine-high.wav = loop_5_0.wav (~76 Hz)
 Files are unmodified (renamed only). No attribution required; kept as a record of provenance.
 
 Added 2026-10-07:
-hit-heavy-00{0,1,2}.mp3, hit-med-00{0,1,2}.mp3 — Kenney "Impact Sounds" (impactMetal_heavy / _medium)
-https://kenney.nl/assets/impact-sounds — CC0 1.0 (License.txt in the pack). Converted ogg → mono mp3.
-
 amb-birds.mp3 — "Park ambiences" (park_ambience_birds.wav), opengameart.org/content/park-ambiences
 CC0 1.0 (stated on the page; checked 2026-10-07). A 30 s excerpt, ends cross-faded into the start so
 it loops, loudness-normalised (-23 LUFS), mono 32 kHz mp3.
