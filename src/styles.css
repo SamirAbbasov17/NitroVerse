@@ -811,6 +811,9 @@ kbd {
 }
 #start-gate.is-out { opacity: 0; pointer-events: none; }
 body.gate-on #ui-root, body.gate-on #mute-btn, body.gate-on .notices { visibility: hidden; }
+/* şaquli tutulanda "telefonu yana çevir" ekranı başlanğıc ekranının arxasından görünürdü (üst-üstə
+   düşürdü): başlanğıc ekranı açıq olanda o gizlənir — "Başla" toxunuşu ekranı özü landşafta keçirir */
+body.gate-on #rotate-hint { display: none; }
 .start-gate__shade {
   position: absolute; inset: 0;
   background:
