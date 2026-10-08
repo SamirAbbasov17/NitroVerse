@@ -19,6 +19,8 @@ import { TouchControls, isTouchDevice } from './TouchControls.js';
 import { audio } from './AudioManager.js';
 import { auth } from '../net/Auth.js';
 
+const BARE_ROCK_BIOMES = new Set(['desert', 'canyon', 'snow']);
+
 // Maşının toqquşma gövdəsi (model 4.4 × 2.24 m): ortada iki iri dairə, dörd küncdə kiçik
 // dairə — [yan, irəli, radius]. Tək dairə nə burnu, nə də küncləri örtür.
 const BODY = [
@@ -319,7 +321,8 @@ export class EndlessScene {
     // hər mesh-in ÖZ RƏNGİ tintə vurulur — gövdə/yarpaq fərqi qorunur,
     // rəng palitraya oturur (əvvəl hamısı tək rəngə salınırdı).
     this.road.natureFactory = (name) => {
-      const o = this._nature.get(name);
+      // quraq və qarlı biomda qayanın üstündə ot olmur
+      const o = this._nature.get(name, { bare: BARE_ROCK_BIOMES.has(this.road.style?.id) });
       if (!o) return o;
       const tint = this.road.style?.natureTint;
       if (tint && tint !== 0xffffff) {

@@ -89,6 +89,7 @@ export class NatureKit {
     // İndi materiallar RƏNGƏ görə paylaşılır: forma-rəng qorunur, eyni
     // rəngli mesh-lər yenə tək instansiyanı bölüşür → merge işləyir.
     this._mats = new Map();   // colorHex → paylaşılan material
+    this._stone = new Map();  // qaya modeli → daş materialı (otsuz variant üçün)
     await Promise.all(Object.entries(MODELS).map(async ([name, targetH]) => {
       try {
         const gltf = await loader.loadAsync(`models/nature/${name}.glb`);
@@ -117,6 +118,19 @@ export class NatureKit {
           }
           o.material = m;   // eyni rəng → eyni instansiya
         });
+        // Kenney qayalarının ÜSTÜ OTLUDUR (yaşıl material). Yaşıl biomda yerindədir, səhrada/kanyonda/
+        // qarda isə narıncı qayanın üstündə parlaq yaşıl lövhə kimi görünür ("pozulmuş obyekt" —
+        // oyunçu rəyi). Ona görə qayanın DAŞ materialı yadda saxlanır: get(name, { bare: true }) otu
+        // daşla əvəz edir.
+        if (name.startsWith('rock_')) {
+          let stone = null, least = Infinity;
+          obj.traverse((o) => {
+            if (!o.isMesh || !o.material?.color) return;
+            const c = o.material.color, green = c.g - Math.max(c.r, c.b);
+            if (green < least) { least = green; stone = o.material; }
+          });
+          if (stone) this._stone.set(name, stone);
+        }
         const wrap = new THREE.Group();
         wrap.add(obj);
         this.templates.set(name, wrap);
@@ -144,8 +158,18 @@ export class NatureKit {
     return m;
   }
 
-  get(name) {
+  // bare: qayanın otlu üstü daş rənginə keçir (quraq/qarlı biomlar)
+  get(name, { bare = false } = {}) {
     const t = this.templates.get(name);
-    return t ? t.clone(true) : null;
+    if (!t) return null;
+    const o = t.clone(true);
+    const stone = bare ? this._stone?.get(name) : null;
+    if (stone) {
+      o.traverse((m) => {
+        const c = m.isMesh && m.material?.color;
+        if (c && c.g > c.r * 1.1 && c.g > c.b * 1.1) m.material = stone;
+      });
+    }
+    return o;
   }
 }
