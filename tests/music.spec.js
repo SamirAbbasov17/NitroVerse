@@ -239,13 +239,14 @@ test('səs: yazılmış mühərrik, ötürücülər, təkər səsləri, ayrı s�
     const drive = async (speed, ms) => { const end = performance.now() + ms; while (performance.now() < end) { a.setEngine(speed, false); await sleep(16); } };
     const out = {};
     // 1) köhnə sintez
-    localStorage.setItem('apexEngine', 'synth');
+    localStorage.removeItem('apexEngine');   // standart: sintez
     a.startEngine();
+    out.defaultIsSynth = !a._engine?.rec && !a._engLoading;
     await drive(0.8, 900); out.synth = { db: 0 };
     { const p = drive(0.8, 2200); out.synth.db = await db(2000); await p; }
     a.stopEngine(); await sleep(500);
     // 2) yazılmış döngələr (yüklənməsini gözlə)
-    localStorage.removeItem('apexEngine');
+    localStorage.setItem('apexEngine', 'rec');
     a.startEngine();
     for (let i = 0; i < 60 && !a._engine?.rec; i++) { a.setEngine(0.2, false); await sleep(100); }
     out.rec = { loaded: !!a._engine?.rec, levels: {} };
@@ -283,11 +284,13 @@ test('səs: yazılmış mühərrik, ötürücülər, təkər səsləri, ayrı s�
     a.setVolume('music', 0); await sleep(300); out.fxWithMusic0 = await db(700);
     a.setVolume('fx', 0); await sleep(300); out.fx0 = await db(700);
     a.setVolume('fx', 1); a.setVolume('music', 1); a.setTyres(0, 0, 0);
+    localStorage.removeItem('apexEngine');
     return out;
   });
   mergeJson('music.json', 'engine', r);
   console.log(JSON.stringify(r));
-  expect(r.rec.loaded, 'yazılmış mühərrik döngələri yükləndi').toBe(true);
+  expect(r.defaultIsSynth, 'standart mühərrik səsi sintezdir (yazılar yüklənmir)').toBe(true);
+  expect(r.rec.loaded, 'yazılmış mühərrik (müqayisə açarı ilə) yüklənir').toBe(true);
   expect(r.rec.levels[0.8], 'mühərrik eşidilir').toBeGreaterThan(-50);
   expect(r.rec.levels[0.8] - r.synth.db, 'köhnə sintezə nisbətən fərq (dB)').toBeGreaterThan(-3);
   expect(r.rec.levels[0.8] - r.synth.db, 'həddən artıq uca deyil (dB)').toBeLessThan(12);

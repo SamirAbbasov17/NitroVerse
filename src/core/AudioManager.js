@@ -410,7 +410,10 @@ class AudioManagerImpl {
 
   startEngine() {
     if (!this._ensure() || this._engine) return;
-    const forceSynth = (() => { try { return localStorage.getItem('apexEngine') === 'synth'; } catch { return false; } })();
+    // STANDART: ilk (sintez) mühərrik səsi. İstifadəçi yazılmış variantları (oyun döngələri, sonra
+    // Porsche yazısı) dinləyib ilk səsi üstün tutdu ("ən birinci olan daha yaxşı idi, belə çox qəribə
+    // səs gəlir"). Yazılmış mühərrik yalnız müqayisə üçündür: localStorage `apexEngine` = 'rec'.
+    const forceSynth = (() => { try { return localStorage.getItem('apexEngine') !== 'rec'; } catch { return true; } })();
     if (!forceSynth) {
       if (this._engBufs) { this._startRecEngine(); return; }
       this._loadEngineLoops();
