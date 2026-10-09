@@ -314,4 +314,7 @@ export default {
   "Ember maşından düşdü. Bir əli böyründə idi, o biri hələ də açar halqasını sıxırdı — elə bərk ki, barmaqlarını aça bilmirdi.": "Ember вышла из машины. Одна рука прижата к боку, другая всё ещё сжимала брелок — так крепко, что пальцы не разжимались.",
   "Ayaqları onu kolonkaya qədər apardı. Orada dizləri daha onun sözünə baxmadı.": "Ноги донесли её до колонки. Там колени перестали её слушаться.",
   "Beton soyuq idi. Ember yanı üstə uzandı, maskanı yanına qoydu və göyün kənarının necə ağardığına baxdı: Hearth-siz ilk səhər.": "Бетон был холодным. Ember легла на бок, положила маску рядом и смотрела, как светлеет край неба: первое утро без Hearth.",
+  "Taparam.": "Найду.",
+  "Pip.": "Pip.",
+  "Oxuyacaqlar.": "Прочтут.",
 };

@@ -21,6 +21,17 @@ async function corpus() {
   for (const sc of S.CHASE_CUTS) for (const st of sc) if (st.text) add(st.text.az);
   for (const b of S.DUEL) add(b.az);
   const camp = fs.readFileSync(path.join(SRC, 'camp.js'), 'utf8');
+  // (a) L(kim, hiss, MƏTN) çağırışlarının üçüncü arqumentindəki BÜTÜN sətirlər — şərtli ifadənin hər qolu, tək sözlük
+  //     replikalar da ("Taparam.", "Pip." — əvvəl boşluqsuz olduqları üçün əhatədən düşmüşdülər); once('açar') istisna
+  let i = 0;
+  while ((i = camp.indexOf('L(', i)) >= 0) {
+    if (/[A-Za-z_$.]/.test(camp[i - 1] || ' ')) { i += 2; continue; }
+    let depth = 0, j = i + 1, q = null, esc = false; const commas = [];
+    for (; j < camp.length; j++) { const c = camp[j]; if (q) { if (esc) esc = false; else if (c === '\\') esc = true; else if (c === q) q = null; continue; } if (c === "'" || c === '"' || c === '`') q = c; else if (c === '(') depth++; else if (c === ')') { depth--; if (!depth) break; } else if (c === ',' && depth === 1) commas.push(j); }
+    if (commas.length >= 2) { const arg = camp.slice(commas[1] + 1, j); for (const m of arg.matchAll(/'((?:[^'\\\n]|\\.)*)'/g)) { if (arg.slice(0, m.index).endsWith('once(')) continue; add(m[1].replace(/\\'/g, "'")); } }
+    i = j;
+  }
+  // (b) qalan mətn sətirləri (jurnal: T('…')) — Azərbaycan hərfi və ya boşluğu olanlar
   for (const m of camp.matchAll(/'((?:[^'\\\n]|\\.)*)'/g)) {
     const s = m[1].replace(/\\'/g, "'");
     if (/[əğıöüşçƏĞİÖÜŞÇ]/.test(s) || (/ /.test(s) && /[a-z]{3}/.test(s) && !/^[#.\w-]+$/.test(s) && !/cgs__|rgba|\$\{|^ ?is-/.test(s))) add(s);
@@ -42,6 +53,23 @@ test('hər hekayə sətrinin en/ru/tr tərcüməsi var', async () => {
     // uzun sətir tərcümə olunmadan köçürülməməlidir (xüsusi isimlər və qısa nidalar istisna)
     expect(az.filter((s) => s.length > 30 && d[s] === s), `${l}: tərcümə olunmadan qalan`).toEqual([]);
   }
+});
+
+// İnterfeys açarları (i18n.js): Carmageddon-un hər açarı dörd dilin hamısında var — olmayan açar Azərbaycancaya düşür
+// (t() ehtiyatı), yəni başqa dildə oynayanın qarşısına Azərbaycanca söz çıxır.
+test('interfeys açarları: hər cg.* açarı dörd dildə var və başqa dildə Azərbaycanca qalmayıb', async () => {
+  const vm = await import('vm');
+  const src = fs.readFileSync(path.join(SRC, '..', '..', 'core', 'i18n.js'), 'utf8').replace(/^export /gm, '').replace(/^import .*$/gm, '');
+  const ctx = { localStorage: { getItem: () => 'az', setItem() {} }, navigator: { language: 'az' }, document: { documentElement: {} }, location: { reload() {} } };
+  vm.createContext(ctx); vm.runInContext(src + '\nthis.__D = D;', ctx);
+  const D = ctx.__D, keys = [...new Set(Object.values(D).flatMap((d) => Object.keys(d)))].filter((k) => k.startsWith('cg.') || k === 'mode.cg.d');
+  expect(keys.length, 'açarlar tapıldı').toBeGreaterThan(80);
+  for (const l of ['az', ...LANGS]) expect(keys.filter((k) => typeof D[l][k] !== 'string' || !D[l][k]), `${l}: çatışmayan açarlar`).toEqual([]);
+  for (const l of ['en', 'ru']) expect(keys.filter((k) => D[l][k] === D.az[k] && /[əğıöşçƏĞİÖŞÇ]/.test(D.az[k]) && D.az[k].length > 6), `${l}: Azərbaycancadan köçürülmüş mətnlər`).toEqual([]);
+  // kodda işlənən hər sabit açar lüğətdə var
+  const used = new Set();
+  for (const f of fs.readdirSync(SRC).filter((n) => n.endsWith('.js'))) for (const m of fs.readFileSync(path.join(SRC, f), 'utf8').matchAll(/\bt\(\s*'([a-zA-Z0-9_.-]+)'\s*[,)]/g)) used.add(m[1]);
+  expect([...used].filter((k) => !(k in D.az)), 'lüğətdə olmayan açarlar').toEqual([]);
 });
 
 for (const l of LANGS) {
