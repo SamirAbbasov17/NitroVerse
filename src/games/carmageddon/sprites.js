@@ -124,31 +124,63 @@ const cache = new Map();
 // gövdə 1 px qalxıb-enir, ayaqlar növbə ilə qalxır (öndən/arxadan) və ya açılıb-yığılır (yandan). ———
 const ATLAS = { img: null, cw: 30, ch: 46, rows: { ember: 0, milo: 1, wren: 2, gus: 3, clara: 4, ray: 5, amos: 6, pip: 7, carrier: 8, lookout: 9, kid1: 10, kid2: 11, raider: 12 } };
 export function setCharAtlas(img) { if (img && img !== ATLAS.img) { ATLAS.img = img; cache.clear(); } }
+// Yeriş (4 faza): 0 — sol addım, 1 — keçid, 2 — sağ addım, 3 — keçid.
+//   öndən/arxadan: addım atan ayaq qısalır (diz bükülür, ayaq yerdən qalxır), əks qol 1 px enir, gövdə addımda 1 px qalxır;
+//   yandan: addımda ayaqlar qayçı kimi açılır (ayaq hissəsi irəli və geri əyilmiş iki surətlə çəkilir), keçiddə birləşir.
+// Ayaqların yeri fiqurun öz pikselindən tapılır: boyu (şəffaf olmayan sətirlər), iki ayağın arasındakı boşluq sütunu.
 function artSheet(look) {
   const { img, cw, ch } = ATLAS, row = ATLAS.rows[look.art];
   const cv = document.createElement('canvas'); cv.width = cw * 6; cv.height = ch * 4;
   const x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
-  const legTop = Math.round(ch * (look.kid ? 0.8 : 0.78)), half = cw / 2;
+  const tmp = document.createElement('canvas'); tmp.width = cw * 3; tmp.height = ch;
+  const tx = tmp.getContext('2d', { willReadFrequently: true }); tx.drawImage(img, 0, row * ch, cw * 3, ch, 0, 0, cw * 3, ch);
+  const data = tx.getImageData(0, 0, cw * 3, ch).data, solid = (c, px, py) => data[(py * cw * 3 + c * cw + px) * 4 + 3] > 0;
+  const geo = [0, 1, 2].map((c) => {
+    let top = 0; while (top < ch - 1 && !Array.from({ length: cw }, (_, i) => solid(c, i, top)).some(Boolean)) top++;
+    const h = ch - top, legH = Math.max(6, Math.round(h * (look.kid ? 0.26 : 0.3))), legTop = ch - legH;
+    // iki ayağın arası: ayaq sətirlərində ən az dolu olan orta sütun
+    let gap = cw / 2, best = 1e9;
+    for (let i = Math.floor(cw / 2) - 3; i <= Math.floor(cw / 2) + 3; i++) { let n = 0; for (let y = legTop + 1; y < ch; y++) n += solid(c, i, y) ? 1 : 0; if (n < best) { best = n; gap = i; } }
+    // qolların sütunları: gövdə sətirlərində ən sol və ən sağ dolu piksel
+    const mid = Math.round(top + h * 0.6); let l = 0, r = cw - 1; while (l < cw && !solid(c, l, mid)) l++; while (r > 0 && !solid(c, r, mid)) r--;
+    return { top, h, legH, legTop, gap, l, r, armTop: Math.round(top + h * 0.45) };
+  });
   for (let d = 0; d < 4; d++) {
-    const col = d === 0 ? 0 : d === 1 ? 2 : 1, sx = col * cw, sy = row * ch;
+    const col = d === 0 ? 0 : d === 1 ? 2 : 1, sx = col * cw, sy = row * ch, g = geo[col];
+    const blit = (x0, y0, w, h, dx, dy, dw = w, dh = h) => { if (w > 0 && h > 0) x.drawImage(img, sx + x0, sy + y0, w, h, x0 + dx, y0 + dy, dw, dh); };
     for (let f = 0; f < 6; f++) {
       x.save(); x.translate(f * cw, d * ch);
       if (d === 3) { x.translate(cw, 0); x.scale(-1, 1); }                         // sağa baxış — yanın güzgüsü
-      const blit = (x0, y0, w, h, dx, dy) => x.drawImage(img, sx + x0, sy + y0, w, h, x0 + dx, y0 + dy, w, h);
       if (f === 0) blit(0, 0, cw, ch, 0, 0);
-      else if (f === 1) { blit(0, legTop - 8, cw, ch - legTop + 8, 0, 0); blit(0, 0, cw, legTop - 8, 0, 1); }   // nəfəs: baş və çiyin 1 px enir
+      else if (f === 1) { blit(0, g.legTop - 6, cw, ch - g.legTop + 6, 0, 0); blit(0, 0, cw, g.legTop - 6, 0, 1); }   // nəfəs: baş və çiyin 1 px enir
       else {
-        const ph = f - 2, up = ph % 2 ? -1 : 0;
-        blit(0, 0, cw, legTop, 0, up);
-        if (d < 2) { blit(0, legTop, half, ch - legTop, 0, ph === 1 ? -2 : 0); blit(half, legTop, half, ch - legTop, 0, ph === 3 ? -2 : 0); }
-        else { const o = ph === 1 ? 2 : ph === 3 ? -1 : 0; blit(0, legTop, half, ch - legTop, -o, ph === 1 ? -1 : 0); blit(half, legTop, half, ch - legTop, o, ph === 3 ? -1 : 0); }
+        const ph = f - 2, step = ph % 2 === 0, up = step ? -1 : 0;
+        if (d < 2) {
+          const leftStep = ph === 0, rightStep = ph === 2;
+          // ayaqlar: addım atan 3 px qısalır (üstdən bağlı qalır), o biri yerdədir
+          blit(0, g.legTop, g.gap, g.legH, 0, up, g.gap, g.legH - (leftStep ? 3 : 0) - up);
+          blit(g.gap, g.legTop, cw - g.gap, g.legH, 0, up, cw - g.gap, g.legH - (rightStep ? 3 : 0) - up);
+          // gövdə və baş
+          blit(0, 0, cw, g.legTop, 0, up);
+          // qollar: addıma əks qol 1 px aşağı (yellənmə)
+          const armH = g.legTop - g.armTop - 1;
+          if (leftStep) blit(g.r - 3, g.armTop, 4, armH, 0, up + 1); else if (rightStep) blit(g.l, g.armTop, 4, armH, 0, up + 1);
+        } else {
+          if (step) {
+            // qayçı: arxa ayaq (tündləşdirilmiş) geri, ön ayaq irəli əyilir; hər sətir aşağı getdikcə daha çox sürüşür
+            const k = ph === 0 ? 1 : -1;
+            for (const [dirn, lift] of [[-k, 1], [k, 0]]) for (let r = 0; r < g.legH; r++) { const dx = Math.round((dirn * 4 * (r + 1)) / g.legH); blit(0, g.legTop + r, cw, 1, dx, up - (r > g.legH - 3 ? lift : 0)); }
+          } else blit(0, g.legTop, cw, g.legH, 0, 0);
+          blit(0, 0, cw, g.legTop, 0, up);
+          // qol: gövdənin ortasındakı zolaq addımla irəli-geri 1 px
+          if (step) { const armH = g.legTop - g.armTop - 2, ax = Math.round((g.l + g.r) / 2) - 2; blit(ax, g.armTop, 5, armH, ph === 0 ? 1 : -1, up); }
+        }
       }
       x.restore();
     }
   }
   return { cv, fw: cw, fh: ch, art: true };
 }
-// vərəq: sətir = istiqamət (0..3), sütun = kadr (0 dayanma, 1 nəfəs, 2..5 yeriş)
 export function sheetFor(look) {
   let s = cache.get(look);
   if (!s && look.art && ATLAS.img && ATLAS.rows[look.art] !== undefined) { s = artSheet(look); cache.set(look, s); }
@@ -184,3 +216,5 @@ export function drawSprite(x, cx, cy, look, dir, frame, blink = false) {
     else { const ex = dir === 3 ? px + 16 : px + 6; x.fillRect(ex, ey, 2, 2); x.fillStyle = INK; x.fillRect(ex, ey + 2, 2, 1); }
   }
 }
+
+if (import.meta.env.DEV) window.__cgSheetFor = sheetFor;      // test: yeriş kadrlarının vərəqi

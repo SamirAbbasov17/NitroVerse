@@ -255,3 +255,34 @@ test('düşərgə: hədəf oxları, motoru yığ və dalğanı tut (klaviatura +
   expect(fit, 'telefonda sığır').toEqual([true, true]);
   expect(errs).toEqual([]);
 });
+
+// Yeriş kadrları: hər fiqurun 4 istiqamət × 6 kadr vərəqi çəkilir (vizual yoxlama üçün PNG) və ölçülür:
+// addım kadrları dayanma kadrından fərqlidir, sol və sağ addım bir-birindən fərqlidir, fiqur yerdən qopmur.
+test('fiqurlar: yeriş kadrları (addım, qol, yandan qayçı) — hamısı üçün', async ({ page }) => {
+  test.setTimeout(90_000);
+  await boot(page);
+  await toCamp(page);
+  const r = await page.evaluate(async () => {
+    const sheetFor = window.__cgSheetFor, w = window.__cgStory.world, looks = { [w.def.hero.art]: w.def.hero }; for (const e of w.ents) if (e.look?.art) looks[e.look.art] = e.look;
+    const names = Object.keys(looks), out = document.createElement('canvas'), S = 3; let fw = 30, fh = 46;
+    out.width = fw * 6 * S * 2 + 20; out.height = Math.ceil(names.length / 2) * (fh * 4 * S + 10); const o = out.getContext('2d'); o.imageSmoothingEnabled = false; o.fillStyle = '#d6aa6e'; o.fillRect(0, 0, out.width, out.height);
+    const stats = {};
+    names.forEach((n, i) => {
+      const s = sheetFor(looks[n]); fw = s.fw; fh = s.fh;
+      o.drawImage(s.cv, (i % 2) * (fw * 6 * S + 20), Math.floor(i / 2) * (fh * 4 * S + 10), fw * 6 * S, fh * 4 * S);
+      const d = s.cv.getContext('2d').getImageData(0, 0, s.cv.width, s.cv.height).data;
+      const diff = (dir, a, b) => { let k = 0; for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) { const p = ((dir * fh + y) * s.cv.width + a * fw + x) * 4, q = ((dir * fh + y) * s.cv.width + b * fw + x) * 4; if (d[p] !== d[q] || d[p + 1] !== d[q + 1] || d[p + 2] !== d[q + 2] || d[p + 3] !== d[q + 3]) k++; } return k; };
+      const ground = (dir, f) => { let k = 0; for (let y = fh - 2; y < fh; y++) for (let x = 0; x < fw; x++) if (d[((dir * fh + y) * s.cv.width + f * fw + x) * 4 + 3] > 0) k++; return k; };
+      stats[n] = { art: !!s.art, stepVsIdle: [0, 1, 2, 3].map((dir) => diff(dir, 0, 2)), leftVsRight: [0, 1, 2, 3].map((dir) => diff(dir, 2, 4)), grounded: [0, 1, 2, 3].every((dir) => [2, 3, 4, 5].every((f) => ground(dir, f) > 0)) };
+    });
+    return { png: out.toDataURL('image/png'), stats };
+  });
+  const fs = await import('fs');
+  fs.writeFileSync(path.join(DIR, 'walk-frames.png'), Buffer.from(r.png.split(',')[1], 'base64'));
+  for (const [n, s] of Object.entries(r.stats)) {
+    expect(s.art, `${n}: çəkilmiş vərəqdəndir`).toBe(true);
+    expect(Math.min(...s.stepVsIdle), `${n}: addım kadrı dayanmadan fərqlidir (hər istiqamətdə)`).toBeGreaterThan(12);
+    expect(Math.min(...s.leftVsRight), `${n}: sol və sağ addım fərqlidir`).toBeGreaterThan(8);
+    expect(s.grounded, `${n}: yeriyəndə yerdən qopmur`).toBe(true);
+  }
+});
