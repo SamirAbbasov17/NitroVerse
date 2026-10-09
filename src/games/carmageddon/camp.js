@@ -85,8 +85,9 @@ export async function runCamp(ch) {
   }
   function drawTargets(c, w) {
     if (w.busy) return;
-    const ink = '#12080c', bob = Math.round(Math.sin(w.t * 5) * 2);
+    const ink = '#12080c', bob = Math.round(Math.sin(w.t * 5) * 2), nr = w.near();
     for (const tg of targets()) {
+      if (nr && tg.x === nr.x && tg.y === nr.y) continue;      // əl çatan hədəfin üstündə artıq danışıq / lupa işarəsi var
       const sx = tg.x - w.camX, sy = tg.y - tg.up - w.camY;
       if (sx > 10 && sx < 470 && sy > 6 && sy < 262) {
         // hədəfin üstündə: aşağı baxan ox (tapşırıq verəndə «!»)

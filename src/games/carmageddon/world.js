@@ -199,11 +199,20 @@ export class World {
         drawSprite(x, en.x, en.y + talk, en.look, dir, fr, ((this.t + (en.look.blink || 0) * 1.7) * 0.29) % 1 < 0.035);
       }
       else en.draw?.(x, en, this.t);
-      if (en === near) {      // "danış / bax" işarəsi
-        const by = en.y - (en.kind === 'npc' ? (en.look.kid ? 40 : 46) : 20) + Math.round(Math.sin(this.t * 6) * 1.2);
-        x.fillStyle = '#12080c'; x.fillRect(en.x - 4, by - 1, 9, 9);
-        x.fillStyle = '#ffb53a'; x.fillRect(en.x - 3, by, 7, 7);
-        x.fillStyle = '#12080c'; x.fillRect(en.x, by + 1, 1, 3); x.fillRect(en.x, by + 5, 1, 1);
+    }
+    if (near) {             // əl çatır: sakin — danışıq köpüyü, əşya və baxış yeri — lupa (hamının üstündə çəkilir)
+      const en = near;
+      let top = en.y - (en.kind === 'npc' ? (en.look.kid ? 44 : 52) : 22);
+      if (en.kind !== 'npc' && Math.abs(p.x - en.x) < 18 && top > p.y - 52 && top < p.y + 4) top = p.y - 56;      // Ember işarənin qabağındadırsa — başının üstünə qalxır
+      const by = top + Math.round(Math.sin(this.t * 6) * 1.2), bx = Math.round(en.x);
+      const I = '#12080c', A = '#ffb53a', WH = '#fff0d0', px = (dx, dy, w, h, c) => { x.fillStyle = c; x.fillRect(bx + dx, by + dy, w, h); };
+      if (en.kind === 'npc') {
+        px(-6, -1, 13, 9, I); px(-7, 0, 15, 7, I); px(-6, 0, 13, 7, WH);           // köpük
+        px(-4, 8, 4, 2, I); px(-4, 10, 2, 1, I); px(-3, 7, 2, 2, WH);                                      // quyruq
+        const d = Math.floor(this.t * 3) % 4; for (let i = 0; i < 3; i++) px(-4 + i * 4, 2 + (d === i ? -1 : 0), 2, 2, d === i ? A : I);   // üç nöqtə (yazır kimi)
+      } else {
+        px(-5, -2, 7, 9, I); px(-6, -1, 9, 7, I); px(-4, -1, 5, 7, A); px(-5, 0, 7, 5, A); px(-3, 0, 3, 5, WH); px(-4, 1, 5, 3, WH); px(-3, 1, 1, 1, '#ffffff');   // şüşə və çərçivə
+        px(2, 5, 3, 3, I); px(3, 6, 3, 3, I); px(4, 7, 3, 3, I); px(3, 6, 1, 1, A); px(4, 7, 1, 1, A); px(5, 8, 1, 1, A);                                       // dəstək
       }
     }
     for (const d of this.dust) { x.fillStyle = `rgba(214,170,110,${Math.max(0, d.a * 0.8).toFixed(2)})`; x.fillRect(Math.round(d.x), Math.round(d.y), 2, 2); }

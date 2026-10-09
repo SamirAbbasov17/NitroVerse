@@ -396,3 +396,34 @@ test('düşərgə: qaçış (Shift / uzaq toxunuş) və toyuqlar', async ({ page
   await page.screenshot({ path: path.join(DIR, 'camp-hens.png') });
   expect(errs).toEqual([]);
 });
+
+// Əl çatanda çıxan işarə: sakinin üstündə danışıq köpüyü, baxış yerinin / əşyanın üstündə lupa (nida yox).
+// Piksellə yoxlanır: köpük açıq rəngli və enlidir, lupa kəhrəba rəngli halqadır; böyüdülmüş kadr da çəkilir.
+test('düşərgə: danışmaq üçün köpük, baxmaq üçün lupa işarəsi', async ({ page }) => {
+  test.setTimeout(90_000);
+  await boot(page);
+  await toCamp(page);
+  await skipTalk(page);
+  const shot = async (id, dy, name) => {
+    await page.evaluate(([k, d]) => { const w = window.__cgStory.world, en = w.get(k); w.p.x = en.x; w.p.y = en.y + d; w.p.dir = 1; w.goal = null; }, [id, dy]);
+    await page.waitForTimeout(350);
+    const r = await page.evaluate((k) => {
+      const w = window.__cgStory.world, en = w.get(k), near = w.near();
+      let top = en.y - (en.kind === 'npc' ? (en.look.kid ? 44 : 52) : 22); if (en.kind !== 'npc' && Math.abs(w.p.x - en.x) < 18 && top > w.p.y - 52 && top < w.p.y + 4) top = w.p.y - 56;
+      const sx = Math.round(en.x - w.camX), sy = Math.round(top - w.camY);
+      const d = w.cx.getImageData(sx - 9, sy - 5, 19, 18).data; let light = 0, amber = 0;
+      for (let i = 0; i < d.length; i += 4) { if (d[i] > 240 && d[i + 1] > 225 && d[i + 2] > 190) light++; if (d[i] > 240 && d[i + 1] > 160 && d[i + 1] < 200 && d[i + 2] < 90) amber++; }
+      const z = document.createElement('canvas'); z.width = 60 * 6; z.height = 70 * 6; const c = z.getContext('2d'); c.imageSmoothingEnabled = false; c.drawImage(w.cv, sx - 30, sy - 14, 60, 70, 0, 0, z.width, z.height);
+      return { isNear: near === en, light, amber, png: z.toDataURL('image/png') };
+    }, id);
+    (await import('fs')).writeFileSync(path.join(DIR, name), Buffer.from(r.png.split(',')[1], 'base64'));
+    return r;
+  };
+  const talk = await shot('wren', 14, 'icon-talk.png');
+  expect(talk.isNear, 'sakin əl çatandadır').toBe(true);
+  expect(talk.light, 'köpük: açıq rəngli sahə').toBeGreaterThan(50);
+  const look = await shot('well', 10, 'icon-look.png');
+  expect(look.isNear, 'baxış yeri əl çatandadır').toBe(true);
+  expect(look.amber, 'lupa: kəhrəba halqa').toBeGreaterThan(12);
+  expect(look.light, 'lupa köpük deyil').toBeLessThan(talk.light);
+});
