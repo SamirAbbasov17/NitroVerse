@@ -210,7 +210,16 @@ test('düşərgə: hədəf oxları, motoru yığ və dalğanı tut (klaviatura +
   expect(await page.evaluate(() => { const w = window.__cgStory.world; return ['s1', 's2', 's3'].map((id) => !w.get(id).hidden); }), 'toxumlar görünür').toEqual([true, true, true]);
   await page.waitForTimeout(300);
   await page.screenshot({ path: path.join(DIR, 'camp-targets-seeds.png') });
-  await expect(page.locator('.cgs__journal li i')).toHaveCount(1);
+  await expect(page.locator('.cgs__journal li img')).toHaveCount(1);                      // jurnalda tapşırığın sahibinin portreti
+  // bir neçə tapşırıq eyni vaxtda: hər sətirdə öz sahibi (fərqli şəkil, fərqli rəng)
+  await use(page, 'gus'); await use(page, 'clara'); await use(page, 'ray');
+  const owners = await page.evaluate(() => [...document.querySelectorAll('.cgs__journal li')].map((li) => ({ name: li.querySelector('b').textContent, img: li.querySelector('img').src.slice(-40), col: li.querySelector('img').style.borderColor })));
+  expect(owners.map((o) => o.name), 'dörd tapşırıq, dörd sahib').toEqual(['Granny Wren', 'Old Gus', 'Miss Clara', 'Radio Ray']);
+  expect(new Set(owners.map((o) => o.img)).size, 'portretlər fərqlidir').toBe(4);
+  expect(new Set(owners.map((o) => o.col)).size, 'rənglər fərqlidir').toBe(4);
+  await page.evaluate(() => { const w = window.__cgStory.world; w.p.x = 300; w.p.y = 230; });
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(DIR, 'camp-targets-multi.png') });
   // 2) motoru yığ: səhv vaxtda basış sayılmır, düz vaxtda sayılır (E düyməsi)
   await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('cgCh1')); s.q.parts = 2; s.got = ['p1', 'p2', 'p3']; localStorage.setItem('cgCh1', JSON.stringify(s)); });
   await reopen(page);

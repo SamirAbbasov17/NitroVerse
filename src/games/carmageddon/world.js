@@ -10,19 +10,22 @@ const SPEED = 64, RUN = 112;   // px/s: yeriş və qaçış (Shift basılı; tox
 const R = 6;                   // oyunçunun toqquşma radiusu
 const REACH = 28;              // danışmaq / götürmək məsafəsi
 
-// Çoxbucaqlı maneə (obyektin xəritədəki konturu): nöqtə içindədirsə və ya kənarına FEET-dən yaxındırsa — bağlıdır.
+// Çoxbucaqlı maneə (obyektin xəritədəki konturu): nöqtə içindədirsə və ya kənarına çox yaxındırsa — bağlıdır.
+// Ehtiyat YANA genişdir (fiqurun yarım-eni ≈ 10 px — gövdəsi obyektin üstünə çıxmasın), ŞAQULİ dardır (ayaq obyektin
+// dibinə qədər gələ bilir: arxasındakı obyekti fiqur təbii örtür, qabağındakına isə ayağı dəymir).
 // Kontur obyektin görünən kənarı ilə çəkilib, ona görə ehtiyat oyunçunun tam radiusu yox, ayağının yarım-enidir.
-const FEET = 3;
+const FEET = 3, SIDE = 10;
 function inPoly(s, x, y) {
   const p = s.poly;
-  if (!s.box) { const xs = p.map((q) => q[0]), ys = p.map((q) => q[1]); s.box = [Math.min(...xs) - FEET, Math.min(...ys) - FEET, Math.max(...xs) + FEET, Math.max(...ys) + FEET]; }
+  if (!s.box) { const xs = p.map((q) => q[0]), ys = p.map((q) => q[1]); s.box = [Math.min(...xs) - SIDE, Math.min(...ys) - FEET, Math.max(...xs) + SIDE, Math.max(...ys) + FEET]; }
   if (x < s.box[0] || y < s.box[1] || x > s.box[2] || y > s.box[3]) return false;
   let inside = false;
   for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
     const [xi, yi] = p[i], [xj, yj] = p[j];
     if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
     const dx = xj - xi, dy = yj - yi, t = Math.max(0, Math.min(1, ((x - xi) * dx + (y - yi) * dy) / (dx * dx + dy * dy || 1)));
-    if (Math.hypot(x - xi - dx * t, y - yi - dy * t) < FEET) return true;
+    const ex = (x - xi - dx * t) / SIDE, ey = (y - yi - dy * t) / FEET;
+    if (ex * ex + ey * ey < 1) return true;
   }
   return inside;
 }
@@ -75,10 +78,10 @@ export class World {
     if (x < R + 2 || y < R + 12 || x > S - R - 2 || y > S - R - 2) return true;
     for (const s of this.def.solids) {
       if (s.poly) { if (inPoly(s, x, y)) return true; }
-      else if (s.r) { if (Math.hypot(x - s.cx, y - s.cy) < s.r + R) return true; }
+      else if (s.r) { const ex = (x - s.cx) / (s.r + SIDE), ey = (y - s.cy) / (s.r + 4); if (ex * ex + ey * ey < 1) return true; }
       else if (x > s.x - R && x < s.x + s.w + R && y > s.y - R && y < s.y + s.h + R) return true;
     }
-    for (const en of this.ents) if (en.kind === 'npc' && !en.hidden && Math.hypot(x - en.x, y - en.y) < R + 7) return true;
+    for (const en of this.ents) if (en.kind === 'npc' && !en.hidden) { const ex = (x - en.x) / 17, ey = (y - en.y) / 8; if (ex * ex + ey * ey < 1) return true; }      // sakin: yandan fiqurlar üst-üstə minməsin
     return false;
   }
 

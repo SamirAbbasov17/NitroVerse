@@ -74,43 +74,87 @@ export async function runCamp(ch) {
   // ekranın kənarında həmin rəngdə istiqamət oxu. Hələ danışılmamış tapşırıq verənlər «!» ilə göstərilir. ———
   const QCOL = { seeds: '#7fbf7a', parts: '#7ab8e8', pip: '#f07a1c', radio: '#d98aff', amos: '#ffd166', new: '#ffb53a' };
   const lastRows = {};
+  // Hər tapşırığın SAHİBİ var (kim veribsə): hədəf nişanında onun kiçik portreti durur — kimin işi olduğu bilinsin.
+  // Nişanın altındakı işarə nə etməli olduğunu deyir: ▼ götür · ? axtar · + qur/bağla · ✓ apar/xəbər ver · … danış.
+  const OWNER = { seeds: 'wren', parts: 'gus', pip: 'clara', radio: 'ray', amos: 'amos' };
+  const miniCache = {};
+  const mini = (who) => {
+    if (miniCache[who]) return miniCache[who];
+    const c = document.createElement('canvas'); c.width = c.height = 12; const g = c.getContext('2d'); g.imageSmoothingEnabled = true;
+    g.drawImage(ch._face(who, 'neutral'), 8, 4, 64, 64, 0, 0, 12, 12);            // üzün ortası (çərçivəsiz)
+    return (miniCache[who] = c);
+  };
   function targets() {
-    const out = [], q = st.q, ent = (id, key, bang = false) => { const e = world.get(id); if (e && !e.hidden) out.push({ x: e.x, y: e.y, up: e.kind === 'npc' ? (e.look?.kid ? 44 : 50) : 22, c: QCOL[key], bang }); };
-    if (done() >= 3) { ent('amos', 'amos'); return out; }
-    if (!q.seeds) ent('wren', 'new', true); else if (q.seeds === 1) ['s1', 's2', 's3'].forEach((id) => ent(id, 'seeds')); else if (q.seeds === 2) ent('wren', 'seeds');
-    if (!q.parts) ent('gus', 'new', true); else if (q.parts === 1) ['p1', 'p2', 'p3'].forEach((id) => ent(id, 'parts')); else if (q.parts === 2) ent('gus', 'parts');
-    if (!q.pip) ent('clara', 'new', true); else if (q.pip >= 1 && q.pip <= 3) ent('pip' + (q.pip - 1), 'pip'); else if (q.pip === 4) ent('clara', 'pip');
-    if (!q.radio) ent('ray', 'new', true); else if (q.radio === 1) ent('gus', 'radio'); else if (q.radio === 2) ent('mast', 'radio'); else if (q.radio === 3) ent('ray', 'radio');
+    const out = [], q = st.q;
+    const ent = (id, key, act) => { const e = world.get(id); if (e && !e.hidden) out.push({ x: e.x, y: e.y, up: e.kind === 'npc' ? (e.look?.kid ? 44 : 50) : 22, c: QCOL[key], who: OWNER[key] || null, act }); };
+    if (done() >= 3) { ent('amos', 'amos', 'talk'); return out; }
+    if (!q.seeds) ent('wren', 'new', 'new'); else if (q.seeds === 1) ['s1', 's2', 's3'].forEach((id) => ent(id, 'seeds', 'get')); else if (q.seeds === 2) ent('wren', 'seeds', 'give');
+    if (!q.parts) ent('gus', 'new', 'new'); else if (q.parts === 1) ['p1', 'p2', 'p3'].forEach((id) => ent(id, 'parts', 'get')); else if (q.parts === 2) ent('gus', 'parts', 'give');
+    if (!q.pip) ent('clara', 'new', 'new'); else if (q.pip >= 1 && q.pip <= 3) ent('pip' + (q.pip - 1), 'pip', 'find'); else if (q.pip === 4) ent('clara', 'pip', 'give');
+    if (!q.radio) ent('ray', 'new', 'new'); else if (q.radio === 1) ent('gus', 'radio', 'get'); else if (q.radio === 2) ent('mast', 'radio', 'use'); else if (q.radio === 3) ent('ray', 'radio', 'give');
     return out;
+  }
+  // işarə (7×7): nə etməli
+  const GLYPH = {
+    get: ['0000000', '1111111', '0111110', '0011100', '0001000', '0000000', '0000000'],
+    find: ['0111110', '1100011', '0000110', '0001100', '0001000', '0000000', '0001000'],
+    use: ['0001000', '0001000', '0001000', '1111111', '0001000', '0001000', '0001000'],
+    give: ['0000000', '0000011', '0000110', '1001100', '1111000', '0110000', '0000000'],
+    talk: ['0000000', '0000000', '1101011', '1101011', '0000000', '0000000', '0000000'],
+  };
+  function badge(c, x0, y0, tg) {
+    const ink = '#12080c';
+    // çərçivə (tapşırığın rəngi) + sahibin portreti
+    c.fillStyle = ink; c.fillRect(x0 - 9, y0 - 26, 18, 18); c.fillStyle = tg.c; c.fillRect(x0 - 8, y0 - 25, 16, 16);
+    c.fillStyle = ink; c.fillRect(x0 - 6, y0 - 23, 12, 12); c.drawImage(mini(tg.who), x0 - 6, y0 - 23);
+    // işarə lövhəciyi və aşağı uc
+    c.fillStyle = ink; c.fillRect(x0 - 6, y0 - 8, 13, 10); c.fillRect(x0 - 2, y0 + 2, 5, 2); c.fillRect(x0 - 1, y0 + 4, 3, 1);
+    c.fillStyle = tg.c; c.fillRect(x0 - 5, y0 - 8, 11, 9); c.fillRect(x0 - 1, y0 + 1, 3, 2);
+    const gl = GLYPH[tg.act] || GLYPH.talk; c.fillStyle = ink;
+    for (let j = 0; j < 7; j++) for (let i = 0; i < 7; i++) if (gl[j][i] === '1') c.fillRect(x0 - 3 + i, y0 - 7 + j, 1, 1);
   }
   function drawTargets(c, w) {
     if (w.busy) return;
-    const ink = '#12080c', bob = Math.round(Math.sin(w.t * 5) * 2), nr = w.near();
+    const ink = '#12080c', bob = Math.round(Math.sin(w.t * 5) * 2), nr = w.near(), edge = [];
     for (const tg of targets()) {
       if (nr && tg.x === nr.x && tg.y === nr.y) continue;      // əl çatan hədəfin üstündə artıq danışıq / lupa işarəsi var
       const sx = tg.x - w.camX, sy = tg.y - tg.up - w.camY;
-      if (sx > 10 && sx < 470 && sy > 6 && sy < 262) {
-        // hədəfin üstündə: aşağı baxan ox (tapşırıq verəndə «!»)
+      if (sx > 12 && sx < 468 && sy > 30 && sy < 262) {
         const x0 = Math.round(tg.x), y0 = Math.round(tg.y - tg.up) + bob;
-        if (tg.bang) { c.fillStyle = ink; c.fillRect(x0 - 4, y0 - 10, 9, 12); c.fillStyle = tg.c; c.fillRect(x0 - 3, y0 - 9, 7, 10); c.fillStyle = ink; c.fillRect(x0 - 1, y0 - 8, 3, 5); c.fillRect(x0 - 1, y0 - 2, 3, 2); }
-        else { c.fillStyle = ink; c.fillRect(x0 - 5, y0 - 8, 11, 5); c.fillRect(x0 - 3, y0 - 3, 7, 2); c.fillRect(x0 - 1, y0 - 1, 3, 2); c.fillStyle = tg.c; c.fillRect(x0 - 4, y0 - 7, 9, 3); c.fillRect(x0 - 2, y0 - 4, 5, 2); c.fillRect(x0, y0 - 2, 1, 2); }
+        if (tg.act === 'new') { c.fillStyle = ink; c.fillRect(x0 - 4, y0 - 10, 9, 12); c.fillStyle = tg.c; c.fillRect(x0 - 3, y0 - 9, 7, 10); c.fillStyle = ink; c.fillRect(x0 - 1, y0 - 8, 3, 5); c.fillRect(x0 - 1, y0 - 2, 3, 2); }   // yeni tapşırıq: «!»
+        else badge(c, x0, y0, tg);
       } else {
-        // ekrandan kənarda: kənarda istiqamət oxu
+        // ekrandan kənarda: kənarda istiqamət oxu, yanında sahibin portreti (aşağıda bir yerdə çəkilir ki, üst-üstə düşməsinlər)
         const px = w.p.x - w.camX, py = w.p.y - 16 - w.camY, a = Math.atan2(sy - py, sx - px);
-        const k = Math.min((sx > px ? 466 - px : px - 14) / Math.max(1e-3, Math.abs(Math.cos(a))), (sy > py ? 256 - py : py - 14) / Math.max(1e-3, Math.abs(Math.sin(a))));
-        const ex = w.camX + px + Math.cos(a) * k, ey = w.camY + py + Math.sin(a) * k, pulse = 1 + Math.round(Math.abs(Math.sin(w.t * 4)) * 1);
-        c.save(); c.translate(Math.round(ex), Math.round(ey)); c.rotate(a);
-        c.fillStyle = ink; c.beginPath(); c.moveTo(8 + pulse, 0); c.lineTo(-5, -8); c.lineTo(-5, 8); c.closePath(); c.fill();
-        c.fillStyle = tg.c; c.beginPath(); c.moveTo(5 + pulse, 0); c.lineTo(-3, -5); c.lineTo(-3, 5); c.closePath(); c.fill();
-        c.restore();
+        const k = Math.min((sx > px ? 462 - px : px - 18) / Math.max(1e-3, Math.abs(Math.cos(a))), (sy > py ? 252 - py : py - 18) / Math.max(1e-3, Math.abs(Math.sin(a))));
+        edge.push({ x: px + Math.cos(a) * k, y: py + Math.sin(a) * k, a, tg });
       }
     }
+    // kənar nişanları: yaxın düşənlər kənar boyu yan-yana sürüşdürülür
+    edge.sort((p, q) => p.x - q.x || p.y - q.y);
+    edge.forEach((m, i) => {
+      for (let guard = 0; guard < 8; guard++) {
+        const hit = edge.slice(0, i).find((o) => Math.abs(o.x - m.x) < 21 && Math.abs(o.y - m.y) < 21); if (!hit) break;
+        if (m.y > 240 || m.y < 30) m.x = Math.min(462, hit.x + 21); else m.y = Math.min(252, hit.y + 21);
+        if (m.x >= 462 && m.y > 240) { m.y -= 21; }
+      }
+      const ex = w.camX + m.x, ey = w.camY + m.y, pulse = 1 + Math.round(Math.abs(Math.sin(w.t * 4)) * 1), tg = m.tg, a = m.a;
+      c.save(); c.translate(Math.round(ex), Math.round(ey)); c.rotate(a);
+      c.fillStyle = ink; c.beginPath(); c.moveTo(8 + pulse, 0); c.lineTo(-5, -8); c.lineTo(-5, 8); c.closePath(); c.fill();
+      c.fillStyle = tg.c; c.beginPath(); c.moveTo(5 + pulse, 0); c.lineTo(-3, -5); c.lineTo(-3, 5); c.closePath(); c.fill();
+      c.restore();
+      const bx = Math.round(ex - Math.cos(a) * 17), by = Math.round(ey - Math.sin(a) * 17);
+      if (tg.who) { c.fillStyle = ink; c.fillRect(bx - 8, by - 8, 16, 16); c.fillStyle = tg.c; c.fillRect(bx - 7, by - 7, 14, 14); c.drawImage(mini(tg.who), bx - 6, by - 6); }
+      else { c.fillStyle = ink; c.fillRect(bx - 4, by - 6, 9, 12); c.fillStyle = tg.c; c.fillRect(bx - 3, by - 5, 7, 10); c.fillStyle = ink; c.fillRect(bx - 1, by - 4, 3, 5); c.fillRect(bx - 1, by + 2, 3, 2); }
+    });
   }
 
   // ——— jurnal ———
+  const f24 = {};
+  const face24 = (who) => { if (f24[who]) return f24[who]; const c = document.createElement('canvas'); c.width = c.height = 24; const g = c.getContext('2d'); g.drawImage(ch._face(who, 'neutral'), 8, 4, 64, 64, 0, 0, 24, 24); return (f24[who] = c.toDataURL()); };
   function refresh() {
     const rows = [];
-    const row = (name, txt, ok, key) => { const fresh = lastRows[key] !== undefined && lastRows[key] !== txt; lastRows[key] = txt; rows.push(`<li class="${ok ? 'is-done' : ''}${fresh ? ' is-new' : ''}"><i style="background:${QCOL[key]}"></i><b>${name}</b>${txt}</li>`); };
+    const row = (name, txt, ok, key) => { const fresh = lastRows[key] !== undefined && lastRows[key] !== txt; lastRows[key] = txt; rows.push(`<li class="${ok ? 'is-done' : ''}${fresh ? ' is-new' : ''}"><img alt="" src="${face24(OWNER[key])}" style="border-color:${QCOL[key]}"><span><b>${name}</b>${txt}</span></li>`); };
     if (st.q.seeds) row('Granny Wren', st.q.seeds === 9 ? T('Toxumlar tapıldı') : st.q.seeds === 2 ? T('Toxumları Granny Wren-ə apar') : T('Toxum kisələri: {n}/3', { n: st.got.filter((g) => g[0] === 's').length }), st.q.seeds === 9, 'seeds');
     if (st.q.parts) row('Old Gus', st.q.parts === 9 ? T('Baqqi yığıldı') : st.q.parts === 2 ? T('Hissələri Old Gus-a apar') : T('Baqqi hissələri: {n}/3', { n: st.got.filter((g) => g[0] === 'p').length }), st.q.parts === 9, 'parts');
     if (st.q.pip) row('Miss Clara', st.q.pip === 9 ? T('Pip tapıldı') : st.q.pip === 4 ? T('Miss Clara-ya xəbər ver') : T('Pip-i tap ({n}/3 gizlənmə yeri)', { n: st.q.pip - 1 }), st.q.pip === 9, 'pip');

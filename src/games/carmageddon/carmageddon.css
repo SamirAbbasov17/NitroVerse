@@ -222,7 +222,10 @@ body.cg-on #game-canvas, body.cg-on #mute-btn { visibility: hidden; }
 .cgs__journal ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; }
 .cgs__journal li { font-size: clamp(11px, 2vh, 15px); line-height: 1.25; color: var(--cg-bone); }
 .cgs__journal li b { font-weight: 400; color: var(--cg-dim); margin-right: 6px; }
-.cgs__journal li i { display: inline-block; width: 7px; height: 7px; margin-right: 6px; box-shadow: 0 0 0 1px var(--cg-ink); }
+.cgs__journal li { display: flex; align-items: center; gap: 7px; }
+.cgs__journal li img { flex: none; width: clamp(18px, 4.4vh, 26px); height: clamp(18px, 4.4vh, 26px); border: 2px solid; image-rendering: auto; background: #1c1018; }
+.cgs__journal li span { min-width: 0; }
+.cgs__journal li b { display: block; font-size: 0.82em; letter-spacing: 0.08em; }
 .cgs__journal li.is-new { animation: cgs-rownew 1.6s steps(8) 1; }
 @keyframes cgs-rownew { 0%, 40% { background: rgba(255, 181, 58, 0.35); } 100% { background: transparent; } }
 .cgs__journal li.is-done { color: #7fbf7a; }
