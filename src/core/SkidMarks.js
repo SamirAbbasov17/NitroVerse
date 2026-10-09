@@ -35,6 +35,9 @@ export class SkidMarks {
     }));
     this.mesh.frustumCulled = false; // izlər hər yerdədir — culling hesabına dəyməz
     this.mesh.renderOrder = 1;
+    // İz yoxdursa mesh ÇƏKİLMİR: boş hovuz da hər kadr 8400 üçbucaq və 1 draw call idi (bütün rejimlərdə) —
+    // sayğacda görünür, ekranda heç nə vermir
+    this.mesh.visible = false;
     scene.add(this.mesh);
     this._scene = scene;
     this._head = 0;
@@ -62,6 +65,7 @@ export class SkidMarks {
     p[o + 6] = bx + nx; p[o + 7] = y; p[o + 8] = bz + nz;
     p[o + 9] = bx - nx; p[o + 10] = y; p[o + 11] = bz - nz;
     this._ages[i] = 0;
+    this.mesh.visible = true;
     const c = this._colors;
     const co = i * 16;
     for (let v = 0; v < 4; v++) {
@@ -85,6 +89,7 @@ export class SkidMarks {
       dirty = true;
     }
     if (dirty) this.mesh.geometry.attributes.color.needsUpdate = true;
+    else if (this.mesh.visible) this.mesh.visible = false;      // bütün izlər sönüb
   }
 
   dispose() {

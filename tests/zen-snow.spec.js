@@ -181,6 +181,15 @@ test('zen qar: tunelə yaxınlaşdıqca azalır, içəridə yağmır; qar ↔ ya
   const ap = log.filter((x) => x.m >= 1400 && x.m <= 1480).map((x) => x.op);
   expect(ap.every((v, i) => !i || v <= ap[i - 1] + 0.02), 'yaxınlaşdıqca qar yalnız azalır (geri-irəli oynamır)').toBe(true);
 
+  // geri-geri getmək: yaxınlıq yalnız mövqedən asılıdır və hər iki ağızda eynidir (istiqamətdən asılı deyil)
+  const sym = await page.evaluate(() => {
+    const r = window.__active.road, orig = r.getNearest, at = (m) => { r.getNearest = () => ({ index: m / 8 }); const v = r.tunnelNear({}); r.getNearest = orig; return +v.toFixed(3); };
+    return { before: [at(1480 - 16), at(1480 - 40), at(1480 - 64)], after: [at(1710 + 16), at(1710 + 40), at(1710 + 64)], inside: at(1600) };
+  });
+  console.log('tunel ağızları:', JSON.stringify(sym));
+  expect(sym.before, 'giriş və çıxış ağzında eyni məsafədə eyni yaxınlıq (geri çıxanda da eyni)').toEqual(sym.after);
+  expect([sym.inside, sym.before[2]], 'içəridə 1, 64 m-də 0').toEqual([1, 0]);
+
   // ——— QAR → YAĞIŞ → QAR: növ birdən dəyişmir ———
   const watch = async (weather, ms) => {
     await page.evaluate((k) => window.__active._setWeather(k), weather);

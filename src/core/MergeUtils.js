@@ -9,13 +9,17 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 // yazılır və hamısı TƏK vertex-rəngli materialla çəkilir. Zen-də bir yol parçası
 // (chunk) rəng başına ayrı mesh idi: səhnədə 321 birləşmiş mesh-in 275-i yalnız rənglə
 // fərqlənirdi (ölçüldü) — draw call büdcəsinin əsas yükü bu idi.
+// YOL HİSSƏLƏRİ də (bordür, mərkəz xətləri, dirəklər, məhəccər, körpü dayaqları…) eyni üsulla yığılır, amma öz
+// dəstəsində (roadPart bayrağı qalır) və materialın üzü (side) və hamarlığı (flatShading) qorunmaqla. Əvvəl hər
+// rəng hər yol parçasında ayrı mesh idi — ölçüldü: alp biomunda 150 draw call-un ~45-i bunlar idi.
 const _baked = new Map();
-function bakedMaterial(rough) {
-  let m = _baked.get(rough);
+function bakedMaterial(rough, side = THREE.FrontSide, flat = true) {
+  const key = rough + '|' + side + '|' + (flat ? 1 : 0);
+  let m = _baked.get(key);
   if (!m) {
-    m = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: rough, metalness: 0 });
+    m = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: flat, roughness: rough, metalness: 0, side });
     m.userData = { shared: true };
-    _baked.set(rough, m);
+    _baked.set(key, m);
   }
   return m;
 }
@@ -35,15 +39,22 @@ export function mergeStaticGroup(group, { bakeColors = false } = {}) {
     // ona görə bütün ağac/daş/kol tək mesh-ə yığılır.
     if (m.map && !m.map.uuid) { skipped.push(o); return; }
     if (!g.attributes.uv && m.map) { skipped.push(o); return; } // UV yoxdursa qarışar
-    const bake = bakeColors && m.isMeshStandardMaterial && !m.map && !m.emissiveMap && !m.transparent
-      && m.flatShading && !m.vertexColors && (m.emissive.getHex() === 0 || m.emissiveIntensity === 0)
-      && !o.userData?.roadPart;
+    const road = !!o.userData?.roadPart;
+    // `snowBase` — rəngi səhnə tərəfindən dəyişdirilən material (qar örtüyü): ayrı qalmalıdır
+    const plain = bakeColors && m.isMeshStandardMaterial && !m.map && !m.emissiveMap && !m.transparent
+      && !m.vertexColors && (m.emissive.getHex() === 0 || m.emissiveIntensity === 0) && !m.userData?.snowBase;
+    // Hamar (flatShading olmayan) düz rəngli dekor da yığılır — Nature Kit ağac/daşlarının biom çalarlı materialları
+    // rəng başına ayrı mesh idi (alp biomunda ~25 draw call). Hamarlıq və üz (side) dəstənin açarındadır.
+    const bake = plain && !m.polygonOffset && m.metalness === 0;
     if (bake) {
       const rough = m.roughness < 0.6 ? 0.5 : 0.9;
-      const bkey = ['VC', o.receiveShadow ? 'rs' : '-', o.userData?.flat ? 'flat' : '-', rough].join('|');
+      // yol hissələri: hamısı iki üzlü və düz kölgələnmə ilə (lentlər yastıdır, qutuların arxa üzü görünmür —
+      // görüntü eynidir), beləcə bir yol parçasında 2–3 dəstə qalır
+      const side = road ? THREE.DoubleSide : (!m.flatShading ? m.side : THREE.FrontSide), flat = road ? true : !!m.flatShading;
+      const bkey = ['VC', road ? 'road' : '-', o.receiveShadow ? 'rs' : '-', o.userData?.flat ? 'flat' : '-', rough, side, flat ? 1 : 0].join('|');
       let bb = buckets.get(bkey);
       if (!bb) {
-        bb = { material: bakedMaterial(rough), geos: [], roadPart: false, receiveShadow: !!o.receiveShadow, flat: !!o.userData?.flat };
+        bb = { material: bakedMaterial(rough, side, flat), geos: [], roadPart: road, receiveShadow: !!o.receiveShadow, flat: !!o.userData?.flat };
         buckets.set(bkey, bb);
       }
       const src = g.clone().applyMatrix4(o.matrixWorld);

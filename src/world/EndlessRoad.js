@@ -137,7 +137,9 @@ export class EndlessRoad {
     this.chunks = [];   // {startAbs, endAbs, group, obstacles[], spots[]}
     this.obstacles = []; // aktiv pəncərənin maneələri (chunk-lardan)
     // QAR ÖRTÜYÜ: hissələrin torpaq rəngli materialları (yol çiyni, təpə, dağ) burada qeyd olunur ki, səhnə qar
-    // yağanda HAMISINI birlikdə ağartsın (əvvəl rəng hissə qurulanda donurdu — bəzisi ağ, bəzisi köhnə rəngdə qalırdı)
+    // yağanda HAMISINI birlikdə ağartsın (əvvəl rəng hissə qurulanda donurdu — bəzisi ağ, bəzisi köhnə rəngdə qalırdı).
+    // Yalnız AYRI qalan materiallar (yol çiyni, tunel dağı): uzaq təpə və dağlar dekorla bir mesh-ə yığılır və
+    // rəngi təpələrə yazılır — onlar biomun öz rəngindədir.
     this.snowMats = [];
     // YER TUTMA JURNALI: toqquşması OLMAYAN dekor da (yoldan 60 m+ uzaq ağac,
     // qaya, təpə) buraya yazılır. _spotFree əvvəl yalnız `obstacles`-a baxırdı,
@@ -249,13 +251,14 @@ export class EndlessRoad {
   // DƏQİQ hündürlük: mövqe seqment boyu proyeksiya olunur, y interpolyasiya —
   // 8m-lik nöqtə addımları ilə "yerə girib-çıxma" olmur
   // Verilmiş mövqedə tunel gücü (0..1) — yağış/qar və səs üçün
-  // Tunelə YAXINLIQ (0 — uzaqdır, 1 — içində və ya düz ağzındadır): yol boyu `ahead` m qabağa baxır ki, yağış/qar
-  // tunelə çatmamış azalmağa başlasın, və çıxışdan sonra `behind` m ərzində tədricən qayıtsın.
-  tunnelNear(position, hint = null, ahead = 64, behind = 24) {
+  // Tunelə YAXINLIQ (0 — uzaqdır, 1 — içində və ya düz ağzındadır): yağış/qar tunelə `reach` m qalmış azalmağa
+  // başlayır və çıxışdan sonra eyni məsafədə tədricən qayıdır.
+  // Hər iki ağızda EYNİ məsafə: maşın geri-geri də gedə bilər (tuneldən arxaya çıxanda da yağıntı eyni cür,
+  // tədricən qayıdır; hansı tərəfdən girilsə, yaxınlaşdıqca eyni cür azalır).
+  tunnelNear(position, hint = null, reach = 56) {
     const m = ((this.getNearest(position, hint).index * SEG) % 2600 + 2600) % 2600;      // bax _tunnelT: tunel 1480…1710 m
     if (m >= 1480 && m <= 1710) return 1;
-    if (m < 1480) return Math.max(0, 1 - (1480 - m) / ahead);
-    return Math.max(0, 1 - (m - 1710) / behind);
+    return Math.max(0, 1 - (m < 1480 ? 1480 - m : m - 1710) / reach);
   }
 
   tunnelAtPos(position, hint = null) {
@@ -1370,7 +1373,11 @@ export class EndlessRoad {
       const gy = groundYAt(px, pz, pts[i].y, off);
       if (gy < WATER_LEVEL + 0.4) continue; // suyun içində ağac/daş bitməsin
       // 'nk:...' → Kenney Nature Kit modeli; hazır deyilsə prosedural daş
-      const obj = type.startsWith('nk:')
+      // UZAQ ZOLAQ (yoldan 85 m-dən o yana): ağır Nature Kit şamı/qayası əvəzinə eyni növün yüngül modeli
+      // (şam 230 → 74, qaya 80 → 36 üçbucaq). Bu məsafədə obyekt ekranda bir neçə pikseldir; yol kənarındakılar
+      // (30–85 m) detallı qalır. Palma, palıd və s. üçün yüngül qarşılıq yoxdur — onlar dəyişmir.
+      const lite = off > 85 && type.startsWith('nk:') ? (/^nk:tree_(pine|cone)/.test(type) ? 'pine' : /^nk:rock_/.test(type) ? 'rock' : null) : null;
+      const obj = lite ? makeDecor(lite) : type.startsWith('nk:')
         ? (this.natureFactory?.(type.slice(3)) || makeDecor('rock'))
         : makeDecor(type);
       const sc = 0.8 + Math.random() * 0.7;
@@ -1575,10 +1582,10 @@ export class EndlessRoad {
     }
 
     // Orta plan təpələri (yumru)
-    const hillMat = this._snowMat(new THREE.MeshStandardMaterial({
+    const hillMat = new THREE.MeshStandardMaterial({
       color: new THREE.Color(s.mountainColor).lerp(new THREE.Color(s.fog), 0.2),
       flatShading: true, roughness: 1,
-    }), 0.88);
+    });
     for (let h = 0; h < 2 + Math.floor(Math.random() * 3); h++) {
       const i = Math.floor(Math.random() * pts.length);
       const side = Math.random() < 0.5 ? -1 : 1;
@@ -1618,10 +1625,10 @@ export class EndlessRoad {
     // Uzaq dağ siluetləri (dumana qarışan) — hər chunk-da
     {
       const mCount = 2 + Math.floor(Math.random() * 3);
-      const mMat = this._snowMat(new THREE.MeshStandardMaterial({
+      const mMat = new THREE.MeshStandardMaterial({
         color: new THREE.Color(s.mountainColor).lerp(new THREE.Color(s.fog), 0.45),
         flatShading: true, roughness: 1,
-      }), 0.6);
+      });
       // Zirvə örtüyü: alp tipində qar, isti biomlarda günəş vurmuş açıq qaya
       const capMat = new THREE.MeshStandardMaterial({
         color: new THREE.Color(s.mountainColor).lerp(new THREE.Color(0xffffff), 0.72)

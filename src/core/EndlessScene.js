@@ -1898,8 +1898,8 @@ export class EndlessScene {
     const rAmount = this._weather.rain;
     // TUNELDƏ yağış/qar görünməməlidir — tavan var (əvvəl içəri yağırdı)
     const inTunnel = this.road?.tunnelAtPos?.(this.playerCar.position, this.playerCar.wpHint) > 0.35;
-    // TUNEL: qar/yağış tunelin İÇİNƏ yağmır. Tunelə yaxınlaşdıqca (≈64 m-dən) azalır, girişdə artıq yoxdur;
-    // çıxandan sonra ≈24 m ərzində qayıdır. Yaxınlıq yol nöqtələri ilə (8 m addım) ölçülür, ona görə yumşaldılır.
+    // TUNEL: qar/yağış tunelin İÇİNƏ yağmır. Hər iki ağızda eyni: ≈56 m-dən yaxınlaşdıqca azalır, ağızda yoxdur,
+    // çıxandan sonra ≈56 m ərzində qayıdır (irəli və ya geri-geri getməyindən asılı deyil). Yaxınlıq yol nöqtələri ilə (8 m addım) ölçülür, ona görə yumşaldılır.
     const tunNear = inTunnel ? 1 : (this.road?.tunnelNear?.(this.playerCar.position, this.playerCar.wpHint) ?? 0);
     const fallGoal = 1 - Math.min(1, tunNear * 1.15);
     this._fallFade = this._fallFade ?? 1;
