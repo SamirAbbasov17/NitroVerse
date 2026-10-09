@@ -41,7 +41,8 @@ const BOT = () => {
         else if (e.k === 'chaser' && e.st !== 'sleep' && Math.abs(ahead) < 40) { const dx = Math.abs(e.x - x); if (dx < 30) sc -= (30 - dx) * 2; }
         else if ((e.k === 'fuel' || e.k === 'nitro' || e.k === 'fix') && ahead > 10) { const dx = Math.abs(e.x - x); if (dx < 16) sc += e.k === 'fuel' ? (G.fuel < 70 ? 60 : 15) : 30; }
       }
-      if (G.truck?.slam && Math.abs(G.truck.x - x) < 46) sc -= 500;                      // Butcher əyləcə basır — arxasında qalma
+      if (G.truck?.slam && Math.abs(G.truck.x - x) < 46) sc -= 500;
+      if (G.truck && G.d > S.len - 520 && Math.abs(G.truck.x - x) < 44) sc -= 800;        // sonda: yük maşınının yanından keç                      // Butcher əyləcə basır — arxasında qalma
       if (sc > score) { score = sc; best = x; }
     }
     c.keys.delete('left'); c.keys.delete('right'); c.keys.delete('down'); c.keys.delete('up');
@@ -97,14 +98,17 @@ test('qaçış: mexanikalar və yaddaş nöqtəsi', async ({ page }) => {
     const c = window.__cgStory._chase, out = {}; const wait = (ms) => new Promise((res) => setTimeout(res, ms));
     c.start(3); c.G.ents.length = 0; c.G.nitro = 0; c.G.d = c.S.len - 170; await wait(500);
     out.truckBack = c.G.d < c.S.len - 300; out.truckHp = c.G.hp < 100;
-    c.G.ents.length = 0; c.G.d = c.S.len - 170; c.G.boost = 1.4; await wait(400); out.truckPass = !!c.G.truck.pass;
+    // nitro ilə düz ÜSTÜNƏ getmək: çırpılır, geri atılır, keçmir
+    c.G.ents.length = 0; c.G.hp = 100; c.G.d = c.S.len - 170; c.G.x = c.G.truck.x; c.G.boost = 1.4; await wait(400); out.ramBack = c.G.d < c.S.len - 300 && !c.G.truck.pass; out.ramHp = c.G.hp < 100;
+    // nitro ilə YANINDAN: keçir
+    c.G.ents.length = 0; c.G.d = c.S.len - 170; c.G.x = c.G.truck.x + (c.G.truck.x > 240 ? -60 : 60); c.G.boost = 1.4; await wait(400); out.truckPass = !!c.G.truck.pass;
     c.start(4); c.G.ents.length = 0; c.G.hooks.length = 0; c.G.nitro = 0; c.G.d = c.S.len - 90; await wait(400); out.bridgeFail = c.G.dead > 0;
     await wait(1700);
     c.G.ents.length = 0; c.G.hooks.length = 0; c.G.d = c.S.len - 90; c.G.boost = 1.4; await wait(300); out.bridgeJump = c.G.jump > 0;
     return out;
   });
   console.log('qapılar:', JSON.stringify(gates));
-  expect(gates).toEqual({ truckBack: true, truckHp: true, truckPass: true, bridgeFail: true, bridgeJump: true });
+  expect(gates).toEqual({ truckBack: true, truckHp: true, ramBack: true, ramHp: true, truckPass: true, bridgeFail: true, bridgeJump: true });
   // 6) qaçış bitəndə final başlayır (ətraflı: carmageddon-finale.spec.js) və yaddaş silinir
   await page.waitForFunction(() => !window.__cgStory?._chase && !window.__cgStory.dlg.el.hidden, null, { timeout: 15_000 });      // körpüdən sonrakı səhnə
   await cgSkip(page);
@@ -276,5 +280,51 @@ test('qaçış körpü: qarmaqdan qurtulmaq aydın və etibarlıdır', async ({ 
   expect(r.missWhileBoost, 'nitroda qarmaq tutmur').toBe(true);
   expect(r.autoFree, 'özü qopur').toBe(true);
   expect(r.autoDmg, 'özü qopanda yalnız bir zədə (məhəccər əlavə zədələmir)').toBe(10);
+  expect(errs).toEqual([]);
+});
+
+// OYUNÇU RƏYLƏRİ (2-ci dəst): hissənin nömrəsi görünmür; kanyonda təqibçi özü divara çırpılıb partlamır; körpüdə
+// The Twins körpünün enindən çıxmır və tullanışda körpüdə qalır; "Keç" bayrağı növbəti ara səhnəni ötürmür.
+test('qaçış: nömrəsiz başlıq, təqibçi özü partlamır, əkizlər körpüdə qalır, ara səhnə həmişə oynanır', async ({ page }) => {
+  test.setTimeout(180_000);
+  const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+  await boot(page);
+  await openChase(page, 0);
+  expect(await page.locator('.cgc__banner b').textContent(), 'başlıqda hissənin nömrəsi yoxdur').not.toMatch(/\d/);
+  const r = await page.evaluate(async () => {
+    const c = window.__cgStory._chase, out = {}; const wait = (ms) => new Promise((res) => setTimeout(res, ms));
+    const cxAt = (S, d) => 240 + Math.sin(d / S.wl) * S.amp + Math.sin(d / (S.wl * 0.37) + 1.3) * S.amp * 0.35;
+    // 1) kanyon: oyunçu divarın dibində sürür, təqibçilər gəlir — heç biri özü partlamamalıdır (oyunçu itələmir, zərbə yoxdur)
+    c.start(1); c.G.ents = c.G.ents.filter((e) => e.k === 'chaser'); let born = 0, selfDead = 0; const seen = new Set();
+    const t0 = performance.now();
+    while (performance.now() - t0 < 14000) {
+      const S = c.S, G = c.G; G.hp = 100; G.fuel = 100; G.x = cxAt(S, G.d + (200 - G.y)) + (S.hw(G.d) - 12);       // sağ divarın dibi
+      G.ents = G.ents.filter((e) => e.k === 'chaser');
+      for (const e of G.ents) { if (e.st !== 'sleep' && !seen.has(e)) { seen.add(e); born++; } }
+      for (const e of seen) if (e.gone && !e.counted) { e.counted = true; if (e.st === 'dead' && !(e.wasRam)) selfDead++; } 
+      for (const e of G.ents) if (e.st === 'ram') e.wasRam = true;
+      await wait(30);
+    }
+    out.chasers = { born, selfDead };
+    // 2) körpü: maşın məhəccərin dibində — motosikletlər körpünün enindən çıxmır
+    c.start(4); c.G.ents.length = 0; c.G.hooks.length = 0; let outside = 0, n = 0;
+    for (const side of [-1, 1]) { const t1 = performance.now(); while (performance.now() - t1 < 1500) { const S = c.S, G = c.G, rc = cxAt(S, G.d + (200 - G.y)), hw = S.hw(G.d); G.x = rc + side * (hw - 12); for (const b of G.bikes) { n++; if (Math.abs(b.x - rc) > hw - 4) outside++; } await wait(25); } }
+    out.bikes = { n, outside, hw: c.S.hw(100) };
+    // 3) tullanış: əkizlər körpüdə qalır (maşından geri düşür, ekrandan çıxır)
+    c.G.ents.length = 0; c.G.d = c.S.len - 90; c.G.boost = 1.4; await wait(350); const off0 = Math.min(...c.G.bikes.map((b) => b.off)); await wait(600);
+    out.jump = { jumping: c.G.jump > 0 || c.G.won > 0, offStart: Math.round(off0), offLater: Math.round(Math.min(...c.G.bikes.map((b) => b.off))) };
+    return out;
+  });
+  console.log('2-ci dəst:', JSON.stringify(r));
+  expect(r.chasers.born, 'təqibçilər gəldi').toBeGreaterThanOrEqual(2);
+  expect(r.chasers.selfDead, 'heç bir təqibçi özü divara çırpılıb partlamadı').toBe(0);
+  expect(r.bikes.outside, 'motosikletlər körpünün enindən çıxmır').toBe(0);
+  expect(r.bikes.hw, 'körpü enlidir (əvvəl 58)').toBeGreaterThanOrEqual(66);
+  expect(r.jump.jumping, 'tullanış başladı').toBe(true);
+  expect(r.jump.offLater, 'tullanışda əkizlər maşından geri qalır (körpüdə qalırlar)').toBeGreaterThan(r.jump.offStart + 60);
+  // 4) ara səhnə: "Keç" bayrağı səhnələr arasında qalsa belə, növbəti ara səhnə oynanır
+  await page.waitForFunction(() => !window.__cgStory?._chase || window.__cgStory._chase.G.won === 0, null, { timeout: 8000 }).catch(() => {});
+  await page.evaluate(() => { const st = window.__cgStory; st._skip = true; st._chase.start(0); st._chase.skip(); });
+  await page.waitForFunction(() => !window.__cgStory.dlg.el.hidden && /Hearth güzgünün/.test(window.__cgStory.dlg.full || ''), null, { timeout: 10_000 });
   expect(errs).toEqual([]);
 });

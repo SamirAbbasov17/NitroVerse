@@ -66,7 +66,7 @@ export class Chapter1 {
       e.stopPropagation();
       if (this.dlg.typing && !this.dlg.el.hidden) { this.dlg.advance(); return; }
       if (!skipBtn.classList.contains('is-armed')) { skipBtn.classList.add('is-armed'); skipBtn.textContent = t('cg.skipSure'); armT = setTimeout(disarm, 3000); return; }
-      disarm(); this._skip = true; this.dlg.skip();
+      disarm(); if (!this._playing) return; this._skip = true; this.dlg.skip();
     };
     // Fasilə: Esc və ya künc düyməsi. Fasilədə klaviatura səhnəyə çatmır (dialoq keçmir, maşın dönmür).
     this.paused = false;
@@ -90,7 +90,7 @@ export class Chapter1 {
       'wren-neutral', 'gus-neutral', 'clara-neutral', 'ray-neutral', 'amos-neutral', 'pip-neutral',
       'e1', 'e2', 'a1', 'a2', 'a3', 'a4',
       'judge-neutral', 'crude-neutral', 'butcher-neutral', 'rust-neutral', 'preacher-neutral', 'twins-neutral', 'jackal-neutral',
-      'hush-neutral', 'chars', 'hens', 'c1', 'c2', 'c3', 'c4', 'c5', 'cars', 'props', 'ground-camp.webp', 'ground-canyon.webp', 'ground-fog.webp', 'ground-truck.webp', 'b1', 'b2', 'b3', 'b4', 'b8', 'j1', 'c6', 'c7', 'b5', 'b6', 'b7', 'g1.webp', 'g2.webp', 'g3.webp', 'g4.webp', 'g5.webp', 'g6.webp', 'g7.webp'];
+      'hush-neutral', 'chars', 'hens', 'c1', 'c2', 'c3', 'c4', 'c5', 'cars', 'props', 'ground-camp.webp', 'ground-canyon.webp', 'ground-fog.webp', 'ground-truck.webp', 'b1', 'b2', 'b3', 'b4', 'j1', 'c6', 'c7', 'b5', 'b6', 'b7', 'g1.webp', 'g2.webp', 'g3.webp', 'g4.webp', 'g5.webp', 'g6.webp', 'g7.webp'];
     const imgs = await Promise.all(names.map((n) => loadImg(`carmageddon/ch1/${n.includes('.') ? n : n + '.png'}`)));
     names.forEach((n, i) => { names[i] = n.replace(/\.\w+$/, ''); });
     names.forEach((n, i) => { this.art[n] = imgs[i]; });
@@ -145,6 +145,10 @@ export class Chapter1 {
 
   // Səhnə oynadıcısı: { art } fon dəyişir, { intro } personajı təqdim edir, qalanı — sətirdir
   async _play(scene) {
+    // BUQ idi: "Keç" səhnələr ARASINDA (kart, keçid) təsdiqlənəndə bayraq qalırdı və NÖVBƏTİ səhnə — məsələn qaçışın
+    // ilk ara səhnəsi — heç oynanmadan ötürülürdü ("bir dəfə getdi, bir dəfə getmədi"). Bayraq hər səhnənin əvvəlində
+    // sıfırlanır və düymə yalnız səhnə oynanarkən işləyir.
+    this._skip = false; this._playing = true;
     for (const st of scene) {
       if (this.dead || this._skip) break;
       if ('music' in st) { if (st.music) music.play(st.music); else music.stop(); continue; }
@@ -152,7 +156,7 @@ export class Chapter1 {
       if (st.intro) { await this._intro(st.intro, T(st.title)); continue; }
       await this.dlg.say({ who: st.who, emo: st.emo, text: T(tx(st.text, 'az')) });
     }
-    this._skip = false;
+    this._skip = false; this._playing = false;
   }
 
   // Təqdimat kartı: personaj ilk dəfə səhnəyə çıxanda — iri portret, ad və ləqəb
