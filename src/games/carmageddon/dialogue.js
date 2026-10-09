@@ -143,7 +143,7 @@ export class Dialogue {
       while (this.acc >= 1 && this.n < this.full.length && this.hold <= 0) {
         this.acc -= 1;
         const ch = this.full[this.n++];
-        if (this.pitch && /\S/.test(ch) && !PAUSE[ch] && this.n % 2 === 0) blip(this.pitch, ch, this.wave);
+        if (this.pitch && !this.silent && /\S/.test(ch) && !PAUSE[ch] && this.n % 2 === 0) blip(this.pitch, ch, this.wave);
         if (PAUSE[ch] && this.n < this.full.length) this.hold = PAUSE[ch];
       }
       this._paint();
@@ -156,6 +156,9 @@ export class Dialogue {
     this.typing = false; this.n = this.full.length;
     this._paint();
     this.box.classList.add('is-done');
+    // avtomatik keçid (final səhnəsi): oxumağa vaxt verib özü irəliləyir; klik gözləmədən keçir
+    clearTimeout(this._autoT);
+    if (this.auto) { const line = this.full; this._autoT = setTimeout(() => { if (!this.typing && this.full === line && this._res) this.advance(); }, this.auto(line)); }
   }
 
   // klik: yazı gedirsə tamamla; tamamdırsa keç
@@ -174,6 +177,7 @@ export class Dialogue {
   }
 
   dispose() {
+    clearTimeout(this._autoT);
     cancelAnimationFrame(this.raf);
     removeEventListener('keydown', this._onAct);
     this.el.remove();

@@ -7,6 +7,7 @@ import { Dialogue } from './dialogue.js';
 import { CAST, PROLOGUE, MORNING, EVENING, ATTACK, NIGHT_INTRO, FOUND, DUEL, AFTER_DUEL, ENDING, tx } from './script.js';
 import { runCamp, savedStage, savedSec, setStage, clearSave } from './camp.js';
 import { runChase } from './chase.js';
+import { runFinale, preloadSong } from './finale.js';
 import { runSearch } from './night.js';
 import { runDuel } from './duel.js';
 
@@ -195,15 +196,14 @@ export class Chapter1 {
     if (this.dead) return;
     this.el.classList.add('is-world', 'is-chase');
     this.cv.style.opacity = 1;
+    preloadSong();                                   // final mahnısı qaçış vaxtı arxada yüklənir
     await runChase(this, stage === 'chase' ? Math.min(4, savedSec()) : 0, (i) => setStage('chase', { sec: i }));
     if (this.dead) return;
     this.el.classList.remove('is-world', 'is-chase');
-    // SON
-    await this._play(ENDING);
-    if (this.dead) return;
-    await this._fade(0);
+    // FİNAL: son səhnə mahnı ilə, sonra yekun yazıları (bax finale.js)
     clearSave();
-    await this._card(t('cg.ch1'), t('cg.ch1End'), 6000);
+    await runFinale(this, ENDING);
+    if (this.dead) return;
     this.end();
   }
 
@@ -214,6 +214,7 @@ export class Chapter1 {
     this.world?.dispose();
     this._duel?.stop();
     this._chase?.stop();
+    this._finale?.stop();
     this.dlg.dispose();
     this.el.remove();
     this.onEnd?.();

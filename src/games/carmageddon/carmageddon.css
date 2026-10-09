@@ -310,3 +310,28 @@ body.cg-on #game-canvas, body.cg-on #mute-btn { visibility: hidden; }
 .cgc__pad button.is-on { border-color: var(--cg-amber); background: rgba(226, 87, 28, 0.4); }
 @media (pointer: coarse) { .cgc__pad { display: flex; } }
 @keyframes cgc-banner { 0% { opacity: 0; transform: translateY(-8px); } 8%, 78% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+
+/* ============ FİNAL: yekun yazıları ============ */
+.cgs.is-finale .cgs__skip { display: none; }
+.cgf { position: absolute; inset: 0; z-index: 4; overflow: hidden; background: rgba(8, 4, 6, 0); transition: background 3s ease; font-family: var(--cg-caps); color: var(--cg-bone); text-align: center; cursor: default; }
+.cgf.is-on { background: rgba(8, 4, 6, 0.9); }
+.cgf__sparks { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; opacity: 0.8; pointer-events: none; }
+.cgf__title, .cgf__thanks { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(6px, 2vh, 16px); padding: 0 6vw; opacity: 0; transition: opacity 1.8s ease; pointer-events: none; }
+.cgf__title.is-on, .cgf__thanks.is-on { opacity: 1; pointer-events: auto; }
+.cgf__title b { font-family: 'Black Ops One', var(--cg-caps); font-weight: 400; font-size: clamp(30px, 11vh, 92px); line-height: 1; letter-spacing: 0.04em; color: var(--cg-amber); text-shadow: 4px 4px 0 #000; }
+.cgf__title span { font-size: clamp(14px, 4vh, 30px); letter-spacing: 0.28em; text-transform: uppercase; }
+.cgf__title i { font-style: normal; margin-top: clamp(8px, 3vh, 26px); font-size: clamp(12px, 3vh, 22px); letter-spacing: 0.4em; text-transform: uppercase; color: var(--cg-dim); }
+.cgf__roll { position: absolute; inset: 0; opacity: 0; transition: opacity 1.2s ease; -webkit-mask-image: linear-gradient(0deg, transparent 0, #000 16%, #000 84%, transparent 100%); mask-image: linear-gradient(0deg, transparent 0, #000 16%, #000 84%, transparent 100%); }
+.cgf__roll.is-on { opacity: 1; }
+.cgf__in { position: absolute; left: 0; right: 0; top: 100%; padding: 0 6vw; animation: cgf-roll linear forwards; }
+.cgf__in section { margin-bottom: clamp(36px, 12vh, 96px); }
+.cgf__in h5 { margin: 0 0 clamp(6px, 1.6vh, 12px); font-weight: 400; font-size: clamp(11px, 2.4vh, 16px); letter-spacing: 0.34em; text-transform: uppercase; color: var(--cg-amber); }
+.cgf__in p { margin: 0 0 clamp(3px, 0.9vh, 8px); font-size: clamp(16px, 4.2vh, 30px); letter-spacing: 0.06em; line-height: 1.25; }
+.cgf__in .cgf__dim { margin-top: clamp(8px, 2vh, 16px); font-size: clamp(12px, 2.8vh, 19px); letter-spacing: 0.04em; color: var(--cg-dim); }
+.cgf__mem h5 { color: var(--cg-bone); } .cgf__mem p { color: #e8dcc0; }
+.cgf__left h5 { color: var(--cg-blood); } .cgf__left p { color: #d9b0a0; }
+.cgf__big p:first-child { font-size: clamp(22px, 7vh, 54px); letter-spacing: 0.1em; color: var(--cg-amber); text-shadow: 3px 3px 0 #000; }
+.cgf__thanks b { font-weight: 400; font-size: clamp(20px, 6.4vh, 50px); letter-spacing: 0.06em; line-height: 1.2; color: var(--cg-bone); text-shadow: 3px 3px 0 #000; }
+.cgf__thanks span { font-size: clamp(12px, 3vh, 21px); letter-spacing: 0.1em; color: var(--cg-dim); }
+.cgf__thanks i { font-style: normal; margin-top: clamp(10px, 4vh, 34px); font-size: clamp(11px, 2.4vh, 16px); letter-spacing: 0.34em; text-transform: uppercase; color: var(--cg-amber); }
+@keyframes cgf-roll { from { transform: translateY(0); } to { transform: translateY(calc(-100% - 100vh)); } }
