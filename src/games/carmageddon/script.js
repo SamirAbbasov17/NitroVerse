@@ -13,18 +13,29 @@ export const CAST = {
   ray: { name: 'Radio Ray', color: '#f2d23a', pitch: 523, wave: 'square' },
   amos: { name: 'Elder Amos', color: '#e8dcc0', pitch: 165, wave: 'triangle' },
   pip: { name: 'Pip', color: '#f07a1c', pitch: 784, wave: 'square' },
+  judge: { name: 'Judge', color: '#b9b9c4', pitch: 247, wave: 'sine' },
+  crude: { name: 'Madam Crude', color: '#f2f2f2', pitch: 370, wave: 'sine' },
+  butcher: { name: 'Butcher', color: '#b3261e', pitch: 110, wave: 'sawtooth' },
+  rust: { name: 'Doctor Rust', color: '#7fbf7a', pitch: 294, wave: 'triangle' },
+  preacher: { name: 'Preacher', color: '#ff7a2e', pitch: 220, wave: 'sawtooth' },
+  twins: { name: 'The Twins', color: '#b44bff', pitch: 494, wave: 'square' },
+  jackal: { name: 'Jackal', color: '#d9b06a', pitch: 147, wave: 'triangle' },
 };
 
-// PROLOQ: hər kadr = fon (art: prologue-N) + mətn
+// PROLOQ: hər kadr = fon (art) + mətn. Təhkiyə bədii dildədir — nağıl danışan səs kimi, teleqraf
+// üslubunda yox (sahibinin rəyi: "qısa sözlərlə belə oldu, bu var idi" üslubu bəyənilmədi).
 export const PROLOGUE = [
-  { art: 'p1', text: { az: 'Əvvəl şəhərlər vardı. Sonra şəhərlər susdu.' } },
-  { art: 'p2', text: { az: 'Qalan tək şey yollar oldu. Və yollarda yaşamağı öyrənənlər.' } },
-  { art: 'p2', text: { az: 'Onlara Nomads deyirdilər. Yanacaq tapdıqları yerdə gecələyir, səhər yenə yola çıxırdılar.' } },
-  { art: 'p3', text: { az: 'Yanacaq isə The Syndicate-in idi. Yeddi baron, yeddi yol.' } },
-  { art: 'p3', text: { az: 'Və onların üstündə — heç vaxt danışmayan biri.' } },
-  { art: 'p4', text: { az: 'Bir gün Nomads dayandı. Quyu qazdılar. Toxum əkdilər. Yanacağı satmadılar — bölüşdülər.' } },
-  { art: 'p4', text: { az: 'O yerə Hearth dedilər.' } },
-  { art: 'p5', text: { az: 'Bu, Hearth-in son günüdür.' } },
+  { art: 'p1', text: { az: 'Deyirlər, bir vaxtlar gecələr qaranlıq olmurdu. Şəhərlər o qədər işıq saçırdı ki, göydə ulduzları görmək olmurdu.' } },
+  { art: 'p1', text: { az: 'Sonra işıqlar bir-bir söndü. Sonuncu lampanın nə vaxt söndüyünü heç kim xatırlamır — xatırlayan qalmayıb.' } },
+  { art: 'p2', text: { az: 'Şəhərlərdən geriyə yollar qaldı: çatlamış, yarısını qum udmuş, daha heç yerə aparmayan yollar.' } },
+  { art: 'p2', text: { az: 'Bir də o yolları özünə ev bilən insanlar. Onlar bir yerdə iki gecədən artıq qalmazdılar, çünki çöldə dayanan ya acından ölürdü, ya da tapılırdı. Adlarına Nomads deyirdilər.' } },
+  { art: 'p3', text: { az: 'Yolların da sahibi vardı. Yanacağın son damlasına qədər hər şey The Syndicate-ə məxsus idi — yeddi barona və onların qarşısında baş əydiyi, səsini heç kimin eşitmədiyi birinə.' } },
+  { art: 'p3', text: { az: 'Onun əsl adını bilən yox idi. Adı çəkiləndə adamlar sadəcə susurdu. Bəlkə elə buna görə ona Hush deyirdilər.' } },
+  { art: 'p4', text: { az: 'Günlərin bir günü bir karvan dayandı. Yorulduqları üçün yox — qoca bir qadın torpağı ovcuna alıb ovuşdurduğu və "bu torpaq bitirər" dediyi üçün.' } },
+  { art: 'p4', text: { az: 'Quyu qazdılar, su çıxdı. Toxum səpdilər, cücərdi. Yanacaqlarını isə satmadılar: gələnə verdilər, gedənin yoluna qoydular.' } },
+  { art: 'p4', text: { az: 'Çöldə belə şey olmur. Çöldə hər şeyin bir qiyməti var. Onlar isə ocağın başına yığışıb həmin yerə ad qoydular: Hearth.' } },
+  { art: 'p5', text: { az: 'Bu hekayə Hearth-in necə qurulmasından danışmır.' } },
+  { art: 'p5', text: { az: 'Bu hekayə onun son günündən başlayır.' } },
 ];
 
 // SƏHNƏ 1a: səhər, çadır. Ember və Milo.
@@ -47,5 +58,77 @@ export const MORNING = [
   { who: 'ember', emo: 'neutral', text: { az: 'Elder Amos deyir ki, toxum cücərirsə, ev buradır.' } },
   { who: 'milo', emo: 'laugh', text: { az: 'Cücərir! Dünən saydım. On dörd dənə!' } },
   { who: 'ember', emo: 'love', text: { az: 'Onda ev buradır.' } },
-  { text: { az: 'Çöldə Hearth oyanır: çəkic səsi, uşaq gülüşü, uzaqda xırıldayan radio.' } },
+  { text: { az: 'Çadırın o üzündə Hearth artıq oyanıb: haradasa çəkic döyəclənir, uşaqlar gülüşür, uzaqda köhnə bir radio xırıldaya-xırıldaya öz-özünə danışır.' } },
+];
+
+// Səhnə formatı (EVENING, ATTACK): { art } — fon dəyişir; { intro, title } — personajın təqdimat kartı;
+// qalanı — sətir ({ who, emo, text }; who yoxdursa təhkiyə).
+const N = (az) => ({ text: { az } });
+const S = (who, emo, az) => ({ who, emo, text: { az } });
+
+// SƏHNƏ 2: axşam ocağı
+export const EVENING = [
+  { art: 'e1' },
+  N('Gün batanda Hearth-in bütün cığırları bir yerə çıxır. Biri kötük gətirir, biri qazan, biri də sadəcə özünü — ocağın başında yer hamıya çatır.'),
+  N('Ember həmişəki yerində oturub: alovdan bir az aralı, Milonun yanında. Milo isə bu axşam yerində qərar tuta bilmir.'),
+  S('milo', 'proud', 'İndi olar. Gözünü yum! …Yaxşı, yumma. Onsuz da heç vaxt yummursan.'),
+  { art: 'e2' },
+  N('Ovcuna soyuq, ağır bir şey qoyur. Köhnə bir dişli çarxdır: pası təmizlənib, parıldayana qədər sürtülüb, ortasından dəri qaytan keçirilib.'),
+  S('milo', 'sweat', 'Açar halqasıdır. Baqqinin açarı üçün. Yəni… sənin açarın üçün. Old Gus dedi ki, maşın sürücüsünü özü seçir. O da səni seçib.'),
+  S('milo', 'think', 'Üç həftə düzəltmişəm. Dişlərindən biri sınmışdı, onu özüm tökdüm. Bir az əyri alındı.'),
+  S('ember', 'love', '…Əyri deyil.'),
+  S('milo', 'pout', 'Əyridir. Mən görürəm.'),
+  S('ember', 'smile', 'Onda ən çox elə o dişini sevəcəyəm.'),
+  { art: 'e1' },
+  N('Elder Amos ayağa qalxanda söhbətlər öz-özünə kəsilir. O, səsini heç vaxt qaldırmır — indiyə qədər buna ehtiyac olmayıb.'),
+  S('amos', 'proud', 'Qırx il yol getdik. Qırx il heç kim "hara" deyə soruşmadı, çünki cavab həmişə eyni idi: irəli.'),
+  S('amos', 'sad', 'Yolda çox adam qoyduq. Hərəmiz kimisə. Adlarını bir daşa yazmaq istədik — daş balaca gəldi.'),
+  S('amos', 'smile', 'Amma bu gün bir uşaq mənə cücərtiləri sayıb göstərdi. Bir qız itmiş toxumu tapıb sahibinə qaytardı. Bir motor da qırx ildən sonra yenidən oxudu.'),
+  S('amos', 'proud', 'Mən ömrüm boyu karvan başçısı olmuşam. Bu gecə özümə ilk dəfə başqa ad qoymaq istəyirəm: qonşu. Hamınızın qonşusu.'),
+  N('Kimsə gülür, kimsə gözünü silir. Əvvəl Granny Wren əl çalır, ardınca hamı. Pip yuxulu-yuxulu "G — gecə" deyir və Miss Clara-nın dizində yuxuya gedir.'),
+  N('Ember açar halqasını ovcunda sıxır. Çarxın əyri dişi dərisinə batır və o fikirləşir ki, xoşbəxtlik yəqin elə belə olur: balaca, bir az əyri və yalnız sənin.'),
+  S('ray', 'fear', 'Efir! Efir susub — hamısı birdən! Şərq karvanı, qərb, alverçilərin dalğası… Elə bil kimsə dünyanın səsini kəsib!'),
+  S('gus', 'pout', 'Ray, otur. Sənin efirin onsuz da həftədə üç dəfə ölür.'),
+  S('ray', 'fear', 'Yox, bu dəfə başqadır. Bu dəfə… bir dinləyin.'),
+  N('Hamı susur. Əvvəl ocağın çırtıltısından başqa heç nə eşidilmir. Sonra xəbəri torpaq özü verir: ayaqların altında zəif, ahəngdar bir titrəyiş başlayır.'),
+  { art: 'a1' },
+  N('Şimalda, qaranlığın dibində bir işıq yanır. Sonra ikincisi. Sonra üfüq boyu, bir-birinin ardınca — onlarla, yüzlərlə fara.'),
+  S('amos', 'neutral', 'Uşaqları çadırlara aparın.'),
+  S('clara', 'fear', 'Elder Amos, bəlkə alverçilərdir? Bəlkə sadəcə yoldan keçirlər…'),
+  S('amos', 'sad', 'Alverçilər gecə gəlməz, qızım. Bu qədər də gəlməz.'),
+];
+
+// SƏHNƏ 3: hücum — baronların gəlişi
+export const ATTACK = [
+  { art: 'a2' },
+  N('Onlar tələsmirdilər. Maşınlar düşərgənin başına yavaş-yavaş, dairə vura-vura dolandı — canavar sürüsü taqətdən düşmüş heyvanın ətrafında necə dolanırsa, elə.'),
+  N('Sonra motorlar bir-bir susdu. Və sükutun içində yeddi qapı açıldı.'),
+  { intro: 'judge', title: 'The Syndicate-in qanunu' },
+  S('judge', 'smile', 'Hearth adlanan yaşayış yeri. Qırx üç nəfər. İttiham: yanacağın icazəsiz saxlanması, icazəsiz paylanması və — ən ağırı — pulsuz paylanması.'),
+  S('judge', 'neutral', 'Hökm mən bura gəlməzdən əvvəl çıxarılıb. Mən onu sizə sadəcə çatdırıram. Belə daha nəzakətli olur.'),
+  { intro: 'crude', title: 'Yanacağın sahibəsi' },
+  S('crude', 'smile', 'Xahiş edirəm, bunu şəxsi məsələ kimi qəbul etməyin. Siz pis insanlar deyilsiniz. Siz pis nümunəsiniz.'),
+  S('crude', 'neutral', 'Bir düşərgə yanacağı havayı paylayırsa, sabah o biri düşərgə soruşacaq: bəs biz niyə pul veririk? Mən bu sualı heç sevmirəm.'),
+  { intro: 'butcher', title: 'Dəmir yolun baronu' },
+  S('butcher', 'angry', 'Çox danışırsınız.'),
+  S('butcher', 'neutral', 'Kişiləri mənə verin. Qalanını aranızda özünüz bölün.'),
+  { intro: 'rust', title: 'Dumanın həkimi' },
+  S('rust', 'think', 'Maraqlıdır… Quru torpaqda bostan. Görəsən, kökləri neçə qarış dərinə gedir? Yox, deməyin. Özüm baxaram. Mən hər şeyə özüm baxıram.'),
+  { intro: 'preacher', title: 'Alovun vaizi' },
+  S('preacher', 'angry', 'Od verəndir, od da alandır! Siz ocağa ad qoydunuz, ona ev dediniz — indi o, öz evini geri istəyir!'),
+  { intro: 'twins', title: 'Bir kürsü, iki kölgə' },
+  S('twins', 'laugh', '— Mərc gələk: neçə dəqiqə çəkəcək? — Mən deyirəm on. — Mən deyirəm, saymağa heç kim macal tapmayacaq.'),
+  { intro: 'jackal', title: 'Ovçu' },
+  S('jackal', 'neutral', 'Qaçın.'),
+  S('jackal', 'smile', 'Yalvarıram, qaçın. Yerində dayanan şikarın dadı olmur.'),
+  N('Elder Amos papağını çıxarıb sinəsinə sıxdı və irəli çıxdı. Qırx üç nəfərin içindən yalnız o yeridi.'),
+  S('amos', 'proud', 'Mənim adım Amos-dur. Bu insanların böyüyü mənəm. Yanacağı götürün — hamısını. Quyunu da götürün. Bizə yalnız getməyə izin verin. Yolu tanıyırıq, bir də qarşınıza çıxmarıq.'),
+  S('crude', 'sad', 'Ah, mən bunu elə istərdim ki. Sözümə inanın. Amma qərarı mən vermirəm.'),
+  { art: 'a4' },
+  N('Yeddisi də kənara çəkildi. Aralarından biri keçdi: hündür, arıq, başdan-ayağa qara. Üzündə üz yox idi — hamar, qara bir maska və onun arxasında közərən iki nöqtə.'),
+  N('O, Elder Amos-a baxdı. Sonra düşərgəyə. Sonra — bircə anlıq — Emberə. Və bir kəlmə demədən əlini qaldırdı.'),
+  { art: 'a3' },
+  N('Ondan sonra baş verənləri Ember heç vaxt sıra ilə xatırlaya bilmədi. Yaddaşında yalnız qırıqlar qaldı: alovun işığında hələ də yaşıl görünən bostan. Yanan məktəb çadırı. Kəsilmiş ağac kimi yavaş-yavaş aşan radio dirəyi.'),
+  N('Bir də səslər. Tanıdığı, hər səhər eşitdiyi səslər — bir-bir kəsilən.'),
+  S('ember', 'fear', 'Milo… MILO!'),
 ];

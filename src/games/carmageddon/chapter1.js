@@ -4,8 +4,8 @@
 import { t, getLang } from '../../core/i18n.js';
 import { assetBase } from '../../net/apiBase.js';
 import { Dialogue } from './dialogue.js';
-import { CAST, PROLOGUE, MORNING, tx } from './script.js';
-import { runCamp, hasCampSave, clearSave } from './camp.js';
+import { CAST, PROLOGUE, MORNING, EVENING, ATTACK, tx } from './script.js';
+import { runCamp, savedStage, clearSave } from './camp.js';
 
 const W = 480, H = 270;
 const loadImg = (src) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = assetBase() + src; });
@@ -43,7 +43,9 @@ export class Chapter1 {
 
   async _load() {
     const names = ['p1', 'p2', 'p3', 'p4', 'p5', 'tent', 'camp.webp', 'milo-neutral', 'milo-happy', 'milo-pout',
-      'wren-neutral', 'gus-neutral', 'clara-neutral', 'ray-neutral', 'amos-neutral', 'pip-neutral'];
+      'wren-neutral', 'gus-neutral', 'clara-neutral', 'ray-neutral', 'amos-neutral', 'pip-neutral',
+      'e1', 'e2', 'a1', 'a2', 'a3', 'a4',
+      'judge-neutral', 'crude-neutral', 'butcher-neutral', 'rust-neutral', 'preacher-neutral', 'twins-neutral', 'jackal-neutral'];
     const imgs = await Promise.all(names.map((n) => loadImg(`carmageddon/ch1/${n.includes('.') ? n : n + '.png'}`)));
     names.forEach((n, i) => { names[i] = n.replace(/\.\w+$/, ''); });
     names.forEach((n, i) => { this.art[n] = imgs[i]; });
@@ -93,41 +95,70 @@ export class Chapter1 {
     this.card.hidden = true;
   }
 
+  // Səhnə oynadıcısı: { art } fon dəyişir, { intro } personajı təqdim edir, qalanı — sətirdir
+  async _play(scene) {
+    for (const st of scene) {
+      if (this.dead || this._skip) break;
+      if (st.art) { await this._fade(0); this._bg(st.art); await this._fade(1); continue; }
+      if (st.intro) { await this._intro(st.intro, st.title); continue; }
+      await this.dlg.say({ who: st.who, emo: st.emo, text: tx(st.text, this.lang) });
+    }
+    this._skip = false;
+  }
+
+  // Təqdimat kartı: personaj ilk dəfə səhnəyə çıxanda — iri portret, ad və ləqəb
+  async _intro(who, title) {
+    const c = CAST[who];
+    this.dlg.hide();
+    const el = document.createElement('div');
+    el.className = 'cgs__intro';
+    el.style.setProperty('--cgd-accent', c.color);
+    el.innerHTML = `<canvas width="80" height="80"></canvas><div><b>${c.name}</b><span>${title}</span></div>`;
+    const x = el.querySelector('canvas').getContext('2d'); x.imageSmoothingEnabled = false;
+    x.drawImage(this._face(who, 'neutral'), 0, 0);
+    this.el.appendChild(el);
+    await new Promise((r) => {
+      const done = () => { clearTimeout(tm); el.removeEventListener('click', done); r(); };
+      const tm = setTimeout(done, 2100);
+      el.addEventListener('click', done);
+    });
+    el.remove();
+  }
+
   async run() {
     await this._load();
     if (this.dead) return;
     this.el.classList.add('is-ready');
-    // yarımçıq qalmış oyun düşərgədən davam edir (proloq və səhər söhbəti təkrarlanmır)
-    const resume = hasCampSave();
-    if (!resume) clearSave();
-    // PROLOQ
-    let cur = null;
-    for (const s of resume ? [] : PROLOGUE) {
-      if (this.dead || this._skip) break;
-      if (s.art !== cur) { await this._fade(0); this._bg(s.art); cur = s.art; await this._fade(1); }
-      if (this.dead || this._skip) break;
-      await this.dlg.say({ text: tx(s.text, this.lang) });
+    // yarımçıq qalmış oyun saxlanan mərhələdən davam edir: 'camp' — düşərgə, 'evening' — axşam ocağı
+    const stage = savedStage();
+    if (!stage) {
+      clearSave();
+      await this._play(PROLOGUE.map((p, i) => (i && PROLOGUE[i - 1].art === p.art ? [{ text: p.text }] : [{ art: p.art }, { text: p.text }])).flat());
+      if (this.dead) return;
+      await this._fade(0);
+      await this._card(t('cg.ch1'), 'HEARTH', 2600);
+      if (this.dead) return;
+      this._bg('tent'); await this._fade(1);
+      await this._play(MORNING);
+      if (this.dead) return;
     }
-    if (this.dead) return;
-    this._skip = false;
-    await this._fade(0);
-    await this._card(t('cg.ch1'), 'HEARTH', resume ? 1400 : 2600);
-    if (this.dead) return;
-    // SƏHƏR
-    if (!resume) { this._bg('tent'); await this._fade(1); }
-    for (const l of resume ? [] : MORNING) {
-      if (this.dead || this._skip) break;
-      await this.dlg.say({ who: l.who, emo: l.emo, text: tx(l.text, this.lang) });
+    if (stage !== 'evening') {
+      // HEARTH: gəzinti və tapşırıqlar
+      await this._fade(0);
+      this.el.classList.add('is-world');
+      this.cv.style.opacity = 1;
+      await runCamp(this);
+      if (this.dead) return;
+      this.el.classList.remove('is-world');
     }
-    if (this.dead) return;
-    // HEARTH: gəzinti və tapşırıqlar
-    this._skip = false;
+    // AXŞAM OCAĞI və HÜCUM
     await this._fade(0);
-    this.el.classList.add('is-world');
-    this.cv.style.opacity = 1;
-    await runCamp(this);
+    await this._card(t('cg.ch1'), t('cg.evening'), 2400);
     if (this.dead) return;
-    this.el.classList.remove('is-world');
+    await this._play(EVENING);
+    if (this.dead) return;
+    await this._play(ATTACK);
+    if (this.dead) return;
     await this._fade(0);
     await this._card(t('cg.ch1'), t('cg.ch1More'), 4200);
     this.end();

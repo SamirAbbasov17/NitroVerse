@@ -7,7 +7,7 @@ import { World } from './world.js';
 const SAVE = 'cgCh1';
 const load = () => { try { return JSON.parse(localStorage.getItem(SAVE) || 'null'); } catch { return null; } };
 const store = (s) => { try { localStorage.setItem(SAVE, JSON.stringify(s)); } catch { /* gizli rejim */ } };
-export const hasCampSave = () => load()?.stage === 'camp';
+export const savedStage = () => { const st = load()?.stage; return st === 'camp' || st === 'evening' ? st : null; };
 export const clearSave = () => { try { localStorage.removeItem(SAVE); } catch { /* boş */ } };
 
 const LOOK = {
@@ -129,7 +129,7 @@ export async function runCamp(ch) {
       st.q.parts = 9;
       await talk([
         L('gus', 'think', 'Hə, budur. Ver bura… Tut bunu. Yox, o biri əlinlə.'),
-        L(null, null, 'Old Gus on dəqiqə danışmadan işləyir. Sonra açarı çevirir. Motor öskürür, öskürür — və oxuyur.'),
+        L(null, null, 'Old Gus susur. Əlləri nə edəcəyini özü bilir: bir vint, bir zəncir, bir ovuc yağ. Sonra açarı çevirir — motor bir öskürür, bir də öskürür və birdən, nəfəsi açılıbmış kimi, oxumağa başlayır.'),
         L('gus', 'proud', 'Eşidirsən? Qırx il əvvəl bu səs hər küçədə vardı. Heç kim qulaq asmırdı.'),
         L('gus', 'sad', 'Mən usta deyildim, bilirsən. Mühasib idim. Rəqəm sayırdım. Dünya bitəndə rəqəmlər də bitdi, əllərim qaldı.'),
         L('ember', 'neutral', 'Yaxşı əllərdir.'),
@@ -295,12 +295,12 @@ export async function runCamp(ch) {
   });
   const seed = (c, en, tt) => { const b = Math.round(Math.sin(tt * 4 + en.x) * 1); c.fillStyle = '#12080c'; c.fillRect(en.x - 4, en.y - 8 + b, 8, 8); c.fillStyle = '#d9b06a'; c.fillRect(en.x - 3, en.y - 7 + b, 6, 6); c.fillStyle = '#ffd166'; c.fillRect(en.x - 3, en.y - 6 + b, 6, 1); if (Math.sin(tt * 6 + en.y) > 0.6) { c.fillStyle = '#fff'; c.fillRect(en.x + 3, en.y - 11 + b, 1, 1); } };
   const part = (c, en, tt) => { const b = Math.round(Math.sin(tt * 4 + en.x) * 1); c.fillStyle = '#12080c'; c.fillRect(en.x - 4, en.y - 8 + b, 9, 8); c.fillStyle = '#9aa3ad'; c.fillRect(en.x - 3, en.y - 7 + b, 7, 6); c.fillStyle = '#5a626c'; c.fillRect(en.x - 1, en.y - 5 + b, 3, 2); if (Math.sin(tt * 6 + en.y) > 0.6) { c.fillStyle = '#fff'; c.fillRect(en.x + 4, en.y - 10 + b, 1, 1); } };
-  item('s1', 196, 404, () => st.q.seeds === 1, seed, [L(null, null, 'Sarı iplə bağlanmış kiçik kisə. İçində nəsə xışıldayır.'), L('ember', 'neutral', 'Biri var.')]);
-  item('s2', 330, 92, () => st.q.seeds === 1, seed, [L(null, null, 'Kisə quyunun yolunda, qumun içində yarı basdırılıb.'), L('ember', 'side', 'Külək bunu bura qədər aparıb?')]);
+  item('s1', 196, 404, () => st.q.seeds === 1, seed, [L(null, null, 'Qumun üstündə sarı iplə bağlanmış balaca bir kisə. Silkələyəndə içində quru yağış kimi nəsə xışıldayır.'), L('ember', 'neutral', 'Biri var.')]);
+  item('s2', 330, 92, () => st.q.seeds === 1, seed, [L(null, null, 'İkinci kisə quyuya gedən cığırda, quma yarıyacan batıb. Bir az da gec gəlsəydin, onu birinci yağış özü əkərdi.'), L('ember', 'side', 'Külək bunu bura qədər aparıb?')]);
   item('s3', 32, 160, () => st.q.seeds === 1, seed, [L(null, null, 'Kisənin üstündə Granny Wren-in əl yazısı: "?"'), L('ember', 'smile', 'O həqiqətən bilmir.')]);
-  item('p1', 344, 592, () => st.q.parts === 1, part, [L(null, null, 'Karbürator. Üstündə kiçik, yağlı barmaq izləri var.'), L('ember', 'pout', 'Milo.')]);
-  item('p2', 616, 240, () => st.q.parts === 1, part, [L(null, null, 'Zəncir. Bir toyuq onu yuva kimi dövrələmişdi.'), L('ember', 'neutral', 'Bağışla. Bu, baqqinindir.')]);
-  item('p3', 96, 602, () => st.q.parts === 1, part, [L(null, null, 'Dişli çarx. Bir dişi çatışmır… yox, sayıb yenə saydın. Hamısı yerindədir.'), L('ember', 'neutral', 'Üçüncü.')]);
+  item('p1', 344, 592, () => st.q.parts === 1, part, [L(null, null, 'Karbürator. Üstündə balaca, yağlı barmaq izləri qalıb — günahkarın boyu barədə şübhə yeri qoymur.'), L('ember', 'pout', 'Milo.')]);
+  item('p2', 616, 240, () => st.q.parts === 1, part, [L(null, null, 'Zəncir. Bir toyuq onu səliqə ilə dövrələyib üstündə oturmuşdu — görünür, yuva üçün ağlına daha yaxşı şey gəlməyib.'), L('ember', 'neutral', 'Bağışla. Bu, baqqinindir.')]);
+  item('p3', 96, 602, () => st.q.parts === 1, part, [L(null, null, 'Dişli çarx. Bir anlıq sənə elə gəlir ki, bir dişi çatışmır. Sayırsan, bir də sayırsan — hamısı yerindədir.'), L('ember', 'neutral', 'Üçüncü.')]);
 
   // ——— baxıla bilən yerlər ———
   const spot = (id, x, y, lines, when = null) => world.add({ id, x, y, kind: 'spot', r: 6, when, use: () => talk(typeof lines === 'function' ? lines() : lines) });
@@ -308,24 +308,24 @@ export async function runCamp(ch) {
     if (st.q.radio === 2) {
       st.q.radio = 3;
       return [
-        L(null, null, 'Naqili qutuya bağlayırsan. Yuxarıda nəsə cızıldayır.'),
-        L(null, null, 'Qulaqcıqdan səs gəlir: xışıltı… sonra aydın, yavaş: tıq. tıq. tıq. tıq. tıq. tıq. tıq.'),
-        L(null, null, 'Sükut.'),
+        L(null, null, 'Naqili sıxıb bağlayırsan. Dirək boyu yuxarı bir cızıltı qaçır və qulaqcıq dirilir.'),
+        L(null, null, 'Əvvəl yalnız xışıltı gəlir — uzaq bir dənizin səsinə oxşayır. Sonra onun içindən yavaş, səbirli bir tıqqıltı seçilir. Bir. İki. Üç… Düz yeddi dəfə.'),
+        L(null, null, 'Sonra efir elə susur ki, sanki xəttin o başında kimsə nəfəsini içinə çəkib.'),
         L('ember', 'fear', '…Yəqin külək idi.'),
       ];
     }
-    return [L(null, null, 'Hearth-in radio dirəyi. Ray deyir ki, yaxşı gecədə üç günlük yoldan səs tutur.'), L('ember', 'neutral', st.q.radio >= 3 ? 'İndi də susub.' : 'Dünyanın qalanı hələ oradadır. Haradasa.')];
+    return [L(null, null, 'Hearth-in radio dirəyi. Radio Ray and içir ki, havası təmiz gecədə üç günlük yoldan səs tutur.'), L('ember', 'neutral', st.q.radio >= 3 ? 'İndi də susub.' : 'Dünyanın qalanı hələ oradadır. Haradasa.')];
   });
   spot('well', 244, 174, [L(null, null, 'Quyu. İlk suyu çıxan gün Elder Amos ağladı və bunu hamıdan gizlətməyə çalışdı.'), L('ember', 'laugh', 'Hamı gördü.')]);
-  spot('garden', 172, 372, [L(null, null, 'Bostan. On dörd cücərti. Ya da on altı.'), L('ember', 'neutral', 'Yol boyu heç vaxt bir yerdə yaşıl görməmişdim.')]);
-  spot('fire', 320, 348, [L(null, null, 'Ocaq heç vaxt sönmür. Düşərgənin adı da buradandır.'), L('ember', 'neutral', 'Bu axşam hamı burada olacaq.')]);
+  spot('garden', 172, 372, [L(null, null, 'Bostan. Torpaqdan baş qaldırmış on dörd cücərti — Granny Wren-ə inansaq, on altı.'), L('ember', 'neutral', 'Yol boyu heç vaxt bir yerdə yaşıl görməmişdim.')]);
+  spot('fire', 320, 348, [L(null, null, 'Bu ocaq Hearth-in qurulduğu gecə yandırılıb və o vaxtdan bir dəfə də sönməyib. Gecə növbəsinə kim çıxırsa, ilk işi ona odun atmaqdır.'), L('ember', 'neutral', 'Bu axşam hamı burada olacaq.')]);
   spot('buggy', 428, 216, () => (st.q.parts === 9
     ? [L(null, null, 'Baqqi. Motor hələ ilıqdır.'), L('ember', 'smile', 'Axşam. Səbr et.')]
-    : [L(null, null, 'Old Gus-un baqqisi. Motorun yarısı yerdədir.'), L('ember', 'neutral', 'Yığılsa, düşərgədə ən sürətli şey olacaq. Məndən sonra.')]));
-  spot('home', 470, 566, [L(null, null, 'Sənin və Milonun çadırı. İçəridən yağ və çörək iyi gəlir.'), L('ember', 'sleepy', 'Yatmaq üçün hələ tezdir. Təəssüf.')]);
+    : [L(null, null, 'Old Gus-un baqqisi. Motorunun yarısı yerdə, səliqə ilə sərilmiş əskinin üstündədir — cərrahın alətləri kimi.'), L('ember', 'neutral', 'Yığılsa, düşərgədə ən sürətli şey olacaq. Məndən sonra.')]));
+  spot('home', 470, 566, [L(null, null, 'Sənin və Milonun çadırı. İçəridən maşın yağının və isti çörəyin iyi gəlir — evin iyi.'), L('ember', 'sleepy', 'Yatmaq üçün hələ tezdir. Təəssüf.')]);
   spot('school', 150, 570, [L(null, null, 'Miss Clara-nın məktəbi. Lövhədə: "A — ana. B — baqqi. C — çörək."'), L('ember', 'smile', 'Vacib sözlərdən başlayıb.')]);
   spot('rock', 78, 52, [L(null, null, 'Daşın üstündə cızılıb: "BURADA DAYANDIQ." Altında qırx üç ad var.'), L('ember', 'sad', 'Mənimki sonuncudan əvvəlkidir. Sonuncu — Milo.')]);
-  spot('barrels', 284, 592, [L(null, null, 'Yanacaq çəlləkləri. Qıfıl yoxdur. Kimə lazımdırsa, götürür.'), L('ember', 'think', 'The Syndicate bunu görsə, dəli olar.')]);
+  spot('barrels', 284, 592, [L(null, null, 'Yanacaq çəlləkləri. Nə qıfılı var, nə gözətçisi. Kimə lazımdırsa, gəlib götürür — Hearth-in çöldəki şöhrəti də elə bundandır.'), L('ember', 'think', 'The Syndicate bunu görsə, dəli olar.')]);
 
   // ——— ətraf: ocağın alovu və gəzən toyuqlar ———
   const hens = [0, 1, 2].map((i) => ({ x: 190 + i * 22, y: 410 + i * 9, tx: 200, ty: 410, w: 0, c: ['#f2ead8', '#c98a4a', '#f2ead8'][i] }));
@@ -362,8 +362,8 @@ export async function runCamp(ch) {
   refresh();
   if (once('campIntro')) {
     await talk([
-      L(null, null, 'Hearth. Qırx üç nəfər, on bir çadır, bir quyu və heç vaxt sönməyən ocaq.'),
-      L('ember', 'neutral', 'Old Gus gözləyir. Amma əvvəl bir dövrə vurum — səhər hamının bir dərdi olur.'),
+      L(null, null, 'Səhər Hearth-ə tələsmədən gəlir: əvvəl ocağın tüstüsü qalxır, sonra toyuqlar, ən axırda da insanlar oyanır. Qırx üç nəfər, on bir çadır, bir quyu — Ember üçün dünya elə bu qədərdir.'),
+      L('ember', 'neutral', 'Old Gus gözləyir. Amma əvvəl düşərgəni bir dolanım — səhərlər hamının bir dərdi olur, biri də mütləq mənə düşür.'),
     ]);
   }
   await ended;
