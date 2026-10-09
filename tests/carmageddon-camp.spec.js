@@ -179,7 +179,7 @@ test('düşərgə: toqquşma konturları — hər şeyə çatmaq olur, obyektin 
     wander.forEach((e, i) => { e.hidden = hid[i]; });
     const reach = (ex, ey, d) => { for (let j = Math.max(0, Math.floor((ey - d) / G)); j <= Math.min(N - 1, Math.ceil((ey + d) / G)); j++) for (let i = Math.max(0, Math.floor((ex - d) / G)); i <= Math.min(N - 1, Math.ceil((ex + d) / G)); i++) if (seen[j * N + i] && Math.hypot(i * G + 1 - ex, j * G + 1 - ey) <= d) return true; return false; };
     const unreachable = w.ents.filter((e) => (e.use || e.kind === 'npc') && !reach(e.x, e.y, 24 + (e.r || 0))).map((e) => `${e.id}@${e.x},${e.y}`);
-    const inside = [[150, 150], [90, 300], [500, 150], [560, 400], [150, 530], [490, 520], [320, 318]].filter(([x, y]) => !w._blocked(x, y)).map((p) => p.join(','));
+    const inside = [[150, 150], [90, 300], [500, 150], [560, 400], [150, 530], [490, 520], [320, 318], [275, 318], [365, 330], [300, 290], [345, 345]].filter(([x, y]) => !w._blocked(x, y)).map((p) => p.join(','));
     const open = [[320, 200], [320, 440], [260, 240], [420, 300], [330, 600], [300, 110]].filter(([x, y]) => w._blocked(x, y)).map((p) => p.join(','));
     return { unreachable, inside, open, share: Math.round((seen.reduce((a, b) => a + b, 0) / (N * N)) * 100) };
   });
@@ -462,6 +462,13 @@ test('düşərgə: obyektin arxasına keçmək, yol tapma, çubuq, görünən sa
   console.log('saç pikselləri — açıqda:', openRed, 'çadırın arxasında:', behindRed);
   expect(openRed, 'açıqda Ember tam görünür (qırmızı saç)').toBeGreaterThan(40);
   expect(behindRed, 'çadırın arxasında çadır üstdən çəkilir — parlaq qırmızı piksel qalmır').toBeLessThan(openRed * 0.25);
+  // radio dirəyinin antenası: ucunun arxasından keçən fiqur antenanın ARXASINDA qalır (kontur əvvəl uca çatmırdı)
+  const mastFree = await page.evaluate(() => { const w = window.__cgStory.world; return !w._blocked(540, 286); });
+  const mastRed = await pix(540, 286);
+  await page.screenshot({ path: path.join(DIR, 'camp-behind-mast.png') });
+  console.log('saç pikselləri — antenanın arxasında:', mastRed);
+  expect(mastFree, 'antenanın arxasından keçmək olur').toBe(true);
+  expect(mastRed, 'antenanın arxasında fiqur üstdə çəkilmir').toBeLessThan(openRed * 0.25);
   // 2) yol tapma: bostanın bir tərəfindən o birinə — düz xətt bağlıdır, yol dolanır
   const nav = await page.evaluate(async () => {
     const w = window.__cgStory.world; w.p.x = 190; w.p.y = 250; const tx = 110, ty = 420;
