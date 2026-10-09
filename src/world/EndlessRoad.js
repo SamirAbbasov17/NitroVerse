@@ -249,6 +249,15 @@ export class EndlessRoad {
   // DƏQİQ hündürlük: mövqe seqment boyu proyeksiya olunur, y interpolyasiya —
   // 8m-lik nöqtə addımları ilə "yerə girib-çıxma" olmur
   // Verilmiş mövqedə tunel gücü (0..1) — yağış/qar və səs üçün
+  // Tunelə YAXINLIQ (0 — uzaqdır, 1 — içində və ya düz ağzındadır): yol boyu `ahead` m qabağa baxır ki, yağış/qar
+  // tunelə çatmamış azalmağa başlasın, və çıxışdan sonra `behind` m ərzində tədricən qayıtsın.
+  tunnelNear(position, hint = null, ahead = 64, behind = 24) {
+    const m = ((this.getNearest(position, hint).index * SEG) % 2600 + 2600) % 2600;      // bax _tunnelT: tunel 1480…1710 m
+    if (m >= 1480 && m <= 1710) return 1;
+    if (m < 1480) return Math.max(0, 1 - (1480 - m) / ahead);
+    return Math.max(0, 1 - (m - 1710) / behind);
+  }
+
   tunnelAtPos(position, hint = null) {
     const near = this.getNearest(position, hint);
     return this._tunnelT(near.index) * this._tunnelW(near.index);

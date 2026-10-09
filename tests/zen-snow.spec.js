@@ -121,9 +121,8 @@ test('zen qar: sabitlik — dənələr aşağı düşür, örtük hər yerdə bi
   expect(errs).toEqual([]);
 });
 
-// GECƏ və TUNEL: qaranlıqda qar ağ (ay işığında açıq mavi-ağ) görünür — yer tünd boz qalmır; tunelə girəndə qar
-// birdən kəsilmir, yumşaq sönür və çıxanda yumşaq qayıdır.
-test('zen qar: gecə qar ağ görünür; tuneldə qar yumşaq sönür', async ({ page }) => {
+// GECƏ: qaranlıqda qar ağ (ay işığında açıq mavi-ağ) görünür — yer tünd boz qalmır.
+test('zen qar: gecə qar ağ görünür', async ({ page }) => {
   test.setTimeout(200_000);
   const errs = []; page.on('pageerror', (e) => errs.push(e.message));
   await boot(page);
@@ -143,21 +142,62 @@ test('zen qar: gecə qar ağ görünür; tuneldə qar yumşaq sönür', async ({
     expect(px.groundLum, 'gecə qarlı yer açıqdır (tünd boz deyil)').toBeGreaterThan(1.05);
     expect(px.glow, 'gecə qarlı yer öz işığı ilə görünür').toBeGreaterThan(0.25);
     expect(px.flakeColor, 'dənələr ağdır').toBe('#ffffff');
-    // tunel: süni olaraq "tuneldəyik" siqnalı ver → qar kəsilmir, ~1 s-də sönür; çıxanda qayıdır
-    const fade = await page.evaluate(async () => {
-      const s = window.__active, wait = (ms) => new Promise((r) => setTimeout(r, ms)), orig = s.road.tunnelAtPos.bind(s.road); const out = {};
-      out.before = { vis: s._rain.mesh.visible, op: +s._rain.mesh.material.opacity.toFixed(2) };
-      s.road.tunnelAtPos = () => 1; await wait(120); out.t120 = { vis: s._rain.mesh.visible, op: +s._rain.mesh.material.opacity.toFixed(2) };
-      await wait(1900); out.inside = { vis: s._rain.mesh.visible, op: +s._rain.mesh.material.opacity.toFixed(2) };
-      s.road.tunnelAtPos = orig; await wait(150); out.out150 = { vis: s._rain.mesh.visible, op: +s._rain.mesh.material.opacity.toFixed(2) };
-      await wait(2200); out.after = { vis: s._rain.mesh.visible, op: +s._rain.mesh.material.opacity.toFixed(2) };
-      return out;
-    });
-    console.log('tunel:', JSON.stringify(fade));
-    expect(fade.t120.vis && fade.t120.op > fade.before.op * 0.5, 'tunelə girən kimi qar birdən yox olmur').toBe(true);
-    expect(fade.inside.vis, 'tunelin içində qar yoxdur').toBe(false);
-    expect(fade.out150.op < fade.before.op * 0.6, 'çıxanda birdən tam güclə qayıtmır').toBe(true);
-    expect(fade.after.op, 'çıxandan sonra əvvəlki gücə qayıdır').toBeGreaterThanOrEqual(fade.before.op - 0.03);
   }
+  expect(errs).toEqual([]);
+});
+
+// TUNEL (real tunel: yolun 1480–1710-cu metrləri) və QAR ↔ YAĞIŞ keçidi:
+//  • tunelə yaxınlaşdıqca qar azalır, girişdə artıq yoxdur, içəridə heç yağmır, çıxandan sonra qayıdır;
+//  • qardan yağışa (və əksinə) keçid birdən olmur: əvvəlki yağıntı sönür, sonra yenisi güclənir.
+test('zen qar: tunelə yaxınlaşdıqca azalır, içəridə yağmır; qar ↔ yağış tədricən keçir', async ({ page }) => {
+  test.setTimeout(240_000);
+  const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+  await boot(page);
+  await startMode(page, MODES.find((m) => m.name === 'zen').config);
+  await page.evaluate(() => { const s = window.__active; s._setDayTime('day'); s._biomeOverride = 4; });
+  await autopilot(page, true);
+  const where = () => page.evaluate(() => { const s = window.__active, m = ((s.road.getNearest(s.playerCar.position, s.playerCar.wpHint).index * 8) % 2600 + 2600) % 2600; return { m, vis: s._rain.mesh.visible, op: +s._rain.mesh.material.opacity.toFixed(3), rain: +s._weather.rain.toFixed(2), type: s._fallType }; });
+  // tunelə 150 m qalana qədər sür
+  let w = await where(); const t0 = Date.now();
+  while (!(w.m > 1330 && w.m < 1420) && Date.now() - t0 < 120_000) { await page.waitForTimeout(250); w = await where(); }
+  expect(w.m, 'tunelə yaxınlaşdıq').toBeGreaterThan(1330);
+  const log = []; let shotIn = false, shotNear = false;
+  for (let i = 0; i < 260; i++) {
+    w = await where(); log.push(w);
+    if (!shotNear && w.m > 1455) { shotNear = true; await page.screenshot({ path: path.join(DIR, `snow-${TAG}-tunnel-entry.png`) }); }
+    if (!shotIn && w.m > 1560) { shotIn = true; await page.screenshot({ path: path.join(DIR, `snow-${TAG}-tunnel-inside.png`) }); }
+    if (w.m > 1800 || w.m < 1300) break;
+    await page.waitForTimeout(60);
+  }
+  const far = log.filter((x) => x.m < 1400), near = log.filter((x) => x.m >= 1462 && x.m < 1478), inside = log.filter((x) => x.m >= 1490 && x.m <= 1700), after = log.filter((x) => x.m > 1760);
+  const mx = (a) => Math.max(...a.map((x) => x.op)), mn = (a) => Math.min(...a.map((x) => x.op));
+  console.log('tunel:', JSON.stringify({ far: [mn(far), mx(far)], near: [mn(near), mx(near)], inside: [mn(inside), mx(inside)], after: mx(after), n: log.length }));
+  expect(mn(far), 'tuneldən uzaqda qar tam gücdədir').toBeGreaterThan(0.85);
+  expect(mx(near), 'girişə 18 m qalmış qar xeyli azalıb').toBeLessThan(0.35);
+  expect(mx(log.filter((x) => x.m >= 1440 && x.m < 1452)), 'girişə ~35 m qalmış artıq azalıb').toBeLessThan(0.8);
+  expect(mx(inside), 'tunelin içində qar yağmır').toBeLessThan(0.02);
+  expect(inside.some((x) => x.vis), 'içəridə hissəciklər çəkilmir').toBe(false);
+  expect(mx(after), 'çıxandan sonra qar qayıdır').toBeGreaterThan(0.85);
+  const ap = log.filter((x) => x.m >= 1400 && x.m <= 1480).map((x) => x.op);
+  expect(ap.every((v, i) => !i || v <= ap[i - 1] + 0.02), 'yaxınlaşdıqca qar yalnız azalır (geri-irəli oynamır)').toBe(true);
+
+  // ——— QAR → YAĞIŞ → QAR: növ birdən dəyişmir ———
+  const watch = async (weather, ms) => {
+    await page.evaluate((k) => window.__active._setWeather(k), weather);
+    const out = []; const t1 = Date.now();
+    while (Date.now() - t1 < ms) { const x = await where(); if (x.m < 1380 || x.m > 1800) out.push({ t: (Date.now() - t1) / 1000, type: x.type, op: x.op }); await page.waitForTimeout(50); }
+    return out;
+  };
+  const check = (seq, from, to, label) => {
+    const k = seq.findIndex((x) => x.type === to);
+    console.log(label, JSON.stringify({ switchAt: k < 0 ? null : +seq[k].t.toFixed(1), opBefore: k > 0 ? seq[k - 1].op : null, opAfter: k >= 0 ? seq[k].op : null, end: seq[seq.length - 1] }));
+    expect(k, `${label}: növ dəyişdi`).toBeGreaterThan(0);
+    expect(seq[k].t, `${label}: dəyişmə tələsik deyil (əvvəlki yağıntı sönməlidir)`).toBeGreaterThan(1.8);
+    expect(Math.max(seq[k - 1].op, seq[k].op), `${label}: növ dəyişən anda yağıntı görünmür`).toBeLessThan(0.06);
+    expect(seq.slice(0, k).every((x) => x.type === from), `${label}: sönənə qədər əvvəlki növ qalır`).toBe(true);
+    expect(seq[seq.length - 1].op, `${label}: sonda yeni yağıntı güclənib`).toBeGreaterThan(0.3);
+  };
+  check(await watch('rain', 9000), 1, 0, 'qar → yağış');
+  check(await watch('snow', 9000), 0, 1, 'yağış → qar');
   expect(errs).toEqual([]);
 });

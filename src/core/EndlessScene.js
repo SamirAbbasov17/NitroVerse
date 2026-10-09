@@ -749,9 +749,10 @@ export class EndlessScene {
     const road = this.road, SEGm = 8;
     const pAbs = road.getNearest(this.playerCar.position, this.playerCar.wpHint).index;
     this._trafNextT -= dt;
-    if (this._trafNextT <= 0 && this._traffic.length < 2) {
+    // intensivlik bir az artırıldı (istifadəçi istəyi): eyni vaxtda 2 → 3 maşın, ara 14–32 s → 8–20 s
+    if (this._trafNextT <= 0 && this._traffic.length < 3) {
       this._spawnTraffic(pAbs);
-      this._trafNextT = 14 + Math.random() * 18;   // "hərdən" hissi — həmişə dolu olmasın
+      this._trafNextT = 8 + Math.random() * 12;   // "hərdən" hissi — həmişə dolu olmasın
     }
     const hw = road.halfWidth;
     for (let i = this._traffic.length - 1; i >= 0; i--) {
@@ -1897,10 +1898,17 @@ export class EndlessScene {
     const rAmount = this._weather.rain;
     // TUNELDƏ yağış/qar görünməməlidir — tavan var (əvvəl içəri yağırdı)
     const inTunnel = this.road?.tunnelAtPos?.(this.playerCar.position, this.playerCar.wpHint) > 0.35;
-    // TUNEL: qar/yağış birdən kəsilmir — girəndə ≈0.9 s-də sönür, çıxanda ≈1.4 s-də qayıdır
+    // TUNEL: qar/yağış tunelin İÇİNƏ yağmır. Tunelə yaxınlaşdıqca (≈64 m-dən) azalır, girişdə artıq yoxdur;
+    // çıxandan sonra ≈24 m ərzində qayıdır. Yaxınlıq yol nöqtələri ilə (8 m addım) ölçülür, ona görə yumşaldılır.
+    const tunNear = inTunnel ? 1 : (this.road?.tunnelNear?.(this.playerCar.position, this.playerCar.wpHint) ?? 0);
+    const fallGoal = 1 - Math.min(1, tunNear * 1.15);
     this._fallFade = this._fallFade ?? 1;
-    this._fallFade = inTunnel ? Math.max(0, this._fallFade - dt / 0.9) : Math.min(1, this._fallFade + dt / 1.4);
-    const fadeK = this._fallFade * this._fallFade * (3 - 2 * this._fallFade);
+    this._fallFade += (fallGoal - this._fallFade) * Math.min(1, dt * (fallGoal < this._fallFade ? 9 : 4));
+    // QAR ↔ YAĞIŞ: növ birdən dəyişmir — əvvəl gedən yağıntı ≈2.5 s-də sönür, sonra yenisi ≈2.5 s-də güclənir
+    if (this._fallType == null) { this._fallType = flakeNow ? 1 : 0; this._typeFade = 1; }
+    if ((flakeNow ? 1 : 0) !== this._fallType) { this._typeFade = Math.max(0, this._typeFade - dt / 2.5); if (this._typeFade <= 0 || rAmount < 0.05) this._fallType = flakeNow ? 1 : 0; }
+    else this._typeFade = Math.min(1, this._typeFade + dt / 2.5);
+    const fadeK = this._fallFade * this._fallFade * (3 - 2 * this._fallFade) * this._typeFade;
     rain.mesh.visible = rAmount > 0.04 && fadeK > 0.01;
     // HAVA SƏSİ: yağışda şırıltı, qarda sakit külək; tuneldə boğuqlaşır. Güclü yağışda
     // hərdən uzaq göy gurultusu (əvvəl qısa işıq, 0.5–1.8 s sonra səs).
@@ -1933,7 +1941,7 @@ export class EndlessScene {
     if (rain.mesh.visible) {
       // QAR seçimi biomdan asılı DEYİL: səhrada "qar" seçəndə yer ağarır, ona görə
       // göydən də qar düşməlidir (əvvəl damcı düşürdü — uyğunsuz görünürdü)
-      const flake = flakeNow;
+      const flake = this._fallType === 1;      // göstərilən növ (hədəf növə yumşaq keçidlə çatır)
       rain.mesh.material.opacity = (flake ? 0.92 * Math.min(1, rAmount * 1.25) : 0.5 * rAmount) * fadeK;
       rain.mesh.material.color.set(flake ? 0xffffff : 0xcfe0ee);
       const fall = flake ? 4.2 : 30;
