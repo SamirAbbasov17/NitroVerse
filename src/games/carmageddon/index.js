@@ -62,7 +62,7 @@ class TitleScreen {
         <div class="cg__tags"><span>${t('cg.tagStory')}</span><span>${t('cg.tagRace')}</span><span>${t('cg.tagPixel')}</span></div>
         <p class="cg__pitch">${t('cg.pitch')}</p>
         <nav class="cg__menu">
-          <button class="cg__btn is-locked" data-cg="story"><b>${t('cg.story')}</b><em>${t('cg.soon')}</em></button>
+          <button class="cg__btn" data-cg="story"><b>${t('cg.story')}</b><em>${t('cg.demo')}</em></button>
           <button class="cg__btn" data-cg="hero"><b>${t('cg.hero')}</b></button>
           <button class="cg__btn" data-cg="exit"><b>${t('cg.exit')}</b></button>
         </nav>
@@ -89,10 +89,11 @@ class TitleScreen {
     };
     this._onDown = (e) => {
       this._onMove(e);
-      if (e.target.closest('.cg__btn')) return;
+      if (e.target.closest('.cg__btn') || this.story) return;
       if (this._overHero(e.touches?.[0] || e)) this._pokeHero();
     };
     this._onKey = (e) => {
+      if (this.story) return;                    // hekayə gedir — düymələr onundur
       if (e.code === 'ArrowDown' || e.code === 'KeyS') { this._select((this.sel + 1) % this.btns.length); e.preventDefault(); }
       else if (e.code === 'ArrowUp' || e.code === 'KeyW') { this._select((this.sel + this.btns.length - 1) % this.btns.length); e.preventDefault(); }
       else if (e.code === 'Enter' || e.code === 'Space') { this._activate(); e.preventDefault(); }
@@ -226,9 +227,23 @@ class TitleScreen {
     const id = this.btns[this.sel].dataset.cg;
     audio.sfx('click');
     if (id === 'exit') { this._exit(); return; }
-    this.note.textContent = id === 'story' ? t('cg.storyNote') : t('cg.heroNote');
+    if (id === 'story') { this._startStory(); return; }
+    this.note.textContent = t('cg.heroNote');
     this.note.classList.remove('is-on'); void this.note.offsetWidth; this.note.classList.add('is-on');
     if (id === 'hero') this._pokeHero();
+  }
+
+  // HEKAYƏ: Fəsil 1 başlıq ekranının üstündə açılır (kod yalnız lazım olanda yüklənir); bitəndə və ya
+  // Esc ilə başlıq ekranı geri qayıdır.
+  async _startStory() {
+    if (this.story || this._storyLoading) return;
+    this._storyLoading = true;
+    const { Chapter1 } = await import('./chapter1.js');
+    this._storyLoading = false;
+    if (!this.el.isConnected) return;
+    this.el.classList.add('is-story');
+    this.story = new Chapter1(this.el, { hero: this.hero, eyes: this.eyes, onEnd: () => { this.story = null; this.el.classList.remove('is-story'); } });
+    if (import.meta.env.DEV) window.__cgStory = this.story;
   }
 
   // Göstərici qəhrəmanın üstündədirmi (kətan koordinatında, şəffaf olmayan düzbucaqlı)
@@ -353,6 +368,7 @@ class TitleScreen {
   }
 
   dispose() {
+    this.story?.end();
     cancelAnimationFrame(this.raf);
     clearTimeout(this._qt);
     removeEventListener('resize', this._fit);

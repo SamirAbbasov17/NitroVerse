@@ -83,11 +83,14 @@ test('carmageddon: menyudan açılır, qəhrəman canlıdır, geri qayıdır (ma
   await expect(page.locator('.cg__bubble')).toBeVisible();
   await page.waitForTimeout(350);
   await page.screenshot({ path: path.join(DIR, 'd-title-poke.png') });
-  // klaviatura: ↑ ilə "Hekayəyə başla" → Enter → "tezliklə" qeydi; Esc → NitroVerse
+  // klaviatura: ↑ ilə "Hekayəyə başla" → Enter → hekayə; Esc → başlıq; Esc → NitroVerse
   await page.keyboard.press('ArrowUp');
   await expect(page.locator('.cg__btn.is-selected')).toContainText('Hekayəyə başla');
-  await page.keyboard.press('Enter');
-  await expect(page.locator('.cg__note')).toContainText('Hekayə hələ yazılır');
+  await page.keyboard.press('Enter');                       // hekayə açılır (ətraflı: carmageddon-story.spec.js)
+  await page.waitForSelector('.cgs.is-ready', { timeout: 20_000 });
+  await page.keyboard.press('Escape');                      // hekayədən başlıq ekranına
+  await expect(page.locator('.cgs')).toHaveCount(0);
+  await expect(page.locator('.cg__btn.is-selected')).toBeVisible();
   await page.keyboard.press('Escape');
   await page.waitForSelector('.menu-list .mrow', { timeout: 30_000 });
   expect(await page.locator('.cg').count(), 'Carmageddon ekranı bağlandı').toBe(0);

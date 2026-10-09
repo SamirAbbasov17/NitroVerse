@@ -139,3 +139,53 @@ body.cg-on #game-canvas, body.cg-on #mute-btn { visibility: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .cg__wip i, .cg__btn.is-selected::before { animation: none; }
 }
+
+
+/* ============ HEKAYƏ (Fəsil 1): sinematik kadr + dialoq qutusu ============ */
+.cg.is-story .cg__ui, .cg.is-story .cg__foot, .cg.is-story .cg__bubble, .cg.is-story > .cg__vignette { visibility: hidden; }
+.cgs { position: absolute; inset: 0; z-index: 5; background: var(--cg-ink); opacity: 0; transition: opacity 0.4s ease; }
+.cgs.is-ready { opacity: 1; }
+.cgs__bg { transition: opacity 0.32s ease; }
+.cgs__shade { position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(0deg, rgba(18, 8, 12, 0.82) 0%, rgba(18, 8, 12, 0.25) 42%, rgba(18, 8, 12, 0) 60%),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.14) 0, rgba(0, 0, 0, 0.14) 1px, transparent 1px, transparent 3px); }
+.cgs__skip {
+  position: absolute; top: max(12px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); z-index: 3;
+  padding: 7px 12px; min-height: 36px; cursor: pointer;
+  font-family: var(--cg-caps); font-size: clamp(12px, 2vh, 15px); letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--cg-dim); background: rgba(18, 8, 12, 0.6); border: 2px solid #5a2a24; border-radius: 0;
+}
+.cgs__card {
+  position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  background: var(--cg-ink); cursor: pointer; text-align: center; animation: cg-card 0.5s ease both;
+}
+.cgs__card[hidden] { display: none; }
+.cgs__card b { font-family: var(--cg-caps); font-weight: 400; font-size: clamp(15px, 3.4vh, 24px); letter-spacing: 0.3em; text-transform: uppercase; color: var(--cg-amber); }
+.cgs__card span { font-family: var(--cg-caps); font-size: clamp(26px, 8vh, 64px); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cg-bone); }
+@keyframes cg-card { from { opacity: 0; } to { opacity: 1; } }
+
+/* Dialoq qutusu: aşağıda, bütün ekran toxunuşa cavab verir (klik = tamamla / keç) */
+.cgd { position: absolute; inset: 0; z-index: 2; display: flex; align-items: flex-end; justify-content: center; cursor: pointer;
+  padding: 0 max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+.cgd[hidden] { display: none; }
+.cgd__box {
+  --cgd-accent: #c9a98a;
+  position: relative; display: flex; gap: clamp(10px, 2vw, 20px); align-items: stretch;
+  width: min(100%, 980px); min-height: clamp(96px, 27vh, 190px); padding: clamp(8px, 1.8vh, 16px);
+  background: rgba(18, 8, 12, 0.93); border: 3px solid var(--cgd-accent); box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.6);
+}
+.cgd__face { flex: none; align-self: center; width: clamp(72px, 23vh, 160px); aspect-ratio: 1; border: 2px solid var(--cgd-accent); background: #1c1018; }
+.cgd__face[hidden] { display: none; }
+.cgd__face canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+.cgd__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: clamp(2px, 0.8vh, 8px); }
+.cgd__name { font-family: var(--cg-caps); font-size: clamp(14px, 3vh, 22px); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cgd-accent); min-height: 1em; }
+.cgd__text { margin: 0; font-family: var(--cg-caps); font-size: clamp(15px, 3.5vh, 26px); line-height: 1.32; letter-spacing: 0.02em; color: var(--cg-bone); }
+.cgd__rest { visibility: hidden; }        /* yazılmamış hissə yer tutur — sətirlər yazıldıqca sürüşmür */
+.cgd__box.is-narration { justify-content: center; text-align: center; border-color: #5a2a24; min-height: clamp(64px, 17vh, 124px); background: rgba(18, 8, 12, 0.8); }   /* sinematikdə kadr daha çox görünsün */
+.cgd__box.is-narration .cgd__name { display: none; }
+.cgd__box.is-narration .cgd__body { justify-content: center; }
+.cgd__box.is-narration .cgd__text { color: var(--cg-dim); }
+.cgd__next { position: absolute; right: 12px; bottom: 8px; width: 0; height: 0; border: 6px solid transparent; border-top-color: var(--cgd-accent); opacity: 0; }
+.cgd__box.is-done .cgd__next { opacity: 1; animation: cg-bob 0.7s steps(2) infinite; }
+@keyframes cg-bob { 50% { transform: translateY(3px); } }
+@media (prefers-reduced-motion: reduce) { .cgd__box.is-done .cgd__next { animation: none; } }
