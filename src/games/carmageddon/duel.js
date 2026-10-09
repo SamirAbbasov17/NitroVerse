@@ -2,16 +2,15 @@
 // Hər vuruşda ekranda bir düymə və daralan halqa çıxır: halqa bitənə qədər düzgün düyməni bas.
 // Səhv və ya gecikmə — bir can gedir, vuruş təkrarlanır; üç can bitsə döyüş əvvəldən başlayır.
 // Klaviatura: ← → ↑ (və ya A D W) və E / boşluq (zərbə). Telefonda aşağıdakı dörd düymə.
-import { t, getLang } from '../../core/i18n.js';
+import { t } from '../../core/i18n.js';
 import { audio } from '../../core/AudioManager.js';
-import { tx } from './script.js';
+import { T } from './tx.js';
 
 const GLYPH = { left: '◀', right: '▶', up: '▲', hit: '✊' };
 const KEYS = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', KeyE: 'hit', Space: 'hit', Enter: 'hit' };
 
 export function runDuel(ch, beats) {
   return new Promise((resolve) => {
-    const lang = getLang();
     const el = document.createElement('div');
     el.className = 'cgq';
     el.innerHTML = `
@@ -27,7 +26,7 @@ export function runDuel(ch, beats) {
       if (over) return;
       const b = beats[i];
       glyph.textContent = GLYPH[b.key];
-      text.textContent = tx(b, lang);
+      text.textContent = T(b.az);
       ring.className = 'cgq__ring'; void ring.offsetWidth;
       bar.style.animationDuration = time() + 's';
       ring.classList.add('is-run');

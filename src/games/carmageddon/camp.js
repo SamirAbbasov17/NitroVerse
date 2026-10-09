@@ -3,6 +3,7 @@
 // Dörd tapşırıqdan üçü bəsdir; sonra Elder Amos axşam ocağına çağırır. Mətnlər hələlik Azərbaycancadır.
 import { t } from '../../core/i18n.js';
 import { World } from './world.js';
+import { T } from './tx.js';
 
 const SAVE = 'cgCh1';
 const load = () => { try { return JSON.parse(localStorage.getItem(SAVE) || 'null'); } catch { return null; } };
@@ -56,7 +57,7 @@ export async function runCamp(ch) {
   const save = () => { st.x = Math.round(world.p.x); st.y = Math.round(world.p.y); store(st); };
   const talk = async (lines) => {
     world.busy = true;
-    for (const l of lines) { if (ch.dead) return; world.speaker = l.who; await ch.dlg.say(l); }
+    for (const l of lines) { if (ch.dead) return; world.speaker = l.who; await ch.dlg.say({ ...l, text: T(l.text) }); }
     world.speaker = null;
     ch.dlg.hide(); world.busy = false; world.coolUntil = performance.now() + 260; refresh(); save();
   };
@@ -66,11 +67,11 @@ export async function runCamp(ch) {
   function refresh() {
     const rows = [];
     const row = (name, txt, ok) => rows.push(`<li class="${ok ? 'is-done' : ''}"><b>${name}</b>${txt}</li>`);
-    if (st.q.seeds) row('Granny Wren', st.q.seeds === 9 ? 'Toxumlar tapıldı' : st.q.seeds === 2 ? 'Toxumları Granny Wren-ə apar' : `Toxum kisələri: ${st.got.filter((g) => g[0] === 's').length}/3`, st.q.seeds === 9);
-    if (st.q.parts) row('Old Gus', st.q.parts === 9 ? 'Baqqi yığıldı' : st.q.parts === 2 ? 'Hissələri Old Gus-a apar' : `Baqqi hissələri: ${st.got.filter((g) => g[0] === 'p').length}/3`, st.q.parts === 9);
-    if (st.q.pip) row('Miss Clara', st.q.pip === 9 ? 'Pip tapıldı' : st.q.pip === 4 ? 'Miss Clara-ya xəbər ver' : `Pip-i tap (${st.q.pip - 1}/3 gizlənmə yeri)`, st.q.pip === 9);
-    if (st.q.radio) row('Radio Ray', st.q.radio === 9 ? 'Antena düzəldi' : st.q.radio === 1 ? 'Old Gus-dan mis naqil al' : st.q.radio === 2 ? 'Naqili radio dirəyinə bağla' : 'Radio Ray-ə qayıt', st.q.radio === 9);
-    if (done() >= 3) row('Elder Amos', st.amos ? 'Axşam ocağına get' : 'Elder Amos səni axtarır', false);
+    if (st.q.seeds) row('Granny Wren', st.q.seeds === 9 ? T('Toxumlar tapıldı') : st.q.seeds === 2 ? T('Toxumları Granny Wren-ə apar') : T('Toxum kisələri: {n}/3', { n: st.got.filter((g) => g[0] === 's').length }), st.q.seeds === 9);
+    if (st.q.parts) row('Old Gus', st.q.parts === 9 ? T('Baqqi yığıldı') : st.q.parts === 2 ? T('Hissələri Old Gus-a apar') : T('Baqqi hissələri: {n}/3', { n: st.got.filter((g) => g[0] === 'p').length }), st.q.parts === 9);
+    if (st.q.pip) row('Miss Clara', st.q.pip === 9 ? T('Pip tapıldı') : st.q.pip === 4 ? T('Miss Clara-ya xəbər ver') : T('Pip-i tap ({n}/3 gizlənmə yeri)', { n: st.q.pip - 1 }), st.q.pip === 9);
+    if (st.q.radio) row('Radio Ray', st.q.radio === 9 ? T('Antena düzəldi') : st.q.radio === 1 ? T('Old Gus-dan mis naqil al') : st.q.radio === 2 ? T('Naqili radio dirəyinə bağla') : T('Radio Ray-ə qayıt'), st.q.radio === 9);
+    if (done() >= 3) row('Elder Amos', st.amos ? T('Axşam ocağına get') : T('Elder Amos səni axtarır'), false);
     journal.innerHTML = rows.length ? `<h4>${t('cg.journal')}</h4><ul>${rows.join('')}</ul>` : '';
     // varlıqların görünməsi vəziyyətə bağlıdır
     for (const en of world.ents) if (en.when) en.hidden = !en.when();

@@ -9,6 +9,7 @@ import { runCamp, savedStage, savedSec, setStage, clearSave } from './camp.js';
 import { runChase } from './chase.js';
 import { runFinale, preloadSong } from './finale.js';
 import { music } from './music.js';
+import { T, loadDict } from './tx.js';
 import { runSearch } from './night.js';
 import { runDuel } from './duel.js';
 
@@ -47,6 +48,7 @@ export class Chapter1 {
   }
 
   async _load() {
+    await loadDict(this.lang);                       // hekayə mətnlərinin lüğəti (az üçün lazım deyil)
     const names = ['p1', 'p2', 'p3', 'p4', 'p5', 'tent', 'camp.webp', 'milo-neutral', 'milo-happy', 'milo-pout',
       'wren-neutral', 'gus-neutral', 'clara-neutral', 'ray-neutral', 'amos-neutral', 'pip-neutral',
       'e1', 'e2', 'a1', 'a2', 'a3', 'a4',
@@ -108,8 +110,8 @@ export class Chapter1 {
       if (this.dead || this._skip) break;
       if ('music' in st) { if (st.music) music.play(st.music); else music.stop(); continue; }
       if (st.art) { await this._fade(0); this._bg(st.art); await this._fade(1); continue; }
-      if (st.intro) { await this._intro(st.intro, st.title); continue; }
-      await this.dlg.say({ who: st.who, emo: st.emo, text: tx(st.text, this.lang) });
+      if (st.intro) { await this._intro(st.intro, T(st.title)); continue; }
+      await this.dlg.say({ who: st.who, emo: st.emo, text: T(tx(st.text, 'az')) });
     }
     this._skip = false;
   }
