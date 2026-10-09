@@ -23,6 +23,19 @@ const EMBER_EYE = { neutral: 0, smile: 0, proud: 0, angry: 0, shock: 0, side: 1,
 // Milo-nun üç ağız kadrı var; qalan sakinlərin tək kadrı — hissi portretin hərəkəti və işarəsi verir
 const MILO_FACE = { happy: 'happy', laugh: 'happy', love: 'happy', proud: 'happy', smile: 'happy', pout: 'pout', angry: 'pout', sad: 'pout', fear: 'pout' };
 const CROP = { x: 42, y: 14, s: 80 }, EYES = { x: 60, y: 51, w: 44, h: 13 };
+// AĞIZ: başlıq şəklində Ember gülümsəyir — eyni üz hər replikada işlənəndə pis hadisədə də gülümsəyirdi (istifadəçi
+// rəyi). Ağız hissə görə piksel-piksel yenidən çəkilir (portret koordinatı, 80×80): gülüş — şəkildəki kimi; düz;
+// aşağı əyilmiş (kədər, qorxu); sıxılmış (qəzəb); açıq (şok).
+const EMBER_MOUTH = { smile: 'smile', happy: 'smile', laugh: 'smile', love: 'smile', proud: 'smile', neutral: 'flat', side: 'flat', think: 'flat', confused: 'flat', sleepy: 'flat', sweat: 'flat', sad: 'down', fear: 'down', angry: 'tight', shock: 'open' };
+function emberMouth(x, kind) {
+  if (kind === 'smile') return;
+  const SKIN = '#ffd3a7', LINE = '#52270f', DARK = '#3a1208', P = (px, py, w, h, c) => { x.fillStyle = c; x.fillRect(px, py, w, h); };
+  P(30, 62, 19, 6, SKIN);                                   // köhnə ağız (xətt və yuxarı qalxan künclər) silinir
+  if (kind === 'flat') P(32, 65, 14, 1, LINE);
+  else if (kind === 'down') { P(33, 65, 12, 1, LINE); P(31, 66, 2, 1, LINE); P(45, 66, 2, 1, LINE); P(30, 67, 1, 1, LINE); P(47, 67, 1, 1, LINE); }
+  else if (kind === 'tight') { P(34, 65, 10, 1, DARK); P(33, 66, 1, 1, DARK); P(44, 66, 1, 1, DARK); P(35, 66, 8, 1, '#c98a6a'); }
+  else if (kind === 'open') { P(36, 63, 7, 5, DARK); P(37, 64, 5, 3, '#7a1c14'); P(37, 63, 5, 1, '#f0e7d8'); }
+}
 
 export class Chapter1 {
   constructor(root, { hero, eyes, onEnd }) {
@@ -93,6 +106,7 @@ export class Chapter1 {
       x.drawImage(this.hero, CROP.x, CROP.y, CROP.s, CROP.s, 0, 0, 80, 80);
       const f = EMBER_EYE[emo] ?? 0;
       if (this.eyes) x.drawImage(this.eyes, f * EYES.w, 0, EYES.w, EYES.h, EYES.x - CROP.x, EYES.y - CROP.y, EYES.w, EYES.h);
+      emberMouth(x, EMBER_MOUTH[emo] || 'flat');
     } else {
       const im = (who === 'milo' && this.art[`milo-${MILO_FACE[emo]}`]) || this.art[`${who}-${emo}`] || this.art[`${who}-neutral`];
       if (im) x.drawImage(im, 0, 0, 80, 80);
