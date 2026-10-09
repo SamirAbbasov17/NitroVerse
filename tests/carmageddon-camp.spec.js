@@ -82,9 +82,10 @@ test('düşərgə: gəzinti, toqquşma, tapşırıqlar, jurnal, yaddaş, son', a
     for (let i = 0; i < 50; i++) { await new Promise((r) => requestAnimationFrame(r)); frames.add(2 + Math.floor(w.p.walk * 8) % 4); dust = Math.max(dust, w.dust.length); }
     w.keys.clear();
     const kids = ['kid1', 'kid2'].map((id) => { const e = w.get(id); return { x: e.x, y: e.y }; });
-    await new Promise((r) => setTimeout(r, 6000));
-    const moved = ['kid1', 'kid2'].map((id, i) => { const e = w.get(id); return Math.hypot(e.x - kids[i].x, e.y - kids[i].y); });
-    return { walkFrames: frames.size, dust, kidsMoved: Math.max(...moved) };
+    // gəzişmə təsadüfi fasilələrlədir — 15 s ərzində ən azı biri yerindən tərpənməlidir
+    let far = 0;
+    for (let i = 0; i < 30 && far <= 2; i++) { await new Promise((r) => setTimeout(r, 500)); far = Math.max(far, ...['kid1', 'kid2'].map((id, k) => { const e = w.get(id); return Math.hypot(e.x - kids[k].x, e.y - kids[k].y); })); }
+    return { walkFrames: frames.size, dust, kidsMoved: far };
   });
   console.log('animasiya:', JSON.stringify(anim));
   expect(anim.walkFrames, 'yerişin dörd kadrı').toBe(4);

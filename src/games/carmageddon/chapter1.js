@@ -4,8 +4,9 @@
 import { t, getLang } from '../../core/i18n.js';
 import { assetBase } from '../../net/apiBase.js';
 import { Dialogue } from './dialogue.js';
-import { CAST, PROLOGUE, MORNING, EVENING, ATTACK, NIGHT_INTRO, FOUND, DUEL, AFTER_DUEL, tx } from './script.js';
-import { runCamp, savedStage, setStage, clearSave } from './camp.js';
+import { CAST, PROLOGUE, MORNING, EVENING, ATTACK, NIGHT_INTRO, FOUND, DUEL, AFTER_DUEL, ENDING, tx } from './script.js';
+import { runCamp, savedStage, savedSec, setStage, clearSave } from './camp.js';
+import { runChase } from './chase.js';
 import { runSearch } from './night.js';
 import { runDuel } from './duel.js';
 
@@ -48,7 +49,7 @@ export class Chapter1 {
       'wren-neutral', 'gus-neutral', 'clara-neutral', 'ray-neutral', 'amos-neutral', 'pip-neutral',
       'e1', 'e2', 'a1', 'a2', 'a3', 'a4',
       'judge-neutral', 'crude-neutral', 'butcher-neutral', 'rust-neutral', 'preacher-neutral', 'twins-neutral', 'jackal-neutral',
-      'hush-neutral', 'b1', 'b2', 'b3', 'b5', 'b6', 'b7'];
+      'hush-neutral', 'b1', 'b2', 'b3', 'b5', 'b6', 'b7', 'z1', 'z2', 'z3'];
     const imgs = await Promise.all(names.map((n) => loadImg(`carmageddon/ch1/${n.includes('.') ? n : n + '.png'}`)));
     names.forEach((n, i) => { names[i] = n.replace(/\.\w+$/, ''); });
     names.forEach((n, i) => { this.art[n] = imgs[i]; });
@@ -146,7 +147,7 @@ export class Chapter1 {
       await this._play(MORNING);
       if (this.dead) return;
     }
-    if (stage !== 'evening' && stage !== 'night') {
+    if (!['evening', 'night', 'chase'].includes(stage)) {
       // HEARTH: gəzinti və tapşırıqlar
       await this._fade(0);
       this.el.classList.add('is-world');
@@ -156,6 +157,7 @@ export class Chapter1 {
       this.el.classList.remove('is-world');
     }
     // AXŞAM OCAĞI və HÜCUM
+    if (stage !== 'chase') {
     await this._fade(0);
     await this._card(t('cg.ch1'), t('cg.evening'), 2400);
     if (this.dead) return;
@@ -185,8 +187,23 @@ export class Chapter1 {
     if (this.dead) return;
     await this._play(AFTER_DUEL);
     if (this.dead) return;
+    }
+    // QAÇIŞ: beş hissə; hər hissənin əvvəli yadda saxlanır
+    this.dlg.hide();
     await this._fade(0);
-    await this._card(t('cg.ch1'), t('cg.ch1More'), 4200);
+    await this._card(t('cg.ch1'), t('cg.chase'), 2200);
+    if (this.dead) return;
+    this.el.classList.add('is-world', 'is-chase');
+    this.cv.style.opacity = 1;
+    await runChase(this, stage === 'chase' ? Math.min(4, savedSec()) : 0, (i) => setStage('chase', { sec: i }));
+    if (this.dead) return;
+    this.el.classList.remove('is-world', 'is-chase');
+    // SON
+    await this._play(ENDING);
+    if (this.dead) return;
+    await this._fade(0);
+    clearSave();
+    await this._card(t('cg.ch1'), t('cg.ch1End'), 6000);
     this.end();
   }
 
@@ -196,6 +213,7 @@ export class Chapter1 {
     removeEventListener('keydown', this._onKey, true);
     this.world?.dispose();
     this._duel?.stop();
+    this._chase?.stop();
     this.dlg.dispose();
     this.el.remove();
     this.onEnd?.();

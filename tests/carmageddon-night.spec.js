@@ -95,8 +95,8 @@ test('gecə: axtarışın təhlükələri, Milo, Hush, Jackal ilə döyüş, mas
   const seen2 = [];
   const end = await pass(page, 'card', seen2);
   expect(seen2.some((x) => x.startsWith('Ember:Altısı qaldı')), 'son replika').toBe(true);
-  expect(end.card).toMatch(/hazırlanır/i);
-  await page.locator('.cgs__card').click();
+  expect(end.card, 'gecədən sonra qaçış başlayır (ətraflı: carmageddon-chase.spec.js)').toMatch(/Qaçış/);
+  await page.keyboard.press('Escape');
   await expect(page.locator('.cgs')).toHaveCount(0, { timeout: 10_000 });
   // başlıq ekranı: yarımçıq oyun var → "Davam et" və "Yenidən başla"; yenidən başlayanda proloq açılır
   await expect(page.locator('[data-cg="story"]')).toContainText('Davam et');

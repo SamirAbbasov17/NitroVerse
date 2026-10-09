@@ -1,6 +1,6 @@
 # CARMAGEDDON — Fəsil 1 (demo): layihə
 
-Status: **təklif** (2026-10-09). Sahibinin verdiyi hekayə əsasında yazılıb; adlar, səhnələr və
+Status: **fəsil başdan-sona oynanılır** (2026-10-09; kod: `src/games/carmageddon/` — chapter1, script, camp, night, duel, chase). Aşağıdakı mətn ilkin təklifdir; fərqlər: qaçışın mexanikaları `chase.js`-in başlığında, Old Gus-un fədakarlığı və Hush-un cümləsi `script.js`-də. Sahibinin verdiyi hekayə əsasında yazılıb; adlar, səhnələr və
 mexanikalar təsdiq gözləyir. Üslub: `docs/CARMAGEDDON-STYLE.md` (piksel art, 480×270 kətan).
 
 ## Sahibinin verdiyi çərçivə (dəyişmir)

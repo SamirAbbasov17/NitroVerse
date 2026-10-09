@@ -7,8 +7,9 @@ import { World } from './world.js';
 const SAVE = 'cgCh1';
 const load = () => { try { return JSON.parse(localStorage.getItem(SAVE) || 'null'); } catch { return null; } };
 const store = (s) => { try { localStorage.setItem(SAVE, JSON.stringify(s)); } catch { /* gizli rejim */ } };
-export const savedStage = () => { const st = load()?.stage; return ['camp', 'evening', 'night'].includes(st) ? st : null; };
-export const setStage = (stage) => store({ ...(load() || {}), stage });
+export const savedStage = () => { const st = load()?.stage; return ['camp', 'evening', 'night', 'chase'].includes(st) ? st : null; };
+export const setStage = (stage, extra = {}) => store({ ...(load() || {}), stage, ...extra });
+export const savedSec = () => load()?.sec | 0;
 export const clearSave = () => { try { localStorage.removeItem(SAVE); } catch { /* boş */ } };
 
 const LOOK = {

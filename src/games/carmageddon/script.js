@@ -201,3 +201,20 @@ export const AFTER_DUEL = [
   S('ember', 'angry', 'Altısı qaldı.'),
   N('Arxada Hearth yanırdı. Qabaqda yalnız yol vardı — bütün ömrü boyu tanıdığı yeganə ev. Ember sükanı tutdu və qazı axıra qədər basdı.'),
 ];
+
+// SƏHNƏ 6: son — boş yol və tərk edilmiş bar
+export const ENDING = [
+  { art: 'z1' },
+  N('Yol uzun idi və heç yerə aparmırdı — Emberə indi lazım olan da elə bu idi. Arxasınca gələn faralar bir-bir geridə qaldı; sonuncusu körpünün o tayında söndü.'),
+  N('Sonra motor da susdu. Yanacaq əqrəbi çoxdan sıfırı göstərirdi; maşın son yüz addımı, deyəsən, sırf inadından getmişdi.'),
+  { art: 'z2' },
+  N('Yolun qırağında bir tikili qaralırdı. Damındakı yazının hərfləri çoxdan tökülmüşdü, qalanlarından isə bircə ad oxunurdu: LAST STOP.'),
+  N('Qapı açıq idi. Çöldə qapıları çoxdan heç kim bağlamırdı — bağlayan qalmamışdı.'),
+  { art: 'z3' },
+  N('İçəridən toz, köhnə taxta və kiminsə çoxdan içib qurtardığı bir axşamın iyi gəlirdi. Ember piştaxtaya çatdı və dizləri daha onun sözünə baxmadı.'),
+  N('Yerə çökdü. Maskanı yanına qoydu. Açar halqasını isə ovcundan buraxmadı.'),
+  N('Pəncərəyə vurulmuş taxtaların arasından içəri nazik bir işıq süzülürdü. Dan yeri sökülürdü: Hearth-siz ilk səhər.'),
+  S('ember', 'sad', '…Otuz yeddi. Otuz səkkiz.'),
+  N('O, saymağa başladı. Milo kimi. Yüzə çatanda ayağa qalxacaqdı.'),
+  N('Ondan sonra isə altı ad vardı. Bir də heç vaxt danışmayan biri.'),
+];

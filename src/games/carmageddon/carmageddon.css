@@ -286,3 +286,27 @@ body.cg-on #game-canvas, body.cg-on #mute-btn { visibility: hidden; }
 @media (prefers-reduced-motion: reduce) { .cgq.is-hit, .cgq.is-hurt { animation: none; } }
 
 .cg__btn[hidden] { display: none; }
+
+/* QAÇIŞ: göstəricilər (can, yanacaq, nitro), hissə başlığı, xəbərdarlıq, telefon düymələri */
+.cgc { position: absolute; inset: 0; z-index: 2; pointer-events: none; font-family: var(--cg-caps); color: var(--cg-bone); }
+.cgc__hud { position: absolute; left: max(10px, env(safe-area-inset-left)); top: max(10px, env(safe-area-inset-top)); display: flex; flex-direction: column; gap: 5px; width: min(34vw, 220px); }
+.cgc__bar { height: clamp(9px, 2.6vh, 16px); background: rgba(18, 8, 12, 0.8); border: 2px solid #5a2a24; position: relative; }
+.cgc__bar i { display: block; height: 100%; transition: width 0.12s linear; }
+.cgc__bar--hp i { background: #b3261e; } .cgc__bar--fuel i { background: #ffb53a; }
+.cgc__bar::after { content: attr(data-l); position: absolute; left: 5px; top: 50%; transform: translateY(-50%); font-size: clamp(8px, 1.9vh, 12px); letter-spacing: 0.12em; color: #fff; text-shadow: 1px 1px 0 #000; }
+.cgc__bar.is-low { animation: cg-blink 0.5s steps(2) infinite; border-color: var(--cg-amber); }
+.cgc__nitro { min-height: 1.1em; font-size: clamp(14px, 3.6vh, 22px); letter-spacing: 0.1em; color: #5ab4ff; text-shadow: 2px 2px 0 #000; }
+.cgc__prog { position: absolute; right: max(10px, env(safe-area-inset-right)); top: max(10px, env(safe-area-inset-top)); width: min(30vw, 200px); height: 6px; background: rgba(18, 8, 12, 0.8); border: 2px solid #5a2a24; }
+.cgc__prog i { display: block; height: 100%; background: var(--cg-bone); }
+.cgc__banner { position: absolute; left: 0; right: 0; top: 22%; text-align: center; opacity: 0; }
+.cgc__banner.is-on { animation: cgc-banner 3.6s steps(20) forwards; }
+.cgc__banner b { display: block; font-weight: 400; font-size: clamp(18px, 6vh, 42px); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cg-amber); text-shadow: 3px 3px 0 #000; }
+.cgc__banner span { display: inline-block; margin-top: 6px; padding: 4px 10px; font-size: clamp(12px, 2.8vh, 19px); letter-spacing: 0.04em; background: rgba(18, 8, 12, 0.78); }
+.cgc__alert { position: absolute; left: 0; right: 0; top: 46%; text-align: center; font-size: clamp(16px, 5vh, 34px); letter-spacing: 0.12em; text-transform: uppercase; color: #fff; text-shadow: 3px 3px 0 #000; opacity: 0; }
+.cgc__alert.is-on { opacity: 1; animation: cg-pop 0.2s steps(3); }
+.cgc__pad { position: absolute; bottom: max(12px, env(safe-area-inset-bottom)); display: none; gap: 10px; pointer-events: auto; }
+.cgc__pad--l { left: max(12px, env(safe-area-inset-left)); } .cgc__pad--r { right: max(12px, env(safe-area-inset-right)); }
+.cgc__pad button { width: clamp(58px, 17vh, 86px); height: clamp(58px, 17vh, 86px); font-size: clamp(22px, 6vh, 34px); color: var(--cg-bone); background: rgba(18, 8, 12, 0.6); border: 3px solid #5a2a24; border-radius: 0; touch-action: none; }
+.cgc__pad button.is-on { border-color: var(--cg-amber); background: rgba(226, 87, 28, 0.4); }
+@media (pointer: coarse) { .cgc__pad { display: flex; } }
+@keyframes cgc-banner { 0% { opacity: 0; transform: translateY(-8px); } 8%, 78% { opacity: 1; transform: none; } 100% { opacity: 0; } }
