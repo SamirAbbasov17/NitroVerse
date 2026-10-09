@@ -57,6 +57,7 @@ test('gecə: axtarışın təhlükələri, Milo, Hush, Jackal ilə döyüş, mas
   await page.evaluate(() => { const w = window.__cgStory.world; w.p.x = 462; w.p.y = 370; });
   await page.waitForTimeout(200);
   await page.waitForFunction(() => window.__cgStory._night.beamOn(), null, { timeout: 8000, polling: 30 });
+  await page.screenshot({ path: path.join(DIR, 'night-beam.png') });
   expect(await failAt(462, 300), 'fara zolağı').toBe('Səni gördülər');
   expect(await page.evaluate(() => [Math.round(window.__cgStory.world.p.x), Math.round(window.__cgStory.world.p.y)]), 'dəhlizin əvvəlinə qaytarıldı').toEqual([462, 372]);
   // zolaq sönəndə keçmək olur

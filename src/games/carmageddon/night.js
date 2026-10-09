@@ -76,10 +76,24 @@ export function runSearch(ch) {
           }
           x.fillStyle = 'rgba(255,120,30,0.20)'; x.beginPath(); x.ellipse(fx, fy - 4, fr * 1.5, fr * 1.2, 0, 0, 7); x.fill();
         }
-        for (const p of patrols) { const L = light(p); x.fillStyle = 'rgba(255,240,170,0.30)'; x.beginPath(); x.ellipse(L.x, L.y, L.r, L.r * 0.8, 0, 0, 7); x.fill(); x.fillStyle = 'rgba(255,250,210,0.26)'; x.beginPath(); x.ellipse(L.x, L.y, L.r * 0.6, L.r * 0.48, 0, 0, 7); x.fill(); }
+        for (const p of patrols) { const L = light(p); x.fillStyle = 'rgba(255,240,170,0.10)'; x.beginPath(); x.moveTo(p.x, p.y - 14); x.lineTo(L.x - (L.y === p.y - 4 ? 0 : L.r * 0.8), L.y - (L.y === p.y - 4 ? L.r * 0.7 : 0)); x.lineTo(L.x + (L.y === p.y - 4 ? 0 : L.r * 0.8), L.y + (L.y === p.y - 4 ? L.r * 0.7 : 0)); x.closePath(); x.fill(); x.fillStyle = 'rgba(255,240,170,0.30)'; x.beginPath(); x.ellipse(L.x, L.y, L.r, L.r * 0.8, 0, 0, 7); x.fill(); x.fillStyle = 'rgba(255,250,210,0.26)'; x.beginPath(); x.ellipse(L.x, L.y, L.r * 0.6, L.r * 0.48, 0, 0, 7); x.fill(); }
         // fara zolağı: yanmazdan əvvəl solğun titrəyir (xəbərdarlıq)
         const ph = tm % (BEAM.on + BEAM.off), warn = ph > BEAM.on + BEAM.off - 0.5;
-        if (beamOn() || (warn && Math.floor(tm * 14) % 2)) { x.fillStyle = beamOn() ? 'rgba(255,245,200,0.36)' : 'rgba(255,245,200,0.12)'; x.fillRect(BEAM.x0, BEAM.y0, BEAM.x1 - BEAM.x0, BEAM.y1 - BEAM.y0); x.fillStyle = 'rgba(255,255,255,0.5)'; x.fillRect(BEAM.x1 - 3, BEAM.y0 + 6, 3, BEAM.y1 - BEAM.y0 - 12); }
+        // projektor: mənbədən (dirəyin dibindəki gözətçi) sola açılan şüa — uzaqlaşdıqca solur; yanmazdan əvvəl titrəyir
+        { const on = beamOn(), yc = (BEAM.y0 + BEAM.y1) / 2, hh = (BEAM.y1 - BEAM.y0) / 2, k = on ? 1 : (warn && Math.floor(tm * 14) % 2 ? 0.32 : 0);
+          if (k) {
+            const n = 7, seg = (BEAM.x1 - BEAM.x0) / n;
+            for (let i = 0; i < n; i++) {
+              const x1 = BEAM.x1 - i * seg, open = Math.min(1, 0.45 + i * 0.55), h2 = Math.round(hh * open);
+              x.fillStyle = `rgba(255,244,196,${((0.42 - i * 0.04) * k).toFixed(3)})`; x.fillRect(Math.round(x1 - seg), Math.round(yc - h2), Math.ceil(seg), h2 * 2);
+              x.fillStyle = `rgba(255,244,196,${((0.16 - i * 0.015) * k).toFixed(3)})`; x.fillRect(Math.round(x1 - seg), Math.round(yc - h2) - 2, Math.ceil(seg), 2); x.fillRect(Math.round(x1 - seg), Math.round(yc + h2), Math.ceil(seg), 2);
+            }
+            x.fillStyle = `rgba(255,255,236,${(0.5 * k).toFixed(3)})`; x.fillRect(BEAM.x0, Math.round(yc) - 1, BEAM.x1 - BEAM.x0, 2);
+          }
+          // projektorun gövdəsi (həmişə görünür — şüanın haradan gələcəyi bilinsin)
+          x.fillStyle = '#12080c'; x.fillRect(BEAM.x1, yc - 6, 8, 12); x.fillStyle = '#3a3438'; x.fillRect(BEAM.x1 + 1, yc - 5, 6, 10); x.fillStyle = '#12080c'; x.fillRect(BEAM.x1 + 3, yc + 6, 2, 7);
+          x.fillStyle = on ? '#fff6c0' : (k ? '#c9b98a' : '#5a5258'); x.fillRect(BEAM.x1, yc - 4, 2, 8);
+        }
         // məqsəd: emalatxananın qapısında solğun işarə
         const b = Math.round(Math.sin(tm * 5) * 2);
         x.fillStyle = '#12080c'; x.fillRect(GOAL.x - 4, GOAL.y - 30 + b, 9, 9); x.fillStyle = '#ffb53a'; x.fillRect(GOAL.x - 3, GOAL.y - 29 + b, 7, 7); x.fillStyle = '#12080c'; x.fillRect(GOAL.x - 1, GOAL.y - 27 + b, 3, 2); x.fillRect(GOAL.x, GOAL.y - 25 + b, 1, 2);
@@ -89,6 +103,7 @@ export function runSearch(ch) {
     const light = (p) => { const d = [[0, 1], [0, -1], [-1, 0], [1, 0]][p.dir]; return { x: p.x + d[0] * 30, y: p.y + d[1] * 26 - 4, r: 25 }; };
     const beamOn = () => tm % (BEAM.on + BEAM.off) < BEAM.on;
     for (const p of patrols) p.en = world.add({ id: 'raider', x: p.x, y: p.y, kind: 'npc', look: RAIDER, dir: p.dir, mute: true });
+    world.add({ id: 'lampman', x: BEAM.x1 + 14, y: (BEAM.y0 + BEAM.y1) / 2 + 10, kind: 'npc', look: RAIDER, dir: 2, mute: true });   // projektorun yanındakı gözətçi
 
     function fail(why) {
       dead = true; world.busy = true;
