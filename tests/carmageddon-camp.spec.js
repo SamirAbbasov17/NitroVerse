@@ -356,3 +356,43 @@ test('düşərgə: "Toxumları ək" və "Pip haradadır?" kiçik oyunları', asy
   expect(fit, 'telefonda sığır').toEqual([true, true]);
   expect(errs).toEqual([]);
 });
+
+// Qaçış və toyuqlar: Shift ilə Ember yerişdən xeyli sürətli gedir; toxunuşla uzaq hədəfə özü qaçır, yaxın hədəfə
+// yeriyir; toyuqlar çəkilmiş vərəqdəndir, dayananda dənləyir, üstlərinə qaçanda hürküb kənara qaçır.
+test('düşərgə: qaçış (Shift / uzaq toxunuş) və toyuqlar', async ({ page }) => {
+  test.setTimeout(90_000);
+  const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+  await boot(page);
+  await toCamp(page);
+  await skipTalk(page);
+  const pos = () => page.evaluate(() => { const p = window.__cgStory.world.p; return { x: p.x, y: p.y, run: !!p.run }; });
+  const put = (x, y) => page.evaluate(([a, b]) => { const w = window.__cgStory.world; w.p.x = a; w.p.y = b; w.goal = null; w.keys.clear(); }, [x, y]);
+  // 1) yeriş və qaçış sürəti (açıq qumda, sola)
+  await put(380, 225);
+  const a0 = await pos(); await page.keyboard.down('ArrowLeft'); await page.waitForTimeout(600); await page.keyboard.up('ArrowLeft'); const a1 = await pos();
+  await put(380, 225);
+  await page.keyboard.down('Shift'); await page.keyboard.down('ArrowLeft'); await page.waitForTimeout(300);
+  const mid = await pos(); await page.waitForTimeout(300); await page.keyboard.up('ArrowLeft'); await page.keyboard.up('Shift'); const b1 = await pos();
+  const walk = a0.x - a1.x, run = 380 - b1.x;
+  console.log(`yeriş ${Math.round(walk)} px, qaçış ${Math.round(run)} px (0.6 s)`);
+  expect(walk, 'yeriyir').toBeGreaterThan(25);
+  expect(run / walk, 'qaçış yerişdən ən azı 1.5 dəfə sürətlidir').toBeGreaterThan(1.5);
+  expect(mid.run, 'qaçış vəziyyəti').toBe(true);
+  await page.waitForTimeout(150);
+  expect((await pos()).run, 'düymə buraxılanda qaçış bitir').toBe(false);
+  // 2) toxunuş: uzaq hədəfə qaçır, yaxın hədəfə yeriyir
+  await put(300, 230);
+  await page.evaluate(() => { window.__cgStory.world.goal = { x: 300, y: 130 }; });
+  await page.waitForTimeout(250); expect((await pos()).run, 'uzaq hədəf — qaçır').toBe(true);
+  await put(300, 230);
+  await page.evaluate(() => { window.__cgStory.world.goal = { x: 300, y: 190 }; });
+  await page.waitForTimeout(250); expect((await pos()).run, 'yaxın hədəf — yeriyir').toBe(false);
+  // 3) toyuqlar: şəkil yüklənib; üstlərinə qaçanda uzaqlaşırlar
+  expect(await page.evaluate(() => { const im = window.__cgStory.art.hens; return !!im && im.width === 60 && im.height === 38; }), 'toyuq vərəqi yüklənib').toBe(true);
+  await put(300, 392);
+  await page.waitForTimeout(600);
+  // toyuqlar heç vaxt maneənin (çadırın, bostanın) üstündə gəzmir — gəzinti sahəsinin künclərini yoxla
+  expect(await page.evaluate(() => { const w = window.__cgStory.world; return [[180, 380], [266, 380], [180, 399], [266, 399], [223, 390]].filter(([x, y]) => w._blocked(x, y)).length; }), 'toyuq sahəsi açıq qumdadır').toBe(0);
+  await page.screenshot({ path: path.join(DIR, 'camp-hens.png') });
+  expect(errs).toEqual([]);
+});

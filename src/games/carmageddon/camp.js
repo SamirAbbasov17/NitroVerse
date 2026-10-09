@@ -390,14 +390,21 @@ export async function runCamp(ch) {
   spot('barrels', 284, 592, [L(null, null, 'Yanacaq çəlləkləri. Nə qıfılı var, nə gözətçisi. Kimə lazımdırsa, gəlib götürür — Hearth-in çöldəki şöhrəti də elə bundandır.'), L('ember', 'think', 'The Syndicate bunu görsə, dəli olar.')]);
 
   // ——— ətraf: ocağın alovu və gəzən toyuqlar ———
-  const hens = [0, 1, 2].map((i) => ({ x: 190 + i * 22, y: 410 + i * 9, tx: 200, ty: 410, w: 0, c: ['#f2ead8', '#c98a4a', '#f2ead8'][i] }));
+  const hens = [0, 1, 2].map((i) => ({ x: 190 + i * 22, y: 384 + i * 5, tx: 200, ty: 388, w: 0, c: ['#f2ead8', '#c98a4a', '#f2ead8'][i] }));
+  const HEN = { x0: 180, x1: 266, y0: 380, y1: 399 };          // toyuqların gəzdiyi açıq qum (bostanla məktəb çadırının arası; çadırın damına çıxmasınlar)
   const smoke = [];
   function tick(dt) {
     for (const h of hens) {
       h.w -= dt;
-      if (h.w <= 0) { h.w = 1.5 + Math.random() * 3; h.tx = 175 + Math.random() * 120; h.ty = 392 + Math.random() * 40; }
+      if (h.w <= 0) { h.w = 1.5 + Math.random() * 3; h.tx = HEN.x0 + Math.random() * (HEN.x1 - HEN.x0); h.ty = HEN.y0 + Math.random() * (HEN.y1 - HEN.y0); }
       const dx = h.tx - h.x, dy = h.ty - h.y, d = Math.hypot(dx, dy);
-      if (d > 1) { h.x += (dx / d) * 14 * dt; h.y += (dy / d) * 14 * dt; h.f = dx < 0; h.m = true; } else h.m = false;
+      // oyunçu çox yaxınlaşanda (xüsusən qaçanda) toyuq hürküb kənara qaçır
+      const px = world.p.x - h.x, py = world.p.y - h.y, pdist = Math.hypot(px, py);
+      if (pdist < (world.p.run ? 34 : 20) && pdist > 0.1) { h.tx = Math.max(HEN.x0, Math.min(HEN.x1, h.x - (px / pdist) * 40)); h.ty = Math.max(HEN.y0, Math.min(HEN.y1, h.y - (py / pdist) * 30)); h.w = 1.2; h.scare = 0.7; }
+      h.scare = Math.max(0, (h.scare || 0) - dt);
+      const sp = h.scare > 0 ? 58 : 14;
+      if (d > 1) { h.x += (dx / d) * Math.min(d, sp * dt); h.y += (dy / d) * Math.min(d, sp * dt); h.f = dx < 0; h.m = true; h.peck = 0; }
+      else { h.m = false; h.pt = (h.pt ?? Math.random() * 2) - dt; if (h.pt <= 0) { h.peck = h.peck ? 0 : 0.5 + Math.random() * 0.9; h.pt = h.peck ? h.peck : 0.6 + Math.random() * 1.8; } }   // dayananda arada dənləyir
     }
     if (Math.random() < dt * 5) smoke.push({ x: 320 + (Math.random() - 0.5) * 6, y: 304, a: 1 });
     for (const s of smoke) { s.y -= 9 * dt; s.x += Math.sin(s.y * 0.3) * 4 * dt; s.a -= dt * 0.45; }
@@ -411,9 +418,16 @@ export async function runCamp(ch) {
       c.fillStyle = ['#ffd166', '#ff9a2e', '#fff0b0'][(i + f) % 3]; c.fillRect(hx, hy, 2, 2);
     }
     for (const s of smoke) { c.fillStyle = `rgba(90,70,70,${Math.max(0, s.a * 0.5).toFixed(2)})`; c.fillRect(Math.round(s.x), Math.round(s.y), 2, 2); }
+    const hs = ch.art.hens;
     for (const h of hens) {
-      const hop = h.m ? Math.round(Math.abs(Math.sin(w.t * 12 + h.x)) * 1) : 0, x = Math.round(h.x), y = Math.round(h.y) - hop;
-      c.fillStyle = 'rgba(20,8,10,0.25)'; c.fillRect(x - 5, Math.round(h.y), 10, 2);
+      const hop = h.m ? Math.round(Math.abs(Math.sin(w.t * (h.scare > 0 ? 22 : 12) + h.x)) * (h.scare > 0 ? 2 : 1)) : 0, x = Math.round(h.x), y = Math.round(h.y) - hop;
+      c.fillStyle = 'rgba(20,8,10,0.25)'; c.fillRect(x - 6, Math.round(h.y) - 1, 12, 3);
+      if (hs) {
+        // hens.png: xana 20×19, sətir — ağ / qəhvəyi, sütun — dayanma, addım, dənləmə; hamısı sağa baxır
+        const pose = h.m ? Math.floor(w.t * (h.scare > 0 ? 14 : 6) + h.x) % 2 : (h.peck && Math.floor(w.t * 5) % 2 ? 2 : 0), rowI = h.c === '#c98a4a' ? 1 : 0;
+        c.save(); c.translate(x, y + 2); if (h.f) c.scale(-1, 1); c.drawImage(hs, pose * 20, rowI * 19, 20, 19, -10, -19, 20, 19); c.restore();
+        continue;
+      }
       c.fillStyle = '#12080c'; c.fillRect(x - 6, y - 10, 12, 10); c.fillStyle = h.c; c.fillRect(x - 5, y - 9, 10, 7);
       c.fillStyle = '#12080c'; c.fillRect(h.f ? x - 9 : x + 4, y - 14, 5, 6); c.fillStyle = h.c; c.fillRect(h.f ? x - 8 : x + 5, y - 13, 3, 4);
       c.fillStyle = '#e2371c'; c.fillRect(h.f ? x - 8 : x + 6, y - 15, 2, 2); c.fillStyle = '#ffb53a'; c.fillRect(h.f ? x - 10 : x + 8, y - 11, 2, 1);

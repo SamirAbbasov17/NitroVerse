@@ -6,7 +6,7 @@
 import { drawSprite } from './sprites.js';
 
 const W = 480, H = 270;
-const SPEED = 64;              // px/s
+const SPEED = 64, RUN = 112;   // px/s: yeriş və qaçış (Shift basılı; toxunuşda uzaq hədəfə özü qaçır)
 const R = 6;                   // oyunçunun toqquşma radiusu
 const REACH = 28;              // danışmaq / götürmək məsafəsi
 
@@ -42,11 +42,12 @@ export class World {
     this.speaker = null;       // indi danışan (id) — fiquru danışarkən hoppanır
     this._loop = this._loop.bind(this);
     this._kd = (e) => {
+      this.shift = e.shiftKey;
       if (this.busy || this.dead) return;
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) { this.keys.add(e.code); this.goal = null; e.preventDefault(); }
       else if (['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); this.interact(); }
     };
-    this._ku = (e) => this.keys.delete(e.code);
+    this._ku = (e) => { this.shift = e.shiftKey; this.keys.delete(e.code); };
     this._tap = (e) => {
       if (this.busy || this.dead || e.target.closest('button')) return;
       const r = this.cv.getBoundingClientRect();
@@ -58,7 +59,7 @@ export class World {
       this.goal = hit ? { x: hit.x, y: hit.y, ent: hit } : { x: wx, y: wy };
       this.keys.clear();
     };
-    this._blur = () => this.keys.clear();          // pəncərə fokusdan çıxanda basılı düymə ilişib qalmasın
+    this._blur = () => { this.keys.clear(); this.shift = false; };          // pəncərə fokusdan çıxanda basılı düymə ilişib qalmasın
     addEventListener('keydown', this._kd); addEventListener('keyup', this._ku); addEventListener('blur', this._blur);
     layer.addEventListener('pointerdown', this._tap);
     this.camX = 0; this.camY = 0;
@@ -114,17 +115,22 @@ export class World {
       if (g.t > 6) this.goal = null;               // çata bilmir (maneə) — əl çək
     }
     const m = Math.hypot(vx, vy);
-    if (!m) { this.p.walk = 0; return; }
+    if (!m) { this.p.walk = 0; this.p.run = false; return; }
     vx /= m; vy /= m;
+    // qaçış: klaviaturada Shift; toxunuşla seçilmiş hədəf uzaqdadırsa (hədəfə çatanda yerişə keçir)
+    const far = this.goal ? Math.hypot(this.goal.x - this.p.x, this.goal.y - this.p.y) : 0;
+    const run = this.goal ? (this.p.run ? far > 34 : far > 84) : !!this.shift;
+    this.p.run = run;
+    const SPD = run ? RUN : SPEED;
     this.p.dir = Math.abs(vx) > Math.abs(vy) ? (vx < 0 ? 2 : 3) : (vy < 0 ? 1 : 0);
-    const nx = this.p.x + vx * SPEED * dt, ny = this.p.y + vy * SPEED * dt;
+    const nx = this.p.x + vx * SPD * dt, ny = this.p.y + vy * SPD * dt;
     let moved = false;
     if (!this._blocked(nx, this.p.y)) { this.p.x = nx; moved = true; }
     if (!this._blocked(this.p.x, ny)) { this.p.y = ny; moved = true; }
     if (moved) {
       // hər addımda ayağın dibindən kiçik toz qalxır
-      const st0 = Math.floor(this.p.walk * 4), st1 = Math.floor((this.p.walk + dt) * 4);
-      if (st1 !== st0 && st1 % 2 === 0) for (let i = 0; i < 2; i++) this.dust.push({ x: this.p.x + (Math.random() - 0.5) * 6 - vx * 3, y: this.p.y - 1 - Math.random() * 2, a: 1, vx: -vx * 6 + (Math.random() - 0.5) * 8, vy: -6 - Math.random() * 5 });
+      const rate = run ? 6.5 : 4, st0 = Math.floor(this.p.walk * rate), st1 = Math.floor((this.p.walk + dt) * rate);
+      if (st1 !== st0 && (run || st1 % 2 === 0)) for (let i = 0; i < (run ? 3 : 2); i++) this.dust.push({ x: this.p.x + (Math.random() - 0.5) * 6 - vx * 3, y: this.p.y - 1 - Math.random() * 2, a: 1, vx: -vx * 6 + (Math.random() - 0.5) * 8, vy: -6 - Math.random() * 5 });
       this.p.walk += dt;
     } else if (this.goal) { this.goal.stuck = (this.goal.stuck || 0) + dt; if (this.goal.stuck > 0.7) { const en = this.goal.ent; this.goal = null; if (en && Math.hypot(en.x - this.p.x, en.y - this.p.y) < REACH * 2.2) this.interact(en); } }
   }
@@ -179,9 +185,9 @@ export class World {
     const near = this.busy ? null : this.near();
     for (const en of list) {
       if (en.you) {
-        const fr = p.walk ? 2 + Math.floor(p.walk * 8) % 4 : Math.floor(this.t * 1.4) % 2;
+        const fr = p.walk ? 2 + Math.floor(p.walk * (p.run ? 13 : 8)) % 4 : Math.floor(this.t * 1.4) % 2;
         const talk = this.speaker === 'ember' ? -Math.round(Math.abs(Math.sin(this.t * 14)) * 2) : 0;
-        drawSprite(x, p.x, p.y + talk, this.def.hero, p.dir, fr, (this.t * 0.31) % 1 < 0.035);
+        drawSprite(x, p.x, p.y + talk - (p.run && p.walk && fr % 2 === 0 ? 1 : 0), this.def.hero, p.dir, fr, (this.t * 0.31) % 1 < 0.035);
         continue;
       }
       if (en.kind === 'npc') {
