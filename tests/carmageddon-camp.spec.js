@@ -2,7 +2,7 @@
 // telefonda toxunuşla yerimə. Tapşırıqlar real qarşılıqlı təsirlə (yanına get → danış) keçilir.
 import { test, expect } from '@playwright/test';
 import path from 'path';
-import { boot, OUT, ensureDir } from './helpers.js';
+import { boot, OUT, ensureDir, cgSkip } from './helpers.js';
 
 const DIR = ensureDir(path.join(OUT, 'carmageddon'));
 const toCamp = async (page) => {
@@ -10,9 +10,9 @@ const toCamp = async (page) => {
   await page.waitForSelector('.cg.is-ready', { timeout: 30_000 });
   await page.locator('[data-cg="story"]').click();
   await page.waitForSelector('.cgs.is-ready', { timeout: 20_000 });
-  await page.locator('.cgs__skip').click();                               // proloq
+  await cgSkip(page);                               // proloq
   await page.waitForFunction(() => window.__cgStory.dlg.nameEl.textContent === 'Milo', null, { timeout: 15_000 });
-  await page.locator('.cgs__skip').click();                               // səhər söhbəti
+  await cgSkip(page);                               // səhər söhbəti
   await page.waitForFunction(() => !!window.__cgStory.world, null, { timeout: 15_000 });
 };
 // açıq dialoqu sona qədər keç; kiçik oyun (motoru yığ / dalğanı tut) açılsa onu da oyna

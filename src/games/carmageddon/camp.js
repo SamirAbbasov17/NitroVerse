@@ -87,7 +87,7 @@ export async function runCamp(ch) {
   function targets() {
     const out = [], q = st.q;
     const ent = (id, key, act) => { const e = world.get(id); if (e && !e.hidden) out.push({ x: e.x, y: e.y, up: e.kind === 'npc' ? (e.look?.kid ? 44 : 50) : 22, c: QCOL[key], who: OWNER[key] || null, act }); };
-    if (done() >= 3) { ent('amos', 'amos', 'talk'); return out; }
+    if (done() >= 3) ent('amos', 'amos', 'talk');      // Amos çağırır — amma yarımçıq (könüllü) tapşırığın nişanı da qalır
     if (!q.seeds) ent('wren', 'new', 'new'); else if (q.seeds === 1) ['s1', 's2', 's3'].forEach((id) => ent(id, 'seeds', 'get')); else if (q.seeds === 2) ent('wren', 'seeds', 'give');
     if (!q.parts) ent('gus', 'new', 'new'); else if (q.parts === 1) ['p1', 'p2', 'p3'].forEach((id) => ent(id, 'parts', 'get')); else if (q.parts === 2) ent('gus', 'parts', 'give');
     if (!q.pip) ent('clara', 'new', 'new'); else if (q.pip >= 1 && q.pip <= 3) ent('pip' + (q.pip - 1), 'pip', 'find'); else if (q.pip === 4) ent('clara', 'pip', 'give');

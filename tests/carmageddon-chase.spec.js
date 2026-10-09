@@ -3,7 +3,7 @@
 // BİLİR (sadə avtopilot real idarə ilə — düymələrlə — sürür), finala keçid, telefon.
 import { test, expect } from '@playwright/test';
 import path from 'path';
-import { boot, OUT, ensureDir, cgLeave } from './helpers.js';
+import { boot, OUT, ensureDir, cgLeave, cgSkip } from './helpers.js';
 
 const DIR = ensureDir(path.join(OUT, 'carmageddon'));
 const openChase = async (page, sec = 0) => {
@@ -125,7 +125,7 @@ test('qaçış: beş hissənin hamısı keçilə bilir (avtopilot düymələrlə
   let cuts = 0; const cutLines = [];
   while (Date.now() - t0 < 820_000) {
     // hissələr arası ara səhnə: ilk sətri yadda saxla, sonra "Keç"
-    if (await page.locator('.cgs__skip').isVisible()) { await page.waitForTimeout(700); cutLines.push(await page.evaluate(() => window.__cgStory.dlg.full || '')); cuts++; await page.locator('.cgs__skip').click().catch(() => {}); await page.waitForTimeout(900); continue; }
+    if (await page.locator('.cgs__skip').isVisible()) { await page.waitForTimeout(700); cutLines.push(await page.evaluate(() => window.__cgStory.dlg.full || '')); cuts++; await cgSkip(page); await page.waitForTimeout(900); continue; }
     const s = await page.evaluate(() => { const c = window.__cgStory?._chase; return c ? { si: c.si, d: Math.round(c.G.d), len: c.S.len, id: c.S.id } : null; });
     if (!s) { done = true; break; }
     if (!shots.has(s.id) && s.d > 700) { shots.add(s.id); await page.screenshot({ path: path.join(DIR, `chase-${s.id}.png`) }); }

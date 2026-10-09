@@ -1,7 +1,7 @@
 // CARMAGEDDON musiqisi: hər səhnənin öz treki var, fayllar yerindədir, səs söndürməyə tabedir,
 // Carmageddon-dan çıxanda susur. (Treklərin necə səsləndiyini test yoxlamır — onu qulaq yoxlayır.)
 import { test, expect } from '@playwright/test';
-import { boot, cgLeave } from './helpers.js';
+import { boot, cgLeave, cgSkip } from './helpers.js';
 
 const open = async (page, save) => {
   await page.evaluate((s) => { if (s) localStorage.setItem('cgCh1', JSON.stringify(s)); else localStorage.removeItem('cgCh1'); window.__menu.onOpenGame('carmageddon'); }, save);
@@ -36,7 +36,7 @@ test('musiqi: səhnəyə görə trek, fayllar, səs söndürmə, çıxışda sus
   await page.locator('[data-cg="story"]').click();
   await page.waitForSelector('.cgs.is-ready', { timeout: 20_000 });
   await page.waitForFunction(() => window.__cgMusic.state.want === 'caravan', null, { timeout: 10_000 });
-  await page.locator('.cgs__skip').click();
+  await cgSkip(page);
   await page.waitForFunction(() => window.__cgMusic.state.want === 'settlement', null, { timeout: 15_000 });
   await cgLeave(page);
   await page.waitForFunction(() => window.__cgMusic.state.want === 'scavenger', null, { timeout: 8000 });

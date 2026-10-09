@@ -3,7 +3,6 @@ export default {
   "Deyirlər, bir vaxtlar gecələr qaranlıq olmurdu. Şəhərlər o qədər işıq saçırdı ki, göydə ulduzları görmək olmurdu.": "They say there was a time when nights were never dark. The cities burned so bright that no one could see the stars.",
   "Sonra işıqlar bir-bir söndü. Sonuncu lampanın nə vaxt söndüyünü heç kim xatırlamır — xatırlayan qalmayıb.": "Then the lights went out, one by one. Nobody remembers when the last lamp died — there is no one left who would.",
   "Şəhərlərdən geriyə yollar qaldı: çatlamış, yarısını qum udmuş, daha heç yerə aparmayan yollar.": "What the cities left behind were roads: cracked, half swallowed by sand, leading nowhere anymore.",
-  "Bir də o yolları özünə ev bilən insanlar. Onlar bir yerdə iki gecədən artıq qalmazdılar, çünki çöldə dayanan ya acından ölürdü, ya da tapılırdı. Adlarına Nomads deyirdilər.": "And the people who called those roads home. They never stayed in one place for more than two nights, because out in the waste, whoever stopped either starved or was found. People called them Nomads.",
   "Yolların da sahibi vardı. Yanacağın son damlasına qədər hər şey The Syndicate-ə məxsus idi — yeddi barona və onların qarşısında baş əydiyi, səsini heç kimin eşitmədiyi birinə.": "The roads had an owner, too. Down to the last drop of fuel, everything belonged to The Syndicate — to seven barons, and to the one they bowed to, whose voice no one had ever heard.",
   "Onun əsl adını bilən yox idi. Adı çəkiləndə adamlar sadəcə susurdu. Bəlkə elə buna görə ona Hush deyirdilər.": "Nobody knew the real name. When it came up, people simply went quiet. Perhaps that is why they called that one Hush.",
   "Günlərin bir günü bir karvan dayandı. Yorulduqları üçün yox — qoca bir qadın torpağı ovcuna alıb ovuşdurduğu və \"bu torpaq bitirər\" dediyi üçün.": "Then, one day, a caravan stopped. Not because they were tired — because an old woman took a handful of soil, rubbed it between her fingers and said, \"This ground will grow things.\"",
@@ -317,4 +316,5 @@ export default {
   "Taparam.": "I'll find them.",
   "Pip.": "Pip.",
   "Oxuyacaqlar.": "They will.",
+  "Bir də o yolları özünə ev bilən insanlar. Onlar bir yerdə iki gecədən artıq qalmazdılar, çünki çöldə dayanan ya acından ölürdü, ya da bir səhər ölüsü tapılırdı. Adlarına Nomadlar deyirdilər.": "And the people who called those roads home. They never stayed in one place for more than two nights, because out in the waste, whoever stopped either starved or was found dead one morning. People called them Nomads.",
 };

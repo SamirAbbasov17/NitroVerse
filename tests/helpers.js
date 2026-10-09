@@ -244,3 +244,14 @@ export async function cgLeave(page) {
   await page.keyboard.press('Escape');
   await page.locator('[data-cgp="title"]').click();
 }
+
+// Carmageddon: gedən səhnəni "Keç" ilə ötür — düymə iki mərhələlidir (sətri tamamla → "Səhnəni keç?" → təsdiq)
+export async function cgSkip(page) {
+  const b = page.locator('.cgs__skip');
+  for (let i = 0; i < 4; i++) {
+    const armed = await b.evaluate((e) => e.classList.contains('is-armed')).catch(() => false);
+    await b.click().catch(() => {});
+    if (armed) return;
+    await page.waitForTimeout(60);
+  }
+}

@@ -3,7 +3,7 @@
 // başlıq ekranına qaytarır; telefonda dialoq qutusu ekrana sığır.
 import { test, expect } from '@playwright/test';
 import path from 'path';
-import { boot, OUT, ensureDir, cgLeave } from './helpers.js';
+import { boot, OUT, ensureDir, cgLeave, cgSkip } from './helpers.js';
 
 const DIR = ensureDir(path.join(OUT, 'carmageddon'));
 const open = async (page) => {
@@ -38,8 +38,16 @@ test('hekayə: yazı, kliklə tamamlama və keçid, portret, sonda başlıq ekra
   await page.waitForFunction((f) => window.__cgStory.dlg.full !== f, first, { timeout: 5000 });   // kadr dəyişirsə qısa qaralma olur
   await page.waitForTimeout(500);
   await page.screenshot({ path: path.join(DIR, 'story-prologue.png') });
-  // 4) proloqu ötür → fəsil kartı → dialoq: ad və portret danışana görə
+  // "Keç" bir basışla səhnəni ÖTÜRMÜR: yazı gedərkən yalnız sətri tamamlayır, sonra təsdiq istəyir
+  await page.waitForFunction(() => window.__cgStory.dlg.typing, null, { timeout: 5000 });
+  const cur = await page.evaluate(() => window.__cgStory.dlg.full);
   await page.locator('.cgs__skip').click();
+  expect(await page.evaluate(() => { const d = window.__cgStory.dlg; return [d.typing, d.full]; }), 'birinci basış: sətir tamamlandı, səhnə yerindədir').toEqual([false, cur]);
+  await page.locator('.cgs__skip').click();
+  await expect(page.locator('.cgs__skip')).toHaveClass(/is-armed/);
+  expect(await page.evaluate(() => window.__cgStory.dlg.full), 'ikinci basış: yalnız təsdiq soruşulur').toBe(cur);
+  // 4) proloqu ötür → fəsil kartı → dialoq: ad və portret danışana görə
+  await cgSkip(page);
   await page.waitForFunction(() => window.__cgStory.dlg.nameEl.textContent === 'Milo', null, { timeout: 15_000 });
   const m = await state(page);
   expect(m.face, 'dialoqda portret var').toBe(true);

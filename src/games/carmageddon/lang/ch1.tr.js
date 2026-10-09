@@ -3,7 +3,6 @@ export default {
   "Deyirlər, bir vaxtlar gecələr qaranlıq olmurdu. Şəhərlər o qədər işıq saçırdı ki, göydə ulduzları görmək olmurdu.": "Derler ki bir zamanlar geceler karanlık olmazmış. Şehirler öyle ışık saçarmış ki gökte yıldızlar görünmezmiş.",
   "Sonra işıqlar bir-bir söndü. Sonuncu lampanın nə vaxt söndüyünü heç kim xatırlamır — xatırlayan qalmayıb.": "Sonra ışıklar birer birer söndü. Son lambanın ne zaman söndüğünü kimse hatırlamıyor — hatırlayacak kimse kalmadı.",
   "Şəhərlərdən geriyə yollar qaldı: çatlamış, yarısını qum udmuş, daha heç yerə aparmayan yollar.": "Şehirlerden geriye yollar kaldı: çatlamış, yarısını kum yutmuş, artık hiçbir yere çıkmayan yollar.",
-  "Bir də o yolları özünə ev bilən insanlar. Onlar bir yerdə iki gecədən artıq qalmazdılar, çünki çöldə dayanan ya acından ölürdü, ya da tapılırdı. Adlarına Nomads deyirdilər.": "Bir de o yolları kendine yuva bilen insanlar. Bir yerde iki geceden fazla kalmazlardı, çünkü çorak topraklarda duran ya açlıktan ölür ya da bulunurdu. Onlara Nomads derlerdi.",
   "Yolların da sahibi vardı. Yanacağın son damlasına qədər hər şey The Syndicate-ə məxsus idi — yeddi barona və onların qarşısında baş əydiyi, səsini heç kimin eşitmədiyi birinə.": "Yolların da bir sahibi vardı. Yakıtın son damlasına kadar her şey The Syndicate'e aitti — yedi barona ve onların önünde eğildiği, sesini kimsenin duymadığı birine.",
   "Onun əsl adını bilən yox idi. Adı çəkiləndə adamlar sadəcə susurdu. Bəlkə elə buna görə ona Hush deyirdilər.": "Gerçek adını bilen yoktu. Adı geçtiğinde insanlar yalnızca susardı. Belki de bu yüzden ona Hush derlerdi.",
   "Günlərin bir günü bir karvan dayandı. Yorulduqları üçün yox — qoca bir qadın torpağı ovcuna alıb ovuşdurduğu və \"bu torpaq bitirər\" dediyi üçün.": "Günlerden bir gün bir kervan durdu. Yoruldukları için değil — yaşlı bir kadın toprağı avucuna alıp ovaladığı ve \"Bu toprak bitirir\" dediği için.",
@@ -317,4 +316,5 @@ export default {
   "Taparam.": "Bulurum.",
   "Pip.": "Pip.",
   "Oxuyacaqlar.": "Okuyacaklar.",
+  "Bir də o yolları özünə ev bilən insanlar. Onlar bir yerdə iki gecədən artıq qalmazdılar, çünki çöldə dayanan ya acından ölürdü, ya da bir səhər ölüsü tapılırdı. Adlarına Nomadlar deyirdilər.": "Bir de o yolları kendine yuva bilen insanlar. Bir yerde iki geceden fazla kalmazlardı, çünkü çorak topraklarda duran ya açlıktan ölür ya da bir sabah ölüsü bulunurdu. Onlara Nomads derlerdi.",
 };

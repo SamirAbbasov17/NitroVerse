@@ -44,7 +44,17 @@ export class Chapter1 {
     this.art = {}; this.faceCache = {};
     this._skip = false;
     // "Keç": gedən səhnənin qalan sətirləri ötürülür (kadr dəyişməsi zamanı basılsa da işləyir)
-    el.querySelector('.cgs__skip').onclick = (e) => { e.stopPropagation(); this._skip = true; this.dlg.skip(); };
+    // Oyunçu sətri tez tamamlamaq üçün "Keç"ə basanda bütün səhnə ötürülürdü və hekayə qaçırdı. İndi:
+    // yazı gedirsə — yalnız sətir tamamlanır; yazı bitibsə — düymə "Səhnəni keç?" soruşur və 3 s ərzində ikinci
+    // basış səhnəni ötürür.
+    const skipBtn = el.querySelector('.cgs__skip'); let armT = 0;
+    const disarm = () => { clearTimeout(armT); skipBtn.classList.remove('is-armed'); skipBtn.textContent = t('cg.skip'); };
+    skipBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (this.dlg.typing && !this.dlg.el.hidden) { this.dlg.advance(); return; }
+      if (!skipBtn.classList.contains('is-armed')) { skipBtn.classList.add('is-armed'); skipBtn.textContent = t('cg.skipSure'); armT = setTimeout(disarm, 3000); return; }
+      disarm(); this._skip = true; this.dlg.skip();
+    };
     // Fasilə: Esc və ya künc düyməsi. Fasilədə klaviatura səhnəyə çatmır (dialoq keçmir, maşın dönmür).
     this.paused = false;
     this.pauseEl = el.querySelector('.cgs__pause');

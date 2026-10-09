@@ -3,7 +3,6 @@ export default {
   "Deyirlər, bir vaxtlar gecələr qaranlıq olmurdu. Şəhərlər o qədər işıq saçırdı ki, göydə ulduzları görmək olmurdu.": "Говорят, когда-то ночи не бывали тёмными. Города светили так ярко, что на небе не было видно звёзд.",
   "Sonra işıqlar bir-bir söndü. Sonuncu lampanın nə vaxt söndüyünü heç kim xatırlamır — xatırlayan qalmayıb.": "Потом огни погасли — один за другим. Когда погасла последняя лампа, не помнит никто: помнить уже некому.",
   "Şəhərlərdən geriyə yollar qaldı: çatlamış, yarısını qum udmuş, daha heç yerə aparmayan yollar.": "От городов остались дороги: растрескавшиеся, наполовину занесённые песком, никуда больше не ведущие.",
-  "Bir də o yolları özünə ev bilən insanlar. Onlar bir yerdə iki gecədən artıq qalmazdılar, çünki çöldə dayanan ya acından ölürdü, ya da tapılırdı. Adlarına Nomads deyirdilər.": "И люди, для которых эти дороги стали домом. Они нигде не задерживались дольше двух ночей: в пустоши тот, кто останавливался, либо умирал с голоду, либо его находили. Их называли Nomads.",
   "Yolların da sahibi vardı. Yanacağın son damlasına qədər hər şey The Syndicate-ə məxsus idi — yeddi barona və onların qarşısında baş əydiyi, səsini heç kimin eşitmədiyi birinə.": "У дорог был и хозяин. Всё, до последней капли топлива, принадлежало The Syndicate — семи баронам и тому, перед кем склонялись они сами и чьего голоса не слышал никто.",
   "Onun əsl adını bilən yox idi. Adı çəkiləndə adamlar sadəcə susurdu. Bəlkə elə buna görə ona Hush deyirdilər.": "Настоящего имени никто не знал. Когда о нём заходила речь, люди просто умолкали. Может быть, потому и прижилось прозвище Hush.",
   "Günlərin bir günü bir karvan dayandı. Yorulduqları üçün yox — qoca bir qadın torpağı ovcuna alıb ovuşdurduğu və \"bu torpaq bitirər\" dediyi üçün.": "И вот однажды один караван остановился. Не от усталости — оттого, что старая женщина взяла горсть земли, растёрла её в ладони и сказала: «Эта земля родит».",
@@ -317,4 +316,5 @@ export default {
   "Taparam.": "Найду.",
   "Pip.": "Pip.",
   "Oxuyacaqlar.": "Прочтут.",
+  "Bir də o yolları özünə ev bilən insanlar. Onlar bir yerdə iki gecədən artıq qalmazdılar, çünki çöldə dayanan ya acından ölürdü, ya da bir səhər ölüsü tapılırdı. Adlarına Nomadlar deyirdilər.": "И люди, для которых эти дороги стали домом. Они нигде не задерживались дольше двух ночей: в пустоши тот, кто останавливался, либо умирал с голоду, либо однажды утром его находили мёртвым. Их называли Nomads.",
 };

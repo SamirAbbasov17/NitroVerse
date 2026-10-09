@@ -7,6 +7,7 @@ import { audio } from '../../core/AudioManager.js';
 import { T } from './tx.js';
 
 const GLYPH = { left: '◀', right: '▶', up: '▲', hit: '✊' };
+const KEYCAP = { left: '←', right: '→', up: '↑', hit: 'E' };      // klaviaturada hansı düymə (✊-nin E olduğu bilinmirdi)
 const KEYS = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', KeyE: 'hit', Space: 'hit', Enter: 'hit' };
 
 export function runDuel(ch, beats) {
@@ -15,17 +16,17 @@ export function runDuel(ch, beats) {
     el.className = 'cgq';
     el.innerHTML = `
       <div class="cgq__hp"></div>
-      <div class="cgq__mid"><div class="cgq__ring"><i></i><b></b></div><p class="cgq__text"></p></div>
-      <div class="cgq__pad">${['left', 'up', 'hit', 'right'].map((k) => `<button type="button" data-k="${k}">${GLYPH[k]}</button>`).join('')}</div>`;
+      <div class="cgq__mid"><div class="cgq__ring"><i></i><b></b></div><span class="cgq__key"><kbd></kbd></span><p class="cgq__text"></p></div>
+      <div class="cgq__pad">${['left', 'up', 'hit', 'right'].map((k) => `<button type="button" data-k="${k}">${GLYPH[k]}<small>${KEYCAP[k]}</small></button>`).join('')}</div>`;
     ch.el.appendChild(el);
-    const hpEl = el.querySelector('.cgq__hp'), ring = el.querySelector('.cgq__ring'), glyph = ring.querySelector('b'), bar = ring.querySelector('i'), text = el.querySelector('.cgq__text');
+    const hpEl = el.querySelector('.cgq__hp'), ring = el.querySelector('.cgq__ring'), glyph = ring.querySelector('b'), bar = ring.querySelector('i'), text = el.querySelector('.cgq__text'), keycap = el.querySelector('.cgq__key kbd');
     let i = 0, hp = 3, tm = null, open = false, over = false;
     const drawHp = () => { hpEl.innerHTML = [0, 1, 2].map((k) => `<i class="${k < hp ? '' : 'is-gone'}"></i>`).join(''); };
     const time = () => Math.max(1.05, 1.9 - i * 0.12);                    // vuruşlar getdikcə sürətlənir
     function ask() {
       if (over || ch.paused) return;
       const b = beats[i];
-      glyph.textContent = GLYPH[b.key];
+      glyph.textContent = GLYPH[b.key]; keycap.textContent = KEYCAP[b.key];
       text.textContent = T(b.az);
       ring.className = 'cgq__ring'; void ring.offsetWidth;
       bar.style.animationDuration = time() + 's';

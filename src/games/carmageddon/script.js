@@ -29,7 +29,7 @@ export const PROLOGUE = [
   { art: 'p1', text: { az: 'Deyirlər, bir vaxtlar gecələr qaranlıq olmurdu. Şəhərlər o qədər işıq saçırdı ki, göydə ulduzları görmək olmurdu.' } },
   { art: 'p1', text: { az: 'Sonra işıqlar bir-bir söndü. Sonuncu lampanın nə vaxt söndüyünü heç kim xatırlamır — xatırlayan qalmayıb.' } },
   { art: 'p2', text: { az: 'Şəhərlərdən geriyə yollar qaldı: çatlamış, yarısını qum udmuş, daha heç yerə aparmayan yollar.' } },
-  { art: 'p2', text: { az: 'Bir də o yolları özünə ev bilən insanlar. Onlar bir yerdə iki gecədən artıq qalmazdılar, çünki çöldə dayanan ya acından ölürdü, ya da tapılırdı. Adlarına Nomads deyirdilər.' } },
+  { art: 'p2', text: { az: 'Bir də o yolları özünə ev bilən insanlar. Onlar bir yerdə iki gecədən artıq qalmazdılar, çünki çöldə dayanan ya acından ölürdü, ya da bir səhər ölüsü tapılırdı. Adlarına Nomadlar deyirdilər.' } },
   { art: 'p3', text: { az: 'Yolların da sahibi vardı. Yanacağın son damlasına qədər hər şey The Syndicate-ə məxsus idi — yeddi barona və onların qarşısında baş əydiyi, səsini heç kimin eşitmədiyi birinə.' } },
   { art: 'p3', text: { az: 'Onun əsl adını bilən yox idi. Adı çəkiləndə adamlar sadəcə susurdu. Bəlkə elə buna görə ona Hush deyirdilər.' } },
   { art: 'p4', text: { az: 'Günlərin bir günü bir karvan dayandı. Yorulduqları üçün yox — qoca bir qadın torpağı ovcuna alıb ovuşdurduğu və "bu torpaq bitirər" dediyi üçün.' } },

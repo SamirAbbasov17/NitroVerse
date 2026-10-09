@@ -174,6 +174,7 @@ body.cg-on #game-canvas, body.cg-on #mute-btn { visibility: hidden; }
   color: var(--cg-bone); background: #2a1218; border: 2px solid #5a2a24; border-radius: 0; }
 .cgs__pause button:hover, .cgs__pause button:focus-visible { border-color: var(--cg-amber); color: var(--cg-amber); outline: none; }
 .cgs__pause span { font-size: clamp(11px, 2.2vh, 14px); letter-spacing: 0.08em; color: var(--cg-dim); }
+.cgs__skip.is-armed { color: var(--cg-ink); background: var(--cg-amber); border-color: var(--cg-amber); }
 .cgs__card {
   position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
   background: var(--cg-ink); cursor: pointer; text-align: center; animation: cg-card 0.5s ease both;
@@ -342,6 +343,12 @@ body.cg-on #game-canvas, body.cg-on #mute-btn { visibility: hidden; }
 .cgq__pad button { width: clamp(56px, 15vh, 92px); height: clamp(50px, 13vh, 80px); cursor: pointer; font-size: clamp(22px, 6vh, 38px); color: var(--cg-bone);
   background: rgba(18, 8, 12, 0.85); border: 3px solid #5a2a24; border-radius: 0; box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.6); touch-action: none; }
 .cgq__pad button:active { transform: translate(2px, 2px); border-color: var(--cg-amber); }
+/* düymənin hansı klaviatura düyməsi olduğu: halqanın altında və hər düymənin küncündə (əl ✊ = E) */
+.cgq__key { display: block; margin-top: 2px; font-family: var(--cg-caps); font-size: clamp(12px, 3vh, 20px); letter-spacing: 0.12em; color: var(--cg-bone); }
+.cgq__key kbd { display: inline-block; min-width: 1.7em; padding: 1px 6px; font: inherit; color: var(--cg-ink); background: var(--cg-bone); box-shadow: 2px 2px 0 #000; }
+.cgq__pad button { position: relative; }
+.cgq__pad button small { position: absolute; right: 3px; bottom: 1px; font-family: var(--cg-caps); font-size: clamp(9px, 2vh, 13px); color: var(--cg-dim); }
+@media (pointer: coarse) { .cgq__key, .cgq__pad button small { display: none; } }
 @keyframes cgq-bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @keyframes cgq-hit { 0% { transform: scale(1.03); filter: brightness(1.5); } 100% { transform: none; filter: none; } }
 @keyframes cgq-hurt { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); background-color: rgba(160, 20, 20, 0.4); } 75% { transform: translateX(10px); } }
