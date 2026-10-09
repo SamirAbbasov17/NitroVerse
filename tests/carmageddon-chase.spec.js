@@ -45,7 +45,7 @@ const BOT = () => {
       if (sc > score) { score = sc; best = x; }
     }
     c.keys.delete('left'); c.keys.delete('right'); c.keys.delete('down'); c.keys.delete('up');
-    if (G.hook) { if (Math.floor(G.t * 9) % 2) c.keys.add('left'); else c.keys.add('right'); }        // qarmaq: sola-sağa
+    if (G.hook) { if (Math.floor(G.t * 4) % 2) c.keys.add('left'); else c.keys.add('right'); }        // qarmaq: ◀ ▶ növbə ilə (saniyədə 4 dəyişmə — insan sürəti)
     else { const pred = G.x + G.vx * 0.12; if (best < pred - 4) c.keys.add('left'); else if (best > pred + 4) c.keys.add('right'); }
     // kanyon: təqibçi nişan alanda əyləc (qabağa keçsin)
     if (G.ents.some((e) => e.k === 'chaser' && (e.st === 'aim' || e.st === 'ram') && Math.abs(e.d - G.d) < 44)) c.keys.add('down'); else if (G.y > 205) c.keys.add('up');
@@ -239,5 +239,39 @@ test('qaçış: yeni mexanikalar — yaxın keçid, nitro ilə dağıtma, uçqun
     await page.waitForTimeout(2600);
     await page.screenshot({ path: path.join(DIR, `chase-phase-${name}.png`) });
   }
+  expect(errs).toEqual([]);
+});
+
+// KÖRPÜ — qarmaq: (1) ◀ ▶ üç dəyişmə ilə qopur; (2) nitro dərhal qoparır; (3) nitro işləyərkən qarmaq tutmur;
+// (4) heç nə etməsən 4.5 s-də özü qopur (bir dəfə kiçik zədə) — ilişib qalmaq yoxdur; (5) qarmaqda məhəccər zədələmir.
+test('qaçış körpü: qarmaqdan qurtulmaq aydın və etibarlıdır', async ({ page }) => {
+  test.setTimeout(120_000);
+  const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+  await boot(page);
+  await openChase(page, 4);
+  const r = await page.evaluate(async () => {
+    const c = window.__cgStory._chase, out = {}; const wait = (ms) => new Promise((res) => setTimeout(res, ms));
+    const hookNow = async () => { c.G.ents.length = 0; c.G.hooks.length = 0; c.G.hooks.push(c.G.d + 5); c.G.boost = 0; c.G.hp = 100; c.G.nitro = 2; await wait(250); return !!c.G.hook; };
+    // 1) üç dəyişmə
+    out.hooked = await hookNow();
+    const tap = async (k) => { c.keys.add(k); await wait(140); c.keys.delete(k); await wait(60); };
+    c.G.steerSign = 0; await tap('left'); await tap('right'); out.afterTwo = !!c.G.hook; await tap('left'); await wait(80);
+    out.freeByShake = !c.G.hook; out.hpShake = c.G.hp;
+    // 2) nitro qoparır
+    await wait(1300); await hookNow(); c.nitro(); await wait(120); out.freeByNitro = !c.G.hook;
+    // 3) nitro işləyərkən qarmaq tutmur
+    await wait(300); c.G.boost = 1.2; c.G.hooks.push(c.G.d + 5); await wait(250); out.missWhileBoost = !c.G.hook;
+    // 4) heç nə etmə: özü qopur, bir dəfə zədə; 5) bu müddətdə məhəccərə sıxılsa da əlavə zədə yoxdur
+    await wait(1600); await hookNow(); const hp0 = c.G.hp; c.keys.add(c.G.hook.side > 0 ? 'right' : 'left');
+    await wait(5200); c.keys.clear(); out.autoFree = !c.G.hook; out.autoDmg = Math.round(hp0 - c.G.hp);
+    return out;
+  });
+  console.log('qarmaq:', JSON.stringify(r));
+  expect(r.hooked, 'qarmaq tutdu').toBe(true);
+  expect([r.afterTwo, r.freeByShake, r.hpShake], 'iki dəyişmə azdır, üçüncüdə qopur, zədəsiz').toEqual([true, true, 100]);
+  expect(r.freeByNitro, 'nitro qoparır').toBe(true);
+  expect(r.missWhileBoost, 'nitroda qarmaq tutmur').toBe(true);
+  expect(r.autoFree, 'özü qopur').toBe(true);
+  expect(r.autoDmg, 'özü qopanda yalnız bir zədə (məhəccər əlavə zədələmir)').toBe(10);
   expect(errs).toEqual([]);
 });

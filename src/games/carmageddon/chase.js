@@ -77,7 +77,7 @@ export function runChase(ch, startSec = 0, onSection = null, onCut = null) {
       if (!from) { onSection?.(i); mid = null; }
       const res = from ? mid : carry;
       const r = rnd(1000 + i * 77);
-      G = { d: from, x: cxAt(from), y: PY, vy: 0, vx: 0, v: S.speed, hp: res?.hp ?? 100, fuel: res?.fuel ?? 100, nitro: res?.nitro ?? 2, nm: 0, cp: from > 0, rings: [], boost: 0, ents: [], parts: [], shake: 0, dead: 0, won: 0, flash: 0, steerSign: 0, flips: [], hook: null, jump: 0, truck: null, t: 0, r };
+      G = { d: from, x: cxAt(from), y: PY, vy: 0, vx: 0, v: S.speed, hp: res?.hp ?? 100, fuel: res?.fuel ?? 100, nitro: res?.nitro ?? 2, nm: 0, cp: from > 0, rings: [], boost: 0, ents: [], parts: [], shake: 0, dead: 0, won: 0, flash: 0, steerSign: 0, hook: null, jump: 0, truck: null, t: 0, r };
       const add = (e) => { G.ents.push(e); return e; };
       const lane = (d, k) => cxAt(d) + k * (S.hw(d) - 16);
       // yanacaq və nitro: hər hissədə yol boyu
@@ -162,8 +162,8 @@ export function runChase(ch, startSec = 0, onSection = null, onCut = null) {
       const hw = S.hw(pd()), rc = cxAt(pd());
       // sükan və irəli-geri: düymə hədəf sürəti verir, maşın ona tez çatır (sürüşmə yoxdur — dəqiq yayınmaq olsun)
       const st = (keys.has('right') ? 1 : 0) - (keys.has('left') ? 1 : 0), fb = (keys.has('down') ? 1 : 0) - (keys.has('up') ? 1 : 0);
-      if (st && st !== G.steerSign) { G.flips.push(G.t); G.steerSign = st; }
-      G.vx += (st * 170 + (G.hook ? G.hook.side * 80 : 0) - G.vx) * Math.min(1, dt * 12);
+      if (st && st !== G.steerSign) { G.steerSign = st; if (G.hook) { G.freeK = Math.min(1, (G.freeK || 0) + 0.38); audio.sfx('click'); } }      // qarmaqda: hər istiqamət dəyişməsi qopmağa 1/3 yaxınlaşdırır
+      G.vx += (st * 170 + (G.hook ? G.hook.side * 34 : 0) - G.vx) * Math.min(1, dt * 12);      // qarmaq yüngül dartır (əvvəl 80 idi — maşını məhəccərə sıxırdı)
       G.vy += (fb * (fb > 0 ? 150 : 120) - G.vy) * Math.min(1, dt * 10);
       G.x += G.vx * dt;
       // enli pəncərədə kətanın altı kəsilir — maşın görünən sahədən aşağı düşməsin
@@ -182,7 +182,7 @@ export function runChase(ch, startSec = 0, onSection = null, onCut = null) {
       if (G.jump <= 0) {
         const off = Math.abs(G.x - rc) - (hw - CW);
         if (off > 0) {
-          if (S.walls || S.bridge) { G.x = rc + Math.sign(G.x - rc) * (hw - CW); if (Math.abs(G.vx) > 40 && G.t - (G.wallT ?? -9) > 0.6) { G.wallT = G.t; hurt(S.bridge ? 9 : 6, -Math.sign(G.x - rc) * 120); } else G.vx = -Math.sign(G.x - rc) * 40; }   // divara sürtünmə 0.6 s-də bir dəfə zədələyir
+          if (S.walls || S.bridge) { G.x = rc + Math.sign(G.x - rc) * (hw - CW); if (Math.abs(G.vx) > (S.bridge ? 95 : 40) && !G.hook && G.t - (G.freeT ?? -9) > 1.2 && G.t - (G.wallT ?? -9) > 0.6) { G.wallT = G.t; hurt(S.bridge ? 5 : 6, -Math.sign(G.x - rc) * 120); } else G.vx = -Math.sign(G.x - rc) * 40; }   // divara sürtünmə 0.6 s-də bir dəfə zədələyir
           else { G.v *= 1 - dt * 1.6; if (off > 26) { G.x = rc + Math.sign(G.x - rc) * (hw + 19); hurt(4 * dt * 10); } if (Math.random() < dt * 20) G.parts.push({ x: G.x, y: G.y + 10, vx: (Math.random() - 0.5) * 30, vy: 40, a: 0.8, c: '#8a6a4a', s: 2 }); }
         }
       }
@@ -294,13 +294,21 @@ export function runChase(ch, startSec = 0, onSection = null, onCut = null) {
       if (S.id === 'bridge') {
         const hwb = S.hw(G.d);
         G.bikes.forEach((b) => { const tx = G.x + b.side * (G.hook === b ? 30 : Math.min(42, hwb - 6)); b.x += (tx - b.x) * Math.min(1, dt * 5); b.off += ((G.hook === b ? 0 : 14) - b.off) * dt * 3; });
-        if (!G.hook && G.hooks.length && G.d > G.hooks[0]) { G.hooks.shift(); G.hook = G.bikes[Math.random() < 0.5 ? 0 : 1]; G.hookT = 0; G.flips = []; say('cg.c.hooked', 1400); audio.sfx('hit'); }
+        // QARMAQ. Qurtulmağın iki yolu var və heç biri təsadüfə bağlı deyil:
+        //   • ◀ ▶ növbə ilə — üç dəyişmə kifayətdir (zolaq dolur; yavaş-yavaş boşalır, tələsmək lazım deyil);
+        //   • nitro — dərhal qoparır. Nitro işləyərkən atılan qarmaq isə heç tutmur.
+        // Qarmaqda məhəccər zədələmir; 4.5 s-də qurtula bilməyən bir dəfə zədə alır və qarmaq ÖZÜ qopur (ilişib qalmaq yoxdur).
+        const release = (how) => { boom(G.hook.x, G.y, 16, '#b44bff'); G.hook.off = 70; G.hook = null; G.freeK = 0; G.freeT = G.t; G.shake = 5; say(how, 900); };
+        if (!G.hook && G.hooks.length && G.d > G.hooks[0]) {
+          G.hooks.shift();
+          if (G.boost > 0) say('cg.c.hookMiss', 900);
+          else { G.hook = G.bikes[Math.random() < 0.5 ? 0 : 1]; G.hookT = 0; G.freeK = 0; say('cg.c.hooked', 1600); audio.sfx('hit'); }
+        }
         if (G.hook) {
           G.hookT += dt;
-          const recent = G.flips.filter((ft) => G.t - ft < 1.6).length;
-          G.shakeOff = recent;
-          if (recent >= 4) { boom(G.hook.x, G.y, 16, '#b44bff'); G.hook.off = 60; G.hook = null; say('cg.c.free', 900); G.shake = 5; }
-          else if (G.hookT > 3.2) { hurt(16, G.hook.side * 140); G.hookT = 1.4; }
+          if ((G.freeK || 0) >= 1 || G.boost > 0) release('cg.c.free');
+          else if (G.hookT > 4.5) { hurt(10, G.hook.side * 90); release('cg.c.hookSnap'); }
+          else G.freeK = Math.max(0, (G.freeK || 0) - dt * 0.07);
         }
         // sonda tullanış: sürət çatmalıdır (nitro)
         if (!G.jump && G.d > S.len - 380 && !G.rampSaid) { G.rampSaid = true; say('cg.c.jump', 2200); }
@@ -468,6 +476,12 @@ export function runChase(ch, startSec = 0, onSection = null, onCut = null) {
           else { for (const [a0, a1] of [[c - w2, e.gap - 22], [e.gap + 22, c + w2]]) { for (let lx = a0; lx < a1 - 4; lx += 6) { P(lx, sy - 3, 6, 6, '#12080c'); P(lx + 1, sy - 2, 4, 4, (Math.floor(lx / 6) % 2) ? '#b9b9c4' : '#8a8a96'); P(lx + 2, sy - 1, 2, 2, '#12080c'); } } P(e.gap - 26, sy - 5, 5, 10, '#d8d8e0'); P(e.gap + 21, sy - 5, 5, 10, '#d8d8e0'); } }
       }
       if (S.id === 'truck') { const T = G.truck, ty = T.pass ? 46 + T.pass * 260 : 46 + (T.dy || 0); if (ty < H + 60) car(T.x, ty, 'truck', 0, 1, 0, T.slam > 0 && T.slam < 0.8 && Math.floor(G.t * 14) % 2 === 0); }
+      if (S.id === 'bridge' && G.hook) {
+        // qopma zolağı və növbəti basılacaq istiqamət — maşının üstündə
+        const bx = Math.round(G.x) - 20, by = Math.round(G.y) - 44, want = G.steerSign > 0 ? -1 : 1, blink = Math.floor(G.t * 6) % 2;
+        P(bx - 1, by - 1, 42, 7, '#12080c'); P(bx, by, 40, 5, '#3a2a40'); P(bx, by, Math.round(40 * Math.min(1, G.freeK || 0)), 5, '#d98aff');
+        for (const sd of [-1, 1]) { const ax = Math.round(G.x) + sd * 28; x.fillStyle = '#12080c'; x.beginPath(); x.moveTo(ax + sd * 8, by + 2); x.lineTo(ax - sd * 2, by - 5); x.lineTo(ax - sd * 2, by + 9); x.closePath(); x.fill(); x.fillStyle = sd === want && blink ? '#fff0b0' : '#7a5a92'; x.beginPath(); x.moveTo(ax + sd * 6, by + 2); x.lineTo(ax - sd * 1, by - 3); x.lineTo(ax - sd * 1, by + 7); x.closePath(); x.fill(); }
+      }
       if (S.id === 'bridge') for (const b of G.bikes) { if (G.hook === b) { x.strokeStyle = '#c9a98a'; x.lineWidth = 1; x.beginPath(); x.moveTo(b.x, G.y - 2); x.lineTo(G.x, G.y); x.stroke(); } car(b.x, G.y + b.off, 'bike'); }
       // nitro: ekran boyu sürət xətləri
       if (G.boost > 0 || G.jump > 0) { x.fillStyle = 'rgba(255,255,255,0.22)'; for (let k = 0; k < 14; k++) { const hx = hsh(k, Math.floor(G.t * 30)) % W, hy = (hsh(k + 40, Math.floor(G.t * 30)) % H); x.fillRect(hx, hy, 1, 14 + (k % 3) * 8); } }
