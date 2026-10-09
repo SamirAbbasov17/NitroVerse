@@ -120,3 +120,44 @@ test('zen qar: sabitlik — dənələr aşağı düşür, örtük hər yerdə bi
   await page.screenshot({ path: path.join(DIR, `snow-${TAG}-clear.png`) });
   expect(errs).toEqual([]);
 });
+
+// GECƏ və TUNEL: qaranlıqda qar ağ (ay işığında açıq mavi-ağ) görünür — yer tünd boz qalmır; tunelə girəndə qar
+// birdən kəsilmir, yumşaq sönür və çıxanda yumşaq qayıdır.
+test('zen qar: gecə qar ağ görünür; tuneldə qar yumşaq sönür', async ({ page }) => {
+  test.setTimeout(200_000);
+  const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+  await boot(page);
+  await startMode(page, MODES.find((m) => m.name === 'zen').config);
+  await page.evaluate(() => { const s = window.__active; s._setDayTime('night'); s._biomeOverride = 4; });
+  await autopilot(page, true);
+  await page.waitForTimeout(24_000);
+  await page.screenshot({ path: path.join(DIR, `snow-${TAG}-night.png`) });
+  // ekrandan ölç: yolun kənarındakı qarlı yerin və qar dənələrinin parlaqlığı
+  const px = await page.evaluate(() => {
+    const s = window.__active, g = s._groundMat.color, lum = (c) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+    return { night: +(s._dayNow?.night ?? 0).toFixed(2), groundLum: +lum(g).toFixed(3), groundBlueOverRed: +(g.b / Math.max(1e-3, g.r)).toFixed(2), flakeOpacity: +s._rain.mesh.material.opacity.toFixed(2), flakeColor: '#' + s._rain.mesh.material.color.getHexString(), glow: +s._groundMat.emissiveIntensity.toFixed(2) };
+  });
+  console.log(`gecə qar [${TAG}]:`, JSON.stringify(px));
+  if (TAG !== 'before') {
+    expect(px.night, 'gecədir').toBeGreaterThan(0.8);
+    expect(px.groundLum, 'gecə qarlı yer açıqdır (tünd boz deyil)').toBeGreaterThan(1.05);
+    expect(px.glow, 'gecə qarlı yer öz işığı ilə görünür').toBeGreaterThan(0.25);
+    expect(px.flakeColor, 'dənələr ağdır').toBe('#ffffff');
+    // tunel: süni olaraq "tuneldəyik" siqnalı ver → qar kəsilmir, ~1 s-də sönür; çıxanda qayıdır
+    const fade = await page.evaluate(async () => {
+      const s = window.__active, wait = (ms) => new Promise((r) => setTimeout(r, ms)), orig = s.road.tunnelAtPos.bind(s.road); const out = {};
+      out.before = { vis: s._rain.mesh.visible, op: +s._rain.mesh.material.opacity.toFixed(2) };
+      s.road.tunnelAtPos = () => 1; await wait(120); out.t120 = { vis: s._rain.mesh.visible, op: +s._rain.mesh.material.opacity.toFixed(2) };
+      await wait(1900); out.inside = { vis: s._rain.mesh.visible, op: +s._rain.mesh.material.opacity.toFixed(2) };
+      s.road.tunnelAtPos = orig; await wait(150); out.out150 = { vis: s._rain.mesh.visible, op: +s._rain.mesh.material.opacity.toFixed(2) };
+      await wait(2200); out.after = { vis: s._rain.mesh.visible, op: +s._rain.mesh.material.opacity.toFixed(2) };
+      return out;
+    });
+    console.log('tunel:', JSON.stringify(fade));
+    expect(fade.t120.vis && fade.t120.op > fade.before.op * 0.5, 'tunelə girən kimi qar birdən yox olmur').toBe(true);
+    expect(fade.inside.vis, 'tunelin içində qar yoxdur').toBe(false);
+    expect(fade.out150.op < fade.before.op * 0.6, 'çıxanda birdən tam güclə qayıtmır').toBe(true);
+    expect(fade.after.op, 'çıxandan sonra əvvəlki gücə qayıdır').toBeGreaterThanOrEqual(fade.before.op - 0.03);
+  }
+  expect(errs).toEqual([]);
+});

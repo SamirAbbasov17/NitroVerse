@@ -121,6 +121,7 @@ const BIOMES = [
 ];
 const _ICE = new THREE.Color(0xa9cfe2), _WHITE = new THREE.Color(0xffffff);   // donmuş gölün rəngi
 const _SNOW_COVER = new THREE.Color(0xe9eff6);   // qar örtüyünün rəngi (yol çiyni, təpə, dağ)
+const _SNOW_NIGHT = new THREE.Color(0xc4d6ff), _snowCol = new THREE.Color();   // ay işığında qarın çaları
 const SNOW_DUST = 0.4;       // qar havasında (qarlıq ərazidən kənarda) yerə düşən nazik çənin səviyyəsi
 const FLAKES_WEATHER = 560;  // qar havasında dənə sayı; qarlıq ərazidə hamısı (1560) — orada qar qalın və sıxdır
 const BIOME_LEN = 1600;   // hər biomun uzunluğu (m)
@@ -1498,15 +1499,27 @@ export class EndlessScene {
     this._frost = this._frost < biomeSnowBase ? Math.min(1, this._frost + dt * 0.145) : Math.max(biomeSnowBase, this._frost - dt * 0.09);
     // yol çiyni, təpələr və dağlar da eyni örtüklə ağarır — hamısı birlikdə (bax EndlessRoad.snowMats)
     {
-      const sm = this.road.snowMats, sv = Math.round(this._snow * 200) / 200;
-      if (sv !== this._snowApplied || sm.length !== this._snowMatN) {
+      const sm = this.road.snowMats, sv = Math.round(this._snow * 200) / 200, nv = Math.round(day.night * 40) / 40;
+      if (sv !== this._snowApplied || nv !== this._snowNight || sm.length !== this._snowMatN) {
         let w = 0;
-        for (let i = 0; i < sm.length; i++) { const m = sm[i]; if (m.userData.dead) continue; m.color.copy(m.userData.snowBase).lerp(_SNOW_COVER, sv * m.userData.snowK); sm[w++] = m; }
-        sm.length = w; this._snowApplied = sv; this._snowMatN = w;
+        for (let i = 0; i < sm.length; i++) {
+          const m = sm[i]; if (m.userData.dead) continue;
+          m.color.copy(m.userData.snowBase).lerp(_SNOW_COVER, sv * m.userData.snowK);
+          // gecə qarlı səth zəif öz işığı ilə görünür (ay işığı) — işıq sayı artmır, material yenidən yığılmır
+          m.emissive.copy(_SNOW_NIGHT); m.emissiveIntensity = sv * m.userData.snowK * nv * 0.3;
+          sm[w++] = m;
+        }
+        sm.length = w; this._snowApplied = sv; this._snowNight = nv; this._snowMatN = w;
       }
     }
     groundC.multiplyScalar(1 - this._wet * 0.45); // yaş → aydın tündləşmə
-    groundC.lerp(new THREE.Color(0xf0f4fa).multiplyScalar(Math.max(0.35, day.ground) * GROUND_GAIN * 1.15), this._snow * 0.96); // qar → qalın ağ örtük
+    // qar → qalın ağ örtük. GECƏ: qar ay işığını əks etdirir — tünd göy torpağa çevrilmir, açıq mavi-ağ qalır
+    // (əvvəl gecə qarın rəngi 0.35-ə düşürdü və yer tünd-göy görünürdü: "qaranlıqda qar ağ görünmür")
+    _snowCol.set(0xf0f4fa).lerp(_SNOW_NIGHT, day.night * 0.55).multiplyScalar(Math.max(day.ground, 0.35 + day.night * 1.05) * GROUND_GAIN * 1.15);
+    groundC.lerp(_snowCol, this._snow * 0.96);
+    // gecə işıq zəif və yönlüdür — yalnız rəngi açmaq kifayət etmir (üzü aya baxmayan yamaclar tünd qalırdı);
+    // qarlı yer zəif öz işığı ilə bərabər açıq görünür
+    this._groundMat.emissive.copy(_SNOW_NIGHT); this._groundMat.emissiveIntensity = this._snow * day.night * 0.34;
     this._groundMat.roughness = 1 - this._wet * 0.68; // yaş → güclü parıltı
 
     this._groundMat.color.copy(groundC);
@@ -1884,7 +1897,11 @@ export class EndlessScene {
     const rAmount = this._weather.rain;
     // TUNELDƏ yağış/qar görünməməlidir — tavan var (əvvəl içəri yağırdı)
     const inTunnel = this.road?.tunnelAtPos?.(this.playerCar.position, this.playerCar.wpHint) > 0.35;
-    rain.mesh.visible = rAmount > 0.04 && !inTunnel;
+    // TUNEL: qar/yağış birdən kəsilmir — girəndə ≈0.9 s-də sönür, çıxanda ≈1.4 s-də qayıdır
+    this._fallFade = this._fallFade ?? 1;
+    this._fallFade = inTunnel ? Math.max(0, this._fallFade - dt / 0.9) : Math.min(1, this._fallFade + dt / 1.4);
+    const fadeK = this._fallFade * this._fallFade * (3 - 2 * this._fallFade);
+    rain.mesh.visible = rAmount > 0.04 && fadeK > 0.01;
     // HAVA SƏSİ: yağışda şırıltı, qarda sakit külək; tuneldə boğuqlaşır. Güclü yağışda
     // hərdən uzaq göy gurultusu (əvvəl qısa işıq, 0.5–1.8 s sonra səs).
     {
@@ -1917,7 +1934,7 @@ export class EndlessScene {
       // QAR seçimi biomdan asılı DEYİL: səhrada "qar" seçəndə yer ağarır, ona görə
       // göydən də qar düşməlidir (əvvəl damcı düşürdü — uyğunsuz görünürdü)
       const flake = flakeNow;
-      rain.mesh.material.opacity = flake ? 0.92 * Math.min(1, rAmount * 1.25) : 0.5 * rAmount;
+      rain.mesh.material.opacity = (flake ? 0.92 * Math.min(1, rAmount * 1.25) : 0.5 * rAmount) * fadeK;
       rain.mesh.material.color.set(flake ? 0xffffff : 0xcfe0ee);
       const fall = flake ? 4.2 : 30;
       const tt = this._time;
