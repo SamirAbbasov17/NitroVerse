@@ -20,6 +20,7 @@ export const CAST = {
   preacher: { name: 'Preacher', color: '#ff7a2e', pitch: 220, wave: 'sawtooth' },
   twins: { name: 'The Twins', color: '#b44bff', pitch: 494, wave: 'square' },
   jackal: { name: 'Jackal', color: '#d9b06a', pitch: 147, wave: 'triangle' },
+  hush: { name: 'Hush', color: '#8a8a96', pitch: 82, wave: 'sine' },
 };
 
 // PROLOQ: hər kadr = fon (art) + mətn. Təhkiyə bədii dildədir — nağıl danışan səs kimi, teleqraf
@@ -131,4 +132,72 @@ export const ATTACK = [
   N('Ondan sonra baş verənləri Ember heç vaxt sıra ilə xatırlaya bilmədi. Yaddaşında yalnız qırıqlar qaldı: alovun işığında hələ də yaşıl görünən bostan. Yanan məktəb çadırı. Kəsilmiş ağac kimi yavaş-yavaş aşan radio dirəyi.'),
   N('Bir də səslər. Tanıdığı, hər səhər eşitdiyi səslər — bir-bir kəsilən.'),
   S('ember', 'fear', 'Milo… MILO!'),
+];
+
+// SƏHNƏ 4: gecə. Axtarış (oynanış) → Milo → Hush → Old Gus → Jackal (döyüş) → maska
+export const NIGHT_INTRO = [
+  { art: 'a3' },
+  N('Ember qaçırdı. Hara qaçdığını ağlı bilmirdi — ayaqları bilirdi. Emalatxanaya. Milo qorxanda həmişə motorların yanına qaçardı: deyirdi ki, onların səsi adamın öz ürəyinin səsini batırır.'),
+  N('Düşərgənin içində indi yad fənərlər gəzirdi. Onların işığına düşən bir də qaranlığa qayıtmırdı.'),
+];
+
+export const FOUND = [
+  { art: 'b1' },
+  N('Onu baqqinin yanında tapdı: dizlərini qucaqlayıb oturmuşdu, əlində də özündən ağır bir açar. Ağlamırdı. Milo qorxanda ağlamazdı — sayardı.'),
+  S('milo', 'fear', '…otuz yeddi, otuz səkkiz… Ember! Mən yüzə qədər sayacaqdım. Sən gəlməsəydin, özüm çıxıb səni tapacaqdım.'),
+  S('ember', 'sad', 'Gəldim. Buradayam. Əlimi tut və nə olursa-olsun, buraxma.'),
+  S('milo', 'think', 'Gus dedi ki, baqqi hazırdır. Qaça bilərik. Sən sürərsən, mən də arxada sakitcə oturaram. Söz verirəm, heç nəyə əl vurmaram.'),
+  S('ember', 'love', 'Bu dəfə nəyə istəyirsən, əl vur.'),
+  N('Çıxışa üç addım qalmışdı ki, qapının ağzını bir kölgə tutdu. Kölgənin əlində zəncir cingildəyirdi.'),
+  { art: 'b2' },
+  S('butcher', 'neutral', 'Bir kişi tapdım. Balacadır, amma hesaba keçər.'),
+  S('ember', 'angry', 'Ona toxunma! Məni apar. Eşidirsən? MƏNİ apar!'),
+  N('Milo onun əlini buraxdı. Ember bu anı sonralar min dəfə yada salacaqdı: qardaşı əlini özü buraxdı. Açarı iki əli ilə tutdu və bacısının qabağına keçdi.'),
+  S('milo', 'angry', 'Bacıma yaxın gəlmə! Mən… mən heç nədən qorxmuram!'),
+  N('Butcher güldü. Bütün gecə ərzində onun çıxardığı insana oxşayan yeganə səs bu oldu.'),
+  { art: 'black' },
+  N('Ember gözlərini yummadı. Milo düz deyirdi: o, heç vaxt yummurdu.'),
+  N('Sonra emalatxanada təkcə alovun uğultusu qaldı. Bir də yerə düşən açarın cingiltisi.'),
+  { art: 'b3' },
+  N('Onu sürüyüb ocağın yanına gətirəndə Ember dirənmirdi. Ovcunda bir şey sıxmışdı — elə bərk ki, çarxın əyri dişi dərisini kəsmişdi.'),
+  { art: 'a4' },
+  N('Qara maska onun üzünə əyildi. Bu qədər yaxından Ember maskanın səthində öz əksini gördü: balaca, qırmızı, sönmək üzrə olan bir közə oxşayırdı.'),
+  { intro: 'hush', title: 'The Syndicate' },
+  S('hush', 'neutral', 'Qorxma, Ember. Sönmək ağrıtmır.'),
+  N('O, adını bilirdi. Bunun nə demək olduğunu Ember çox-çox sonra anlayacaqdı. O an isə bircə şeyi anladı: bu səsi ömrünün axırına qədər unutmayacaq.'),
+  N('Hush əlini ikinci dəfə qaldırdı.'),
+  N('Elə həmin an Hearth-in o başında bir motor oxudu. Ember o səsi tanıdı — onu bu səhər öz əlləri ilə yığmışdı.'),
+  S('gus', 'angry', 'ƏLİNİZİ O QIZDAN ÇƏKİN!'),
+  { art: 'b5' },
+  N('Old Gus alışıb-yanan baqqini düz yanacaq çəlləklərinin üstünə sürdü. Qırx il rəqəm saymış adam son hesabını da səhvsiz apardı.'),
+  N('Gecə bir anlığa gündüzə döndü.'),
+  { art: 'a3' },
+  N('Ember ayağa necə qalxdığını bilmədi. Qulaqları cingildəyirdi, dünya səssiz bir yuxuya oxşayırdı. Və o yuxunun içindən bir maşın çıxdı.'),
+  { art: 'b6' },
+  N('Alçaq, uzun, sümük rəngində. Sükan arxasında çaqqal kəlləsi dişlərini ağartmışdı. Jackal qaçanları ovlamağa çıxmışdı və indicə birini görmüşdü.'),
+  S('jackal', 'laugh', 'Budur! Axır ki, biri qaçır!'),
+  N('Ember qaçmadı. Maşın ona çatanda yana sıçradı və kapotdan yapışdı.'),
+];
+
+// Jackal ilə döyüş: hər vuruş — bir düymə (left / right / up / hit)
+export const DUEL = [
+  { key: 'left', az: 'Jackal sükanı sərt qırır — maşın səni üstündən atmaq istəyir. Sola əyil!' },
+  { key: 'right', az: 'Qarmaq havanı yarır. Sağa!' },
+  { key: 'up', az: 'Kapotdan damın üstünə — dırmaş!' },
+  { key: 'left', az: 'O, əyləci basır. Sola yapış!' },
+  { key: 'hit', az: 'Pəncərə açıqdır. Vur!' },
+  { key: 'right', az: 'Əlində bıçaq parıldayır. Sağa çəkil!' },
+  { key: 'hit', az: 'Sükandan yapış və dart!' },
+];
+
+export const AFTER_DUEL = [
+  { art: 'b6' },
+  N('Maşın idarədən çıxıb aşmaqda olan radio dirəyinə doğru şütüdü. Son anda Ember əyildi. Jackal əyilmədi.'),
+  { art: 'black' },
+  N('Bir müddət yalnız motorun boş-boşuna fırlanan səsi eşidildi.'),
+  { art: 'b7' },
+  N('Maska yan oturacağa düşmüşdü: sümük və pas, içi hələ ilıq. Ember ona uzun-uzun baxdı. Taxmadı. Açar halqasını cibindən çıxarıb onun yanına qoydu.'),
+  S('ember', 'neutral', 'Yeddi tıqqıltı idi.'),
+  S('ember', 'angry', 'Altısı qaldı.'),
+  N('Arxada Hearth yanırdı. Qabaqda yalnız yol vardı — bütün ömrü boyu tanıdığı yeganə ev. Ember sükanı tutdu və qazı axıra qədər basdı.'),
 ];

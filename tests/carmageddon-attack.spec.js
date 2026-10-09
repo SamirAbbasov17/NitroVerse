@@ -1,5 +1,5 @@
 // CARMAGEDDON Fəsil 1 — axşam ocağı və hücum: saxlanmış "axşam" mərhələsindən açılır, bütün sətirlər
-// keçilir; yeddi baronun hər biri təqdimat kartı ilə çıxır; sonda fəsil kartı və başlıq ekranı.
+// keçilir; yeddi baronun hər biri təqdimat kartı ilə çıxır; sonra gecə axtarışı başlayır.
 import { test, expect } from '@playwright/test';
 import path from 'path';
 import { boot, OUT, ensureDir } from './helpers.js';
@@ -28,7 +28,8 @@ test('axşam ocağı və hücum: bütün səhnə, yeddi baronun təqdimatı, son
     });
     if (s.gone) break;
     if (s.intro) { if (!seen.intros.includes(s.intro)) { seen.intros.push(s.intro); if (!shotI && s.intro === 'Butcher') { await page.waitForTimeout(400); await page.screenshot({ path: path.join(DIR, 'attack-intro.png') }); shotI = true; } } await page.locator('.cgs__intro').click().catch(() => {}); await page.waitForTimeout(60); continue; }
-    if (s.card) { if (/hazırlanır/i.test(s.card)) { await page.locator('.cgs__card').click(); break; } await page.locator('.cgs__card').click().catch(() => {}); await page.waitForTimeout(80); continue; }
+    if (s.card) { await page.locator('.cgs__card').click().catch(() => {}); await page.waitForTimeout(80); continue; }
+    if (await page.evaluate(() => !!window.__cgStory?.world)) break;      // hücum bitdi — gecə axtarışı başladı (ətraflı: carmageddon-night.spec.js)
     if (s.dlg) {
       if (s.typing) { await page.keyboard.press('Enter'); await page.waitForTimeout(30); continue; }
       seen.lines++; if (s.name) seen.speakers.add(s.name);
@@ -43,6 +44,8 @@ test('axşam ocağı və hücum: bütün səhnə, yeddi baronun təqdimatı, son
   expect(seen.intros, 'yeddi baron təqdim olundu').toEqual(['Judge', 'Madam Crude', 'Butcher', 'Doctor Rust', 'Preacher', 'The Twins', 'Jackal']);
   expect(seen.lines, 'sətirlər oynandı').toBeGreaterThan(45);
   for (const n of ['Milo', 'Ember', 'Elder Amos', 'Radio Ray', 'Old Gus', 'Miss Clara', 'Judge', 'Jackal']) expect([...seen.speakers]).toContain(n);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('cgCh1')).stage), 'mərhələ yadda saxlandı').toBe('night');
+  await page.keyboard.press('Escape');
   await expect(page.locator('.cgs')).toHaveCount(0, { timeout: 10_000 });
   expect(errs).toEqual([]);
 });

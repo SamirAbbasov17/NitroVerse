@@ -65,7 +65,7 @@ export class World {
   // ən yaxın əlçatan varlıq
   near() {
     let best = null, bd = REACH;
-    for (const en of this.ents) { if (en.hidden) continue; const d = Math.hypot(en.x - this.p.x, en.y - this.p.y) - (en.r || 0); if (d < bd) { bd = d; best = en; } }
+    for (const en of this.ents) { if (en.hidden || en.mute) continue; const d = Math.hypot(en.x - this.p.x, en.y - this.p.y) - (en.r || 0); if (d < bd) { bd = d; best = en; } }
     return best;
   }
 

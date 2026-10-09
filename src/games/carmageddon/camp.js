@@ -7,7 +7,8 @@ import { World } from './world.js';
 const SAVE = 'cgCh1';
 const load = () => { try { return JSON.parse(localStorage.getItem(SAVE) || 'null'); } catch { return null; } };
 const store = (s) => { try { localStorage.setItem(SAVE, JSON.stringify(s)); } catch { /* gizli rejim */ } };
-export const savedStage = () => { const st = load()?.stage; return st === 'camp' || st === 'evening' ? st : null; };
+export const savedStage = () => { const st = load()?.stage; return ['camp', 'evening', 'night'].includes(st) ? st : null; };
+export const setStage = (stage) => store({ ...(load() || {}), stage });
 export const clearSave = () => { try { localStorage.removeItem(SAVE); } catch { /* boş */ } };
 
 const LOOK = {
@@ -21,7 +22,7 @@ const LOOK = {
   pip: { hair: '#7a4a2a', skin: '#f6d2b0', top: '#f07a1c', legs: '#4a3a34', hat: '#a8602c', feat: ['knit', 'freckles'], blink: 1.3, kid: true },
 };
 
-const SOLIDS = [
+export const SOLIDS = [
   { x: 62, y: 60, w: 170, h: 150 }, { cx: 240, cy: 38, r: 14 }, { cx: 242, cy: 148, r: 20 },      // ağsaqqal çadırı, quyular
   { x: 22, y: 186, w: 142, h: 196 },                                                              // bostan
   { cx: 320, cy: 315, r: 22 },                                                                    // ocaq

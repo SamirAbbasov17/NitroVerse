@@ -251,3 +251,38 @@ body.cg-on #game-canvas, body.cg-on #mute-btn { visibility: hidden; }
 .cgs__intro span { font-family: var(--cg-caps); font-size: clamp(13px, 3.2vh, 24px); letter-spacing: 0.18em; text-transform: uppercase; color: var(--cg-bone); }
 @keyframes cg-intro { from { clip-path: inset(50% 0 50% 0); } to { clip-path: inset(0 0 0 0); } }
 @media (prefers-reduced-motion: reduce) { .cgs__intro { animation: none; } }
+
+/* Gecə axtarışı: tutulanda/yananda ekran bir an qızarır və yazı çıxır */
+.cgs__caught { position: absolute; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; pointer-events: none;
+  background: rgba(120, 10, 10, 0.72); color: var(--cg-bone); font-family: var(--cg-caps); font-size: clamp(20px, 6vh, 44px); letter-spacing: 0.14em; text-transform: uppercase;
+  opacity: 0; transition: opacity 0.18s; }
+.cgs__caught.is-on { opacity: 1; }
+
+/* Döyüş (vaxtında basılan düymələr) */
+.cgs.is-duel .cgs__skip { display: none; }
+.cgq { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  padding: max(12px, env(safe-area-inset-top)) 14px max(12px, env(safe-area-inset-bottom)); font-family: var(--cg-caps); color: var(--cg-bone);
+  background: radial-gradient(60% 60% at 50% 45%, rgba(18, 8, 12, 0.35), rgba(18, 8, 12, 0.82)); }
+.cgq.is-hit { animation: cgq-hit 0.26s steps(4); }
+.cgq.is-hurt { animation: cgq-hurt 0.34s steps(6); }
+.cgq__hp { display: flex; gap: 8px; align-self: flex-start; }
+.cgq__hp i { width: clamp(16px, 4vh, 26px); height: clamp(16px, 4vh, 26px); background: var(--cg-blood); box-shadow: 0 0 0 3px var(--cg-ink), 0 0 0 5px var(--cg-bone); transform: rotate(45deg); margin: 6px; }
+.cgq__hp i.is-gone { background: #2a1a1e; }
+.cgq__mid { display: flex; flex-direction: column; align-items: center; gap: clamp(8px, 2.4vh, 20px); max-width: min(92vw, 760px); text-align: center; }
+.cgq__ring { position: relative; width: clamp(92px, 30vh, 190px); aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: rgba(18, 8, 12, 0.9); border: 4px solid var(--cg-amber); box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.6); }
+.cgq__ring b { font-size: clamp(44px, 16vh, 104px); line-height: 1; font-weight: 400; color: var(--cg-amber); }
+.cgq__ring i { position: absolute; left: 0; bottom: 0; height: 8px; width: 100%; background: var(--cg-amber); transform-origin: left center; }
+.cgq__ring.is-run i { animation: cgq-bar linear forwards; }
+.cgq__ring.is-ok { border-color: #7fbf7a; } .cgq__ring.is-ok b { color: #7fbf7a; }
+.cgq__ring.is-bad { border-color: var(--cg-blood); } .cgq__ring.is-bad b { color: var(--cg-blood); }
+.cgq__text { margin: 0; min-height: 2.6em; font-size: clamp(15px, 3.6vh, 26px); line-height: 1.3; letter-spacing: 0.02em; text-shadow: 2px 2px 0 #000; }
+.cgq__pad { display: flex; gap: clamp(8px, 2vw, 18px); }
+.cgq__pad button { width: clamp(56px, 15vh, 92px); height: clamp(50px, 13vh, 80px); cursor: pointer; font-size: clamp(22px, 6vh, 38px); color: var(--cg-bone);
+  background: rgba(18, 8, 12, 0.85); border: 3px solid #5a2a24; border-radius: 0; box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.6); touch-action: none; }
+.cgq__pad button:active { transform: translate(2px, 2px); border-color: var(--cg-amber); }
+@keyframes cgq-bar { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@keyframes cgq-hit { 0% { transform: scale(1.03); filter: brightness(1.5); } 100% { transform: none; filter: none; } }
+@keyframes cgq-hurt { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); background-color: rgba(160, 20, 20, 0.4); } 75% { transform: translateX(10px); } }
+@media (prefers-reduced-motion: reduce) { .cgq.is-hit, .cgq.is-hurt { animation: none; } }
+
+.cg__btn[hidden] { display: none; }

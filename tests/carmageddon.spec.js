@@ -112,9 +112,9 @@ test('carmageddon: kiçik telefon ekranlarında menyu kəsilmir', async ({ brows
     const r = await page.evaluate(() => {
       const box = (e) => { const b = e.getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom), h: Math.round(b.height) }; };
       const ui = box(document.querySelector('.cg__ui'));
-      const btns = [...document.querySelectorAll('.cg__btn')].map(box);
+      const btns = [...document.querySelectorAll('.cg__btn:not([hidden])')].map(box);
       const foot = document.querySelector('.cg__foot'), fb = foot.getBoundingClientRect();
-      const last = document.querySelectorAll('.cg__btn')[2].getBoundingClientRect();
+      const last = document.querySelectorAll('.cg__btn:not([hidden])')[2].getBoundingClientRect();
       return { ui, btnMin: Math.min(...btns.map((b) => b.h)), footOverlap: fb.height > 0 && fb.top < last.bottom && fb.bottom > last.top, H: innerHeight };
     });
     console.log(`${w}×${h} ${lang}`, JSON.stringify(r));
@@ -152,7 +152,7 @@ test('carmageddon: telefon (844×390) — dörd dildə sığır, düymələr əl
     await page.screenshot({ path: path.join(DIR, `m-${lang}.png`) });
     const fit = await page.evaluate(() => {
       const out = [...document.querySelectorAll('.cg__ui *, .cg__foot')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.left < -1 || r.right > innerWidth + 1 || r.top < -1 || r.bottom > innerHeight + 1); }).map((e) => e.className);
-      const btns = [...document.querySelectorAll('.cg__btn')].map((b) => { const r = b.getBoundingClientRect(); return Math.round(r.height); });
+      const btns = [...document.querySelectorAll('.cg__btn:not([hidden])')].map((b) => { const r = b.getBoundingClientRect(); return Math.round(r.height); });
       // ə kimi hərflər piksel şriftində varmı (yoxdursa ehtiyat şriftə düşür — görünüş pozulur)
       // Azərbaycan/türk/rus hərfləri düymə şriftində varmı: yoxdursa brauzer ehtiyat şriftə düşür —
       // hərfin şəkli ehtiyat şriftdəki ilə eyni çıxır.

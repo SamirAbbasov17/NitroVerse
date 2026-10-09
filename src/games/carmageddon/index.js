@@ -62,7 +62,8 @@ class TitleScreen {
         <div class="cg__tags"><span>${t('cg.tagStory')}</span><span>${t('cg.tagRace')}</span><span>${t('cg.tagPixel')}</span></div>
         <p class="cg__pitch">${t('cg.pitch')}</p>
         <nav class="cg__menu">
-          <button class="cg__btn" data-cg="story"><b>${t('cg.story')}</b><em>${t('cg.demo')}</em></button>
+          <button class="cg__btn" data-cg="story"><b data-cg-story>${t('cg.story')}</b><em>${t('cg.demo')}</em></button>
+          <button class="cg__btn" data-cg="new" hidden><b>${t('cg.restart')}</b></button>
           <button class="cg__btn" data-cg="hero"><b>${t('cg.hero')}</b></button>
           <button class="cg__btn" data-cg="exit"><b>${t('cg.exit')}</b></button>
         </nav>
@@ -74,14 +75,15 @@ class TitleScreen {
     this.cv = el.querySelector('.cg__bg');
     this.cx = this.cv.getContext('2d');
     this.cx.imageSmoothingEnabled = false;
-    this.btns = [...el.querySelectorAll('.cg__btn')];
+    this._syncSave();
+    this.btns = [...el.querySelectorAll('.cg__btn:not([hidden])')];
     this.note = el.querySelector('[data-cg-note]');
     this.bubble = el.querySelector('[data-cg-bubble]');
     this.btns.forEach((b, i) => {
       b.onmouseenter = () => this._select(i);
       b.onclick = () => { this._select(i); this._activate(); };
     });
-    this._select(1);
+    this._select(this.btns.length > 3 ? 0 : 1);        // yarımçıq oyun varsa "Davam et" seçili gəlir
     // giriş: kursor / toxunuş / klaviatura
     this._onMove = (e) => {
       const p = e.touches?.[0] || e;
@@ -228,9 +230,19 @@ class TitleScreen {
     audio.sfx('click');
     if (id === 'exit') { this._exit(); return; }
     if (id === 'story') { this._startStory(); return; }
+    if (id === 'new') { try { localStorage.removeItem('cgCh1'); } catch { /* gizli rejim */ } this._startStory(); return; }
     this.note.textContent = t('cg.heroNote');
     this.note.classList.remove('is-on'); void this.note.offsetWidth; this.note.classList.add('is-on');
     if (id === 'hero') this._pokeHero();
+  }
+
+  // Yarımçıq oyun varsa: "Hekayəyə başla" → "Davam et" olur və "Yenidən başla" düyməsi görünür
+  _syncSave() {
+    let has = false;
+    try { has = !!JSON.parse(localStorage.getItem('cgCh1') || 'null')?.stage; } catch { /* boş */ }
+    this.el.querySelector('[data-cg-story]').textContent = t(has ? 'cg.continue' : 'cg.story');
+    this.el.querySelector('[data-cg="new"]').hidden = !has;
+    if (this.btns) { this.btns = [...this.el.querySelectorAll('.cg__btn:not([hidden])')]; this.btns.forEach((b, i) => { b.onmouseenter = () => this._select(i); b.onclick = () => { this._select(i); this._activate(); }; }); this._select(Math.min(this.sel ?? 0, this.btns.length - 1)); this._fit?.(); }
   }
 
   // HEKAYƏ: Fəsil 1 başlıq ekranının üstündə açılır (kod yalnız lazım olanda yüklənir); bitəndə və ya
@@ -242,7 +254,7 @@ class TitleScreen {
     this._storyLoading = false;
     if (!this.el.isConnected) return;
     this.el.classList.add('is-story');
-    this.story = new Chapter1(this.el, { hero: this.hero, eyes: this.eyes, onEnd: () => { this.story = null; this.el.classList.remove('is-story'); } });
+    this.story = new Chapter1(this.el, { hero: this.hero, eyes: this.eyes, onEnd: () => { this.story = null; this.el.classList.remove('is-story'); this._syncSave(); } });
     if (import.meta.env.DEV) window.__cgStory = this.story;
   }
 
