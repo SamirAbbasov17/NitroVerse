@@ -120,6 +120,7 @@ const BIOMES = [
   },
 ];
 const _ICE = new THREE.Color(0xa9cfe2), _WHITE = new THREE.Color(0xffffff);   // donmuş gölün rəngi
+const _SNOW_COVER = new THREE.Color(0xe9eff6);   // qar örtüyünün rəngi (yol çiyni, təpə, dağ)
 const BIOME_LEN = 1600;   // hər biomun uzunluğu (m)
 const BLEND_LEN = 280;    // keçid zonası
 const DAY_PERIOD = 320;   // gün dövrü (saniyə)
@@ -1191,7 +1192,6 @@ export class EndlessScene {
         ? [...b.decor, ...(NATURE_BY_BIOME[b.id] || [])]
         : b.decor,
       decorMul: b.decorMul ?? 1,
-      ground: b.id === 'snow' ? 0xe9eff6 : undefined,      // yol çiyni: qarda ağ (başqa biomlarda torpaq rəngi qalır)
       mountainColor: b.mountain, fog: b.fog, natureTint: b.natureTint ?? 0xffffff,
     });
     // Biom-spesifik yer toxuması (yalnız dəyişəndə — hər kadr yox)
@@ -1482,9 +1482,21 @@ export class EndlessScene {
     // Yaş: yağış yağdıqca islanır (τ≈8s), kəsiləndə quruyur
     this._wet += (((flakeNow ? 0 : rainNow)) - this._wet) * Math.min(1, dt * 0.12);
     // Qar örtüyü: yağdıqca yığılır (τ≈6s), kəsiləndə yavaş əriyir (τ≈25s)
-    const biomeSnowBase = (k > 0.5 ? nxt : cur).id === 'snow' ? 1 : 0;      // qar biomunda örtük tamdır
-    const snowT = Math.max(biomeSnowBase, flakeNow ? rainNow : 0);
-    this._snow += (snowT - this._snow) * Math.min(1, dt * (snowT > this._snow ? 0.2 : 0.02));
+    // QAR ÖRTÜYÜ — iki sabit hal, aralıq yoxdur: qar biomunda və ya qar YAĞANDA yer TAM ağarır (≈7 s-də yığılır),
+    // qar kəsiləndə tam əriyir (≈18 s). Əvvəl örtük yağışın gücünə bağlı idi (0.6–1) — yer gah ağ, gah yarı-ağ qalırdı.
+    const biomeSnowBase = (k > 0.5 ? nxt : cur).id === 'snow' ? 1 : 0;
+    const snowT = biomeSnowBase || (flakeNow && rainNow > 0.2) ? 1 : 0;
+    // sabit sürətlə (üstəl əyri yox): yığılma ≈7 s, ərimə ≈18 s — sonda dəqiq 1 və ya 0 olur, "demək olar ağ" qalmır
+    this._snow = snowT ? Math.min(1, this._snow + dt * 0.145) : Math.max(0, this._snow - dt * 0.055);
+    // yol çiyni, təpələr və dağlar da eyni örtüklə ağarır — hamısı birlikdə (bax EndlessRoad.snowMats)
+    {
+      const sm = this.road.snowMats, sv = Math.round(this._snow * 200) / 200;
+      if (sv !== this._snowApplied || sm.length !== this._snowMatN) {
+        let w = 0;
+        for (let i = 0; i < sm.length; i++) { const m = sm[i]; if (m.userData.dead) continue; m.color.copy(m.userData.snowBase).lerp(_SNOW_COVER, sv * m.userData.snowK); sm[w++] = m; }
+        sm.length = w; this._snowApplied = sv; this._snowMatN = w;
+      }
+    }
     groundC.multiplyScalar(1 - this._wet * 0.45); // yaş → aydın tündləşmə
     groundC.lerp(new THREE.Color(0xf0f4fa).multiplyScalar(Math.max(0.35, day.ground) * GROUND_GAIN * 1.15), this._snow * 0.96); // qar → qalın ağ örtük
     this._groundMat.roughness = 1 - this._wet * 0.68; // yaş → güclü parıltı
@@ -1855,7 +1867,9 @@ export class EndlessScene {
     const snowMin = this._weatherOverride ? 0 : ((k > 0.5 ? nxt : cur).snowMin || 0);
     const rainGoal = Math.max(this._weatherTarget.rain, snowMin), fogGoal = snowMin ? Math.max(this._weatherTarget.fogMul, 0.5) : this._weatherTarget.fogMul;
     this._weather.fogMul += (fogGoal - this._weather.fogMul) * Math.min(1, dt / wTau);
-    this._weather.rain += (rainGoal - this._weather.rain) * Math.min(1, dt / (snowMin && rainGoal > this._weather.rain ? 6 : wTau));
+    // qar biomunda qar sabit sürətlə güclənir (≈8 s) və həddə dəqiq çatır; qalan hallarda əvvəlki yumşaq keçid
+    if (snowMin && this._weather.rain < snowMin) this._weather.rain = Math.min(snowMin, this._weather.rain + dt * 0.115);
+    else this._weather.rain += (rainGoal - this._weather.rain) * Math.min(1, dt / wTau);
 
     // Yağış / qar hissəcikləri
     const rain = this._rain;
@@ -1895,15 +1909,19 @@ export class EndlessScene {
       // QAR seçimi biomdan asılı DEYİL: səhrada "qar" seçəndə yer ağarır, ona görə
       // göydən də qar düşməlidir (əvvəl damcı düşürdü — uyğunsuz görünürdü)
       const flake = flakeNow;
-      rain.mesh.material.opacity = (flake ? 0.92 : 0.5) * rAmount;
+      rain.mesh.material.opacity = flake ? 0.92 * Math.min(1, rAmount * 1.25) : 0.5 * rAmount;
       rain.mesh.material.color.set(flake ? 0xffffff : 0xcfe0ee);
       const fall = flake ? 4.2 : 30;
       const tt = this._time;
       // Qarda hissəciklərin yalnız bir hissəsi görünsün ki, yağış sıxlığı dəyişməsin
-      // sıxlıq: yağış 322 dənə (əvvəlki kimi); qar 520-dən başlayır, güclü qarda (≥ 0.85) 1560-a çatır
-      const heavy = Math.max(0, Math.min(1, (rAmount - 0.55) / 0.3));
-      const live = flake ? Math.round(520 + (rain.drops.length - 520) * heavy) : 322;
+      // sıxlıq SABİTDİR: yağış 322 dənə, qar 1560 (əvvəl qarın sayı gücə görə dəyişirdi — sıxlıq "üzürdü");
+      // yağışın/qarın güclənib-zəifləməsi yalnız şəffaflıqla verilir
+      const live = flake ? rain.drops.length : 322;
       rain.mesh.count = live;
+      // HÜNDÜRLÜK maşına bağlıdır (yumşaq izləmə). Əvvəl dənələr dünyanın 0…18 m hündürlüyündə idi: hündür yerdə qar
+      // heç görünmürdü, eniş-yoxuşda isə dənələr yuxarı gedən kimi görünürdü.
+      this._fallBaseY = this._fallBaseY == null ? c.y : this._fallBaseY + (c.y - this._fallBaseY) * Math.min(1, dt * 2.5);
+      const baseY = this._fallBaseY - 3;
       const camQ = this.camera.quaternion;
       for (let i = 0; i < live; i++) {
         const d = rain.drops[i];
@@ -1923,8 +1941,8 @@ export class EndlessScene {
         rain.v3s.set(flake ? fs : 0.045, flake ? fs : 0.85, 1);
         // qar maşının ətrafında daha dar həcmdə yağır (±22 m, 18 m hündürlük) — eyni sayda dənə ekranda ~4 dəfə sıx
         // görünür; kameranın lap burnundakı dənə çəkilmir (ekranı tutan bulanıq ləkə olurdu)
-        if (flake) { rain.v3p.set(c.x + d.x * 0.62, d.y * 0.6, c.z + d.z * 0.62); if (rain.v3p.distanceToSquared(this.camera.position) < 12) rain.v3s.set(0, 0, 0); }
-        else rain.v3p.set(c.x + d.x, d.y, c.z + d.z);
+        if (flake) { rain.v3p.set(c.x + d.x * 0.62, baseY + d.y * 0.6, c.z + d.z * 0.62); if (rain.v3p.distanceToSquared(this.camera.position) < 12) rain.v3s.set(0, 0, 0); }
+        else rain.v3p.set(c.x + d.x, baseY + d.y, c.z + d.z);
         rain.m4.compose(rain.v3p, camQ, rain.v3s);
         rain.mesh.setMatrixAt(i, rain.m4);
       }

@@ -136,6 +136,9 @@ export class EndlessRoad {
     this._backSinceTurn = 0;
     this.chunks = [];   // {startAbs, endAbs, group, obstacles[], spots[]}
     this.obstacles = []; // aktiv pəncərənin maneələri (chunk-lardan)
+    // QAR ÖRTÜYÜ: hissələrin torpaq rəngli materialları (yol çiyni, təpə, dağ) burada qeyd olunur ki, səhnə qar
+    // yağanda HAMISINI birlikdə ağartsın (əvvəl rəng hissə qurulanda donurdu — bəzisi ağ, bəzisi köhnə rəngdə qalırdı)
+    this.snowMats = [];
     // YER TUTMA JURNALI: toqquşması OLMAYAN dekor da (yoldan 60 m+ uzaq ağac,
     // qaya, təpə) buraya yazılır. _spotFree əvvəl yalnız `obstacles`-a baxırdı,
     // ona görə uzaq dekor bir-birinin içindən çıxırdı.
@@ -362,6 +365,9 @@ export class EndlessRoad {
   }
 
   setStyle(patch) { Object.assign(this.style, patch); }
+
+  // materialı qar örtüyünə qoş: k — tam qarda nə qədər ağarır (0…1)
+  _snowMat(mat, k) { mat.userData.snowBase = mat.color.clone(); mat.userData.snowK = k; this.snowMats.push(mat); return mat; }
 
   _addPoint() {
     this._sinceTurn++;
@@ -647,9 +653,9 @@ export class EndlessRoad {
     geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
     geo.setIndex(idx);
     geo.computeVertexNormals();
-    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+    const mesh = new THREE.Mesh(geo, this._snowMat(new THREE.MeshStandardMaterial({
       color, roughness: 1, metalness: 0, flatShading: true, side: THREE.DoubleSide,
-    }));
+    }), 0.96));
     mesh.userData.roadPart = true;   // dəhliz süpürgəsi toxunmasın
     mesh.receiveShadow = true;
     return mesh;
@@ -962,9 +968,9 @@ export class EndlessRoad {
         // batır. Qapaq yalnız tunelin HƏQİQİ uclarında qoyulur və açıqlığı kəsmir.
         {
           const mCol = this.style.mountainColor ?? 0x8a6a4a;
-          const mMat = new THREE.MeshStandardMaterial({
+          const mMat = this._snowMat(new THREE.MeshStandardMaterial({
             color: mCol, roughness: 1, metalness: 0, flatShading: true,
-          });
+          }), 0.7);
           const rnd = (q) => { const v = Math.sin(q * 12.9898 + 78.233) * 43758.5453; return v - Math.floor(v); };
           const verts = [], idx = [];
           const PROF = 9;   // sol ətək → 3 yamac nöqtəsi → zirvə → 3 yamac nöqtəsi → sağ ətək
@@ -1560,10 +1566,10 @@ export class EndlessRoad {
     }
 
     // Orta plan təpələri (yumru)
-    const hillMat = new THREE.MeshStandardMaterial({
+    const hillMat = this._snowMat(new THREE.MeshStandardMaterial({
       color: new THREE.Color(s.mountainColor).lerp(new THREE.Color(s.fog), 0.2),
       flatShading: true, roughness: 1,
-    });
+    }), 0.88);
     for (let h = 0; h < 2 + Math.floor(Math.random() * 3); h++) {
       const i = Math.floor(Math.random() * pts.length);
       const side = Math.random() < 0.5 ? -1 : 1;
@@ -1603,10 +1609,10 @@ export class EndlessRoad {
     // Uzaq dağ siluetləri (dumana qarışan) — hər chunk-da
     {
       const mCount = 2 + Math.floor(Math.random() * 3);
-      const mMat = new THREE.MeshStandardMaterial({
+      const mMat = this._snowMat(new THREE.MeshStandardMaterial({
         color: new THREE.Color(s.mountainColor).lerp(new THREE.Color(s.fog), 0.45),
         flatShading: true, roughness: 1,
-      });
+      }), 0.6);
       // Zirvə örtüyü: alp tipində qar, isti biomlarda günəş vurmuş açıq qaya
       const capMat = new THREE.MeshStandardMaterial({
         color: new THREE.Color(s.mountainColor).lerp(new THREE.Color(0xffffff), 0.72)
@@ -1752,6 +1758,7 @@ export class EndlessRoad {
       this._group.remove(c.group);
       c.group.traverse((o) => {
         o.geometry?.dispose?.();
+        if (o.material?.userData?.snowBase) o.material.userData.dead = true;      // qar siyahısından çıxsın
         if (o.material && !o.material.map) o.material.dispose?.();
       });
       for (const ob of c.obstacles) {
@@ -1782,6 +1789,7 @@ export class EndlessRoad {
       this._group.remove(c.group);
       c.group.traverse((o) => {
         o.geometry?.dispose?.();
+        if (o.material?.userData?.snowBase) o.material.userData.dead = true;      // qar siyahısından çıxsın
         if (o.material && !o.material.map) o.material.dispose?.();
       });
       for (const ob of c.obstacles) {
