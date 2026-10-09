@@ -66,7 +66,7 @@ export class Chapter1 {
       'wren-neutral', 'gus-neutral', 'clara-neutral', 'ray-neutral', 'amos-neutral', 'pip-neutral',
       'e1', 'e2', 'a1', 'a2', 'a3', 'a4',
       'judge-neutral', 'crude-neutral', 'butcher-neutral', 'rust-neutral', 'preacher-neutral', 'twins-neutral', 'jackal-neutral',
-      'hush-neutral', 'b1', 'b2', 'b3', 'b5', 'b6', 'b7', 'z1', 'z2', 'z3'];
+      'hush-neutral', 'cars', 'props', 'ground-camp.webp', 'ground-canyon.webp', 'ground-fog.webp', 'ground-truck.webp', 'b1', 'b2', 'b3', 'b5', 'b6', 'b7', 'z1', 'z2', 'z3'];
     const imgs = await Promise.all(names.map((n) => loadImg(`carmageddon/ch1/${n.includes('.') ? n : n + '.png'}`)));
     names.forEach((n, i) => { names[i] = n.replace(/\.\w+$/, ''); });
     names.forEach((n, i) => { this.art[n] = imgs[i]; });

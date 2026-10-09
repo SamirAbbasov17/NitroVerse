@@ -155,3 +155,20 @@ test('qaçış telefonda: düymələr görünür və işləyir', async ({ browse
   expect(await page.evaluate(() => window.__cgStory._chase.G.nitro)).toBe(n0 - 1);
   await ctx.close();
 });
+
+// Hər hissənin kadrı (vizual yoxlama üçün): avtopilot sürür, 2.5 s sonra şəkil çəkilir
+test('qaçış: beş hissənin kadrları', async ({ page }) => {
+  test.setTimeout(120_000);
+  const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+  await boot(page);
+  await openChase(page, 0);
+  await page.evaluate(BOT);
+  for (let i = 0; i < 5; i++) {
+    const id = await page.evaluate((k) => { const c = window.__cgStory._chase; c.start(k); c.G.d = 600; return c.S.id; }, i);
+    await page.waitForTimeout(2500);
+    await page.screenshot({ path: path.join(DIR, `chase-look-${id}.png`) });
+    const ok = await page.evaluate(() => { const a = window.__cgStory.art; return !!(a.cars && a.props && a['ground-camp'] && a['ground-canyon'] && a['ground-fog'] && a['ground-truck']); });
+    expect(ok, 'maşın, obyekt və yer şəkilləri yüklənib').toBe(true);
+  }
+  expect(errs).toEqual([]);
+});

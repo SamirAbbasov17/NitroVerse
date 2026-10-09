@@ -1,6 +1,8 @@
 # CARMAGEDDON — Fəsil 1 (demo): layihə
 
 Status: **fəsil başdan-sona oynanılır** (2026-10-09; kod: `src/games/carmageddon/` — chapter1, script, camp, night, duel, chase). Aşağıdakı mətn ilkin təklifdir; fərqlər: qaçışın mexanikaları `chase.js`-in başlığında, Old Gus-un fədakarlığı və Hush-un cümləsi `script.js`-də. Sahibinin verdiyi hekayə əsasında yazılıb; adlar, səhnələr və
+
+Əlavələr (2026-10-09, tester keçidi): **fasilə menyusu** (Esc və ya sağ yuxarı künc düyməsi — "Davam et" / "Başlıq ekranı"; oynanışda tab gizlənəndə özü açılır); yaddaş mərhələləri `camp → evening → night → found → chase(sec)`; qaçışda can, yanacaq və nitro **hissədən hissəyə daşınır** (alt hədd: can 60, yanacaq 58, nitro 1); maşınlar, yol obyektləri və yer toxumaları piksel art vərəqlərindəndir (`cars.png`, `props.png`, `ground-*.webp`); mətnlər dörd dildə (`lang/ch1.*.js`).
 mexanikalar təsdiq gözləyir. Üslub: `docs/CARMAGEDDON-STYLE.md` (piksel art, 480×270 kətan).
 
 ## Sahibinin verdiyi çərçivə (dəyişmir)
