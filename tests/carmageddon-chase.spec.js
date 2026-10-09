@@ -1,6 +1,6 @@
 // CARMAGEDDON Fəsil 1 — QAÇIŞ və SON. Yoxlanır: mexanikalar (zədə, yanacaq, nitro, yaddaş nöqtəsi,
 // Butcher-i nitrosuz ötmək olmur, körpüdən nitrosuz tullanmaq olmur), beş hissənin hamısı KEÇİLƏ
-// BİLİR (sadə avtopilot real idarə ilə — düymələrlə — sürür), son səhnə və yaddaşın silinməsi, telefon.
+// BİLİR (sadə avtopilot real idarə ilə — düymələrlə — sürür), finala keçid, telefon.
 import { test, expect } from '@playwright/test';
 import path from 'path';
 import { boot, OUT, ensureDir } from './helpers.js';
@@ -103,20 +103,11 @@ test('qaçış: mexanikalar və yaddaş nöqtəsi', async ({ page }) => {
   });
   console.log('qapılar:', JSON.stringify(gates));
   expect(gates).toEqual({ truckBack: true, truckHp: true, truckPass: true, bridgeFail: true, bridgeJump: true });
-  // 6) son səhnə və yaddaşın silinməsi
-  await page.waitForFunction(() => !window.__cgStory?._chase, null, { timeout: 15_000 });
-  const lines = [];
-  for (let i = 0; i < 400; i++) {
-    const s = await page.evaluate(() => { const st = window.__cgStory; if (!st) return { gone: true }; const card = document.querySelector('.cgs__card'); return { card: card && !card.hidden ? card.textContent : null, dlg: !st.dlg.el.hidden, typing: st.dlg.typing, text: st.dlg.full || '' }; });
-    if (s.gone) break;
-    if (s.card) { lines.push('card:' + s.card); await page.screenshot({ path: path.join(DIR, 'ending-card.png') }); await page.locator('.cgs__card').click(); break; }
-    if (s.dlg) { if (!s.typing) { lines.push(s.text.slice(0, 20)); if (/Otuz yeddi/.test(s.text)) await page.screenshot({ path: path.join(DIR, 'ending-bar.png') }); } await page.keyboard.press('Enter'); await page.waitForTimeout(30); continue; }
-    await page.waitForTimeout(60);
-  }
-  expect(lines.some((l) => l.startsWith('…Otuz yeddi')), 'son replika').toBe(true);
-  expect(lines[lines.length - 1]).toMatch(/Son/);
-  await expect(page.locator('.cgs')).toHaveCount(0, { timeout: 10_000 });
+  // 6) qaçış bitəndə final başlayır (ətraflı: carmageddon-finale.spec.js) və yaddaş silinir
+  await page.waitForFunction(() => !!window.__cgStory?._finale, null, { timeout: 15_000 });
   expect(await page.evaluate(() => localStorage.getItem('cgCh1')), 'fəsil bitdi — yaddaş silindi').toBeNull();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.cgs')).toHaveCount(0, { timeout: 10_000 });
   expect(errs).toEqual([]);
 });
 

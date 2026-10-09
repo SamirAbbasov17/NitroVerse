@@ -66,7 +66,7 @@ export function runChase(ch, startSec = 0, onSection = null) {
         for (let d = 320; d < S.len - 200; d += 150 + r() * 110) add({ k: 'rock', d, x: lane(d, r() * 1.8 - 0.9), r: 9, fire: r() < 0.6 });
         for (let d = 700; d < S.len - 300; d += 420 + r() * 160) add({ k: 'pole', d, side: r() < 0.5 ? -1 : 1, warn: 1 });
       } else if (S.id === 'canyon') {
-        for (let d = 420; d < S.len - 500; d += 520 + r() * 200) add({ k: 'chaser', d: d - 60, wake: d, x: cxAt(d), side: r() < 0.5 ? -1 : 1, st: 'sleep', tt: 0, vx: 0 });
+        for (let d = 420; d < S.len - 500; d += 520 + r() * 200) add({ k: 'chaser', d: d - 60, wake: d, x: cxAt(d), side: r() < 0.5 ? -1 : 1, st: 'sleep', tt: 0, vx: 0, v: Math.floor(r() * 3) });
         for (let d = 600; d < S.len - 200; d += 380 + r() * 200) add({ k: 'rock', d, x: lane(d, r() < 0.5 ? -0.9 : 0.9), r: 9 });
       } else if (S.id === 'fog') {
         for (let d = 300; d < S.len - 200; d += 190 + r() * 140) add(r() < 0.45 ? { k: 'cloud', d, x: lane(d, r() * 1.4 - 0.7), r: 30 } : { k: 'rock', d, x: lane(d, r() * 1.7 - 0.85), r: 9, wreck: true });
@@ -132,6 +132,9 @@ export function runChase(ch, startSec = 0, onSection = null) {
           else { G.v *= 1 - dt * 1.6; if (off > 26) { G.x = rc + Math.sign(G.x - rc) * (hw + 19); hurt(4 * dt * 10); } if (Math.random() < dt * 20) G.parts.push({ x: G.x, y: PY + 10, vx: (Math.random() - 0.5) * 30, vy: 40, a: 0.8, c: '#8a6a4a', s: 2 }); }
         }
       }
+      // sərt dönüşdə təkər izi; kənara sürtünəndə qığılcım
+      if (Math.abs(G.vx) > 120 && G.jump <= 0) for (const ox of [-6, 6]) G.parts.push({ x: G.x + ox, y: PY + 10, vx: 0, vy: G.v, a: 0.9, c: '#1a1416', s: 2 });
+      if ((S.walls || S.bridge) && Math.abs(G.x - rc) > hw - 11 && Math.random() < dt * 40) G.parts.push({ x: G.x + Math.sign(G.x - rc) * 8, y: PY - 4 + Math.random() * 16, vx: -Math.sign(G.x - rc) * 60, vy: 90, a: 1, c: '#ffd166', s: 1 });
       // toz / tüstü
       if (Math.random() < dt * 26) G.parts.push({ x: G.x + (Math.random() < 0.5 ? -5 : 5), y: PY + 12, vx: (Math.random() - 0.5) * 16, vy: 70, a: 0.5, c: G.boost > 0 ? '#ffb53a' : '#6a5a52', s: G.boost > 0 ? 3 : 2 });
       if (G.hp < 45 && Math.random() < dt * 14) G.parts.push({ x: G.x + (Math.random() - 0.5) * 6, y: PY - 10, vx: 6, vy: 30, a: 0.8, c: '#3a3438', s: 3 });
@@ -223,24 +226,76 @@ export function runChase(ch, startSec = 0, onSection = null) {
     }
 
     // ——— çəkmə ———
-    function car(cx0, cy0, kind, tilt = 0, scale = 1) {
+    // Maşınlar (yuxarıdan, burnu yuxarı). tilt — sükana görə əyilmə; v — variant; fl — yanıb-sönmə (nişan alır)
+    function car(cx0, cy0, kind, tilt = 0, scale = 1, v = 0, fl = false) {
       const R = (dx, dy, w, h, c) => { x.fillStyle = c; x.fillRect(Math.round(cx0 + dx * scale + tilt * dy * 0.12), Math.round(cy0 + dy * scale), Math.max(1, Math.round(w * scale)), Math.max(1, Math.round(h * scale))); };
-      const ink = '#12080c';
-      if (kind === 'bike') { R(-3, -9, 6, 18, ink); R(-2, -8, 4, 16, '#3a2a4a'); R(-2, -3, 4, 5, '#b44bff'); R(-4, -6, 8, 2, ink); R(-1, -1, 2, 3, '#f2c8a0'); R(-2, -9, 4, 2, '#1c1418'); R(-2, 7, 4, 2, '#1c1418'); return; }
+      const ink = '#12080c', spin = Math.floor(G.t * 22) % 2;
+      const wheel = (dx, dy, w = 3, h = 7) => { R(dx - 1, dy - 1, w + 2, h + 2, ink); R(dx, dy, w, h, '#2a2428'); R(dx, dy + (spin ? 1 : 3), w, 1, '#5a5258'); R(dx, dy + (spin ? 5 : 0), w, 1, '#5a5258'); };
+      if (kind === 'bike') {
+        wheel(-1, -11, 2, 5); wheel(-1, 6, 2, 5);
+        R(-3, -7, 6, 14, ink); R(-2, -6, 4, 12, '#2a1c34'); R(-2, -2, 4, 5, '#3a2a4a');
+        R(-5, -7, 10, 2, ink); R(-4, -7, 8, 1, '#8a8a96');                                  // sükan
+        R(-3, -3, 6, 6, ink); R(-2, -2, 4, 4, '#1c1418'); R(-1, -5, 2, 3, '#b44bff'); R(-1, -6, 2, 1, '#d98aff');   // sürücü: gödəkçə və bənövşəyi mohawk
+        R(-1, 4, 2, 2, '#ff3b2e'); R(-4, 1, 1, 4, '#c9a98a'); return;
+      }
       if (kind === 'truck') {
-        R(-19, -34, 38, 68, ink); R(-17, -32, 34, 40, '#4a3a3a'); R(-17, 8, 34, 24, '#6a1a16'); R(-15, -30, 30, 4, '#2a2024'); R(-13, 12, 26, 12, '#1c1418'); R(-11, 14, 22, 3, '#5a7a8a');
-        for (const sx of [-21, 19]) for (const sy of [-26, -8, 14]) { R(sx, sy, 3, 10, ink); }
-        for (let i = -15; i <= 12; i += 6) R(i, -36, 3, 4, '#b9b9c4');                         // dişlər (arxa bamper)
-        R(-17, -12, 34, 2, '#2a2024'); R(-2, -30, 4, 36, '#3a2a2a'); R(-15, 30, 5, 3, '#ff3b2e'); R(10, 30, 5, 3, '#ff3b2e'); R(-4, 27, 8, 3, '#c9a98a');                 // arxa işıqlar və nömrə
+        for (const sy of [-30, -14, 4, 20]) { wheel(-23, sy, 4, 10); wheel(19, sy, 4, 10); }
+        R(-20, -38, 40, 76, ink);
+        R(-18, -36, 36, 46, '#3a3034'); R(-18, -36, 36, 2, '#5a4a4a'); R(-18, -14, 36, 2, '#2a2024');   // yük yeri
+        for (let i = -14; i <= 8; i += 11) { R(i, -32, 9, 9, ink); R(i + 1, -31, 7, 7, '#8a3a1c'); R(i + 1, -28, 7, 1, '#c9a98a'); R(i, -22, 9, 7, ink); R(i + 1, -21, 7, 5, '#6a2a16'); }   // çəlləklər
+        R(-18, -10, 36, 4, '#2a2024'); for (let i = -17; i < 17; i += 6) R(i, -10, 3, 4, '#ffb53a');                              // təhlükə zolağı
+        R(-18, -4, 36, 40, '#6a1a16'); R(-18, -4, 4, 40, '#8a2a20'); R(14, -4, 4, 40, '#4a120e');                                 // kabin
+        R(-13, 4, 26, 12, ink); R(-12, 5, 24, 10, '#1c1418'); R(-12, 5, 24, 2, '#5a7a8a'); R(-3, 9, 6, 5, '#b9906a');              // şüşə və Butcher-in keçəl başı
+        R(-20, 22, 40, 4, ink); R(-18, 23, 36, 2, '#8a8a8a');
+        for (let i = -17; i <= 14; i += 6) R(i, -41, 3, 5, '#d8d8e0');                                                             // arxa dişlər
+        R(-17, 32, 6, 3, '#ff3b2e'); R(11, 32, 6, 3, '#ff3b2e'); R(-5, 30, 10, 4, '#c9a98a');
+        R(-24, -2, 3, 16, '#4a4a52'); R(21, -2, 3, 16, '#4a4a52'); if (spin) { R(-24, -8, 3, 5, '#ff7a1c'); R(21, -8, 3, 5, '#ff7a1c'); } else { R(-24, -6, 3, 3, '#ffd166'); R(21, -6, 3, 3, '#ffd166'); }   // egzoz boruları — alov püskürür
+        R(-1, -36, 2, 22, '#5a4a4a'); R(-9, -16, 3, 8, '#8a8a8a'); R(6, -16, 3, 8, '#8a8a8a');                                    // zəncir bucurğadı
         return;
       }
-      const body = kind === 'me' ? '#e8dcc0' : '#3a3438', trim = kind === 'me' ? '#b9a98a' : '#b3261e';
-      R(-8, -14, 16, 28, ink); R(-7, -13, 14, 26, body); R(-7, -13, 2, 26, trim); R(5, -13, 2, 26, trim);
-      R(-5, -6, 10, 7, '#1c1418'); R(-4, -5, 8, 2, '#5a7a8a'); R(-5, 5, 10, 4, '#1c1418');           // şüşələr
-      R(-9, -10, 2, 6, ink); R(7, -10, 2, 6, ink); R(-9, 5, 2, 6, ink); R(7, 5, 2, 6, ink);           // təkərlər
-      R(-6, -15, 3, 2, '#fff0b0'); R(3, -15, 3, 2, '#fff0b0'); R(-6, 13, 3, 1, '#b3261e'); R(3, 13, 3, 1, '#b3261e');
-      if (kind === 'me') { R(-2, -3, 4, 3, '#e8301a'); R(-3, -12, 2, 2, '#f6e7c8'); R(1, -12, 2, 2, '#f6e7c8'); R(-9, -15, 2, 3, '#f6e7c8'); R(7, -15, 2, 3, '#f6e7c8'); }
-      else { R(-3, -12, 6, 3, '#b3261e'); R(-9, -16, 3, 3, '#8a8a8a'); R(6, -16, 3, 3, '#8a8a8a'); }
+      if (kind === 'me') {
+        // Jackal-ın maşını: uzun kapot, üstündə kəllə, sümük dişli bamper, yan egzozlar, açıq salon
+        wheel(-11, -11, 3, 8); wheel(8, -11, 3, 8); wheel(-12, 5, 4, 9); wheel(8, 5, 4, 9);
+        R(-8, -17, 16, 34, ink);
+        R(-7, -16, 14, 32, '#e8dcc0'); R(-7, -16, 3, 32, '#f6eedc'); R(4, -16, 3, 32, '#b9a98a');
+        R(-5, -15, 10, 11, '#d8caa8'); R(-1, -15, 2, 11, '#b9a98a');                                                               // kapot
+        R(-2, -12, 4, 4, ink); R(-1, -11, 2, 2, '#f6e7c8'); R(-1, -10, 1, 1, ink);                                                 // kapotdakı kəllə
+        R(-6, -4, 12, 9, ink); R(-5, -3, 10, 2, '#7ab8c8'); R(-5, -1, 10, 6, '#2a1c1c');                                           // şüşə və salon
+        R(-3, 0, 5, 4, '#e8301a'); R(-3, 0, 5, 1, '#ff5a3a'); R(-2, -1, 3, 1, '#4a3a30');                                          // Ember: qırmızı saç, eynək
+        R(2, 1, 2, 2, '#d9b06a');                                                                                                  // yan oturacaqda maska
+        R(-6, 6, 12, 8, '#d8caa8'); R(-5, 8, 10, 1, '#b9a98a'); R(-5, 11, 10, 1, '#b9a98a');                                       // baqaj
+        for (const sx of [-7, -3, 1, 5]) R(sx, -19, 2, 3, '#f6e7c8');                                                              // sümük dişlər
+        R(-9, -19, 2, 4, '#f6e7c8'); R(7, -19, 2, 4, '#f6e7c8'); R(-6, -17, 3, 2, '#fff6c0'); R(3, -17, 3, 2, '#fff6c0');          // buynuzlar və faralar
+        R(-10, -2, 2, 12, '#5a5258'); R(8, -2, 2, 12, '#5a5258'); R(-10, 10, 2, 2, spin ? '#ff7a1c' : '#3a3438'); R(8, 10, 2, 2, spin ? '#3a3438' : '#ff7a1c');   // yan egzozlar
+        R(-6, 15, 4, 2, '#ff3b2e'); R(2, 15, 4, 2, '#ff3b2e');
+        if (G.hp < 60) { R(-4, -13, 3, 2, '#5a4a40'); R(2, -8, 2, 3, '#5a4a40'); R(-6, 8, 2, 2, '#5a4a40'); }                      // əziklər
+        if (G.hp < 30) { const f = Math.floor(G.t * 14); R(-3 + (f % 3), -16 - (f % 4), 3, 5, '#ff7a1c'); R(1 - (f % 2), -14 - (f % 3), 2, 4, '#ffd166'); }   // kapot alışıb
+        return;
+      }
+      // təqibçilər — üç növ
+      const hot = fl ? '#fff0b0' : null;
+      if (v === 0) {         // tikanlı sedan: zireh lövhələri, qırmızı zolaq
+        wheel(-10, -10); wheel(7, -10); wheel(-10, 5); wheel(7, 5);
+        R(-8, -15, 16, 30, ink); R(-7, -14, 14, 28, hot || '#3a3438'); R(-7, -14, 3, 28, hot || '#4a444a'); R(-1, -14, 2, 28, '#b3261e');
+        R(-5, -6, 10, 6, ink); R(-4, -5, 8, 2, '#5a7a8a'); R(-4, 4, 8, 4, '#1c1418');
+        R(-7, -10, 14, 1, '#6a6a72'); R(-7, 9, 14, 1, '#6a6a72');
+        for (const sx of [-8, -4, 0, 4]) R(sx + 1, -18, 2, 4, '#b9b9c4');
+        R(-10, -6, 2, 3, '#b9b9c4'); R(8, -6, 2, 3, '#b9b9c4'); R(-10, 2, 2, 3, '#b9b9c4'); R(8, 2, 2, 3, '#b9b9c4');             // yan tikanlar
+      } else if (v === 1) {  // baqqi: boru karkas, iri təkərlər
+        wheel(-12, -12, 4, 9); wheel(8, -12, 4, 9); wheel(-12, 4, 4, 9); wheel(8, 4, 4, 9);
+        R(-6, -14, 12, 28, ink); R(-5, -13, 10, 26, hot || '#5a4a2a'); R(-5, -13, 10, 3, hot || '#7a6a3a');
+        R(-7, -6, 14, 2, '#8a8a8a'); R(-7, 6, 14, 2, '#8a8a8a'); R(-7, -6, 2, 14, '#8a8a8a'); R(5, -6, 2, 14, '#8a8a8a');         // karkas
+        R(-3, -3, 6, 6, '#1c1418'); R(-2, -1, 4, 3, '#b88a6a'); R(-2, -2, 4, 1, '#2a2628');                                       // sürücü
+        R(-4, -17, 3, 3, '#fff0b0'); R(1, -17, 3, 3, '#fff0b0'); R(-2, 10, 4, 5, '#3a3438'); R(-1, 14, 2, 2, spin ? '#ff7a1c' : '#ffd166');
+      } else {               // pikap: arxada alovlu məşəl
+        wheel(-10, -10); wheel(7, -10); wheel(-10, 6); wheel(7, 6);
+        R(-8, -15, 16, 31, ink); R(-7, -14, 14, 12, hot || '#6a2a20'); R(-7, -14, 3, 12, hot || '#8a3a2c');
+        R(-5, -5, 10, 6, ink); R(-4, -4, 8, 2, '#5a7a8a');
+        R(-7, 2, 14, 13, hot || '#4a3a34'); R(-6, 3, 12, 11, '#2a2024'); R(-5, 4, 4, 4, '#8a3a1c'); R(1, 8, 4, 4, '#8a3a1c');     // yük yeri, çəlləklər
+        { const f = Math.floor(G.t * 12 + cx0); R(-1 + (f % 2), -1 - (f % 3) + 4, 3, 5, '#ff7a1c'); R(0, 4, 1, 3, '#ffd166'); }
+        for (const sx of [-7, -2, 3]) R(sx + 1, -18, 3, 4, '#8a8a8a');
+      }
+      R(-6, -16, 3, 2, '#ffe9a0'); R(3, -16, 3, 2, '#ffe9a0'); R(-6, 14, 3, 1, '#ff3b2e'); R(3, 14, 3, 1, '#ff3b2e');
     }
 
     // ——— MƏNZƏRƏ: yol kənarı əşyaları məsafə xanasının hash-indən yaranır (hər keçidə eyni yerdə) ———
@@ -313,13 +368,35 @@ export function runChase(ch, startSec = 0, onSection = null) {
       // varlıqlar
       for (const e of G.ents) {
         const sy = Math.round(PY - (e.d - G.d)); if (sy < -50 || sy > H + 50) continue;
-        if (e.k === 'rock') { x.fillStyle = '#12080c'; x.fillRect(e.x - e.r - 1, sy - e.r, e.r * 2 + 2, e.r * 2); x.fillStyle = e.wreck ? '#4a4a52' : e.plank ? '#6a4a2c' : '#5a4a44'; x.fillRect(e.x - e.r, sy - e.r + 1, e.r * 2, e.r * 2 - 2); x.fillStyle = 'rgba(255,255,255,0.15)'; x.fillRect(e.x - e.r, sy - e.r + 1, e.r * 2, 2); if (e.fire) { const f = Math.floor(G.t * 10 + e.d); x.fillStyle = ['#ffd166', '#ff7a1c', '#fff0b0'][f % 3]; x.fillRect(e.x - 4 + (f % 5), sy - e.r - 5 - (f % 4), 4, 7); x.fillRect(e.x + 1 - (f % 3), sy - e.r - 3, 3, 5); } }
-        else if (e.k === 'fuel' || e.k === 'nitro' || e.k === 'fix') { const b = Math.round(Math.sin(G.t * 6 + e.d) * 1.5); x.fillStyle = '#12080c'; x.fillRect(e.x - 6, sy - 8 + b, 12, 14); x.fillStyle = e.k === 'fuel' ? '#e2371c' : e.k === 'nitro' ? '#2a7ad8' : '#3a9a4a'; x.fillRect(e.x - 5, sy - 7 + b, 10, 12); x.fillStyle = '#fff0b0'; if (e.k === 'fuel') { x.fillRect(e.x - 2, sy - 10 + b, 4, 3); x.fillRect(e.x - 3, sy - 3 + b, 6, 2); } else if (e.k === 'nitro') { x.fillRect(e.x - 1, sy - 5 + b, 3, 3); x.fillRect(e.x - 3, sy - 2 + b, 3, 3); x.fillRect(e.x, sy + 1 + b, 2, 3); } else { x.fillRect(e.x - 1, sy - 5 + b, 2, 8); x.fillRect(e.x - 4, sy - 2 + b, 8, 2); } }
-        else if (e.k === 'pole') { if (e.x0 === undefined) continue; if (e.warn > 0) { if (Math.floor(G.t * 12) % 2) { x.fillStyle = 'rgba(255,60,40,0.4)'; x.fillRect(e.x0, sy - 4, e.x1 - e.x0, 8); } } else { x.fillStyle = '#12080c'; x.fillRect(e.x0, sy - 5, e.x1 - e.x0, 10); x.fillStyle = '#6a4a2c'; x.fillRect(e.x0, sy - 4, e.x1 - e.x0, 7); x.fillStyle = '#ff7a1c'; for (let px = e.x0 + 6; px < e.x1 - 4; px += 14) x.fillRect(px + (Math.floor(G.t * 9) % 3), sy - 8, 4, 5); } }
-        else if (e.k === 'chaser') { if (e.st === 'sleep') continue; if (e.st === 'aim' && Math.floor(G.t * 16) % 2) { x.fillStyle = 'rgba(255,60,40,0.5)'; x.fillRect(Math.min(e.x, G.x), sy - 2, Math.abs(e.x - G.x), 4); } car(e.x, sy, 'foe', e.vx * 0.02); }
+        if (e.k === 'rock') {
+          const f = Math.floor(G.t * 10 + e.d), kind = e.wreck ? 3 : e.plank ? 2 : (Math.floor(e.d) % 3);
+          P(e.x - 10, sy + 6, 20, 3, 'rgba(0,0,0,0.3)');
+          if (kind === 3) {            // qəzalı maşın karkası
+            P(e.x - 8, sy - 12, 16, 24, '#12080c'); P(e.x - 7, sy - 11, 14, 22, '#4a4a52'); P(e.x - 7, sy - 11, 3, 22, '#5a5a62'); P(e.x - 5, sy - 4, 10, 6, '#1c1418'); P(e.x - 7, sy - 11, 14, 3, '#3a3a40'); P(e.x - 9, sy - 8, 2, 5, '#1c1418'); P(e.x + 7, sy + 3, 2, 5, '#1c1418'); P(e.x - 2, sy + 5, 5, 3, '#6a3a2a');
+          } else if (kind === 2) {     // körpüdə qopmuş taxtalar
+            P(e.x - 9, sy - 4, 18, 9, '#12080c'); P(e.x - 8, sy - 3, 16, 3, '#7a5a34'); P(e.x - 6, sy + 1, 14, 3, '#6a4a2c'); P(e.x - 8, sy - 3, 16, 1, '#9a7a4a'); P(e.x - 2, sy - 6, 2, 12, '#3a2a1e'); P(e.x + 5, sy - 5, 1, 9, '#b9b9c4');
+          } else if (kind === 1) {     // təkər yığını
+            for (const [ox, oy] of [[-5, 2], [5, 3], [0, -5]]) { P(e.x + ox - 6, sy + oy - 5, 12, 10, '#12080c'); P(e.x + ox - 5, sy + oy - 4, 10, 8, '#2a2428'); P(e.x + ox - 2, sy + oy - 2, 4, 4, '#12080c'); P(e.x + ox - 5, sy + oy - 4, 10, 1, '#4a4448'); }
+          } else if (kind === 0) {     // sipər: çarpaz tirlər və tikanlar
+            P(e.x - 10, sy - 5, 20, 10, '#12080c'); P(e.x - 9, sy - 4, 18, 3, '#6a4a2c'); P(e.x - 9, sy + 1, 18, 3, '#5a3e24'); P(e.x - 9, sy - 4, 18, 1, '#8a6a44'); for (let i = -8; i <= 6; i += 5) { P(e.x + i, sy - 8, 2, 4, '#b9b9c4'); P(e.x + i, sy + 4, 2, 4, '#8a8a8a'); }
+          } else {                     // qaya
+            P(e.x - e.r - 1, sy - e.r, e.r * 2 + 2, e.r * 2, '#12080c'); P(e.x - e.r, sy - e.r + 1, e.r * 2, e.r * 2 - 2, '#6a5a52'); P(e.x - e.r, sy - e.r + 1, e.r * 2, 3, '#8a7a70'); P(e.x + e.r - 4, sy - e.r + 4, 4, e.r * 2 - 6, '#4a3e3a'); P(e.x - 3, sy - 1, 5, 1, '#3a302c');
+          }
+          if (e.fire) { for (let i = 0; i < 4; i++) P(e.x - 6 + i * 4 + (f + i) % 2, sy - 10 - ((f + i * 2) % 5), 3, 6 + ((f + i) % 3), ['#ffd166', '#ff7a1c', '#fff0b0', '#b3261e'][(f + i) % 4]); }
+        }
+        else if (e.k === 'fuel' || e.k === 'nitro' || e.k === 'fix') {
+          const bb = Math.round(Math.sin(G.t * 6 + e.d) * 1.5), py = sy + bb;
+          x.fillStyle = e.k === 'fuel' ? 'rgba(255,180,60,0.22)' : e.k === 'nitro' ? 'rgba(90,180,255,0.22)' : 'rgba(120,220,130,0.22)'; x.beginPath(); x.arc(e.x, sy, 12 + Math.sin(G.t * 5 + e.d) * 2, 0, 7); x.fill();
+          if (e.k === 'fuel') { P(e.x - 6, py - 8, 12, 15, '#12080c'); P(e.x - 5, py - 7, 10, 13, '#c9281a'); P(e.x - 5, py - 7, 3, 13, '#e8442c'); P(e.x - 2, py - 10, 5, 3, '#12080c'); P(e.x - 1, py - 9, 3, 1, '#8a8a8a'); P(e.x - 3, py - 3, 6, 1, '#12080c'); P(e.x - 3, py - 1, 6, 5, '#ffd166'); P(e.x - 1, py, 2, 3, '#c9281a'); }
+          else if (e.k === 'nitro') { P(e.x - 4, py - 9, 8, 17, '#12080c'); P(e.x - 3, py - 6, 6, 13, '#2a7ad8'); P(e.x - 3, py - 6, 2, 13, '#5aa8ff'); P(e.x - 2, py - 9, 4, 3, '#b9b9c4'); P(e.x - 3, py - 1, 6, 4, '#fff'); P(e.x - 1, py - 1, 2, 1, '#2a7ad8'); P(e.x - 2, py + 1, 2, 1, '#2a7ad8'); P(e.x, py + 2, 2, 1, '#2a7ad8'); }
+          else { P(e.x - 7, py - 6, 14, 12, '#12080c'); P(e.x - 6, py - 5, 12, 10, '#e8dcc0'); P(e.x - 6, py - 5, 12, 2, '#fff'); P(e.x - 1, py - 4, 2, 8, '#c9281a'); P(e.x - 4, py - 1, 8, 2, '#c9281a'); }
+        }
+        else if (e.k === 'pole') { if (e.x0 === undefined) continue; if (e.warn > 0) { if (Math.floor(G.t * 12) % 2) { x.fillStyle = 'rgba(255,60,40,0.4)'; x.fillRect(e.x0, sy - 4, e.x1 - e.x0, 8); } } else { P(e.x0, sy + 5, e.x1 - e.x0, 3, 'rgba(0,0,0,0.3)'); P(e.x0, sy - 5, e.x1 - e.x0, 10, '#12080c'); P(e.x0, sy - 4, e.x1 - e.x0, 7, '#6a4a2c'); P(e.x0, sy - 4, e.x1 - e.x0, 2, '#8a6a44'); for (let px = e.x0 + 10; px < e.x1 - 6; px += 22) { P(px, sy - 4, 2, 7, '#3a2a1e'); } const end = e.side < 0 ? e.x1 - 8 : e.x0; P(end, sy - 9, 8, 18, '#12080c'); P(end + 1, sy - 8, 6, 16, '#5a3e24'); P(end + 2, sy - 11, 1, 5, '#1c1418'); P(end + 5, sy + 6, 1, 6, '#1c1418'); for (let px = e.x0 + 6; px < e.x1 - 4; px += 12) { const f = Math.floor(G.t * 9 + px); P(px + (f % 3), sy - 9 - (f % 3), 4, 6, ['#ff7a1c', '#ffd166', '#b3261e'][f % 3]); } } }
+        else if (e.k === 'chaser') { if (e.st === 'sleep') continue; if (e.st === 'aim' && Math.floor(G.t * 16) % 2) { x.fillStyle = 'rgba(255,60,40,0.5)'; x.fillRect(Math.min(e.x, G.x), sy - 2, Math.abs(e.x - G.x), 4); } car(e.x, sy, 'foe', e.vx * 0.02, 1, e.v || 0, e.st === 'aim' && Math.floor(G.t * 16) % 2 === 0); }
         else if (e.k === 'cloud') { for (let i = 0; i < 6; i++) { const a = i * 1.05 + G.t * 0.4, rr = e.r * 0.5; x.fillStyle = `rgba(120,220,90,${0.2 + (i % 3) * 0.06})`; x.beginPath(); x.arc(e.x + Math.cos(a) * rr, sy + Math.sin(a) * rr * 0.7, e.r * 0.62, 0, 7); x.fill(); } }
-        else if (e.k === 'barrel') { x.fillStyle = '#12080c'; x.fillRect(e.x - 7, sy - 7, 14, 14); x.fillStyle = '#8a3a1c'; x.fillRect(e.x - 6, sy - 6, 12, 12); x.fillStyle = '#c9a98a'; x.fillRect(e.x - 6, sy - 6 + (Math.floor(e.rot || 0) % 4) * 3, 12, 2); }
-        else if (e.k === 'chain') { const c = cxAt(e.d), w2 = S.hw(e.d), on = e.tt > 0.9; if (!on && Math.floor(G.t * 12) % 2 === 0) continue; x.fillStyle = on ? '#b9b9c4' : 'rgba(255,60,40,0.5)'; x.fillRect(c - w2, sy - 2, Math.max(0, e.gap - 22 - (c - w2)), 5); x.fillRect(e.gap + 22, sy - 2, Math.max(0, c + w2 - e.gap - 22), 5); if (!on) { x.fillStyle = '#7fbf7a'; x.fillRect(e.gap - 3, sy - 6, 6, 12); } }
+        else if (e.k === 'barrel') { const ro = Math.floor(e.rot || 0) % 4; P(e.x - 8, sy + 6, 16, 2, 'rgba(0,0,0,0.3)'); P(e.x - 8, sy - 7, 16, 14, '#12080c'); P(e.x - 7, sy - 6, 14, 12, '#8a3a1c'); P(e.x - 7, sy - 6, 14, 2, '#b0502a'); P(e.x - 7, sy - 6 + ro * 3, 14, 2, '#c9a98a'); P(e.x - 7, sy - 6 + ((ro + 2) % 4) * 3, 14, 1, '#5a2410'); P(e.x - 2, sy - 2, 4, 4, '#ffb53a'); P(e.x - 1, sy - 1, 2, 2, '#12080c'); if (Math.floor(G.t * 10) % 2) P(e.x - 1, sy - 10, 2, 3, '#ff7a1c'); }
+        else if (e.k === 'chain') { const c = cxAt(e.d), w2 = S.hw(e.d), on = e.tt > 0.9; if (!on && Math.floor(G.t * 12) % 2 === 0) continue; if (!on) { P(c - w2, sy - 2, Math.max(0, e.gap - 22 - (c - w2)), 5, 'rgba(255,60,40,0.5)'); P(e.gap + 22, sy - 2, Math.max(0, c + w2 - e.gap - 22), 5, 'rgba(255,60,40,0.5)'); P(e.gap - 4, sy - 7, 8, 14, '#7fbf7a'); P(e.gap - 1, sy - 4, 2, 6, '#12080c'); P(e.gap - 3, sy - 1, 6, 2, '#12080c'); }
+          else { for (const [a0, a1] of [[c - w2, e.gap - 22], [e.gap + 22, c + w2]]) { for (let lx = a0; lx < a1 - 4; lx += 6) { P(lx, sy - 3, 6, 6, '#12080c'); P(lx + 1, sy - 2, 4, 4, (Math.floor(lx / 6) % 2) ? '#b9b9c4' : '#8a8a96'); P(lx + 2, sy - 1, 2, 2, '#12080c'); } } P(e.gap - 26, sy - 5, 5, 10, '#d8d8e0'); P(e.gap + 21, sy - 5, 5, 10, '#d8d8e0'); } }
       }
       if (S.id === 'truck') { const T = G.truck, ty = T.pass ? 46 + T.pass * 260 : 46; if (ty < H + 60) car(T.x, ty, 'truck'); }
       if (S.id === 'bridge') for (const b of G.bikes) { if (G.hook === b) { x.strokeStyle = '#c9a98a'; x.lineWidth = 1; x.beginPath(); x.moveTo(b.x, PY - 2); x.lineTo(G.x, PY); x.stroke(); } car(b.x, PY + b.off, 'bike'); }
