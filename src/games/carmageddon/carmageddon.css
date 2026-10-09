@@ -237,6 +237,14 @@ body.cg-on #game-canvas, body.cg-on #mute-btn { visibility: hidden; }
   transition: opacity 0.8s ease;
 }
 .cgs__hint.is-out { opacity: 0; }
+/* virtual çubuq (toxunuş) və əməl düyməsi */
+.cgs__stick { position: fixed; z-index: 3; width: 92px; height: 92px; margin: -46px 0 0 -46px; border: 3px solid rgba(240, 231, 200, 0.45); border-radius: 50%; background: rgba(18, 8, 12, 0.28); pointer-events: none; }
+.cgs__stick[hidden] { display: none; }
+.cgs__stick i { position: absolute; left: 50%; top: 50%; width: 38px; height: 38px; margin: -19px; border-radius: 50%; background: rgba(255, 181, 58, 0.8); box-shadow: 0 0 0 3px rgba(18, 8, 12, 0.7); }
+.cgs__act { position: absolute; right: max(18px, env(safe-area-inset-right)); bottom: max(18px, env(safe-area-inset-bottom)); z-index: 3; width: clamp(60px, 18vh, 84px); height: clamp(60px, 18vh, 84px);
+  font-size: clamp(24px, 7vh, 36px); background: rgba(18, 8, 12, 0.7); border: 3px solid var(--cg-amber); border-radius: 0; box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.6); touch-action: none; }
+.cgs__act[hidden] { display: none; }
+.cgs.is-world { touch-action: none; }
 
 /* ——— Düşərgənin kiçik oyunları (bax minigame.js) ——— */
 .cgm { position: absolute; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; background: rgba(10, 5, 8, 0.55); font-family: var(--cg-caps); }

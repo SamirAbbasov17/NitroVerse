@@ -142,6 +142,8 @@ test('düşərgə telefonda: toxunuşla yeriyir, sakinə toxunanda yanına gedib
   await page.waitForTimeout(1500);
   const b = await page.evaluate(() => ({ ...window.__cgStory.world.p }));
   expect(Math.hypot(a.x - b.x, a.y - b.y), 'toxunuşla yeridi').toBeGreaterThan(30);
+  // toxunulan yerin yaxınlığında baxış nöqtəsi vardısa, fiqur indi ora çatıb danışır (yol tapma) — onu bağla
+  await page.waitForTimeout(1500); await tapTalk(); await page.evaluate(() => { window.__cgStory.world.goal = null; });
   // ekrandakı sakinə (Milo deyil — ən yaxın görünən) toxunuş: yanına gedir və dialoq açılır
   const tgt = await page.evaluate(() => {
     const w = window.__cgStory.world, r = w.cv.getBoundingClientRect();
@@ -177,7 +179,7 @@ test('düşərgə: toqquşma konturları — hər şeyə çatmaq olur, obyektin 
     wander.forEach((e, i) => { e.hidden = hid[i]; });
     const reach = (ex, ey, d) => { for (let j = Math.max(0, Math.floor((ey - d) / G)); j <= Math.min(N - 1, Math.ceil((ey + d) / G)); j++) for (let i = Math.max(0, Math.floor((ex - d) / G)); i <= Math.min(N - 1, Math.ceil((ex + d) / G)); i++) if (seen[j * N + i] && Math.hypot(i * G + 1 - ex, j * G + 1 - ey) <= d) return true; return false; };
     const unreachable = w.ents.filter((e) => (e.use || e.kind === 'npc') && !reach(e.x, e.y, 24 + (e.r || 0))).map((e) => `${e.id}@${e.x},${e.y}`);
-    const inside = [[150, 130], [90, 300], [500, 120], [560, 380], [150, 500], [490, 480], [320, 315], [320, 264]].filter(([x, y]) => !w._blocked(x, y)).map((p) => p.join(','));
+    const inside = [[150, 150], [90, 300], [500, 150], [560, 400], [150, 530], [490, 520], [320, 318]].filter(([x, y]) => !w._blocked(x, y)).map((p) => p.join(','));
     const open = [[320, 200], [320, 440], [260, 240], [420, 300], [330, 600], [300, 110]].filter(([x, y]) => w._blocked(x, y)).map((p) => p.join(','));
     return { unreachable, inside, open, share: Math.round((seen.reduce((a, b) => a + b, 0) / (N * N)) * 100) };
   });
@@ -435,4 +437,73 @@ test('düşərgə: danışmaq üçün köpük, baxmaq üçün lupa işarəsi', a
   expect(look.isNear, 'baxış yeri əl çatandadır').toBe(true);
   expect(look.amber, 'lupa: kəhrəba halqa').toBeGreaterThan(12);
   expect(look.light, 'lupa köpük deyil').toBeLessThan(talk.light);
+});
+
+// OBYEKTLƏRİN ARXASI, YOL TAPMA, VİRTUAL ÇUBUQ, GÖRÜNƏN SAHƏ:
+//  • çadırın yuxarı (arxa) hissəsinə girmək olur, dibinə yox; arxada olanda çadır fiqurun üstündən çəkilir, amma
+//    fiqurun silueti görünür (piksellə ölçülür);
+//  • toxunuş maneənin o tayına olanda fiqur dolanıb çatır (düz xətt bağlıdır);
+//  • telefonda barmağı sürüşdürəndə fiqur həmin istiqamətə gedir; yaxında sakin olanda əməl düyməsi çıxır;
+//  • enli pəncərədə (kətanın üstü-altı kəsilir) kamera və nişanlar görünən sahədə qalır.
+test('düşərgə: obyektin arxasına keçmək, yol tapma, çubuq, görünən sahə', async ({ browser }) => {
+  test.setTimeout(150_000);
+  const ctx = await browser.newContext({ viewport: { width: 900, height: 380 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
+  const page = await ctx.newPage();
+  const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+  await boot(page);
+  await toCamp(page);
+  await skipTalk(page);
+  // 1) arxa və dib: ev çadırının konturu y 400…590, dib xətti ≈ 480
+  const col = await page.evaluate(() => { const w = window.__cgStory.world; const hid = w.ents.filter((e) => e.kind === 'npc'); hid.forEach((e) => { e.hidden = true; }); const r = { back: w._blocked(490, 440), base: w._blocked(490, 520), front: w._blocked(470, 600) }; hid.forEach((e) => { e.hidden = false; }); return r; });
+  expect(col, 'arxa açıq, dib bağlı, qabaq açıq').toEqual({ back: false, base: true, front: false });
+  const pix = async (x, y) => { await page.evaluate(([a, b]) => { const w = window.__cgStory.world; w.p.x = a; w.p.y = b; w.p.dir = 0; w.goal = null; }, [x, y]); await page.waitForTimeout(200); return page.evaluate(() => { const w = window.__cgStory.world, d = w.cx.getImageData(Math.round(w.p.x - w.camX) - 8, Math.round(w.p.y - w.camY) - 40, 16, 30).data; let red = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 190 && d[i + 1] < 90 && d[i + 2] < 70) red++; return red; }); };
+  const openRed = await pix(330, 420), behindRed = await pix(490, 440);
+  await page.screenshot({ path: path.join(DIR, 'camp-behind.png') });
+  console.log('saç pikselləri — açıqda:', openRed, 'çadırın arxasında:', behindRed);
+  expect(openRed, 'açıqda Ember tam görünür (qırmızı saç)').toBeGreaterThan(40);
+  expect(behindRed, 'çadırın arxasında çadır üstdən çəkilir — parlaq qırmızı piksel qalmır').toBeLessThan(openRed * 0.25);
+  // 2) yol tapma: bostanın bir tərəfindən o birinə — düz xətt bağlıdır, yol dolanır
+  const nav = await page.evaluate(async () => {
+    const w = window.__cgStory.world; w.p.x = 190; w.p.y = 250; const tx = 110, ty = 420;
+    const n = 30; let straight = true; for (let k = 1; k <= n; k++) if (w._blocked(w.p.x + ((tx - w.p.x) * k) / n, w.p.y + ((ty - w.p.y) * k) / n)) straight = false;
+    const r = w.cv.getBoundingClientRect(); w.tapAt(r.left + ((tx - w.camX) / 480) * r.width, r.top + ((ty - w.camY) / 270) * r.height);
+    const pts = w.goal?.path?.length || 0; const t0 = performance.now();
+    await new Promise((res) => { const f = () => { if (!w.goal || performance.now() - t0 > 9000) res(); else requestAnimationFrame(f); }; f(); });
+    return { straight, pts, dist: Math.round(Math.hypot(w.p.x - tx, w.p.y - ty)), ms: Math.round(performance.now() - t0) };
+  });
+  console.log('yol tapma:', JSON.stringify(nav));
+  expect(nav.straight, 'düz xətt bağlıdır').toBe(false);
+  expect(nav.pts, 'yol bir neçə dönüş nöqtəsindən keçir').toBeGreaterThanOrEqual(2);
+  expect(nav.dist, 'fiqur hədəfə çatdı (ilişmədi)').toBeLessThan(10);
+  // 3) virtual çubuq: barmağı sağa sürüşdür — fiqur sağa gedir; burax — dayanır
+  await page.evaluate(() => { const w = window.__cgStory.world; w.p.x = 330; w.p.y = 420; w.goal = null; });
+  const x0 = await page.evaluate(() => window.__cgStory.world.p.x);
+  const fire = (type, x, y) => page.evaluate(([t, a, b]) => { const el = document.querySelector('.cgs'); (t === 'pointerdown' ? el : window).dispatchEvent(new PointerEvent(t, { bubbles: true, pointerId: 5, pointerType: 'touch', clientX: a, clientY: b })); }, [type, x, y]);
+  await fire('pointerdown', 200, 250); await fire('pointermove', 216, 250); await fire('pointermove', 250, 252);
+  await expect(page.locator('.cgs__stick')).toBeVisible();
+  await page.waitForTimeout(600);
+  const x1 = await page.evaluate(() => window.__cgStory.world.p.x);
+  await fire('pointerup', 250, 252); await page.waitForTimeout(150);
+  const x2 = await page.evaluate(() => window.__cgStory.world.p.x); await page.waitForTimeout(300);
+  expect(x1 - x0, 'çubuqla sağa getdi').toBeGreaterThan(25);
+  expect(Math.abs((await page.evaluate(() => window.__cgStory.world.p.x)) - x2), 'buraxanda dayandı').toBeLessThan(1);
+  await expect(page.locator('.cgs__stick')).toBeHidden();
+  // 4) əməl düyməsi: sakinin yanında çıxır və basanda danışıq açılır
+  await page.evaluate(() => { const w = window.__cgStory.world, en = w.get('wren'); w.p.x = en.x; w.p.y = en.y + 14; });
+  await expect(page.locator('.cgs__act')).toBeVisible();
+  await page.locator('.cgs__act').dispatchEvent('pointerdown');
+  await page.waitForFunction(() => !window.__cgStory.dlg.el.hidden, null, { timeout: 4000 });
+  await skipTalk(page);
+  // 5) görünən sahə: 900×380 pəncərədə kətanın üstündən və altından ~33 px kəsilir; xəritənin yuxarı kənarında
+  //    fiqur və nişanlar görünən sahədədir
+  const vis = await page.evaluate(async () => {
+    const w = window.__cgStory.world; w.p.x = 320; w.p.y = 40; await new Promise((r) => setTimeout(r, 200));
+    const v = w.vis, sy = w.p.y - w.camY; return { y0: Math.round(v.y0), y1: Math.round(v.y1), headOnScreen: sy - 44 >= v.y0, camY: w.camY };
+  });
+  console.log('görünən sahə:', JSON.stringify(vis));
+  expect(vis.y0, 'kətanın üstü kəsilir (enli pəncərə)').toBeGreaterThan(10);
+  expect(vis.headOnScreen, 'xəritənin yuxarı kənarında fiqurun başı ekrandadır').toBe(true);
+  await page.screenshot({ path: path.join(DIR, 'camp-top-edge.png') });
+  expect(errs).toEqual([]);
+  await ctx.close();
 });

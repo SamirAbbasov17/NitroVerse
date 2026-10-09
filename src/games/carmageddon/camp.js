@@ -28,12 +28,14 @@ const LOOK = {
 // Maneələr xəritədəki obyektlərin GÖRÜNƏN konturu ilə çəkilib (izometrik çadır romb şəklindədir — düzbucaqlı
 // ya boş quma dirənirdi, ya da çadırın içinə buraxırdı). Önbaxış: scratchpad tools/solids.py; test: carmageddon-camp.
 export const SOLIDS = [
-  { poly: [[60, 125], [142, 42], [235, 112], [220, 170], [165, 220], [55, 165]] },                                              // ağsaqqal çadırı
-  { poly: [[22, 172], [165, 255], [165, 345], [95, 395], [20, 325]] },                                                          // bostan
-  { poly: [[390, 125], [415, 55], [522, 58], [585, 115], [625, 215], [585, 238], [515, 202], [500, 176], [470, 180], [435, 182], [395, 165]] },   // emalatxana
-  { poly: [[538, 280], [570, 292], [602, 325], [600, 350], [575, 362], [582, 415], [550, 442], [515, 418], [540, 320]] },      // radio dirəyi və köşk
-  { poly: [[59, 492], [80, 475], [175, 405], [246, 456], [246, 515], [265, 522], [262, 552], [235, 555], [200, 540], [192, 600], [155, 602], [150, 575], [108, 570], [100, 550], [60, 545]] },   // məktəb çadırı
-  { poly: [[408, 465], [485, 400], [570, 462], [575, 445], [605, 448], [614, 500], [582, 505], [580, 522], [520, 560], [522, 588], [492, 590], [488, 568], [450, 558], [402, 538], [390, 510]] }, // ev
+  // back — konturun yuxarıdan neçə faizi "arxa"dır (ora girmək olur, fiqur obyektin arxasında qalır);
+  // flat — yastı sahə (bostan): arxası yoxdur, üstündən çəkilmir
+  { poly: [[60, 125], [142, 42], [235, 112], [220, 170], [165, 220], [55, 165]], back: 0.42 },                                              // ağsaqqal çadırı
+  { poly: [[22, 172], [165, 255], [165, 345], [95, 395], [20, 325]], flat: true },                                                          // bostan
+  { poly: [[390, 125], [415, 55], [522, 58], [585, 115], [625, 215], [585, 238], [515, 202], [500, 176], [470, 180], [435, 182], [395, 165]], back: 0.3 },   // emalatxana
+  { poly: [[538, 280], [570, 292], [602, 325], [600, 350], [575, 362], [582, 415], [550, 442], [515, 418], [540, 320]], back: 0.5 },      // radio dirəyi və köşk
+  { poly: [[59, 492], [80, 475], [175, 405], [246, 456], [246, 515], [265, 522], [262, 552], [235, 555], [200, 540], [192, 600], [155, 602], [150, 575], [108, 570], [100, 550], [60, 545]], back: 0.42 },   // məktəb çadırı
+  { poly: [[408, 465], [485, 400], [570, 462], [575, 445], [605, 448], [614, 500], [582, 505], [580, 522], [520, 560], [522, 588], [492, 590], [488, 568], [450, 558], [402, 538], [390, 510]], back: 0.42 }, // ev
   { cx: 245, cy: 145, r: 14 }, { cx: 238, cy: 42, r: 12 }, { cx: 197, cy: 33, r: 7 }, { cx: 60, cy: 38, r: 12 }, { cx: 598, cy: 48, r: 16 },          // quyular, çəllək, daşlar
   { cx: 320, cy: 315, r: 18 },                                                                                                                         // ocaq
   ...[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((a) => ({ cx: 320 + Math.cos((a * Math.PI) / 180) * 78, cy: 318 + Math.sin((a * Math.PI) / 180) * 54, r: 12 })),   // oturacaq halqası (qapalı)
@@ -119,14 +121,15 @@ export async function runCamp(ch) {
     for (const tg of targets()) {
       if (nr && tg.x === nr.x && tg.y === nr.y) continue;      // əl çatan hədəfin üstündə artıq danışıq / lupa işarəsi var
       const sx = tg.x - w.camX, sy = tg.y - tg.up - w.camY;
-      if (sx > 12 && sx < 468 && sy > 30 && sy < 262) {
+      const vr = w.vis;      // ekranda GÖRÜNƏN sahə — nişan heç vaxt kəsilən kənarda qalmır
+      if (sx > vr.x0 + 12 && sx < vr.x1 - 12 && sy > vr.y0 + 30 && sy < vr.y1 - 8) {
         const x0 = Math.round(tg.x), y0 = Math.round(tg.y - tg.up) + bob;
         if (tg.act === 'new') { c.fillStyle = ink; c.fillRect(x0 - 4, y0 - 10, 9, 12); c.fillStyle = tg.c; c.fillRect(x0 - 3, y0 - 9, 7, 10); c.fillStyle = ink; c.fillRect(x0 - 1, y0 - 8, 3, 5); c.fillRect(x0 - 1, y0 - 2, 3, 2); }   // yeni tapşırıq: «!»
         else badge(c, x0, y0, tg);
       } else {
         // ekrandan kənarda: kənarda istiqamət oxu, yanında sahibin portreti (aşağıda bir yerdə çəkilir ki, üst-üstə düşməsinlər)
         const px = w.p.x - w.camX, py = w.p.y - 16 - w.camY, a = Math.atan2(sy - py, sx - px);
-        const k = Math.min((sx > px ? 462 - px : px - 18) / Math.max(1e-3, Math.abs(Math.cos(a))), (sy > py ? 252 - py : py - 18) / Math.max(1e-3, Math.abs(Math.sin(a))));
+        const k = Math.min((sx > px ? vr.x1 - 18 - px : px - vr.x0 - 18) / Math.max(1e-3, Math.abs(Math.cos(a))), (sy > py ? vr.y1 - 18 - py : py - vr.y0 - 18) / Math.max(1e-3, Math.abs(Math.sin(a))));
         edge.push({ x: px + Math.cos(a) * k, y: py + Math.sin(a) * k, a, tg });
       }
     }
@@ -135,8 +138,9 @@ export async function runCamp(ch) {
     edge.forEach((m, i) => {
       for (let guard = 0; guard < 8; guard++) {
         const hit = edge.slice(0, i).find((o) => Math.abs(o.x - m.x) < 21 && Math.abs(o.y - m.y) < 21); if (!hit) break;
-        if (m.y > 240 || m.y < 30) m.x = Math.min(462, hit.x + 21); else m.y = Math.min(252, hit.y + 21);
-        if (m.x >= 462 && m.y > 240) { m.y -= 21; }
+        const vr = w.vis;
+        if (m.y > vr.y1 - 30 || m.y < vr.y0 + 30) m.x = Math.min(vr.x1 - 18, hit.x + 21); else m.y = Math.min(vr.y1 - 18, hit.y + 21);
+        if (m.x >= vr.x1 - 18 && m.y > vr.y1 - 30) { m.y -= 21; }
       }
       const ex = w.camX + m.x, ey = w.camY + m.y, pulse = 1 + Math.round(Math.abs(Math.sin(w.t * 4)) * 1), tg = m.tg, a = m.a;
       c.save(); c.translate(Math.round(ex), Math.round(ey)); c.rotate(a);

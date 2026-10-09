@@ -9,6 +9,7 @@
 // Hissələr arasında ara səhnə oynanır (onCut — bax chapter1.js, script.js: CHASE_CUTS).
 import { t } from '../../core/i18n.js';
 import { audio } from '../../core/AudioManager.js';
+import { visRect } from './world.js';
 
 const W = 480, H = 270, PY = 200;       // PY — yolun ekrandakı istinad xətti; oyunçu onun ətrafında irəli-geri gedir (G.y)
 const Y_MIN = 112, Y_MAX = 236;
@@ -165,7 +166,8 @@ export function runChase(ch, startSec = 0, onSection = null, onCut = null) {
       G.vx += (st * 170 + (G.hook ? G.hook.side * 80 : 0) - G.vx) * Math.min(1, dt * 12);
       G.vy += (fb * (fb > 0 ? 150 : 120) - G.vy) * Math.min(1, dt * 10);
       G.x += G.vx * dt;
-      G.y = Math.max(S.id === 'truck' ? 150 : Y_MIN, Math.min(Y_MAX, G.y + G.vy * dt));
+      // enli pəncərədə kətanın altı kəsilir — maşın görünən sahədən aşağı düşməsin
+      G.y = Math.max(S.id === 'truck' ? 150 : Y_MIN, Math.min(Math.min(Y_MAX, visRect(cv).y1 - 30), G.y + G.vy * dt));
       // sürət: əyləc / nitro / qarmaq
       G.boost = Math.max(0, G.boost - dt);
       let target = S.speed * (G.boost > 0 ? 1.65 : 1) * (G.hook ? 0.68 : 1);

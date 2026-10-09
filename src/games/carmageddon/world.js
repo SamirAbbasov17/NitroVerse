@@ -1,9 +1,21 @@
 // CARMAGEDDON — yuxarıdan baxışlı (top-down) gəzinti mühərriki.
 // Dünya = bir xəritə şəkli + toqquşma fiqurları + varlıqlar (sakinlər, əşyalar, baxıla bilən yerlər).
-// Kətan 480×270-dir, kamera oyunçunu izləyir. İdarə: oxlar / WASD, danışmaq — E / Enter / boşluq;
-// telefonda ekrana toxunuş: ora yeriyir, sakinə və ya əşyaya toxunanda yanına gedib özü danışır.
+// Kətan 480×270-dir, kamera oyunçunu izləyir. İdarə: oxlar / WASD, danışmaq — E / Enter / boşluq.
+// Telefonda: barmağı sürüşdürəndə virtual çubuq (hər yerdən), qısa toxunuş — ora yol tapıb gedir (maneələrin
+// ətrafından dolanır), sakinə/əşyaya toxunanda yanına gedib özü danışır; yaxında varlıq olanda əməl düyməsi çıxır.
+// OBYEKTLƏR: toqquşma yalnız obyektin DİBİNDƏDİR (`back` — konturun yuxarıdan neçə faizi "arxa" sayılır). Arxa hissəyə
+// girmək olar: onda obyekt fiqurun üstündən yenidən çəkilir (fiqur arxada qalır) və fiqurun solğun silueti görünür.
+// EKRAN: kətan ekranı örtür və 16:9-dan fərqli pəncərədə kənarları kəsilir — kamera və nişanlar GÖRÜNƏN sahəyə görə
+// hesablanır (bax visRect), ona görə heç nə ekrandan kənarda qalmır.
 // Varlıqlar və tapşırıq məntiqi ayrıca verilir (bax camp.js).
 import { drawSprite } from './sprites.js';
+
+// Kətanın ekranda GÖRÜNƏN hissəsi (kətan koordinatında)
+export function visRect(cv) {
+  const r = cv.getBoundingClientRect(); if (!r.width || !r.height) return { x0: 0, y0: 0, x1: cv.width, y1: cv.height };
+  const kx = cv.width / r.width, ky = cv.height / r.height;
+  return { x0: Math.max(0, -r.left) * kx, y0: Math.max(0, -r.top) * ky, x1: Math.min(cv.width, (innerWidth - r.left) * kx), y1: Math.min(cv.height, (innerHeight - r.top) * ky) };
+}
 
 const W = 480, H = 270;
 const SPEED = 64, RUN = 112;   // px/s: yeriş və qaçış (Shift basılı; toxunuşda uzaq hədəfə özü qaçır)
@@ -15,9 +27,9 @@ const REACH = 28;              // danışmaq / götürmək məsafəsi
 // dibinə qədər gələ bilir: arxasındakı obyekti fiqur təbii örtür, qabağındakına isə ayağı dəymir).
 // Kontur obyektin görünən kənarı ilə çəkilib, ona görə ehtiyat oyunçunun tam radiusu yox, ayağının yarım-enidir.
 const FEET = 3, SIDE = 10;
+function boxOf(s) { if (!s.box) { const xs = s.poly.map((q) => q[0]), ys = s.poly.map((q) => q[1]); s.box = [Math.min(...xs) - SIDE, Math.min(...ys) - FEET, Math.max(...xs) + SIDE, Math.max(...ys) + FEET]; } return s.box; }
 function inPoly(s, x, y) {
-  const p = s.poly;
-  if (!s.box) { const xs = p.map((q) => q[0]), ys = p.map((q) => q[1]); s.box = [Math.min(...xs) - SIDE, Math.min(...ys) - FEET, Math.max(...xs) + SIDE, Math.max(...ys) + FEET]; }
+  const p = s.poly; boxOf(s);
   if (x < s.box[0] || y < s.box[1] || x > s.box[2] || y > s.box[3]) return false;
   let inside = false;
   for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
@@ -29,6 +41,9 @@ function inPoly(s, x, y) {
   }
   return inside;
 }
+// obyektin "dib xətti": ondan yuxarı (kiçik y) — arxa hissədir, oraya girmək olar
+function baseY(s) { if (s.by == null) { const ys = s.poly.map((q) => q[1]), y0 = Math.min(...ys), y1 = Math.max(...ys); s.by = y0 + (s.back || 0) * (y1 - y0); } return s.by; }
+const GRID = 8;
 
 export class World {
   // def: { map (şəkil), size, solids: [{x,y,w,h} | {cx,cy,r}], spawn: {x,y} }
@@ -51,20 +66,49 @@ export class World {
       else if (['KeyE', 'Enter', 'Space'].includes(e.code)) { e.preventDefault(); this.interact(); }
     };
     this._ku = (e) => { this.shift = e.shiftKey; this.keys.delete(e.code); };
-    this._tap = (e) => {
-      if (this.busy || this.dead || e.target.closest('button')) return;
+    // toxunuş / klik: ora get (yol tapılır); varlığın yaxınlığına toxunanda — onun yanına
+    this.tapAt = (cx, cy) => {
+      if (this.busy || this.dead) return;
       const r = this.cv.getBoundingClientRect();
-      const sx = ((e.clientX - r.left) / r.width) * W, sy = ((e.clientY - r.top) / r.height) * H;
-      const wx = sx + this.camX, wy = sy + this.camY;
-      // toxunulan yerin yaxınlığındakı varlıq (barmaq üçün geniş hədəf)
+      const wx = ((cx - r.left) / r.width) * W + this.camX, wy = ((cy - r.top) / r.height) * H + this.camY;
       let hit = null, best = 26;
       for (const en of this.ents) { if (en.hidden) continue; const d = Math.hypot(en.x - wx, (en.y - (en.kind === 'npc' ? 16 : 6)) - wy); if (d < best) { best = d; hit = en; } }
       this.goal = hit ? { x: hit.x, y: hit.y, ent: hit } : { x: wx, y: wy };
+      this.goal.path = this._path(this.goal.x, this.goal.y);
       this.keys.clear();
     };
-    this._blur = () => { this.keys.clear(); this.shift = false; };          // pəncərə fokusdan çıxanda basılı düymə ilişib qalmasın
+    // VİRTUAL ÇUBUQ (toxunuş): barmaq basılıb 10 px-dən çox sürüşəndə çubuq olur — istiqamət başlanğıc nöqtəsinə
+    // görədir; sürüşmədən qaldırılan barmaq adi toxunuşdur.
+    this.stick = null;
+    const pad = (this.padEl = document.createElement('div')); pad.className = 'cgs__stick'; pad.innerHTML = '<i></i>'; pad.hidden = true; layer.appendChild(pad);
+    const act = (this.actEl = document.createElement('button')); act.type = 'button'; act.className = 'cgs__act'; act.hidden = true; layer.appendChild(act);
+    act.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); this.interact(); });
+    let tp = null;
+    this._pd = (e) => {
+      if (this.busy || this.dead || e.target.closest('button')) return;
+      if (e.pointerType === 'mouse') { this.tapAt(e.clientX, e.clientY); return; }
+      tp = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
+    };
+    this._pm = (e) => {
+      if (!tp || e.pointerId !== tp.id) return;
+      const dx = e.clientX - tp.x, dy = e.clientY - tp.y, d = Math.hypot(dx, dy);
+      if (!tp.moved && d < 10) return;
+      tp.moved = true; this.goal = null;
+      const lim = 46, k = Math.min(1, d / lim);
+      this.stick = d > 4 ? { x: (dx / d) * k, y: (dy / d) * k } : null;
+      pad.hidden = false; pad.style.left = tp.x + 'px'; pad.style.top = tp.y + 'px';
+      pad.firstChild.style.transform = `translate(${(dx / (d || 1)) * Math.min(d, lim)}px, ${(dy / (d || 1)) * Math.min(d, lim)}px)`;
+    };
+    this._pu = (e) => {
+      if (!tp || e.pointerId !== tp.id) return;
+      if (!tp.moved) this.tapAt(tp.x, tp.y);
+      tp = null; this.stick = null; pad.hidden = true;
+    };
+    this._blur = () => { this.keys.clear(); this.shift = false; this.stick = null; tp = null; pad.hidden = true; };          // pəncərə fokusdan çıxanda basılı düymə ilişib qalmasın
     addEventListener('keydown', this._kd); addEventListener('keyup', this._ku); addEventListener('blur', this._blur);
-    layer.addEventListener('pointerdown', this._tap);
+    layer.addEventListener('pointerdown', this._pd); addEventListener('pointermove', this._pm); addEventListener('pointerup', this._pu); addEventListener('pointercancel', this._pu);
+    this.touch = matchMedia('(pointer: coarse)').matches;
+    this.vis = { x0: 0, y0: 0, x1: W, y1: H };
     this.camX = 0; this.camY = 0;
     this.last = performance.now();
     this.raf = requestAnimationFrame(this._loop);
@@ -77,12 +121,41 @@ export class World {
     const S = this.def.size;
     if (x < R + 2 || y < R + 12 || x > S - R - 2 || y > S - R - 2) return true;
     for (const s of this.def.solids) {
-      if (s.poly) { if (inPoly(s, x, y)) return true; }
-      else if (s.r) { const ex = (x - s.cx) / (s.r + SIDE), ey = (y - s.cy) / (s.r + 4); if (ex * ex + ey * ey < 1) return true; }
+      // çoxbucaqlı: yalnız dib hissəsi bağlıdır (dib xəttindən yuxarı — arxadır)
+      if (s.poly) { if (y > baseY(s) - FEET && inPoly(s, x, y)) return true; }
+      // dairə (çəllək, quyu, daş…): toqquşma obyektin DİBİNDƏKİ yastı ellipsdir — arxasına keçmək olur
+      else if (s.r) { const ex = (x - s.cx) / (s.r + SIDE - 2), ey = (y - (s.cy + s.r * 0.3)) / (s.r * 0.5 + 3); if (ex * ex + ey * ey < 1) return true; }
       else if (x > s.x - R && x < s.x + s.w + R && y > s.y - R && y < s.y + s.h + R) return true;
     }
     for (const en of this.ents) if (en.kind === 'npc' && !en.hidden) { const ex = (x - en.x) / 17, ey = (y - en.y) / 8; if (ex * ex + ey * ey < 1) return true; }      // sakin: yandan fiqurlar üst-üstə minməsin
     return false;
+  }
+
+  // YOL TAPMA (toxunuş üçün): 8 px-lik torda enə axtarış; hədəf bağlıdırsa — ona ən yaxın çatıla bilən xana.
+  // Nəticə düz xətlə görünən nöqtələrə qədər qısaldılır. Çatmaq mümkün deyilsə null.
+  _path(tx, ty) {
+    const S = this.def.size, N = Math.ceil(S / GRID), cell = (v) => Math.max(0, Math.min(N - 1, Math.floor(v / GRID)));
+    const free = (i, j) => !this._blocked(i * GRID + GRID / 2, j * GRID + GRID / 2);
+    const si = cell(this.p.x), sj = cell(this.p.y), prev = new Int32Array(N * N).fill(-1), q = [sj * N + si]; prev[q[0]] = q[0];
+    let best = q[0], bd = Math.hypot(si * GRID + 4 - tx, sj * GRID + 4 - ty);
+    for (let h = 0; h < q.length; h++) {
+      const c = q[h], i = c % N, j = (c / N) | 0, d = Math.hypot(i * GRID + 4 - tx, j * GRID + 4 - ty);
+      if (d < bd) { bd = d; best = c; }
+      for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+        const x = i + a, y = j + b; if (x < 0 || y < 0 || x >= N || y >= N) continue;
+        const k = y * N + x; if (prev[k] >= 0 || !free(x, y)) continue;
+        if (a && b && (!free(i + a, j) || !free(i, j + b))) continue;      // künc kəsmək olmaz
+        prev[k] = c; q.push(k);
+      }
+    }
+    const pts = []; for (let c = best; c !== prev[c]; c = prev[c]) pts.push({ x: (c % N) * GRID + 4, y: ((c / N) | 0) * GRID + 4 });
+    pts.reverse();
+    if (bd < GRID && !this._blocked(tx, ty)) pts.push({ x: tx, y: ty });
+    // qısaltma: görünən ən uzaq nöqtəyə birbaşa
+    const los = (a, b) => { const d = Math.hypot(b.x - a.x, b.y - a.y), n = Math.ceil(d / 3); for (let k = 1; k <= n; k++) if (this._blocked(a.x + ((b.x - a.x) * k) / n, a.y + ((b.y - a.y) * k) / n)) return false; return true; };
+    const out = []; let cur = { x: this.p.x, y: this.p.y }, i = 0;
+    while (i < pts.length) { let j = pts.length - 1; while (j > i && !los(cur, pts[j])) j--; out.push(pts[j]); cur = pts[j]; i = j + 1; }
+    return out;
   }
 
   // ən yaxın əlçatan varlıq
@@ -109,20 +182,26 @@ export class World {
     if (k.has('ArrowRight') || k.has('KeyD')) vx += 1;
     if (k.has('ArrowUp') || k.has('KeyW')) vy -= 1;
     if (k.has('ArrowDown') || k.has('KeyS')) vy += 1;
+    let analog = 1;
+    if (!vx && !vy && this.stick) { vx = this.stick.x; vy = this.stick.y; analog = Math.max(0.45, Math.hypot(vx, vy)); this.goal = null; }
     if (!vx && !vy && this.goal) {
       const g = this.goal, dx = g.x - this.p.x, dy = g.y - this.p.y, d = Math.hypot(dx, dy);
       const stop = g.ent ? REACH - 4 + (g.ent.r || 0) : 3;
       if (d <= stop) { const en = g.ent; this.goal = null; if (en) this.interact(en); return; }
-      vx = dx / d; vy = dy / d;
+      // yol nöqtələri üzrə get (maneənin ətrafından); yol bitibsə — düz hədəfə
+      while (g.path && g.path.length && Math.hypot(g.path[0].x - this.p.x, g.path[0].y - this.p.y) < 3.5) g.path.shift();
+      if (g.path && g.path.length) { const w = g.path[0], wd = Math.hypot(w.x - this.p.x, w.y - this.p.y); vx = (w.x - this.p.x) / wd; vy = (w.y - this.p.y) / wd; }
+      else if (g.ent || !g.path) { vx = dx / d; vy = dy / d; }
+      else { this.goal = null; return; }           // yolun sonuna çatdıq (hədəfin özü bağlıdır) — dayan
       g.t = (g.t || 0) + dt;
-      if (g.t > 6) this.goal = null;               // çata bilmir (maneə) — əl çək
+      if (g.t > 14) this.goal = null;              // ehtiyat: çox uzun çəkirsə əl çək
     }
     const m = Math.hypot(vx, vy);
     if (!m) { this.p.walk = 0; this.p.run = false; return; }
     vx /= m; vy /= m;
     // qaçış: klaviaturada Shift; toxunuşla seçilmiş hədəf uzaqdadırsa (hədəfə çatanda yerişə keçir)
     const far = this.goal ? Math.hypot(this.goal.x - this.p.x, this.goal.y - this.p.y) : 0;
-    const run = this.goal ? (this.p.run ? far > 34 : far > 84) : !!this.shift;
+    const run = this.goal ? (this.p.run ? far > 34 : far > 84) : this.stick ? analog > 0.86 : !!this.shift;
     this.p.run = run;
     const SPD = run ? RUN : SPEED;
     this.p.dir = Math.abs(vx) > Math.abs(vy) ? (vx < 0 ? 2 : 3) : (vy < 0 ? 1 : 0);
@@ -135,7 +214,12 @@ export class World {
       const rate = run ? 6.5 : 4, st0 = Math.floor(this.p.walk * rate), st1 = Math.floor((this.p.walk + dt) * rate);
       if (st1 !== st0 && (run || st1 % 2 === 0)) for (let i = 0; i < (run ? 3 : 2); i++) this.dust.push({ x: this.p.x + (Math.random() - 0.5) * 6 - vx * 3, y: this.p.y - 1 - Math.random() * 2, a: 1, vx: -vx * 6 + (Math.random() - 0.5) * 8, vy: -6 - Math.random() * 5 });
       this.p.walk += dt;
-    } else if (this.goal) { this.goal.stuck = (this.goal.stuck || 0) + dt; if (this.goal.stuck > 0.7) { const en = this.goal.ent; this.goal = null; if (en && Math.hypot(en.x - this.p.x, en.y - this.p.y) < REACH * 2.2) this.interact(en); } }
+    } else if (this.goal) {
+      // ilişdi (məs. yolu sakin kəsdi): bir dəfə yolu yenidən hesabla; yenə alınmasa dayan
+      const g = this.goal; g.stuck = (g.stuck || 0) + dt;
+      if (g.stuck > 0.35 && !g.retried) { g.retried = true; g.stuck = 0; g.path = this._path(g.x, g.y); }
+      else if (g.stuck > 0.7) { const en = g.ent; this.goal = null; if (en && Math.hypot(en.x - this.p.x, en.y - this.p.y) < REACH * 2.2) this.interact(en); }
+    }
   }
 
   // Gəzişən sakinlər (en.wander = radius): evinin ətrafında yavaş-yavaş yer dəyişir; oyunçu yaxındadırsa
@@ -174,14 +258,19 @@ export class World {
     this._wander(dt);
     this.hooks.onTick?.(dt, this);
     this._draw();
+    // telefonda əməl düyməsi: yaxında danışmaq / baxmaq olan varlıq varsa
+    if (this.touch) { const n = this.busy ? null : this.near(), k = n ? (n.kind === 'npc' ? 'talk' : 'look') : ''; if (this.actEl.dataset.k !== k) { this.actEl.dataset.k = k; this.actEl.hidden = !k; this.actEl.textContent = k === 'talk' ? '💬' : k === 'look' ? '🔍' : ''; } }
   }
 
   _draw() {
     const x = this.cx, S = this.def.size, p = this.p;
-    this.camX = Math.round(Math.max(0, Math.min(S - W, p.x - W / 2)));
-    this.camY = Math.round(Math.max(0, Math.min(S - H, p.y - H / 2 - 10)));
-    x.drawImage(this.def.map, this.camX, this.camY, W, H, 0, 0, W, H);
+    // kamera GÖRÜNƏN sahənin ortasına görə; xəritənin kənarı görünən sahənin kənarına dirənir
+    const v = (this.vis = visRect(this.cv));
+    this.camX = Math.round(Math.max(-v.x0, Math.min(S - v.x1, p.x - (v.x0 + v.x1) / 2)));
+    this.camY = Math.round(Math.max(-v.y0 - 8, Math.min(S - v.y1, p.y - (v.y0 + v.y1) / 2 - 10)));      // yuxarıda 8 px ehtiyat: xəritənin üst kənarında fiqurun başı kəsilməsin
+    x.fillStyle = '#12080c'; x.fillRect(0, 0, W, H);
     x.save(); x.translate(-this.camX, -this.camY);
+    x.drawImage(this.def.map, 0, 0);
     this.hooks.onDrawUnder?.(x, this);
     // dərinliyə görə sıra (aşağıdakı öndədir)
     const list = [...this.ents.filter((e) => !e.hidden), { you: true, x: p.x, y: p.y }].sort((a, b) => a.y - b.y);
@@ -190,7 +279,26 @@ export class World {
       if (en.you) {
         const fr = p.walk ? 2 + Math.floor(p.walk * (p.run ? 13 : 8)) % 4 : Math.floor(this.t * 1.4) % 2;
         const talk = this.speaker === 'ember' ? -Math.round(Math.abs(Math.sin(this.t * 14)) * 2) : 0;
-        drawSprite(x, p.x, p.y + talk - (p.run && p.walk && fr % 2 === 0 ? 1 : 0), this.def.hero, p.dir, fr, (this.t * 0.31) % 1 < 0.035);
+        const py = p.y + talk - (p.run && p.walk && fr % 2 === 0 ? 1 : 0), blink = (this.t * 0.31) % 1 < 0.035;
+        drawSprite(x, p.x, py, this.def.hero, p.dir, fr, blink);
+        // ARXADA: fiqur obyektin dib xəttindən yuxarıdadırsa, obyekt onun üstündən yenidən çəkilir (xəritənin həmin
+        // parçası kontur daxilində) və fiqurun solğun silueti qalır — oyunçu harada olduğunu itirmir
+        let hid = false;
+        for (const s of this.def.solids) {
+          if (s.flat) continue;
+          if (s.poly) {
+            boxOf(s);
+            if (p.y >= baseY(s) || p.x < s.box[0] - 6 || p.x > s.box[2] + 6 || p.y < s.box[1] - 2 || p.y - 46 > s.box[3]) continue;
+            x.save(); x.beginPath(); s.poly.forEach(([qx, qy], i) => (i ? x.lineTo(qx, qy) : x.moveTo(qx, qy))); x.closePath(); x.clip();
+          } else if (s.r) {
+            const ar = s.r + 5;
+            if (p.y >= s.cy + s.r * 0.3 || Math.abs(p.x - s.cx) > ar + 12 || p.y < s.cy - ar - 2) continue;
+            x.save(); x.beginPath(); x.arc(s.cx, s.cy, ar, 0, 7); x.clip();
+          } else continue;
+          x.drawImage(this.def.map, p.x - 16, p.y - 48, 32, 52, p.x - 16, p.y - 48, 32, 52);
+          x.restore(); hid = true;
+        }
+        if (hid) { x.globalAlpha = 0.42; drawSprite(x, p.x, py, this.def.hero, p.dir, fr, blink); x.globalAlpha = 1; }
         continue;
       }
       if (en.kind === 'npc') {
@@ -227,6 +335,7 @@ export class World {
     this.dead = true;
     cancelAnimationFrame(this.raf);
     removeEventListener('keydown', this._kd); removeEventListener('keyup', this._ku); removeEventListener('blur', this._blur);
-    this.layer.removeEventListener('pointerdown', this._tap);
+    this.layer.removeEventListener('pointerdown', this._pd); removeEventListener('pointermove', this._pm); removeEventListener('pointerup', this._pu); removeEventListener('pointercancel', this._pu);
+    this.padEl.remove(); this.actEl.remove();
   }
 }
