@@ -42,11 +42,11 @@ const BOT = () => {
       }
       if (sc > score) { score = sc; best = x; }
     }
-    c.keys.delete('left'); c.keys.delete('right'); c.keys.delete('brake');
+    c.keys.delete('left'); c.keys.delete('right'); c.keys.delete('down'); c.keys.delete('up');
     if (G.hook) { if (Math.floor(G.t * 9) % 2) c.keys.add('left'); else c.keys.add('right'); }        // qarmaq: sola-sağa
     else { const pred = G.x + G.vx * 0.12; if (best < pred - 4) c.keys.add('left'); else if (best > pred + 4) c.keys.add('right'); }
     // kanyon: təqibçi nişan alanda əyləc (qabağa keçsin)
-    if (G.ents.some((e) => e.k === 'chaser' && (e.st === 'aim' || e.st === 'ram') && Math.abs(e.d - G.d) < 30)) c.keys.add('brake');
+    if (G.ents.some((e) => e.k === 'chaser' && (e.st === 'aim' || e.st === 'ram') && Math.abs(e.d - G.d) < 44)) c.keys.add('down'); else if (G.y > 205) c.keys.add('up');
     if (S.id === 'truck' && G.d > S.len - 330 && G.boost <= 0) c.nitro();
     if (S.id === 'bridge' && G.d > S.len - 300 && G.boost <= 0 && !G.jump) c.nitro();
   };
@@ -66,7 +66,7 @@ test('qaçış: mexanikalar və yaddaş nöqtəsi', async ({ page }) => {
     const clear = () => { c.G.ents.length = 0; };
     // 1) sükan və əyləc
     clear(); const x0 = c.G.x; c.keys.add('right'); await frames(20); c.keys.clear(); out.steer = c.G.x - x0;
-    clear(); c.keys.add('brake'); await frames(40); out.brakeV = c.G.v / c.S.speed; c.keys.clear();
+    clear(); const y0 = c.G.y; c.keys.add('down'); await frames(30); out.back = c.G.y - y0; c.keys.clear(); c.keys.add('up'); await frames(60); out.fwd = y0 - c.G.y; c.keys.clear(); await frames(5); c.G.y = 200; c.G.vy = 0;
     // 2) nitro: yük xərclənir, sürət artır
     clear(); await frames(30); const n0 = c.G.nitro; c.nitro(); await frames(30); out.nitro = { used: n0 - c.G.nitro, v: +(c.G.v / c.S.speed).toFixed(2) };
     // 3) maneə zədələyir; kanistr yanacaq verir
@@ -82,7 +82,7 @@ test('qaçış: mexanikalar və yaddaş nöqtəsi', async ({ page }) => {
   });
   console.log('qaçış mexanikaları:', JSON.stringify(r));
   expect(r.steer, 'sükan').toBeGreaterThan(15);
-  expect(r.brakeV, 'əyləc sürəti azaldır').toBeLessThan(0.75);
+  expect(r.back, 'geri çəkilir').toBeGreaterThan(20); expect(r.fwd, 'irəli çıxır').toBeGreaterThan(30);
   expect(r.nitro.used).toBe(1); expect(r.nitro.v, 'nitro sürətləndirir').toBeGreaterThan(1.3);
   expect(r.rockDmg, 'maneə zədələyir').toBeGreaterThanOrEqual(15);
   expect(r.fuelAfter, 'kanistr yanacaq verir').toBeGreaterThan(70);
@@ -120,7 +120,10 @@ test('qaçış: beş hissənin hamısı keçilə bilir (avtopilot düymələrlə
   const shots = new Set();
   const t0 = Date.now();
   let done = false;
+  let cuts = 0; const cutLines = [];
   while (Date.now() - t0 < 520_000) {
+    // hissələr arası ara səhnə: ilk sətri yadda saxla, sonra "Keç"
+    if (await page.locator('.cgs__skip').isVisible()) { await page.waitForTimeout(700); cutLines.push(await page.evaluate(() => window.__cgStory.dlg.full || '')); cuts++; await page.locator('.cgs__skip').click().catch(() => {}); await page.waitForTimeout(900); continue; }
     const s = await page.evaluate(() => { const c = window.__cgStory?._chase; return c ? { si: c.si, d: Math.round(c.G.d), len: c.S.len, id: c.S.id } : null; });
     if (!s) { done = true; break; }
     if (!shots.has(s.id) && s.d > 700) { shots.add(s.id); await page.screenshot({ path: path.join(DIR, `chase-${s.id}.png`) }); }
@@ -129,6 +132,9 @@ test('qaçış: beş hissənin hamısı keçilə bilir (avtopilot düymələrlə
   const bot = await page.evaluate(() => window.__bot);
   console.log(`avtopilot: ${done ? 'bitirdi' : 'BİTİRMƏDİ'} · ${Math.round((Date.now() - t0) / 1000)} s · qəzalar hissə üzrə ${JSON.stringify(bot.deaths)}`);
   expect(done, 'bütün hissələr keçildi').toBe(true);
+  console.log('ara səhnələr:', cuts, cutLines.map((l) => l.slice(0, 28)));
+  expect(cuts, 'hər iki hissə arasında ara səhnə oynandı').toBe(4);
+  expect(cutLines.every((l) => l.length > 40), 'ara səhnənin mətni görünür').toBe(true);
   expect(Math.max(...bot.deaths), 'heç bir hissə avtopilot üçün ümidsiz çətin deyil').toBeLessThan(12);
   expect(errs).toEqual([]);
 });

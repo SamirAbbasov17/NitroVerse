@@ -226,3 +226,50 @@ export const ENDING = [
   N('O, saymağa başladı. Milo kimi. Yüzə çatanda ayağa qalxacaqdı.'),
   N('Ondan sonra isə altı ad vardı. Bir də heç vaxt danışmayan biri.'),
 ];
+
+// QAÇIŞ ARA SƏHNƏLƏRİ: hissələr arasında (1→2, 2→3, 3→4, 4→5). Baronlar Jackal-ın maşınındakı radiodan danışır.
+export const CHASE_CUTS = [
+  [
+    { art: 'c1' },
+    N('Hearth güzgünün içində kiçilirdi: əvvəl çadırlar seçilməz oldu, sonra radio dirəyi, ən axırda alovun özü üfüqdə narıncı bir ləkəyə döndü.'),
+    N('Jackal-ın maşını yad idi. Oturacaq başqasının bədəninə görə əyilmişdi, sükan başqasının ovcuna görə sürtülmüşdü. Amma motor itaət edirdi — maşınlar sükan arxasında kimin oturduğuna baxmır.'),
+    N('Tablonun altında bir radio xışıldadı. Ember onu söndürmək istədi, əli isə yarı yolda qaldı.'),
+    S('judge', 'neutral', 'Bütün ekipajlara. Jackal-ın maşını icazəsiz hərəkətdədir. Sükan arxasındakı şəxs məhkumdur. Hökm dəyişməyib — yalnız icra yeri dəyişib.'),
+    S('crude', 'smile', 'Kanyonu bağlayın, əzizlərim. Maşını əzməyin, o bizə hələ lazım olacaq. İçindəkini isə… özünüz bilərsiniz.'),
+    { art: 'c2' },
+    N('Qabaqda yol iki qaya divarının arasına girirdi. Arxada isə faralar yenidən yandı — bu dəfə onlar dairə vurmurdu, düz üstünə gəlirdi.'),
+    S('ember', 'think', 'Kanyon dardır. Mənə dar gələn yol onlara da dar gələcək.'),
+  ],
+  [
+    { art: 'c2' },
+    N('Kanyon onu, boğazında qalmış tikə kimi, çölə tüpürdü. Arxada kimsə hələ də yanırdı. Ember güzgüyə baxmadı.'),
+    { art: 'c3' },
+    N('Hava dəyişdi. Əvvəl iy gəldi: çürük yumurta ilə dərman arasında bir şey. Sonra faraların işığı yaşıla çaldı və yol, sanki kimsə üstünə nəfəs vermiş kimi, dumanın içində əridi.'),
+    S('rust', 'think', 'A, budur. Gəldiniz. Mən hesablamışdım ki, kanyondan sağ çıxmaq ehtimalınız on birdə birdir. Səhv etməyi sevirəm — hər dəfə təzə bir şey öyrənirəm.'),
+    S('rust', 'neutral', 'Dumanın içində nəfəs almaq olar. Bir müddət. Sonra ağciyərləriniz bunun pis fikir olduğunu özləri anlayacaq. Dəftərim açıqdır, qeyd aparıram.'),
+    N('Radioda qələmin kağıza toxunduğu eşidildi. Ember şüşəni qaldırdı, yaylığını ağzına çəkdi və yol kənarındakı solğun işıqları saymağa başladı.'),
+    S('ember', 'fear', 'Bir işıq. İki işıq. Yaşıl olan yerə girmə. Bir işıq. İki işıq…'),
+  ],
+  [
+    { art: 'c3' },
+    N('Duman arxada qaldı, öskürək isə qalmadı. Ember hər nəfəsdə sinəsinin içində xırda şüşə qırıqları hiss edirdi.'),
+    N('Sonra yer titrədi. Hearth-dəki o axşam kimi: əvvəl təkərlərin altında, sonra sükanda, ən axırda dişlərində.'),
+    { art: 'c4' },
+    N('Qabaqda, yolun düz ortası ilə bir şey gedirdi. Buna maşın demək olmazdı — təkərlərin üstünə qoyulmuş bir qala idi: qan rəngində kabin, arxasında çəlləklər, zəncirlər və dəmir dişlər.'),
+    S('butcher', 'neutral', 'Balaca kişinin bacısı.'),
+    N('Ember-in barmaqları sükanda ağardı. O səsi tanıyırdı: emalatxananın qapısını tutan kölgənin səsi idi.'),
+    S('butcher', 'smile', 'O, açarı iki əli ilə tutmuşdu. Bilirsən? Axıra qədər buraxmadı.'),
+    N('Ember cavab vermədi. Ayağı pedalın üstündə idi və pedal artıq döşəməyə dirənmişdi.'),
+  ],
+  [
+    { art: 'c4' },
+    N('Yük maşını güzgüdə kiçildi. Butcher-in gülüşü radioda bir az da qaldı, sonra o da kəsildi.'),
+    N('Şərqdə göyün ətəyi ağarırdı. Ember bir gecənin içində neçə il yaşadığını saymağa çalışdı və saya bilmədi.'),
+    { art: 'c5' },
+    N('Yolun sonunda körpü vardı. Daha doğrusu, körpüdən qalan: uçurumun üstünə atılmış taxtalar və bir sahildən o birinə çatmayan boşluq.'),
+    S('twins', 'laugh', '— Bax, bax, gəlir. — Jackal-ın maşınında. — Jackal bunu bəyənməzdi. — Jackal artıq heç nəyi bəyənmir.'),
+    S('twins', 'smile', '— Mərc gələk: körpüdən keçəcək? — Keçməyəcək. — Mən də deyirəm keçməyəcək. — Bəs onda kiminlə mərc gəlirik?'),
+    N('Güzgünün hər iki tərəfində bir motosiklet peyda oldu. Əllərində qarmaq fırlanırdı.'),
+    S('ember', 'angry', 'Boşluq maşının boyundan uzundur. Sürətim çatsa, keçərəm. Çatmasa… Çatacaq.'),
+  ],
+];

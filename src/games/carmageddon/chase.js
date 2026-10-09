@@ -3,24 +3,26 @@
 //   1 Yanan düşərgə — maneələr və yıxılan dirəklər        2 Kanyon — təqibçilər (qayaya sıx / əyləclə ötür)
 //   3 Doctor Rust-ın dumanı — görünüş azdır, qaz buludları   4 Butcher-in yük maşını — çəllək, zəncir, nitro ilə ötmə
 //   5 Sınıq körpü — The Twins-in qarmaqları, sonda nitro ilə tullanış
-// İdarə: ← → sükan, ↓ əyləc, boşluq / E / ↑ nitro. Telefonda ekrandakı düymələr.
-// Maşın: can (zədə), yanacaq (bak sızır — kanistr yığ), nitro yükləri. Can azalanda tüstüləyir və sağa çəkir.
+// İdarə: ← → sükan, ↑ ↓ irəli-geri (maneədən rahat yayınmaq üçün), boşluq / E / Shift nitro. Telefonda ekrandakı düymələr.
+// Maşın: can (zədə), yanacaq (bak sızır — kanistr yığ), nitro yükləri. Can azalanda tüstüləyir.
+// Hissələr arasında ara səhnə oynanır (onCut — bax chapter1.js, script.js: CHASE_CUTS).
 import { t } from '../../core/i18n.js';
 import { audio } from '../../core/AudioManager.js';
 
-const W = 480, H = 270, PY = 200;
+const W = 480, H = 270, PY = 200;       // PY — yolun ekrandakı istinad xətti; oyunçu onun ətrafında irəli-geri gedir (G.y)
+const Y_MIN = 112, Y_MAX = 236;
 const CW = 11;                             // oyunçu maşınının toqquşma yarım-eni (sprayt 35 px enindədir, təkərlər daxil)
 const rnd = (seed) => { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); };
 
 const SECTIONS = [
-  { id: 'camp', len: 2500, speed: 150, amp: 34, wl: 420, hw: (d) => 78 - Math.min(22, d / 110), ground: '#3a2418', road: '#2a2226', edge: '#e2571c' },
-  { id: 'canyon', len: 3300, speed: 172, amp: 46, wl: 520, hw: () => 70, ground: '#4a1f1a', road: '#30262a', edge: '#c9a98a', walls: true },
-  { id: 'fog', len: 2700, speed: 148, amp: 64, wl: 380, hw: () => 66, ground: '#1c2a1e', road: '#22282a', edge: '#9ad18a', fog: true },
-  { id: 'truck', len: 3000, speed: 168, amp: 30, wl: 600, hw: () => 82, ground: '#2a2030', road: '#2a2428', edge: '#c9a98a' },
-  { id: 'bridge', len: 2400, speed: 182, amp: 18, wl: 700, hw: () => 58, ground: '#0c1024', road: '#4a3626', edge: '#8a6a44', bridge: true },
+  { id: 'camp', len: 2500, speed: 150, amp: 22, wl: 420, hw: (d) => 78 - Math.min(22, d / 110), ground: '#3a2418', road: '#2a2226', edge: '#e2571c' },
+  { id: 'canyon', len: 3300, speed: 172, amp: 28, wl: 520, hw: () => 70, ground: '#4a1f1a', road: '#30262a', edge: '#c9a98a', walls: true },
+  { id: 'fog', len: 2700, speed: 148, amp: 40, wl: 380, hw: () => 66, ground: '#1c2a1e', road: '#22282a', edge: '#9ad18a', fog: true },
+  { id: 'truck', len: 3000, speed: 168, amp: 20, wl: 600, hw: () => 82, ground: '#2a2030', road: '#2a2428', edge: '#c9a98a' },
+  { id: 'bridge', len: 2400, speed: 182, amp: 12, wl: 700, hw: () => 58, ground: '#0c1024', road: '#4a3626', edge: '#8a6a44', bridge: true },
 ];
 
-export function runChase(ch, startSec = 0, onSection = null) {
+export function runChase(ch, startSec = 0, onSection = null, onCut = null) {
   return new Promise((resolve) => {
     const cv = ch.cv, x = cv.getContext('2d');
     x.imageSmoothingEnabled = false;
@@ -30,16 +32,16 @@ export function runChase(ch, startSec = 0, onSection = null) {
     ui.innerHTML = `
       <div class="cgc__hud"><div class="cgc__bar cgc__bar--hp" data-l="${t('cg.c.hp')}"><i></i></div><div class="cgc__bar cgc__bar--fuel" data-l="${t('cg.c.fuel')}"><i></i></div><div class="cgc__nitro"></div></div>
       <div class="cgc__prog"><i></i></div>
-      <div class="cgc__banner"><b></b><span></span></div>
+      <div class="cgc__banner"><b></b><span></span><em>${t('cg.c.keys')}</em></div>
       <div class="cgc__alert"></div>
       <div class="cgc__pad cgc__pad--l"><button data-k="left" type="button">◀</button><button data-k="right" type="button">▶</button></div>
-      <div class="cgc__pad cgc__pad--r"><button data-k="brake" type="button">▼</button><button data-k="nitro" type="button">⚡</button></div>`;
+      <div class="cgc__pad cgc__pad--r"><button data-k="up" type="button">▲</button><button data-k="down" type="button">▼</button><button data-k="nitro" class="cgc__nitrobtn" type="button">⚡</button></div>`;
     ch.el.appendChild(ui);
     const $ = (s) => ui.querySelector(s);
     const hpBar = $('.cgc__bar--hp i'), fuelBar = $('.cgc__bar--fuel i'), nitroEl = $('.cgc__nitro'), prog = $('.cgc__prog i'), banner = $('.cgc__banner'), alertEl = $('.cgc__alert');
 
     const keys = new Set();
-    const MAP = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowDown: 'brake', KeyS: 'brake', Space: 'nitro', KeyE: 'nitro', ArrowUp: 'nitro', KeyW: 'nitro' };
+    const MAP = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowDown: 'down', KeyS: 'down', ArrowUp: 'up', KeyW: 'up', Space: 'nitro', KeyE: 'nitro', ShiftLeft: 'nitro', ShiftRight: 'nitro', Enter: 'nitro' };
     const kd = (e) => { const k = MAP[e.code]; if (!k) return; e.preventDefault(); if (k === 'nitro') { if (!e.repeat) nitro(); } else keys.add(k); };
     const ku = (e) => { const k = MAP[e.code]; if (k) keys.delete(k); };
     const blur = () => { keys.clear(); ui.querySelectorAll('.is-on').forEach((b) => b.classList.remove('is-on')); };   // fokus itəndə sükan ilişib qalmasın
@@ -54,14 +56,22 @@ export function runChase(ch, startSec = 0, onSection = null) {
     let si = startSec, S, G, raf = 0, last = performance.now(), over = false;
     // Hissədən hissəyə can, yanacaq və nitro DAŞINIR (yaddaş nöqtəsində yadda qalır) — yığdığın şeyin dəyəri olsun.
     // Alt hədd var ki, yaddaş nöqtəsi çıxılmaz vəziyyətdə qalmasın; hissə arası maşın bir az təmir olunur.
-    let carry = null;
+    let carry = null, cut = false;
+    // Hissə bitdi: qaçış dayanır, ara səhnə oynanır (kətan dialoq oynadıcısına verilir), sonra növbəti hissə başlayır
+    async function cutTo(n) {
+      cut = true; keys.clear();
+      if (onCut) { ui.style.display = 'none'; await onCut(n); ui.style.display = ''; }
+      if (over || ch.dead) return;
+      x.imageSmoothingEnabled = false; last = performance.now(); cut = false; start(n);
+    }
+    const pd = () => G.d + (PY - G.y);                  // oyunçunun yoldakı məsafəsi (ekranda irəli çıxanda artır)
     const cxAt = (d) => 240 + Math.sin(d / S.wl) * S.amp + Math.sin(d / (S.wl * 0.37) + 1.3) * S.amp * 0.35;
 
     function start(i) {
       si = i; S = SECTIONS[i];
       onSection?.(i);
       const r = rnd(1000 + i * 77);
-      G = { d: 0, x: cxAt(0), vx: 0, v: S.speed, hp: carry?.hp ?? 100, fuel: carry?.fuel ?? 100, nitro: carry?.nitro ?? 2, boost: 0, ents: [], parts: [], shake: 0, dead: 0, won: 0, flash: 0, steerSign: 0, flips: [], hook: null, jump: 0, truck: null, t: 0, r };
+      G = { d: 0, x: cxAt(0), y: PY, vy: 0, vx: 0, v: S.speed, hp: carry?.hp ?? 100, fuel: carry?.fuel ?? 100, nitro: carry?.nitro ?? 2, boost: 0, ents: [], parts: [], shake: 0, dead: 0, won: 0, flash: 0, steerSign: 0, flips: [], hook: null, jump: 0, truck: null, t: 0, r };
       const add = (e) => { G.ents.push(e); return e; };
       const lane = (d, k) => cxAt(d) + k * (S.hw(d) - 16);
       // yanacaq və nitro: hər hissədə yol boyu
@@ -100,30 +110,29 @@ export function runChase(ch, startSec = 0, onSection = null) {
     function hurt(n, kick = 0) {
       if (G.dead || G.won || G.jump > 0) return;
       G.hp -= n; G.shake = Math.max(G.shake, 5); G.flash = 0.18; G.vx += kick; audio.sfx('hit');
-      boom(G.x, PY - 10, 6);
+      boom(G.x, G.y - 10, 6);
       if (G.hp <= 0) fail('cg.c.wreck');
     }
     function fail(key) {
       if (G.dead) return;
-      G.dead = 1.5; G.hp = 0; say(key, 1500); boom(G.x, PY - 8, 30); G.shake = 9; audio.sfx('explosion');
+      G.dead = 1.5; G.hp = 0; say(key, 1500); boom(G.x, G.y - 8, 30); G.shake = 9; audio.sfx('explosion');
     }
 
     function step(dt) {
       G.t += dt;
       if (G.dead) { G.dead -= dt; G.v *= 1 - dt * 3; if (G.dead <= 0) start(si); return; }
-      if (G.won) { G.won -= dt; G.d += G.v * dt; if (G.won <= 0) { if (si + 1 < SECTIONS.length) { carry = { hp: Math.min(100, Math.max(60, G.hp + 20)), fuel: Math.max(58, G.fuel), nitro: Math.max(1, G.nitro) }; start(si + 1); } else finish(); } return; }
-      const hw = S.hw(G.d), rc = cxAt(G.d);
-      // sükan
-      const st = (keys.has('right') ? 1 : 0) - (keys.has('left') ? 1 : 0);
+      if (G.won) { G.won -= dt; G.d += G.v * dt; if (G.won <= 0) { if (si + 1 < SECTIONS.length) { carry = { hp: Math.min(100, Math.max(60, G.hp + 20)), fuel: Math.max(58, G.fuel), nitro: Math.max(1, G.nitro) }; G.won = 0; cutTo(si + 1); } else finish(); } return; }
+      const hw = S.hw(pd()), rc = cxAt(pd());
+      // sükan və irəli-geri: düymə hədəf sürəti verir, maşın ona tez çatır (sürüşmə yoxdur — dəqiq yayınmaq olsun)
+      const st = (keys.has('right') ? 1 : 0) - (keys.has('left') ? 1 : 0), fb = (keys.has('down') ? 1 : 0) - (keys.has('up') ? 1 : 0);
       if (st && st !== G.steerSign) { G.flips.push(G.t); G.steerSign = st; }
-      G.vx += st * 760 * dt;
-      G.vx -= G.vx * Math.min(1, dt * 5.5);
-      if (G.hp < 30) G.vx += 26 * dt * 6;                                    // zədəli maşın sağa çəkir
-      G.vx = Math.max(-175, Math.min(175, G.vx));
+      G.vx += (st * 170 + (G.hook ? G.hook.side * 80 : 0) - G.vx) * Math.min(1, dt * 12);
+      G.vy += (fb * (fb > 0 ? 150 : 120) - G.vy) * Math.min(1, dt * 10);
       G.x += G.vx * dt;
+      G.y = Math.max(S.id === 'truck' ? 150 : Y_MIN, Math.min(Y_MAX, G.y + G.vy * dt));
       // sürət: əyləc / nitro / qarmaq
       G.boost = Math.max(0, G.boost - dt);
-      let target = S.speed * (keys.has('brake') ? 0.55 : 1) * (G.boost > 0 ? 1.65 : 1) * (G.hook ? 0.68 : 1);
+      let target = S.speed * (G.boost > 0 ? 1.65 : 1) * (G.hook ? 0.68 : 1);
       if (G.jump > 0) target = S.speed * 1.7;
       G.v += (target - G.v) * Math.min(1, dt * 3.2);
       G.d += G.v * dt;
@@ -134,40 +143,40 @@ export function runChase(ch, startSec = 0, onSection = null) {
         const off = Math.abs(G.x - rc) - (hw - CW);
         if (off > 0) {
           if (S.walls || S.bridge) { G.x = rc + Math.sign(G.x - rc) * (hw - CW); if (Math.abs(G.vx) > 40) hurt(S.bridge ? 9 : 6, -Math.sign(G.x - rc) * 120); else G.vx = -Math.sign(G.x - rc) * 40; }
-          else { G.v *= 1 - dt * 1.6; if (off > 26) { G.x = rc + Math.sign(G.x - rc) * (hw + 19); hurt(4 * dt * 10); } if (Math.random() < dt * 20) G.parts.push({ x: G.x, y: PY + 10, vx: (Math.random() - 0.5) * 30, vy: 40, a: 0.8, c: '#8a6a4a', s: 2 }); }
+          else { G.v *= 1 - dt * 1.6; if (off > 26) { G.x = rc + Math.sign(G.x - rc) * (hw + 19); hurt(4 * dt * 10); } if (Math.random() < dt * 20) G.parts.push({ x: G.x, y: G.y + 10, vx: (Math.random() - 0.5) * 30, vy: 40, a: 0.8, c: '#8a6a4a', s: 2 }); }
         }
       }
       // sərt dönüşdə təkər izi; kənara sürtünəndə qığılcım
-      if (Math.abs(G.vx) > 120 && G.jump <= 0) for (const ox of [-12, 10]) G.parts.push({ x: G.x + ox, y: PY + 20, vx: 0, vy: G.v, a: 0.9, c: '#1a1416', s: 2 });
-      if ((S.walls || S.bridge) && Math.abs(G.x - rc) > hw - CW - 4 && Math.random() < dt * 40) G.parts.push({ x: G.x + Math.sign(G.x - rc) * 13, y: PY - 4 + Math.random() * 16, vx: -Math.sign(G.x - rc) * 60, vy: 90, a: 1, c: '#ffd166', s: 1 });
+      if (Math.abs(G.vx) > 120 && G.jump <= 0) for (const ox of [-12, 10]) G.parts.push({ x: G.x + ox, y: G.y + 20, vx: 0, vy: G.v, a: 0.9, c: '#1a1416', s: 2 });
+      if ((S.walls || S.bridge) && Math.abs(G.x - rc) > hw - CW - 4 && Math.random() < dt * 40) G.parts.push({ x: G.x + Math.sign(G.x - rc) * 13, y: G.y - 4 + Math.random() * 16, vx: -Math.sign(G.x - rc) * 60, vy: 90, a: 1, c: '#ffd166', s: 1 });
       // toz / tüstü
-      if (Math.random() < dt * 26) G.parts.push({ x: G.x + (Math.random() < 0.5 ? -10 : 9), y: PY + 24, vx: (Math.random() - 0.5) * 16, vy: 70, a: 0.5, c: G.boost > 0 ? '#ffb53a' : '#6a5a52', s: G.boost > 0 ? 3 : 2 });
-      if (G.hp < 45 && Math.random() < dt * 14) G.parts.push({ x: G.x + (Math.random() - 0.5) * 8, y: PY - 20, vx: 6, vy: 30, a: 0.8, c: '#3a3438', s: 3 });
+      if (Math.random() < dt * 26) G.parts.push({ x: G.x + (Math.random() < 0.5 ? -10 : 9), y: G.y + 24, vx: (Math.random() - 0.5) * 16, vy: 70, a: 0.5, c: G.boost > 0 ? '#ffb53a' : '#6a5a52', s: G.boost > 0 ? 3 : 2 });
+      if (G.hp < 45 && Math.random() < dt * 14) G.parts.push({ x: G.x + (Math.random() - 0.5) * 8, y: G.y - 20, vx: 6, vy: 30, a: 0.8, c: '#3a3438', s: 3 });
 
       // ——— varlıqlar ———
       for (const e of G.ents) {
         if (e.gone) continue;
         const sy = PY - (e.d - G.d);
         if (e.k === 'rock') {
-          if (Math.abs(sy - PY) < 18 + e.r && Math.abs(e.x - G.x) < CW + e.r && G.jump <= 0) { e.gone = true; boom(e.x, sy, 10, e.fire ? null : '#8a7a6a'); hurt(e.plank ? 12 : 18); G.v *= 0.6; }
+          if (Math.abs(sy - G.y) < 18 + e.r && Math.abs(e.x - G.x) < CW + e.r && G.jump <= 0) { e.gone = true; boom(e.x, sy, 10, e.fire ? null : '#8a7a6a'); hurt(e.plank ? 12 : 18); G.v *= 0.6; }
         } else if (e.k === 'fuel' || e.k === 'nitro' || e.k === 'fix') {
-          if (Math.abs(sy - PY) < 26 && Math.abs(e.x - G.x) < 20) { e.gone = true; audio.sfx('pickup'); if (e.k === 'fuel') G.fuel = Math.min(100, G.fuel + 38); else if (e.k === 'nitro') G.nitro = Math.min(3, G.nitro + 1); else G.hp = Math.min(100, G.hp + 25); boom(e.x, sy, 8, e.k === 'fuel' ? '#ffd166' : e.k === 'nitro' ? '#5ab4ff' : '#7fbf7a'); }
+          if (Math.abs(sy - G.y) < 26 && Math.abs(e.x - G.x) < 20) { e.gone = true; audio.sfx('pickup'); if (e.k === 'fuel') G.fuel = Math.min(100, G.fuel + 38); else if (e.k === 'nitro') G.nitro = Math.min(3, G.nitro + 1); else G.hp = Math.min(100, G.hp + 25); boom(e.x, sy, 8, e.k === 'fuel' ? '#ffd166' : e.k === 'nitro' ? '#5ab4ff' : '#7fbf7a'); }
         } else if (e.k === 'pole') {
           // yıxılan dirək: əvvəl kölgə (xəbərdarlıq), sonra yolun yarısını bağlayır
           if (sy > -40 && e.warn > 0) e.warn -= dt;
           const c = cxAt(e.d), w2 = S.hw(e.d);
           e.x0 = e.side < 0 ? c - w2 : c - 8; e.x1 = e.side < 0 ? c + 8 : c + w2;
-          if (e.warn <= 0 && !e.hit && Math.abs(sy - PY) < 20 && G.x > e.x0 - CW && G.x < e.x1 + CW) { e.hit = true; hurt(24); G.v *= 0.45; boom(G.x, PY - 10, 12, '#8a6a4a'); }
+          if (e.warn <= 0 && !e.hit && Math.abs(sy - G.y) < 20 && G.x > e.x0 - CW && G.x < e.x1 + CW) { e.hit = true; hurt(24); G.v *= 0.45; boom(G.x, G.y - 10, 12, '#8a6a4a'); }
         } else if (e.k === 'chaser') {
-          if (e.st === 'sleep') { if (G.d > e.wake) { e.st = 'come'; e.d = G.d - 150; e.x = cxAt(G.d) + e.side * 30; say('cg.c.chaser', 900); } continue; }
+          if (e.st === 'sleep') { if (pd() > e.wake) { e.st = 'come'; e.d = pd() - 150; e.x = cxAt(pd()) + e.side * 30; say('cg.c.chaser', 900); } continue; }
           if (e.st === 'dead') continue;
-          const want = G.d + 4, c = cxAt(e.d), w2 = S.hw(e.d);
+          const want = pd() + 4, c = cxAt(e.d), w2 = S.hw(e.d);
           // öz sürəti: oyunçuya çatmağa çalışır (gecikmə ilə — əyləcə basanda qabağa keçir)
           // nişan alanda və zərbədə sürətini kilidləyir — əyləcə basan oyunçu zərbənin altından çıxır
           if (e.st === 'come') { e.v = (e.v ?? S.speed) + ((want - e.d) * 2.2 + (G.v - (e.v ?? S.speed)) * 1.2) * dt; e.v = Math.max(S.speed * 0.7, Math.min(S.speed * 1.5, e.v)); }
           else e.v += (S.speed - e.v) * Math.min(1, dt * 4);
           e.d += e.v * dt; e.tt += dt;
-          const beside = Math.abs(e.d - G.d) < 42;
+          const beside = Math.abs(e.d - pd()) < 42;
           if (e.st === 'come') { const tx = G.x + e.side * 40; e.vx += (tx - e.x) * 9 * dt; e.vx -= e.vx * dt * 4; if (beside && e.tt > 1.6) { e.st = 'aim'; e.tt = 0; } }
           else if (e.st === 'aim') { e.vx -= e.vx * dt * 6; if (e.tt > 0.55) { e.st = 'ram'; e.tt = 0; e.vx = -e.side * 230; } }
           else if (e.st === 'ram') { if (e.tt > 0.5) { e.st = 'come'; e.tt = 0; if (Math.random() < 0.5) e.side *= -1; } }
@@ -175,21 +184,21 @@ export function runChase(ch, startSec = 0, onSection = null) {
           // maşın–maşın toqquşması
           if (beside && Math.abs(e.x - G.x) < 26) {
             const dir = Math.sign(e.x - G.x) || 1;
-            if (e.st === 'ram') { if (Math.abs(e.d - G.d) < 32) { hurt(13, -dir * 150); e.vx = dir * 120; e.st = 'come'; e.tt = 0; } }
-            else { e.vx = dir * (150 + Math.abs(G.vx)); G.vx = -dir * 60; G.shake = 3; boom((e.x + G.x) / 2, PY - 4, 5); if (Math.abs(G.vx) < 30) hurt(2); }
+            if (e.st === 'ram') { if (Math.abs(e.d - pd()) < 32) { hurt(13, -dir * 150); e.vx = dir * 120; e.st = 'come'; e.tt = 0; } }
+            else { e.vx = dir * (150 + Math.abs(G.vx)); G.vx = -dir * 60; G.shake = 3; boom((e.x + G.x) / 2, G.y - 4, 5); if (Math.abs(G.vx) < 30) hurt(2); }
           }
           // divara sıxılan təqibçi partlayır
           if (Math.abs(e.x - c) > w2 - 13) { e.st = 'dead'; e.gone = true; boom(e.x, PY - (e.d - G.d), 34); G.shake = 7; audio.sfx('explosion'); say('cg.c.down', 800); }
         } else if (e.k === 'cloud') {
-          if (Math.hypot(e.x - G.x, (sy - PY) * 0.8) < e.r - 4) { G.hp -= 15 * dt; G.flash = 0.05; if (G.hp <= 0) fail('cg.c.wreck'); }
+          if (Math.hypot(e.x - G.x, (sy - G.y) * 0.8) < e.r - 4) { G.hp -= 15 * dt; G.flash = 0.05; if (G.hp <= 0) fail('cg.c.wreck'); }
         } else if (e.k === 'barrel') {
           e.d -= 70 * dt; e.x += e.vx * dt; e.rot = (e.rot || 0) + dt * 9;
           const c = cxAt(e.d), w2 = S.hw(e.d); if (Math.abs(e.x - c) > w2 - 8) e.vx *= -1;
-          if (Math.abs(sy - PY) < 22 && Math.abs(e.x - G.x) < CW + 8) { e.gone = true; boom(e.x, sy, 22); hurt(16); audio.sfx('explosion'); }
+          if (Math.abs(sy - G.y) < 22 && Math.abs(e.x - G.x) < CW + 8) { e.gone = true; boom(e.x, sy, 22); hurt(16); audio.sfx('explosion'); }
         } else if (e.k === 'chain') {
           e.tt += dt;
           if (e.tt > 0.9) e.d -= 120 * dt;                                   // xəbərdarlıqdan sonra oyunçuya doğru sürüşür
-          if (!e.hit && e.tt > 0.9 && Math.abs(sy - PY) < 14) { e.hit = true; if (Math.abs(G.x - e.gap) > 22 - CW + 8) { hurt(22); G.v *= 0.6; } }
+          if (!e.hit && e.tt > 0.9 && Math.abs(sy - G.y) < 14) { e.hit = true; if (Math.abs(G.x - e.gap) > 22 - CW + 8) { hurt(22); G.v *= 0.6; } }
         }
         if (sy > H + 60 && e.k !== 'chaser') e.gone = true;
       }
@@ -217,10 +226,10 @@ export function runChase(ch, startSec = 0, onSection = null) {
         G.bikes.forEach((b) => { const tx = G.x + b.side * (G.hook === b ? 30 : Math.min(42, hwb - 6)); b.x += (tx - b.x) * Math.min(1, dt * 5); b.off += ((G.hook === b ? 0 : 14) - b.off) * dt * 3; });
         if (!G.hook && G.hooks.length && G.d > G.hooks[0]) { G.hooks.shift(); G.hook = G.bikes[Math.random() < 0.5 ? 0 : 1]; G.hookT = 0; G.flips = []; say('cg.c.hooked', 1400); audio.sfx('hit'); }
         if (G.hook) {
-          G.hookT += dt; G.vx += G.hook.side * 150 * dt;
+          G.hookT += dt;
           const recent = G.flips.filter((ft) => G.t - ft < 1.6).length;
           G.shakeOff = recent;
-          if (recent >= 4) { boom(G.hook.x, PY, 16, '#b44bff'); G.hook.off = 60; G.hook = null; say('cg.c.free', 900); G.shake = 5; }
+          if (recent >= 4) { boom(G.hook.x, G.y, 16, '#b44bff'); G.hook.off = 60; G.hook = null; say('cg.c.free', 900); G.shake = 5; }
           else if (G.hookT > 3.2) { hurt(16, G.hook.side * 140); G.hookT = 1.4; }
         }
         // sonda tullanış: sürət çatmalıdır (nitro)
@@ -242,8 +251,8 @@ export function runChase(ch, startSec = 0, onSection = null) {
       const [sx, sy, sw, sh] = SPR[kind === 'foe' ? 'foe' + (v % 3) : kind];
       const w = Math.round(sw * scale), h = Math.round(sh * scale), cx1 = Math.round(cx0), cy1 = Math.round(cy0);
       if (!sheet) { x.fillStyle = '#12080c'; x.fillRect(cx1 - w / 2, cy1 - h / 2, w, h); x.fillStyle = kind === 'me' ? '#e8dcc0' : '#6a2a20'; x.fillRect(cx1 - w / 2 + 2, cy1 - h / 2 + 2, w - 4, h - 4); return; }
-      const k = Math.max(-0.2, Math.min(0.2, lat / 700));
-      x.save(); x.translate(cx1, cy1); x.transform(1, 0, -k, 1, 0, 0);
+      const k = Math.max(-0.1, Math.min(0.1, lat / 1500));    // ən çoxu ~6°
+      x.save(); x.translate(cx1, cy1); if (k) x.rotate(k);
       x.globalAlpha = 0.34; x.drawImage(shadowSheet, sx, sy, sw, sh, -Math.floor(w / 2) + 3 + lift, -Math.floor(h / 2) + 4 + lift, w, h); x.globalAlpha = 1;
       x.drawImage(sheet, sx, sy, sw, sh, -Math.floor(w / 2), -Math.floor(h / 2), w, h);
       if (fl) { x.globalAlpha = 0.6; x.drawImage(hotSheet, sx, sy, sw, sh, -Math.floor(w / 2), -Math.floor(h / 2), w, h); x.globalAlpha = 1; }
@@ -251,7 +260,7 @@ export function runChase(ch, startSec = 0, onSection = null) {
       const f = Math.floor(G.t * 16);
       if (kind === 'me') {
         R(-3, 11, 5, 4, '#e8301a'); R(-3, 11, 5, 1, '#ff5a3a'); R(3, 12, 2, 2, '#d9b06a');                                           // Ember-in qırmızı saçı; yan oturacaqda maska
-        if (keys.has('brake')) { R(-13, 23, 5, 2, '#ff3b2e'); R(8, 23, 5, 2, '#ff3b2e'); R(-12, 25, 3, 1, '#ffb0a0'); R(9, 25, 3, 1, '#ffb0a0'); }   // əyləc işıqları
+        if (keys.has('down')) { R(-13, 23, 5, 2, '#ff3b2e'); R(8, 23, 5, 2, '#ff3b2e'); R(-12, 25, 3, 1, '#ffb0a0'); R(9, 25, 3, 1, '#ffb0a0'); }   // əyləc işıqları
         if (G.hp < 60) { R(-8, -17, 4, 3, '#4a3a34'); R(4, -8, 3, 4, '#4a3a34'); R(-9, 15, 3, 3, '#4a3a34'); }                        // əziklər
         if (G.hp < 30) { R(-4 + (f % 3), -19 - (f % 4), 4, 6, '#ff7a1c'); R(1 - (f % 2), -17 - (f % 3), 3, 5, '#ffd166'); R(-1, -14, 2, 3, '#fff0b0'); }   // kapot alışıb
       } else if (kind === 'truck') {
@@ -344,7 +353,7 @@ export function runChase(ch, startSec = 0, onSection = null) {
       // faraların işığı (gecə): maşının qabağında iki açıq zolaq
       if (!S.fog && !G.dead) {
         x.globalCompositeOperation = 'lighter';
-        for (const [len, wide, al] of [[120, 46, 0.05], [84, 30, 0.06], [46, 18, 0.08]]) { x.fillStyle = `rgba(255,225,160,${al})`; x.beginPath(); x.moveTo(G.x - 10, PY - 24); x.lineTo(G.x + 10, PY - 24); x.lineTo(G.x + wide, PY - 24 - len); x.lineTo(G.x - wide, PY - 24 - len); x.closePath(); x.fill(); }
+        for (const [len, wide, al] of [[120, 46, 0.05], [84, 30, 0.06], [46, 18, 0.08]]) { x.fillStyle = `rgba(255,225,160,${al})`; x.beginPath(); x.moveTo(G.x - 10, G.y - 24); x.lineTo(G.x + 10, G.y - 24); x.lineTo(G.x + wide, G.y - 24 - len); x.lineTo(G.x - wide, G.y - 24 - len); x.closePath(); x.fill(); }
         x.globalCompositeOperation = 'source-over';
       }
       // varlıqlar
@@ -370,7 +379,7 @@ export function runChase(ch, startSec = 0, onSection = null) {
           else { for (const [a0, a1] of [[c - w2, e.gap - 22], [e.gap + 22, c + w2]]) { for (let lx = a0; lx < a1 - 4; lx += 6) { P(lx, sy - 3, 6, 6, '#12080c'); P(lx + 1, sy - 2, 4, 4, (Math.floor(lx / 6) % 2) ? '#b9b9c4' : '#8a8a96'); P(lx + 2, sy - 1, 2, 2, '#12080c'); } } P(e.gap - 26, sy - 5, 5, 10, '#d8d8e0'); P(e.gap + 21, sy - 5, 5, 10, '#d8d8e0'); } }
       }
       if (S.id === 'truck') { const T = G.truck, ty = T.pass ? 46 + T.pass * 260 : 46; if (ty < H + 60) car(T.x, ty, 'truck'); }
-      if (S.id === 'bridge') for (const b of G.bikes) { if (G.hook === b) { x.strokeStyle = '#c9a98a'; x.lineWidth = 1; x.beginPath(); x.moveTo(b.x, PY - 2); x.lineTo(G.x, PY); x.stroke(); } car(b.x, PY + b.off, 'bike'); }
+      if (S.id === 'bridge') for (const b of G.bikes) { if (G.hook === b) { x.strokeStyle = '#c9a98a'; x.lineWidth = 1; x.beginPath(); x.moveTo(b.x, G.y - 2); x.lineTo(G.x, G.y); x.stroke(); } car(b.x, G.y + b.off, 'bike'); }
       // nitro: ekran boyu sürət xətləri
       if (G.boost > 0 || G.jump > 0) { x.fillStyle = 'rgba(255,255,255,0.22)'; for (let k = 0; k < 14; k++) { const hx = hsh(k, Math.floor(G.t * 30)) % W, hy = (hsh(k + 40, Math.floor(G.t * 30)) % H); x.fillRect(hx, hy, 1, 14 + (k % 3) * 8); } }
       // hissəciklər
@@ -379,11 +388,11 @@ export function runChase(ch, startSec = 0, onSection = null) {
       // oyunçu (tullanışda böyüyür və kölgəsi ayrılır)
       if (!(G.dead && G.dead < 1.2)) {
         const j = G.jump > 0 ? Math.sin((1 - G.jump / 1.25) * Math.PI) : 0;
-        if (G.boost > 0) { const f = Math.floor(G.t * 20) % 2; x.fillStyle = '#5ab4ff'; x.fillRect(G.x - 10, PY + 24, 4, 8 + f * 5); x.fillRect(G.x + 6, PY + 24, 4, 8 + (1 - f) * 5); x.fillStyle = '#fff'; x.fillRect(G.x - 9, PY + 24, 2, 5); x.fillRect(G.x + 7, PY + 24, 2, 5); }
-        car(G.x, PY - j * 16, 'me', G.vx, 1 + j * 0.35, 0, false, Math.round(j * 16));
+        if (G.boost > 0) { const f = Math.floor(G.t * 20) % 2; x.fillStyle = '#5ab4ff'; x.fillRect(G.x - 10, G.y + 24, 4, 8 + f * 5); x.fillRect(G.x + 6, G.y + 24, 4, 8 + (1 - f) * 5); x.fillStyle = '#fff'; x.fillRect(G.x - 9, G.y + 24, 2, 5); x.fillRect(G.x + 7, G.y + 24, 2, 5); }
+        car(G.x, G.y - j * 16, 'me', G.vx, 1 + j * 0.35, 0, false, Math.round(j * 16));
       }
       // duman: maşının ətrafında görünən dairə
-      if (S.fog) { fx.globalCompositeOperation = 'source-over'; fx.clearRect(0, 0, W, H); fx.fillStyle = 'rgba(14,34,20,0.93)'; fx.fillRect(0, 0, W, H); fx.globalCompositeOperation = 'destination-out'; const g = fx.createRadialGradient(G.x, PY - 26, 16, G.x, PY - 26, 92); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(0.6, 'rgba(0,0,0,0.85)'); g.addColorStop(1, 'rgba(0,0,0,0)'); fx.fillStyle = g; fx.fillRect(0, 0, W, H); x.drawImage(fogCv, 0, 0);
+      if (S.fog) { fx.globalCompositeOperation = 'source-over'; fx.clearRect(0, 0, W, H); fx.fillStyle = 'rgba(14,34,20,0.93)'; fx.fillRect(0, 0, W, H); fx.globalCompositeOperation = 'destination-out'; const g = fx.createRadialGradient(G.x, G.y - 26, 16, G.x, G.y - 26, 92); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(0.6, 'rgba(0,0,0,0.85)'); g.addColorStop(1, 'rgba(0,0,0,0)'); fx.fillStyle = g; fx.fillRect(0, 0, W, H); x.drawImage(fogCv, 0, 0);
         for (let y = 0; y < H; y += 2) { const dd = G.d + (PY - y); if (Math.floor(dd / 16) % 3 === 0) { const c = cxAt(dd), w2 = S.hw(dd); x.fillStyle = 'rgba(220,255,190,0.55)'; x.fillRect(c - w2 - 1, y, 2, 2); x.fillRect(c + w2 - 1, y, 2, 2); } } }
       if (G.flash > 0) { x.fillStyle = `rgba(200,30,20,${Math.min(0.4, G.flash * 2)})`; x.fillRect(-10, -10, W + 20, H + 20); }
       x.setTransform(1, 0, 0, 1, 0, 0);
@@ -393,7 +402,7 @@ export function runChase(ch, startSec = 0, onSection = null) {
       if (over) return;
       raf = requestAnimationFrame(loop);
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
-      if (ch.paused) return;
+      if (ch.paused || cut) return;
       step(dt);
       for (const p of G.parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.a -= dt * 1.8; }
       if (G.parts.length > 260) G.parts.splice(0, G.parts.length - 260);

@@ -18,6 +18,7 @@ async function corpus() {
   const out = [];
   const add = (s) => { if (typeof s === 'string' && s && !out.includes(s)) out.push(s); };
   for (const k of ['PROLOGUE', 'MORNING', 'EVENING', 'ATTACK', 'NIGHT_INTRO', 'FOUND', 'AFTER_DUEL', 'ENDING']) for (const st of S[k]) { if (st.text) add(st.text.az); if (st.title) add(st.title); }
+  for (const sc of S.CHASE_CUTS) for (const st of sc) if (st.text) add(st.text.az);
   for (const b of S.DUEL) add(b.az);
   const camp = fs.readFileSync(path.join(SRC, 'camp.js'), 'utf8');
   for (const m of camp.matchAll(/'((?:[^'\\\n]|\\.)*)'/g)) {
