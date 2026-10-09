@@ -211,19 +211,23 @@ export const AFTER_DUEL = [
 ];
 
 // SƏHNƏ 6: son — boş yol və tərk edilmiş bar
+// SON: sinematik final (bax finale.js). { art } yeni kadr açır; sətirlər həmin kadrın alt yazılarıdır.
 export const ENDING = [
-  { art: 'z1' },
+  { art: 'g1' },
   N('Yol uzun idi və heç yerə aparmırdı — Emberə indi lazım olan da elə bu idi. Arxasınca gələn faralar bir-bir geridə qaldı; sonuncusu körpünün o tayında söndü.'),
   N('Sonra motor da susdu. Yanacaq əqrəbi çoxdan sıfırı göstərirdi; maşın son yüz addımı, deyəsən, sırf inadından getmişdi.'),
-  { art: 'z2' },
-  N('Yolun qırağında bir tikili qaralırdı. Damındakı yazının hərfləri çoxdan tökülmüşdü, qalanlarından isə bircə ad oxunurdu: LAST STOP.'),
-  N('Qapı açıq idi. Çöldə qapıları çoxdan heç kim bağlamırdı — bağlayan qalmamışdı.'),
-  { art: 'z3' },
-  N('İçəridən toz, köhnə taxta və kiminsə çoxdan içib qurtardığı bir axşamın iyi gəlirdi. Ember piştaxtaya çatdı və dizləri daha onun sözünə baxmadı.'),
-  N('Yerə çökdü. Maskanı yanına qoydu. Açar halqasını isə ovcundan buraxmadı.'),
-  N('Pəncərəyə vurulmuş taxtaların arasından içəri nazik bir işıq süzülürdü. Dan yeri sökülürdü: Hearth-siz ilk səhər.'),
+  { art: 'g2' },
+  N('Yolun qırağında köhnə bir yanacaq stansiyası qaralırdı. Lövhəsinin hərfləri çoxdan tökülmüşdü; kimsə divara əl ilə iki söz cızmışdı: LAST STOP.'),
+  { art: 'g3' },
+  N('Ember maşından düşdü. Bir əli böyründə idi, o biri hələ də açar halqasını sıxırdı — elə bərk ki, barmaqlarını aça bilmirdi.'),
+  { art: 'g4' },
+  N('Ayaqları onu kolonkaya qədər apardı. Orada dizləri daha onun sözünə baxmadı.'),
+  { art: 'g5' },
+  N('Beton soyuq idi. Ember yanı üstə uzandı, maskanı yanına qoydu və göyün kənarının necə ağardığına baxdı: Hearth-siz ilk səhər.'),
   S('ember', 'sad', '…Otuz yeddi. Otuz səkkiz.'),
+  { art: 'g6' },
   N('O, saymağa başladı. Milo kimi. Yüzə çatanda ayağa qalxacaqdı.'),
+  { art: 'g7' },
   N('Ondan sonra isə altı ad vardı. Bir də heç vaxt danışmayan biri.'),
 ];
 

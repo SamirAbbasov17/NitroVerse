@@ -383,6 +383,20 @@ body.cg-on #game-canvas, body.cg-on #mute-btn { visibility: hidden; }
 .cgs.is-finale .cgs__skip { display: none; }
 .cgf { position: absolute; inset: 0; z-index: 4; overflow: hidden; background: rgba(8, 4, 6, 0); transition: background 3s ease; font-family: var(--cg-caps); color: var(--cg-bone); text-align: center; cursor: default; }
 .cgf.is-on { background: rgba(8, 4, 6, 0.9); }
+/* Sinematik final: kətan bütün ekranı tutur, üstündə geniş ekran zolaqları və alt yazı; yazılar başlayanda kadr qaralır */
+.cgf--cine { background: #05030a; }
+.cgf--cine.is-on { background: #05030a; }
+.cgf__cine { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cgf__shade { position: absolute; inset: 0; pointer-events: none; background: rgba(6, 3, 8, 0); transition: background 3.2s ease;
+  background-image: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.12) 0, rgba(0, 0, 0, 0.12) 1px, transparent 1px, transparent 3px); }
+.cgf--cine.is-on .cgf__shade { background-color: rgba(6, 3, 8, 0.72); }
+.cgf__bar { position: absolute; left: 0; right: 0; height: 9.5%; background: #000; pointer-events: none; } .cgf__bar--t { top: 0; } .cgf__bar--b { bottom: 0; }
+.cgf__sub { position: absolute; left: 50%; bottom: 12.5%; transform: translateX(-50%); width: min(88vw, 900px); margin: 0; pointer-events: none; opacity: 0; transition: opacity 0.45s ease;
+  font-family: var(--cg-caps); font-size: clamp(14px, 3.4vh, 25px); line-height: 1.34; letter-spacing: 0.02em; color: var(--cg-bone); text-align: center;
+  text-shadow: 2px 2px 0 #000, -2px 2px 0 #000, 2px -2px 0 #000, -2px -2px 0 #000, 0 3px 6px rgba(0, 0, 0, 0.9); }
+.cgf__sub.is-on { opacity: 1; }
+.cgf__sub b { display: block; font-weight: 400; font-size: 0.72em; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 2px; }
+.cgf--cine.is-on .cgf__sub { opacity: 0; }
 .cgf__sparks { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; opacity: 0.8; pointer-events: none; }
 .cgf__title, .cgf__thanks { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(6px, 2vh, 16px); padding: 0 6vw; opacity: 0; transition: opacity 1.8s ease; pointer-events: none; }
 .cgf__title.is-on, .cgf__thanks.is-on { opacity: 1; pointer-events: auto; }
