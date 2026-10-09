@@ -41,7 +41,8 @@ export class World {
       this.goal = hit ? { x: hit.x, y: hit.y, ent: hit } : { x: wx, y: wy };
       this.keys.clear();
     };
-    addEventListener('keydown', this._kd); addEventListener('keyup', this._ku);
+    this._blur = () => this.keys.clear();          // pəncərə fokusdan çıxanda basılı düymə ilişib qalmasın
+    addEventListener('keydown', this._kd); addEventListener('keyup', this._ku); addEventListener('blur', this._blur);
     layer.addEventListener('pointerdown', this._tap);
     this.camX = 0; this.camY = 0;
     this.last = performance.now();
@@ -137,7 +138,9 @@ export class World {
   _loop(now) {
     if (this.dead) return;
     this.raf = requestAnimationFrame(this._loop);
-    const dt = Math.min(0.05, (now - this.last) / 1000); this.last = now; this.t += dt;
+    const dt = Math.min(0.05, (now - this.last) / 1000); this.last = now;
+    if (this.paused) return;                       // fasilə: dünya donur, kadr qalır
+    this.t += dt;
     if (!this.busy) this._move(dt); else this.p.walk = 0;
     for (const d of this.dust) { d.x += d.vx * dt; d.y += d.vy * dt; d.vy += 14 * dt; d.a -= dt * 2.6; }
     while (this.dust.length && this.dust[0].a <= 0) this.dust.shift();
@@ -187,7 +190,7 @@ export class World {
   dispose() {
     this.dead = true;
     cancelAnimationFrame(this.raf);
-    removeEventListener('keydown', this._kd); removeEventListener('keyup', this._ku);
+    removeEventListener('keydown', this._kd); removeEventListener('keyup', this._ku); removeEventListener('blur', this._blur);
     this.layer.removeEventListener('pointerdown', this._tap);
   }
 }

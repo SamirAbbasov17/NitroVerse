@@ -2,7 +2,7 @@
 // Hush-un təqdimatı, Jackal ilə döyüş (səhv düymə / gecikmə can aparır, üç səhv — əvvəldən), maska.
 import { test, expect } from '@playwright/test';
 import path from 'path';
-import { boot, OUT, ensureDir } from './helpers.js';
+import { boot, OUT, ensureDir, cgLeave } from './helpers.js';
 
 const DIR = ensureDir(path.join(OUT, 'carmageddon'));
 const openNight = async (page) => {
@@ -96,7 +96,7 @@ test('gecə: axtarışın təhlükələri, Milo, Hush, Jackal ilə döyüş, mas
   const end = await pass(page, 'card', seen2);
   expect(seen2.some((x) => x.startsWith('Ember:Altısı qaldı')), 'son replika').toBe(true);
   expect(end.card, 'gecədən sonra qaçış başlayır (ətraflı: carmageddon-chase.spec.js)').toMatch(/Qaçış/);
-  await page.keyboard.press('Escape');
+  await cgLeave(page);
   await expect(page.locator('.cgs')).toHaveCount(0, { timeout: 10_000 });
   // başlıq ekranı: yarımçıq oyun var → "Davam et" və "Yenidən başla"; yenidən başlayanda proloq açılır
   await expect(page.locator('[data-cg="story"]')).toContainText('Davam et');
@@ -104,7 +104,7 @@ test('gecə: axtarışın təhlükələri, Milo, Hush, Jackal ilə döyüş, mas
   await page.locator('[data-cg="new"]').click();
   await page.waitForFunction(() => window.__cgStory && !window.__cgStory.dlg.el.hidden && /Deyirlər/.test(window.__cgStory.dlg.full || ''), null, { timeout: 15_000 });
   expect(await page.evaluate(() => localStorage.getItem('cgCh1')), 'yaddaş silindi').toBeNull();
-  await page.keyboard.press('Escape');
+  await cgLeave(page);
   await expect(page.locator('[data-cg="new"]')).toBeHidden();
   expect(errs).toEqual([]);
 });

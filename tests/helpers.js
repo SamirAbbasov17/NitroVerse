@@ -238,3 +238,9 @@ export function mergeJson(name, key, value) {
   fs.writeFileSync(file, JSON.stringify(data, null, 2));
   return file;
 }
+
+// Carmageddon hekayəsindən başlıq ekranına: Esc fasilə menyusunu açır, oradan "Başlıq ekranı"
+export async function cgLeave(page) {
+  await page.keyboard.press('Escape');
+  await page.locator('[data-cgp="title"]').click();
+}

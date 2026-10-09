@@ -150,11 +150,30 @@ body.cg-on #game-canvas, body.cg-on #mute-btn { visibility: hidden; }
   background: linear-gradient(0deg, rgba(18, 8, 12, 0.82) 0%, rgba(18, 8, 12, 0.25) 42%, rgba(18, 8, 12, 0) 60%),
     repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.14) 0, rgba(0, 0, 0, 0.14) 1px, transparent 1px, transparent 3px); }
 .cgs__skip {
-  position: absolute; top: max(12px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); z-index: 3;
+  position: absolute; top: max(12px, env(safe-area-inset-top)); right: calc(max(14px, env(safe-area-inset-right)) + 46px); z-index: 3;
   padding: 7px 12px; min-height: 36px; cursor: pointer;
   font-family: var(--cg-caps); font-size: clamp(12px, 2vh, 15px); letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--cg-dim); background: rgba(18, 8, 12, 0.6); border: 2px solid #5a2a24; border-radius: 0;
 }
+/* Fasilə düyməsi (sağ yuxarı künc) və fasilə pəncərəsi — telefonda hekayədən çıxışın yeganə yolu */
+.cgs__menu {
+  position: absolute; top: max(12px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); z-index: 6;
+  width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer;
+  background: rgba(18, 8, 12, 0.6); border: 2px solid #5a2a24; border-radius: 0;
+}
+.cgs__menu i { width: 4px; height: 14px; background: var(--cg-dim); }
+.cgs__menu:hover i, .cgs__menu:focus-visible i { background: var(--cg-amber); }
+.cgs.is-finale .cgs__menu { opacity: 0.35; }
+.cgs__pause { position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; background: rgba(10, 5, 8, 0.78);
+  background-image: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0, rgba(0, 0, 0, 0.22) 1px, transparent 1px, transparent 3px); }
+.cgs__pause[hidden] { display: none; }
+.cgs__pause > div { display: flex; flex-direction: column; align-items: stretch; gap: clamp(8px, 2vh, 14px); min-width: min(78vw, 300px); padding: clamp(14px, 4vh, 28px) clamp(18px, 4vw, 34px);
+  background: rgba(18, 8, 12, 0.96); border: 3px solid var(--cg-amber); box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.6); text-align: center; font-family: var(--cg-caps); }
+.cgs__pause b { font-family: var(--cg-display, var(--cg-caps)); font-weight: 400; font-size: clamp(20px, 6vh, 34px); letter-spacing: 0.16em; text-transform: uppercase; color: var(--cg-amber); margin-bottom: 4px; }
+.cgs__pause button { min-height: 42px; padding: 8px 16px; cursor: pointer; font-family: var(--cg-caps); font-size: clamp(14px, 3vh, 19px); letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--cg-bone); background: #2a1218; border: 2px solid #5a2a24; border-radius: 0; }
+.cgs__pause button:hover, .cgs__pause button:focus-visible { border-color: var(--cg-amber); color: var(--cg-amber); outline: none; }
+.cgs__pause span { font-size: clamp(11px, 2.2vh, 14px); letter-spacing: 0.08em; color: var(--cg-dim); }
 .cgs__card {
   position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
   background: var(--cg-ink); cursor: pointer; text-align: center; animation: cg-card 0.5s ease both;
@@ -296,7 +315,7 @@ body.cg-on #game-canvas, body.cg-on #mute-btn { visibility: hidden; }
 .cgc__bar::after { content: attr(data-l); position: absolute; left: 5px; top: 50%; transform: translateY(-50%); font-size: clamp(8px, 1.9vh, 12px); letter-spacing: 0.12em; color: #fff; text-shadow: 1px 1px 0 #000; }
 .cgc__bar.is-low { animation: cg-blink 0.5s steps(2) infinite; border-color: var(--cg-amber); }
 .cgc__nitro { min-height: 1.1em; font-size: clamp(14px, 3.6vh, 22px); letter-spacing: 0.1em; color: #5ab4ff; text-shadow: 2px 2px 0 #000; }
-.cgc__prog { position: absolute; right: max(10px, env(safe-area-inset-right)); top: max(10px, env(safe-area-inset-top)); width: min(30vw, 200px); height: 6px; background: rgba(18, 8, 12, 0.8); border: 2px solid #5a2a24; }
+.cgc__prog { position: absolute; right: calc(max(14px, env(safe-area-inset-right)) + 46px); margin-top: 15px; top: max(10px, env(safe-area-inset-top)); width: min(30vw, 200px); height: 6px; background: rgba(18, 8, 12, 0.8); border: 2px solid #5a2a24; }
 .cgc__prog i { display: block; height: 100%; background: var(--cg-bone); }
 .cgc__banner { position: absolute; left: 0; right: 0; top: 22%; text-align: center; opacity: 0; }
 .cgc__banner.is-on { animation: cgc-banner 3.6s steps(20) forwards; }

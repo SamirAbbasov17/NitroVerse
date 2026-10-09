@@ -3,7 +3,7 @@
 // BİLİR (sadə avtopilot real idarə ilə — düymələrlə — sürür), finala keçid, telefon.
 import { test, expect } from '@playwright/test';
 import path from 'path';
-import { boot, OUT, ensureDir } from './helpers.js';
+import { boot, OUT, ensureDir, cgLeave } from './helpers.js';
 
 const DIR = ensureDir(path.join(OUT, 'carmageddon'));
 const openChase = async (page, sec = 0) => {
@@ -106,7 +106,7 @@ test('qaçış: mexanikalar və yaddaş nöqtəsi', async ({ page }) => {
   // 6) qaçış bitəndə final başlayır (ətraflı: carmageddon-finale.spec.js) və yaddaş silinir
   await page.waitForFunction(() => !!window.__cgStory?._finale, null, { timeout: 15_000 });
   expect(await page.evaluate(() => localStorage.getItem('cgCh1')), 'fəsil bitdi — yaddaş silindi').toBeNull();
-  await page.keyboard.press('Escape');
+  await cgLeave(page);
   await expect(page.locator('.cgs')).toHaveCount(0, { timeout: 10_000 });
   expect(errs).toEqual([]);
 });

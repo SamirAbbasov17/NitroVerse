@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import path from 'node:path';
-import { OUT, boot, ensureDir } from './helpers.js';
+import { OUT, boot, ensureDir, cgLeave } from './helpers.js';
 
 // CARMAGEDDON başlıq ekranı: NitroVerse menyusundan ayrıca oyun kimi açılır, qəhrəman canlıdır
 // (qırpır, kursoru izləyir, toxunuşa cavab verir), menyu klaviatura ilə işləyir, geri qayıdır.
@@ -88,7 +88,7 @@ test('carmageddon: menyudan açılır, qəhrəman canlıdır, geri qayıdır (ma
   await expect(page.locator('.cg__btn.is-selected')).toContainText('Hekayəyə başla');
   await page.keyboard.press('Enter');                       // hekayə açılır (ətraflı: carmageddon-story.spec.js)
   await page.waitForSelector('.cgs.is-ready', { timeout: 20_000 });
-  await page.keyboard.press('Escape');                      // hekayədən başlıq ekranına
+  await cgLeave(page);                      // hekayədən başlıq ekranına
   await expect(page.locator('.cgs')).toHaveCount(0);
   await expect(page.locator('.cg__btn.is-selected')).toBeVisible();
   await page.keyboard.press('Escape');

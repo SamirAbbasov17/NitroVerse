@@ -41,7 +41,8 @@ export function runChase(ch, startSec = 0, onSection = null) {
     const MAP = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowDown: 'brake', KeyS: 'brake', Space: 'nitro', KeyE: 'nitro', ArrowUp: 'nitro', KeyW: 'nitro' };
     const kd = (e) => { const k = MAP[e.code]; if (!k) return; e.preventDefault(); if (k === 'nitro') { if (!e.repeat) nitro(); } else keys.add(k); };
     const ku = (e) => { const k = MAP[e.code]; if (k) keys.delete(k); };
-    addEventListener('keydown', kd); addEventListener('keyup', ku);
+    const blur = () => { keys.clear(); ui.querySelectorAll('.is-on').forEach((b) => b.classList.remove('is-on')); };   // fokus itəndə sükan ilişib qalmasın
+    addEventListener('keydown', kd); addEventListener('keyup', ku); addEventListener('blur', blur);
     ui.querySelectorAll('[data-k]').forEach((b) => {
       const k = b.dataset.k;
       b.addEventListener('pointerdown', (e) => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch { /* boş */ } if (k === 'nitro') nitro(); else keys.add(k); b.classList.add('is-on'); });
@@ -423,6 +424,7 @@ export function runChase(ch, startSec = 0, onSection = null) {
       if (over) return;
       raf = requestAnimationFrame(loop);
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      if (ch.paused) return;
       step(dt);
       for (const p of G.parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.a -= dt * 1.8; }
       if (G.parts.length > 260) G.parts.splice(0, G.parts.length - 260);
@@ -436,8 +438,8 @@ export function runChase(ch, startSec = 0, onSection = null) {
     }
 
     function finish() { stop(); resolve(); }
-    function stop() { over = true; cancelAnimationFrame(raf); removeEventListener('keydown', kd); removeEventListener('keyup', ku); clearTimeout(say.tm); ui.remove(); ch._chase = null; x.setTransform(1, 0, 0, 1, 0, 0); }
-    ch._chase = { stop, keys, get G() { return G; }, get S() { return S; }, get si() { return si; }, SECTIONS, nitro, start, skip: () => { G.won = 0.05; } };
+    function stop() { over = true; cancelAnimationFrame(raf); removeEventListener('keydown', kd); removeEventListener('keyup', ku); removeEventListener('blur', blur); clearTimeout(say.tm); ui.remove(); ch._chase = null; x.setTransform(1, 0, 0, 1, 0, 0); }
+    ch._chase = { stop, keys, pause: blur, get G() { return G; }, get S() { return S; }, get si() { return si; }, SECTIONS, nitro, start, skip: () => { G.won = 0.05; } };
     start(startSec);
     raf = requestAnimationFrame(loop);
   });

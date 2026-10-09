@@ -3,7 +3,7 @@
 // başlıq ekranına qaytarır; telefonda dialoq qutusu ekrana sığır.
 import { test, expect } from '@playwright/test';
 import path from 'path';
-import { boot, OUT, ensureDir } from './helpers.js';
+import { boot, OUT, ensureDir, cgLeave } from './helpers.js';
 
 const DIR = ensureDir(path.join(OUT, 'carmageddon'));
 const open = async (page) => {
@@ -54,7 +54,7 @@ test('hekayə: yazı, kliklə tamamlama və keçid, portret, sonda başlıq ekra
   // 5) bütün dialoqu kliklə keç → düşərgə açılır (ətraflı: carmageddon-camp.spec.js); Esc → başlıq ekranı
   for (let i = 0; i < 80 && !(await page.evaluate(() => !!window.__cgStory?.world)); i++) { await page.keyboard.press('Enter'); await page.waitForTimeout(40); }
   await page.waitForFunction(() => !!window.__cgStory?.world, null, { timeout: 10_000 });
-  await page.keyboard.press('Escape');
+  await cgLeave(page);
   await expect(page.locator('.cgs')).toHaveCount(0, { timeout: 8000 });
   await expect(page.locator('.cg__btn.is-selected')).toBeVisible();
   expect(errs).toEqual([]);

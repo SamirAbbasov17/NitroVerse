@@ -2,7 +2,7 @@
 // keçilir; yeddi baronun hər biri təqdimat kartı ilə çıxır; sonra gecə axtarışı başlayır.
 import { test, expect } from '@playwright/test';
 import path from 'path';
-import { boot, OUT, ensureDir } from './helpers.js';
+import { boot, OUT, ensureDir, cgLeave } from './helpers.js';
 
 const DIR = ensureDir(path.join(OUT, 'carmageddon'));
 const openEvening = async (page) => {
@@ -45,7 +45,7 @@ test('axşam ocağı və hücum: bütün səhnə, yeddi baronun təqdimatı, son
   expect(seen.lines, 'sətirlər oynandı').toBeGreaterThan(45);
   for (const n of ['Milo', 'Ember', 'Elder Amos', 'Radio Ray', 'Old Gus', 'Miss Clara', 'Judge', 'Jackal']) expect([...seen.speakers]).toContain(n);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('cgCh1')).stage), 'mərhələ yadda saxlandı').toBe('night');
-  await page.keyboard.press('Escape');
+  await cgLeave(page);
   await expect(page.locator('.cgs')).toHaveCount(0, { timeout: 10_000 });
   expect(errs).toEqual([]);
 });

@@ -33,7 +33,9 @@ export class Chapter1 {
       <canvas class="cg__bg cgs__bg" width="${W}" height="${H}"></canvas>
       <div class="cgs__shade"></div>
       <div class="cgs__card" hidden></div>
-      <button class="cgs__skip" type="button">${t('cg.skip')}</button>`;
+      <button class="cgs__skip" type="button">${t('cg.skip')}</button>
+      <button class="cgs__menu" type="button" aria-label="${t('cg.pause')}"><i></i><i></i></button>
+      <div class="cgs__pause" hidden><div><b>${t('cg.pause')}</b><button type="button" data-cgp="resume">${t('cg.continue')}</button><button type="button" data-cgp="title">${t('cg.toTitle')}</button><span>${t('cg.pauseNote')}</span></div></div>`;
     root.appendChild(el);
     this.cv = el.querySelector('canvas'); this.cx = this.cv.getContext('2d'); this.cx.imageSmoothingEnabled = false;
     this.card = el.querySelector('.cgs__card');
@@ -42,8 +44,19 @@ export class Chapter1 {
     this._skip = false;
     // "Keç": gedən səhnənin qalan sətirləri ötürülür (kadr dəyişməsi zamanı basılsa da işləyir)
     el.querySelector('.cgs__skip').onclick = (e) => { e.stopPropagation(); this._skip = true; this.dlg.skip(); };
-    this._onKey = (e) => { if (e.code === 'Escape') { e.stopImmediatePropagation(); this.end(); } };
+    // Fasilə: Esc və ya künc düyməsi. Fasilədə klaviatura səhnəyə çatmır (dialoq keçmir, maşın dönmür).
+    this.paused = false;
+    this.pauseEl = el.querySelector('.cgs__pause');
+    el.querySelector('.cgs__menu').onclick = (e) => { e.stopPropagation(); this.pause(); };
+    this.pauseEl.onclick = (e) => { e.stopPropagation(); const k = e.target.closest('[data-cgp]')?.dataset.cgp; if (k === 'resume') this.resume(); else if (k === 'title') this.end(); };
+    this.pauseEl.addEventListener('pointerdown', (e) => e.stopPropagation());
+    this._onKey = (e) => {
+      if (e.code === 'Escape') { e.stopImmediatePropagation(); e.preventDefault(); if (this.paused) this.resume(); else this.pause(); return; }
+      if (this.paused) e.stopImmediatePropagation();          // fokusdakı düymə (Davam et) Enter-i özü alır
+    };
+    this._onHide = () => { if (document.hidden && (el.classList.contains('is-world') || el.classList.contains('is-duel'))) this.pause(); };   // oynanışda ekran sönsə / tab dəyişsə
     addEventListener('keydown', this._onKey, true);
+    document.addEventListener('visibilitychange', this._onHide);
     this.run().catch((e) => { console.error('Carmageddon Fəsil 1:', e); this.end(); });   // xəta olsa başlıq ekranına qayıt, ilişib qalma
   }
 
@@ -154,7 +167,7 @@ export class Chapter1 {
       await this._play(MORNING);
       if (this.dead) return;
     }
-    if (!['evening', 'night', 'chase'].includes(stage)) {
+    if (!['evening', 'night', 'found', 'chase'].includes(stage)) {
       // HEARTH: gəzinti və tapşırıqlar
       music.play('settlement');
       await this._fade(0);
@@ -169,7 +182,7 @@ export class Chapter1 {
     await this._fade(0);
     await this._card(t('cg.ch1'), t('cg.evening'), 2400);
     if (this.dead) return;
-    if (stage !== 'night') {
+    if (stage !== 'night' && stage !== 'found') {
       music.play('settlement');
       await this._play(EVENING);
       if (this.dead) return;
@@ -179,15 +192,18 @@ export class Chapter1 {
     }
     // GECƏ: axtarış (oynanış) → Milo → Hush → Old Gus → Jackal ilə döyüş → maska
     music.play('emptycity');
-    await this._play(NIGHT_INTRO);
-    if (this.dead) return;
-    this.dlg.hide();
-    await this._fade(0);
-    this.el.classList.add('is-world');
-    this.cv.style.opacity = 1;
-    await runSearch(this);
-    if (this.dead) return;
-    this.el.classList.remove('is-world');
+    if (stage !== 'found') {
+      await this._play(NIGHT_INTRO);
+      if (this.dead) return;
+      this.dlg.hide();
+      await this._fade(0);
+      this.el.classList.add('is-world');
+      this.cv.style.opacity = 1;
+      await runSearch(this);
+      if (this.dead) return;
+      this.el.classList.remove('is-world');
+      setStage('found');                             // axtarış keçildi — çıxıb qayıdan onu təkrar oynamır
+    }
     await this._play(FOUND);
     if (this.dead) return;
     this.dlg.hide();
@@ -218,10 +234,28 @@ export class Chapter1 {
     this.end();
   }
 
+  pause() {
+    if (this.dead || this.paused) return;
+    this.paused = true;
+    if (this.world) { this.world.paused = true; this.world.keys.clear(); this.world.goal = null; }
+    this._chase?.pause(); this._duel?.pause();
+    this.pauseEl.hidden = false;
+    this.pauseEl.querySelector('button').focus({ preventScroll: true });
+  }
+
+  resume() {
+    if (this.dead || !this.paused) return;
+    this.paused = false;
+    this.pauseEl.hidden = true;
+    if (this.world) { this.world.paused = false; this.world.last = performance.now(); }
+    this._duel?.resume();
+  }
+
   end() {
     if (this.dead) return;
     this.dead = true;
     removeEventListener('keydown', this._onKey, true);
+    document.removeEventListener('visibilitychange', this._onHide);
     this.world?.dispose();
     this._duel?.stop();
     this._chase?.stop();

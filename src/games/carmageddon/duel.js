@@ -23,7 +23,7 @@ export function runDuel(ch, beats) {
     const drawHp = () => { hpEl.innerHTML = [0, 1, 2].map((k) => `<i class="${k < hp ? '' : 'is-gone'}"></i>`).join(''); };
     const time = () => Math.max(1.05, 1.9 - i * 0.12);                    // vuruşlar getdikcə sürətlənir
     function ask() {
-      if (over) return;
+      if (over || ch.paused) return;
       const b = beats[i];
       glyph.textContent = GLYPH[b.key];
       text.textContent = T(b.az);
@@ -56,7 +56,9 @@ export function runDuel(ch, beats) {
     addEventListener('keydown', onKey, true);
     el.querySelectorAll('[data-k]').forEach((b) => b.addEventListener('pointerdown', (e) => { e.preventDefault(); answer(b.dataset.k); }));
     function done() { removeEventListener('keydown', onKey, true); el.remove(); ch._duel = null; resolve(); }
-    ch._duel = { stop: () => { over = true; clearTimeout(tm); removeEventListener('keydown', onKey, true); el.remove(); }, get state() { return { i, hp, open, want: beats[i]?.key }; }, answer };
+    const pause = () => { if (over) return; clearTimeout(tm); open = false; ring.classList.remove('is-run'); };
+    const resume = () => { if (!over && i < beats.length && hp > 0) ask(); };
+    ch._duel = { pause, resume, stop: () => { over = true; clearTimeout(tm); removeEventListener('keydown', onKey, true); el.remove(); }, get state() { return { i, hp, open, want: beats[i]?.key }; }, answer };
     drawHp();
     setTimeout(ask, 700);
   });
