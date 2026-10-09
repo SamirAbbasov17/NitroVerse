@@ -24,6 +24,8 @@ const skipTalk = async (page) => {
       if (m) {
         const s = m.state;
         if (s.kind === 'timing') { if (s.pos > s.z0 + 0.02 && s.pos < s.z0 + s.zw - 0.02) m.hit(); }
+        else if (s.kind === 'pattern') { if (!s.showing && s.step < s.seq.length) m.press(s.seq[s.step]); }
+        else if (s.kind === 'shuffle') { if (s.phase === 'pick') m.pick(s.at); }
         else { m.keys.clear(); const d = s.target - s.pos; if (Math.abs(d) > 0.02) m.keys.add(Math.sign(d)); }
         return 'mini';
       }
@@ -285,4 +287,72 @@ test('fiqurlar: yeriş kadrları (addım, qol, yandan qayçı) — hamısı üç
     expect(Math.min(...s.leftVsRight), `${n}: sol və sağ addım fərqlidir`).toBeGreaterThan(8);
     expect(s.grounded, `${n}: yeriyəndə yerdən qopmur`).toBe(true);
   }
+});
+
+// Toxum əkmək (yaddaş) və Pip-i çəlləklərin arxasında tapmaq: real düymələrlə; səhv cavab cəzalandırmır, təkrar edir.
+test('düşərgə: "Toxumları ək" və "Pip haradadır?" kiçik oyunları', async ({ page }) => {
+  test.setTimeout(150_000);
+  const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+  await boot(page);
+  await toCamp(page);
+  await skipTalk(page);
+  const KEY = { up: 'ArrowUp', left: 'ArrowLeft', right: 'ArrowRight', down: 'ArrowDown' };
+  const openMini = async (id, dy) => {
+    await page.evaluate(([k, d]) => { const w = window.__cgStory.world, en = w.get(k); w.p.x = en.x; w.p.y = en.y + d; w.coolUntil = 0; w.interact(en); }, [id, dy]);
+    for (let i = 0; i < 40 && !(await page.evaluate(() => !!window.__cgStory._mini)); i++) { await page.keyboard.press('Enter'); await page.waitForTimeout(60); }
+  };
+  // 1) toxum: iki tur (3 və 4 lək); bir dəfə qəsdən səhv — sıra yenidən göstərilir, tur itmir
+  await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('cgCh1')); s.q.seeds = 2; s.got = ['s1', 's2', 's3']; localStorage.setItem('cgCh1', JSON.stringify(s)); });
+  await reopen(page);
+  await openMini('wren', 14);
+  await expect(page.locator('.cgm--pattern')).toBeVisible();
+  const ready = () => page.waitForFunction(() => { const s = window.__cgStory._mini?.state; return !s || (!s.showing && s.step < s.seq.length); }, null, { timeout: 15_000 });
+  await ready();
+  await page.screenshot({ path: path.join(DIR, 'mini-pattern.png') });
+  const s0 = await page.evaluate(() => window.__cgStory._mini.state);
+  expect(s0.seq.length, 'birinci tur üç ləkdir').toBe(3);
+  await page.keyboard.press(KEY[['up', 'left', 'right', 'down'].find((k) => k !== s0.seq[0])]);      // səhv
+  await page.waitForFunction(() => window.__cgStory._mini.state.showing, null, { timeout: 3000 });
+  await ready();
+  expect(await page.evaluate(() => { const s = window.__cgStory._mini.state; return [s.round, s.step, s.seq.join()]; }), 'səhvdən sonra eyni sıra, əvvəldən').toEqual([0, 0, s0.seq.join()]);
+  for (const t0 = Date.now(); Date.now() - t0 < 30_000;) {
+    const st = await page.evaluate(() => window.__cgStory._mini?.state || null); if (!st) break;
+    if (st.showing || st.step >= st.seq.length) { await page.waitForTimeout(150); continue; }
+    await page.keyboard.press(KEY[st.seq[st.step]]); await page.waitForTimeout(120);
+  }
+  await expect(page.locator('.cgm')).toHaveCount(0, { timeout: 8000 });
+  await skipTalk(page);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('cgCh1')).q.seeds), 'toxumlar əkildi').toBe(9);
+  // 2) Pip: üçüncü gizlənmə yerində çəlləklər qarışır; səhv seçim yenidən qarışdırır, düz seçim tapır (◀ ▶ + E)
+  await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('cgCh1')); s.q.pip = 3; localStorage.setItem('cgCh1', JSON.stringify(s)); });
+  await reopen(page);
+  await openMini('pip2', 6);
+  await expect(page.locator('.cgm--shuffle')).toBeVisible();
+  const pickPhase = () => page.waitForFunction(() => window.__cgStory._mini?.state.phase === 'pick', null, { timeout: 15_000 });
+  await pickPhase();
+  await page.screenshot({ path: path.join(DIR, 'mini-shuffle.png') });
+  const a = await page.evaluate(() => window.__cgStory._mini.state);
+  const go = async (to, from) => { for (let i = 0; i < Math.abs(to - from); i++) await page.keyboard.press(to > from ? 'ArrowRight' : 'ArrowLeft'); await page.keyboard.press('KeyE'); };
+  await go((a.at + 1) % 3, a.sel);                                                                    // səhv çəllək
+  await page.waitForFunction(() => window.__cgStory._mini.state.tries === 1, null, { timeout: 3000 });
+  await pickPhase();
+  const b = await page.evaluate(() => window.__cgStory._mini.state);
+  await go(b.at, b.sel);
+  await expect(page.locator('.cgm')).toHaveCount(0, { timeout: 8000 });
+  await skipTalk(page);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('cgCh1')).q.pip), 'Pip tapıldı').toBe(4);
+  // 3) telefon ölçüsü
+  await page.setViewportSize({ width: 667, height: 375 });
+  const fit = await page.evaluate(async () => {
+    const m = await import('/src/games/carmageddon/minigame.js'); const ch = window.__cgStory, out = [];
+    for (const [fn, o] of [[m.pattern, { title: 'Посади семена', hint: 'Запомни, в каком порядке загораются лунки, и повтори — стрелки или касание' }], [m.shuffle, { title: 'Pip haradadır?', hint: 'Çəlləkləri izlə, sonra Pip-in gizləndiyini seç — ◀ ▶ və E, ya da toxun' }]]) {
+      fn(ch, o); await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const bx = document.querySelector('.cgm__box').getBoundingClientRect();
+      out.push(bx.left >= 0 && bx.top >= 0 && bx.right <= innerWidth && bx.bottom <= innerHeight && [...document.querySelectorAll('.cgm button')].every((x) => { const r = x.getBoundingClientRect(); return r.height >= 34 && r.width >= 44; }));
+      ch._mini.stop();
+    }
+    return out;
+  });
+  expect(fit, 'telefonda sığır').toEqual([true, true]);
+  expect(errs).toEqual([]);
 });

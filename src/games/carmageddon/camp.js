@@ -4,7 +4,7 @@
 import { t } from '../../core/i18n.js';
 import { World } from './world.js';
 import { T } from './tx.js';
-import { timing, tuning } from './minigame.js';
+import { timing, tuning, pattern, shuffle } from './minigame.js';
 
 const SAVE = 'cgCh1';
 const load = () => { try { return JSON.parse(localStorage.getItem(SAVE) || 'null'); } catch { return null; } };
@@ -137,10 +137,15 @@ export async function runCamp(ch) {
     } else if (st.q.seeds === 1) {
       await talk([L('wren', 'neutral', 'Kisələr kiçikdir, sarı iplə bağlamışam. Külək şimala və bostanın o tayına əsirdi.')]);
     } else if (st.q.seeds === 2) {
-      st.q.seeds = 9;
       await talk([
         L('wren', 'happy', 'Üçü də! Bax, bu pomidordur. Bu da… hə, bibər. Üçüncüsü nədir, özüm də bilmirəm. Əkək, görək.'),
         L('ember', 'confused', 'Bilmədiyin şeyi əkirsən?'),
+      ]);
+      world.busy = true;
+      await pattern(ch, { title: t('cg.mg.plant'), hint: t('cg.mg.plantH'), rounds: [3, 4] });   // Granny Wren ləkləri göstərir — eyni sıra ilə ək
+      if (ch.dead) return;
+      st.q.seeds = 9;
+      await talk([
         L('wren', 'smile', 'Həyatda ən yaxşı şeylər elə çıxıb, qızım. Sən də bir gün gəldin, heç kim bilmirdi nə çıxacaq.'),
         L('wren', 'love', 'Qırmızı çıxdın. Bostana yaraşırsan.'),
         L('ember', 'love', '…Sağ ol, nənə.'),
@@ -314,6 +319,11 @@ export async function runCamp(ch) {
     id: 'pip' + i, x, y, kind: 'spot', r: 4, when: () => st.q.pip === i + 1,
     draw: (c, en, tt) => { const w = Math.round(Math.sin(tt * 9) * 1.5); c.fillStyle = '#12080c'; c.fillRect(en.x - 2 + w, en.y - 14, 5, 5); c.fillStyle = '#f07a1c'; c.fillRect(en.x - 1 + w, en.y - 13, 3, 3); },
     use: async () => {
+      if (i === 2) {                               // sonuncu gizlənmə: Pip çəlləklərin arxasına qaçır — hansındadır?
+        world.busy = true;
+        await shuffle(ch, { title: t('cg.mg.find'), hint: t('cg.mg.findH'), swaps: 5 });
+        if (ch.dead) return;
+      }
       st.q.pip = i + 2;
       await talk(i === 0 ? [
         L('pip', 'laugh', 'Hihihi! Tapdın! Amma bu sayılmır, çünki mən hələ gizlənməmişdim!'),

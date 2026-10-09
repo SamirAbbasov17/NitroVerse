@@ -1,6 +1,8 @@
 // CARMAGEDDON — düşərgə tapşırıqlarının kiçik oyunları (tapşırıq yalnız "get-gətir" olmasın).
 //   timing — göstərici zolaq boyu gedib-gəlir; yaşıl zonada olanda bas (E / boşluq / toxun). Hər uğurda zona
 //            daralır və göstərici sürətlənir. Uduzmaq yoxdur — səhv basış sadəcə sayılmır.
+//   pattern — yaddaş: ləklər sıra ilə yanır, eyni sıranı təkrarla (toxum əkmək).
+//   shuffle — üç çəllək qarışır, Pip-in arxasında gizləndiyini tap.
 //   tuning — əqrəbi ◀ ▶ ilə çevirib gizli dalğanı tap; siqnal zolağı yaxınlığı göstərir, dalğada bir müddət
 //            qalanda tutulur. Dalğa arada yerini dəyişir.
 // Hər ikisi fasiləni (ch.paused) nəzərə alır və bitəndə həll olunan söz (promise) qaytarır.
@@ -90,5 +92,93 @@ export function tuning(ch, { title, hint }) {
     function done() { stop(); resolve(); }
     ch._mini = { stop, keys, get state() { return { kind: 'tuning', pos, target, held, moves }; } };
     raf = requestAnimationFrame(loop);
+  });
+}
+
+// pattern — yaddaş: dörd ləkdən bir neçəsi sıra ilə yanır; eyni sıranı təkrarla (oxlar / WASD və ya toxun).
+//           Səhv olanda sıra yenidən göstərilir. rounds — hər turun uzunluğu, məs. [3, 4].
+export function pattern(ch, { title, hint, rounds = [3, 4] }) {
+  return new Promise((resolve) => {
+    const el = shell(ch, 'cgm--pattern', title, hint, `<div class="cgm__plots">${['up', 'left', 'right', 'down'].map((k) => `<button type="button" data-p="${k}"><i></i></button>`).join('')}</div><div class="cgm__pips">${'<i></i>'.repeat(rounds.length)}</div>`);
+    const box = el.querySelector('.cgm__box'), plots = Object.fromEntries([...el.querySelectorAll('[data-p]')].map((b) => [b.dataset.p, b])), pips = [...el.querySelectorAll('.cgm__pips i')];
+    const NAMES = ['up', 'left', 'right', 'down'];
+    let round = 0, seq = [], step = 0, showing = true, over = false; const timers = [];
+    const later = (fn, ms) => { const id = setTimeout(() => { if (over) return; if (ch.paused) later(fn, 200); else fn(); }, ms); timers.push(id); };
+    const flash = (k, cls = 'is-lit', ms = 330) => { const b = plots[k]; b.classList.add(cls); later(() => b.classList.remove(cls), ms); };
+    function show() {
+      showing = true; step = 0; box.classList.add('is-show');
+      seq.forEach((k, i) => later(() => { flash(k); audio.sfx('click'); }, 500 + i * 560));
+      later(() => { showing = false; box.classList.remove('is-show'); }, 500 + seq.length * 560);
+    }
+    function next() {
+      seq = []; for (let i = 0; i < rounds[round]; i++) { let k; do { k = NAMES[Math.floor(Math.random() * 4)]; } while (k === seq[i - 1]); seq.push(k); }
+      show();
+    }
+    function press(k) {
+      if (over || showing || ch.paused) return;
+      if (k === seq[step]) {
+        flash(k, 'is-good', 260); audio.sfx('click'); plots[k].classList.add('is-sown'); step++;
+        if (step >= seq.length) {
+          pips[round].classList.add('is-on'); round++; showing = true;
+          if (round >= rounds.length) { over = true; audio.sfx('pickup'); setTimeout(done, 600); return; }
+          later(() => { Object.values(plots).forEach((b) => b.classList.remove('is-sown')); next(); }, 700);
+        }
+      } else {
+        flash(k, 'is-wrong', 300); audio.sfx('discard'); box.classList.remove('is-bad'); void box.offsetWidth; box.classList.add('is-bad');
+        showing = true; later(() => { Object.values(plots).forEach((b) => b.classList.remove('is-sown')); show(); }, 650);      // eyni sıra bir də göstərilir
+      }
+    }
+    const KEY = { ArrowUp: 'up', KeyW: 'up', ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowDown: 'down', KeyS: 'down' };
+    const onKey = (e) => { const k = KEY[e.code]; if (k) { e.preventDefault(); e.stopPropagation(); if (!e.repeat) press(k); } else if (['KeyE', 'Space', 'Enter'].includes(e.code)) { e.preventDefault(); e.stopPropagation(); } };
+    addEventListener('keydown', onKey, true);
+    Object.entries(plots).forEach(([k, b]) => b.addEventListener('pointerdown', (e) => { e.preventDefault(); press(k); }));
+    const stop = () => { over = true; timers.forEach(clearTimeout); removeEventListener('keydown', onKey, true); el.remove(); ch._mini = null; };
+    function done() { stop(); resolve(); }
+    ch._mini = { stop, press, get state() { return { kind: 'pattern', round, seq: [...seq], step, showing }; } };
+    next();
+  });
+}
+
+// shuffle — "hansının arxasındadır?": Pip üç çəlləkdən birinin arxasına girir, çəlləklər bir neçə dəfə yer dəyişir;
+//           sonda düz çəlləyi seç (◀ ▶ + E və ya toxun). Səhv seçəndə Pip gülür və çəlləklər yenidən qarışır.
+export function shuffle(ch, { title, hint, swaps = 5 }) {
+  return new Promise((resolve) => {
+    const el = shell(ch, 'cgm--shuffle', title, hint, `<div class="cgm__row">${[0, 1, 2].map((i) => `<button type="button" class="cgm__barrel" data-b="${i}"><i class="cgm__pip"></i><span></span></button>`).join('')}</div>`);
+    const box = el.querySelector('.cgm__box'), barrels = [...el.querySelectorAll('.cgm__barrel')];
+    const slot = [0, 1, 2];                                    // çəllək i hansı yerdədir
+    let where = Math.floor(Math.random() * 3), phase = 'peek', sel = 1, over = false, tries = 0; const timers = [];
+    const later = (fn, ms) => { const id = setTimeout(() => { if (over) return; if (ch.paused) later(fn, 200); else fn(); }, ms); timers.push(id); };
+    const place = () => barrels.forEach((b, i) => { b.style.setProperty('--slot', slot[i]); b.classList.toggle('is-sel', phase === 'pick' && slot[i] === sel); });
+    function start() {
+      phase = 'peek'; place();
+      barrels.forEach((b, i) => b.classList.toggle('is-peek', i === where));
+      later(() => { barrels.forEach((b) => b.classList.remove('is-peek', 'is-miss', 'is-found')); phase = 'mix'; mix(swaps + Math.min(2, tries)); }, 1100);
+    }
+    function mix(n) {
+      if (!n) { phase = 'pick'; sel = 1; place(); return; }
+      const a = Math.floor(Math.random() * 3); let b = (a + 1 + Math.floor(Math.random() * 2)) % 3;
+      const ia = slot.indexOf(a), ib = slot.indexOf(b); slot[ia] = b; slot[ib] = a; place(); audio.sfx('click');
+      later(() => mix(n - 1), Math.max(240, 430 - tries * 40));
+    }
+    function pick(s) {
+      if (over || phase !== 'pick' || ch.paused) return;
+      const i = slot.indexOf(s); phase = 'show';
+      barrels.forEach((b) => b.classList.remove('is-sel'));
+      if (i === where) { barrels[i].classList.add('is-found', 'is-peek'); audio.sfx('pickup'); over = true; setTimeout(done, 900); return; }
+      tries++; barrels[i].classList.add('is-miss'); barrels[where].classList.add('is-peek'); audio.sfx('discard');
+      box.classList.remove('is-bad'); void box.offsetWidth; box.classList.add('is-bad');
+      later(() => { where = Math.floor(Math.random() * 3); start(); }, 1300);
+    }
+    const onKey = (e) => {
+      if (['ArrowLeft', 'KeyA', 'ArrowRight', 'KeyD', 'KeyE', 'Space', 'Enter'].includes(e.code)) { e.preventDefault(); e.stopPropagation(); } else return;
+      if (phase !== 'pick' || e.repeat) return;
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') { sel = Math.max(0, sel - 1); place(); } else if (e.code === 'ArrowRight' || e.code === 'KeyD') { sel = Math.min(2, sel + 1); place(); } else pick(sel);
+    };
+    addEventListener('keydown', onKey, true);
+    barrels.forEach((b, i) => b.addEventListener('pointerdown', (e) => { e.preventDefault(); pick(slot[i]); }));
+    const stop = () => { over = true; timers.forEach(clearTimeout); removeEventListener('keydown', onKey, true); el.remove(); ch._mini = null; };
+    function done() { stop(); resolve(); }
+    ch._mini = { stop, pick, get state() { return { kind: 'shuffle', phase, at: slot[where], sel, tries }; } };
+    start();
   });
 }

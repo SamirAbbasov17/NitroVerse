@@ -252,6 +252,23 @@ body.cg-on #game-canvas, body.cg-on #mute-btn { visibility: hidden; }
 .cgm__dial { background: repeating-linear-gradient(90deg, #1c1018 0, #1c1018 9px, #3a2428 9px, #3a2428 10px); }
 .cgm__sig, .cgm__lock { width: 100%; height: 10px; background: #1c1018; border: 2px solid #5a2a24; } .cgm__sig i, .cgm__lock i { display: block; height: 100%; width: 0; }
 .cgm__sig i { background: var(--cg-amber); } .cgm__lock i { background: #7fbf7a; }
+.cgm__plots { display: grid; grid-template-columns: repeat(3, clamp(46px, 14vh, 70px)); grid-template-rows: repeat(3, clamp(34px, 10vh, 52px)); gap: 6px; }
+.cgm__plots button { padding: 0; background: #4a2c1a; border: 2px solid #2a1810; border-radius: 0; cursor: pointer; touch-action: none; position: relative;
+  background-image: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0, rgba(0, 0, 0, 0.22) 2px, transparent 2px, transparent 6px); }
+.cgm__plots [data-p="up"] { grid-area: 1 / 2; } .cgm__plots [data-p="left"] { grid-area: 2 / 1; } .cgm__plots [data-p="right"] { grid-area: 2 / 3; } .cgm__plots [data-p="down"] { grid-area: 3 / 2; }
+.cgm__plots button i { position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px; background: transparent; }
+.cgm__plots button.is-sown i { background: #7fbf7a; box-shadow: 0 -6px 0 #3f7a3a, 0 0 0 2px var(--cg-ink); }
+.cgm__plots button.is-lit { background-color: #ffb53a; border-color: #fff0b0; } .cgm__plots button.is-good { background-color: #3f7a3a; border-color: #7fbf7a; } .cgm__plots button.is-wrong { background-color: #b3261e; border-color: #ff7a5a; }
+.cgm__box.is-show .cgm__plots { opacity: 0.95; } .cgm__box:not(.is-show) .cgm__plots button { border-color: #8a6a44; }
+.cgm__row { position: relative; width: min(100%, 360px); height: clamp(84px, 26vh, 130px); }
+.cgm__barrel { --slot: 0; position: absolute; bottom: 0; left: calc(var(--slot) * 33.333% + 4%); width: 25.333%; height: 72%; padding: 0; border-radius: 0; cursor: pointer; touch-action: none;
+  background: #8a3a1c; border: 3px solid var(--cg-ink); box-shadow: inset 0 6px 0 #b0502a, inset 0 -8px 0 #5a2410; transition: left 0.3s steps(6); }
+.cgm__barrel span { position: absolute; left: 0; right: 0; top: 38%; height: 5px; background: #c9a98a; box-shadow: 0 14px 0 #c9a98a; }
+.cgm__barrel.is-sel { border-color: var(--cg-amber); box-shadow: inset 0 6px 0 #b0502a, inset 0 -8px 0 #5a2410, 0 0 0 3px rgba(255, 181, 58, 0.5); }
+.cgm__barrel.is-miss { filter: brightness(0.6); } .cgm__barrel.is-found { border-color: #7fbf7a; }
+.cgm__pip { position: absolute; left: 50%; bottom: 100%; width: 18px; height: 0; margin-left: -9px; background: #a8602c; box-shadow: inset 0 -5px 0 #f6d2b0, 0 0 0 2px var(--cg-ink); transition: height 0.22s steps(4); overflow: hidden; }
+.cgm__pip { opacity: 0; }
+.cgm__barrel.is-peek .cgm__pip { height: 16px; opacity: 1; }
 .cgm__box.is-near .cgm__sig i { background: #fff0b0; } .cgm__box.is-near .cgm__needle { background: #7fbf7a; }
 
 /* ——— Portretin hissləri: hərəkət, çalar, işarə (bax dialogue.js EMO) ——— */
