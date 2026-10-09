@@ -2,7 +2,7 @@
 // Məqsəd: oyunçu sakinlərlə tanış olsun və onlara bağlansın (bax docs/CARMAGEDDON-CHAPTER1.md).
 // Dörd tapşırıqdan üçü bəsdir; sonra Elder Amos axşam ocağına çağırır. Mətnlər hələlik Azərbaycancadır.
 import { t } from '../../core/i18n.js';
-import { World, drawChar } from './world.js';
+import { World } from './world.js';
 
 const SAVE = 'cgCh1';
 const load = () => { try { return JSON.parse(localStorage.getItem(SAVE) || 'null'); } catch { return null; } };
@@ -12,13 +12,13 @@ export const clearSave = () => { try { localStorage.removeItem(SAVE); } catch { 
 
 const LOOK = {
   ember: { hair: '#e8301a', skin: '#f4c9a0', top: '#7a4a26', legs: '#2a2230', long: true, feat: ['goggles', 'scarf', 'jacket'] },
-  milo: { hair: '#4a2c1a', skin: '#f2c49a', top: '#5f6b2a', legs: '#3a2a22', feat: ['freckles', 'jacket'], blink: 1 },
+  milo: { hair: '#4a2c1a', skin: '#f2c49a', top: '#5f6b2a', legs: '#3a2a22', feat: ['freckles', 'jacket'], blink: 1, kid: true },
   wren: { hair: '#c9c9cf', skin: '#c98f6a', top: '#7a3a30', legs: '#4a3a34', hat: '#b3261e', trim: '#5a2a24', feat: ['headscarf'], blink: 2 },
-  gus: { hair: '#8a8a8a', skin: '#e6b08a', top: '#b8a48a', legs: '#3a3030', hat: '#6a5a44', trim: '#8a3a1c', feat: ['cap', 'moustache', 'apron'], blink: 0.5 },
-  clara: { hair: '#1c1418', skin: '#7a4a32', top: '#8aa0b8', legs: '#3a3440', trim: '#3a4a6a', feat: ['afro', 'glasses', 'scarf'], blink: 1.6 },
+  gus: { hair: '#8a8a8a', skin: '#e6b08a', bald: true, top: '#b8a48a', legs: '#3a3030', hat: '#6a5a44', trim: '#8a3a1c', feat: ['cap', 'moustache', 'apron'], blink: 0.5 },
+  clara: { hair: '#1c1418', skin: '#7a4a32', top: '#8aa0b8', legs: '#3a3440', scarf: '#3a4a7a', feat: ['afro', 'glasses', 'scarf'], blink: 1.6 },
   ray: { hair: '#f2d23a', skin: '#f2c8a0', top: '#e0b020', legs: '#2a2a30', feat: ['mohawk', 'headphones', 'jacket'], blink: 2.4 },
   amos: { hair: '#f0f0f0', skin: '#6a422c', top: '#8a5a34', legs: '#4a3626', hat: '#6a4a2c', trim: '#c9a98a', feat: ['widehat', 'beard', 'poncho'], blink: 0.9 },
-  pip: { hair: '#7a4a2a', skin: '#f6d2b0', top: '#f07a1c', legs: '#4a3a34', hat: '#a8602c', feat: ['knit', 'freckles'], blink: 1.3 },
+  pip: { hair: '#7a4a2a', skin: '#f6d2b0', top: '#f07a1c', legs: '#4a3a34', hat: '#a8602c', feat: ['knit', 'freckles'], blink: 1.3, kid: true },
 };
 
 const SOLIDS = [
@@ -54,7 +54,8 @@ export async function runCamp(ch) {
   const save = () => { st.x = Math.round(world.p.x); st.y = Math.round(world.p.y); store(st); };
   const talk = async (lines) => {
     world.busy = true;
-    for (const l of lines) { if (ch.dead) return; await ch.dlg.say(l); }
+    for (const l of lines) { if (ch.dead) return; world.speaker = l.who; await ch.dlg.say(l); }
+    world.speaker = null;
     ch.dlg.hide(); world.busy = false; world.coolUntil = performance.now() + 260; refresh(); save();
   };
   const once = (key) => { if (st.seen.includes(key)) return false; st.seen.push(key); return true; };
@@ -153,7 +154,7 @@ export async function runCamp(ch) {
       L('milo', 'think', 'Ember… bu gün yaxşı gündür, hə?'),
       L('ember', 'smile', 'Yaxşı gündür.'),
     ]);
-  });
+  }, { wander: 12, speed: 24 });
 
   npc('clara', 268, 500, async () => {
     if (st.q.pip === 0) {
@@ -237,9 +238,9 @@ export async function runCamp(ch) {
   npc('pip', 296, 524, () => talk([
     L('pip', st.q.pip === 9 ? 'proud' : 'pout', st.q.pip === 9 ? 'G — günəş. G — gül. G — Gus! Görürsən, hamısını bilirəm.' : 'Miss Clara-ya de ki, mən özüm gəldim. Tapılmadım. Gəldim.'),
     L('ember', 'smile', st.q.pip === 9 ? 'Sabah H hərfidir. Hazırlaş.' : 'Əlbəttə. Özün gəldin.'),
-  ]), { small: true, when: () => st.q.pip >= 4 });
+  ]), { wander: 16, speed: 30, when: () => st.q.pip >= 4 });
   // adsız sakinlər — düşərgə boş görünməsin
-  world.add({ id: 'carrier', x: 276, y: 150, kind: 'npc', look: { hair: '#3a2a22', skin: '#d9a070', top: '#4a6a6a', legs: '#3a3430', feat: ['scarf'], blink: 2.1 }, use: () => talk([
+  world.add({ id: 'carrier', x: 276, y: 150, kind: 'npc', wander: 18, speed: 14, look: { hair: '#3a2a22', skin: '#d9a070', top: '#4a6a6a', legs: '#3a3430', scarf: '#c9a98a', long: true, feat: ['scarf'], blink: 2.1 }, use: () => talk([
     L(null, null, 'Su daşıyan qadın vedrəni yerə qoyub belini düzəldir.'),
     L(null, null, '"Yolda olanda suyu sayırdıq. Damla-damla. İndi uşaqlar onunla bir-birini isladır." Gülür. "Qoy islatsınlar."'),
   ]) });
@@ -248,11 +249,11 @@ export async function runCamp(ch) {
     L(null, null, '"Üç gündür yolda toz görmürəm. Nə karvan, nə alverçi." Çiyinlərini çəkir. "Sakitlik yaxşıdır. Yəqin."'),
     L('ember', 'think', 'Üç gün…'),
   ]) });
-  world.add({ id: 'kid1', x: 118, y: 582, kind: 'npc', small: true, look: { hair: '#1c1418', skin: '#8a5a3a', top: '#b04a6a', legs: '#3a3440', blink: 0.7 }, use: () => talk([
+  world.add({ id: 'kid1', x: 118, y: 582, kind: 'npc', wander: 12, speed: 16, look: { hair: '#1c1418', skin: '#8a5a3a', top: '#b04a6a', legs: '#3a3440', blink: 0.7, kid: true, long: true }, use: () => talk([
     L(null, null, 'Balaca qız çubuqla qumda hərf cızır: Ə. Sonra bir də: Ə. Sonra üstündən xətt çəkir.'),
     L(null, null, '"Bu hərf yumurtaya oxşayır. Toyuqlar görsə, üstündə oturar."'),
   ]) });
-  world.add({ id: 'kid2', x: 142, y: 596, kind: 'npc', small: true, look: { hair: '#c9a04a', skin: '#f2c8a0', top: '#4a8a5a', legs: '#3a2a22', feat: ['freckles'], blink: 1.9 }, use: () => talk([
+  world.add({ id: 'kid2', x: 146, y: 600, kind: 'npc', wander: 14, speed: 26, look: { hair: '#c9a04a', skin: '#f2c8a0', top: '#4a8a5a', legs: '#3a2a22', feat: ['freckles'], blink: 1.9, kid: true }, use: () => talk([
     L(null, null, '"Sən Ember-sən! Milo deyir sən gözübağlı sürə bilirsən!"'),
     L('ember', 'sweat', 'Milo çox şey deyir.'),
     L(null, null, '"Bir də deyir ki, sən heç nədən qorxmursan." Uşaq sənə elə baxır ki, cavab verə bilmirsən.'),
@@ -372,4 +373,4 @@ export async function runCamp(ch) {
   st.stage = 'evening'; store(st);
 }
 
-export { LOOK, drawChar };
+export { LOOK };

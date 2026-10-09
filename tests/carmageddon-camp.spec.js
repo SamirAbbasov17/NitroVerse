@@ -75,6 +75,21 @@ test('düşərgə: gəzinti, toqquşma, tapşırıqlar, jurnal, yaddaş, son', a
   await page.evaluate(() => { const w = window.__cgStory.world; w.p.x = 470; w.p.y = 262; w.p.dir = 0; });
   await page.waitForTimeout(300);
   await page.screenshot({ path: path.join(DIR, 'camp-sprites.png') });
+  // ANİMASİYA: yeriyəndə kadr dəyişir (yeriş kadrları 2..5) və addım tozu qalxır; dayananda nəfəs (0/1)
+  const anim = await page.evaluate(async () => {
+    const w = window.__cgStory.world, frames = new Set(); let dust = 0;
+    w.p.x = 330; w.p.y = 440; w.keys.add('ArrowRight');
+    for (let i = 0; i < 50; i++) { await new Promise((r) => requestAnimationFrame(r)); frames.add(2 + Math.floor(w.p.walk * 8) % 4); dust = Math.max(dust, w.dust.length); }
+    w.keys.clear();
+    const kids = ['kid1', 'kid2'].map((id) => { const e = w.get(id); return { x: e.x, y: e.y }; });
+    await new Promise((r) => setTimeout(r, 6000));
+    const moved = ['kid1', 'kid2'].map((id, i) => { const e = w.get(id); return Math.hypot(e.x - kids[i].x, e.y - kids[i].y); });
+    return { walkFrames: frames.size, dust, kidsMoved: Math.max(...moved) };
+  });
+  console.log('animasiya:', JSON.stringify(anim));
+  expect(anim.walkFrames, 'yerişin dörd kadrı').toBe(4);
+  expect(anim.dust, 'addım tozu').toBeGreaterThan(0);
+  expect(anim.kidsMoved, 'uşaqlar gəzişir').toBeGreaterThan(1);
   // 3) yaddaş: səhifə yenilənəndən sonra düşərgədən davam edir, tapşırıqlar yerindədir
   await page.reload();
   await page.waitForFunction(() => !!window.__menu, null, { timeout: 60_000 });
