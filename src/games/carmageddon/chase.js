@@ -69,7 +69,18 @@ export function runChase(ch, startSec = 0, onSection = null, onCut = null) {
       if (over || ch.dead) return;
       x.imageSmoothingEnabled = false; last = performance.now(); cut = false; start(n);
     }
-    const pd = () => G.d + (PY - G.y);                  // oyunçunun yoldakı məsafəsi (ekranda irəli çıxanda artır)
+    const pd = () => G.d + (PY - G.y);
+    // The Twins tullanışda körpüdə QALIR: yolda öz yerləri var (b.wd), əyləc basıb uçurumun qırağından əvvəl dayanırlar.
+    // Əvvəl ekranda maşına bağlı idilər: tullanış bitəndə maşınla birlikdə uçurumun ortasına qədər "uçurdular".
+    const BRIDGE_END = 60;
+    const bikesStay = (dt) => {
+      const edge = S.len - BRIDGE_END - 16;
+      for (const b of G.bikes) {
+        if (b.wd == null) { b.wd = Math.min(pd() - b.off, edge); b.bv = G.v * 0.7; }
+        b.bv *= Math.max(0, 1 - dt * 3.5); b.wd = Math.min(edge, b.wd + b.bv * dt);
+        b.off = pd() - b.wd;
+      }
+    };                  // oyunçunun yoldakı məsafəsi (ekranda irəli çıxanda artır)
     const cxAt = (d) => 240 + Math.sin(d / S.wl) * S.amp + Math.sin(d / (S.wl * 0.37) + 1.3) * S.amp * 0.35;
 
     function start(i, from = 0) {
@@ -158,7 +169,7 @@ export function runChase(ch, startSec = 0, onSection = null, onCut = null) {
     function step(dt) {
       G.t += dt;
       if (G.dead) { G.dead -= dt; G.v *= 1 - dt * 3; if (G.dead <= 0) start(si, G.cp ? S.len * 0.5 : 0); return; }
-      if (G.won) { G.won -= dt; G.d += G.v * dt; if (G.won <= 0) { if (si + 1 < SECTIONS.length) { carry = { hp: Math.min(100, Math.max(60, G.hp + 20)), fuel: Math.max(58, G.fuel), nitro: Math.max(1, G.nitro) }; G.won = 0; cutTo(si + 1); } else finish(); } return; }
+      if (G.won) { G.won -= dt; G.d += G.v * dt; if (G.truck?.pass) G.truck.pass += dt; if (S.id === 'bridge') bikesStay(dt); if (G.won <= 0) { if (si + 1 < SECTIONS.length) { carry = { hp: Math.min(100, Math.max(60, G.hp + 20)), fuel: Math.max(58, G.fuel), nitro: Math.max(1, G.nitro) }; G.won = 0; cutTo(si + 1); } else finish(); } return; }
       const hw = S.hw(pd()), rc = cxAt(pd());
       // sükan və irəli-geri: düymə hədəf sürəti verir, maşın ona tez çatır (sürüşmə yoxdur — dəqiq yayınmaq olsun)
       const st = (keys.has('right') ? 1 : 0) - (keys.has('left') ? 1 : 0), fb = (keys.has('down') ? 1 : 0) - (keys.has('up') ? 1 : 0);
@@ -301,7 +312,7 @@ export function runChase(ch, startSec = 0, onSection = null, onCut = null) {
           // Ötmək üçün iki şərt: nitro VƏ yük maşınının YANINDAN keçmək. Nitro ilə düz üstünə gedən ona çırpılır
           // (zədə + geri atılır) — əvvəl nitro ilə maşının "içindən" keçmək olurdu.
           const clear = Math.abs(G.x - T.x) > 25 + CW - 2;
-          if (G.boost > 0 && clear) { T.pass = 1; say('cg.c.passed', 1200); G.shake = 6; }
+          if (G.boost > 0 && clear) { T.pass = 0.001; say('cg.c.passed', 1200); G.shake = 6; }
           else { const rammed = G.boost > 0; hurt(rammed ? 24 : 28, Math.sign(G.x - T.x || 1) * 120); if (rammed) { boom(G.x, G.y - 20, 22); G.boost = 0; } G.d -= 430; T.said = false; G.nitro = Math.max(G.nitro, 1); say(rammed ? 'cg.c.rammed' : 'cg.c.blocked', 1600); }
         }
         if (T.pass) T.pass += dt;
@@ -312,11 +323,21 @@ export function runChase(ch, startSec = 0, onSection = null, onCut = null) {
         // Tullanış başlayanda körpüdə QALIRLAR — uçurumun qırağında dayanıb geridə qalırlar.
         const rcb = cxAt(pd());
         G.bikes.forEach((b) => {
-          if (G.jump > 0) { b.off += G.v * dt * 0.85; return; }
+          if (G.jump > 0) return;
           const lim = hwb - 9, want = G.x + b.side * (G.hook === b ? 30 : 42), tx = Math.max(rcb - lim, Math.min(rcb + lim, want)), tight = Math.abs(tx - G.x) < 26;
           b.x += (tx - b.x) * Math.min(1, dt * 5);
           b.x = Math.max(rcb - lim, Math.min(rcb + lim, b.x));
-          b.off += ((G.hook === b ? 0 : tight ? 40 : 14) - b.off) * dt * 3;      // maşınla məhəccər arasında yer yoxdursa — arxada
+          b.off += ((G.hook === b ? 0 : tight ? 54 : 14) - b.off) * dt * (tight ? 6 : 3);      // maşınla məhəccər arasında yer yoxdursa — arxada
+          // motosiklet bərk cisimdir: maşın onun üstünə çıxa bilmir. Yer varsa motosiklet kənara çəkilir,
+          // məhəccərə dirənibsə — maşın dayanır (əvvəl maşın motosikletin üstündən keçirdi)
+          if (G.jump <= 0 && Math.abs(b.off) < 46) {
+            const sep = CW + 7, dx = G.x - b.x;
+            if (Math.abs(dx) < sep) {
+              const sg = Math.sign(dx) || -b.side;
+              b.x = Math.max(rcb - lim, Math.min(rcb + lim, G.x - sg * sep));
+              if (Math.abs(G.x - b.x) < sep) { G.x = b.x + sg * sep; if (Math.sign(G.vx) === -sg) G.vx = 0; }
+            }
+          }
         });
         // QARMAQ. Qurtulmağın iki yolu var və heç biri təsadüfə bağlı deyil:
         //   • ◀ ▶ növbə ilə — üç dəyişmə kifayətdir (zolaq dolur; yavaş-yavaş boşalır, tələsmək lazım deyil);
@@ -336,8 +357,8 @@ export function runChase(ch, startSec = 0, onSection = null, onCut = null) {
         }
         // sonda tullanış: sürət çatmalıdır (nitro)
         if (!G.jump && G.d > S.len - 380 && !G.rampSaid) { G.rampSaid = true; say('cg.c.jump', 2200); }
-        if (!G.jump && G.d > S.len - 70) { if (G.boost > 0) { G.jump = 1.25; G.hook = null; G.hooks.length = 0; audio.sfx('boost'); } else { fail('cg.c.fell'); return; } }
-        if (G.jump > 0) { G.jump -= dt; if (G.jump <= 0) { G.won = 0.9; G.shake = 6; } return; }
+        if (!G.jump && pd() > S.len - BRIDGE_END - 6) { if (G.boost > 0) { G.jump = 1.25; G.hook = null; G.hooks.length = 0; audio.sfx('boost'); } else { fail('cg.c.fell'); return; } }
+        if (G.jump > 0) { bikesStay(dt); G.jump -= dt; if (G.jump <= 0) { G.won = 0.9; G.shake = 6; } return; }
       }
       if (G.d >= S.len && S.id !== 'bridge') { G.won = 0.6; }
     }
@@ -444,7 +465,7 @@ export function runChase(ch, startSec = 0, onSection = null, onCut = null) {
         if (S.bridge) {
           // uçurumun dibində çay: dalğalı açıq zolaqlar
           const rv = 240 + Math.sin(dd / 180) * 120; x.fillStyle = `rgba(${40 + dawn * 60 | 0},${70 + dawn * 60 | 0},${120 + dawn * 50 | 0},0.5)`; x.fillRect(rv - 26, y, 52, 2); if ((cell + Math.floor(G.t * 3)) % 4 === 0) { x.fillStyle = 'rgba(200,225,255,0.25)'; x.fillRect(rv - 14 + (cell % 3) * 8, y, 9, 1); }
-          x.fillStyle = (cell % 2) ? '#4a3626' : '#523c2a'; x.fillRect(c - w2, y, w2 * 2, 2); if (Math.floor(dd / 8) % 2 === 0) { x.fillStyle = '#3a2a1e'; x.fillRect(c - w2, y, w2 * 2, 1); } x.fillStyle = '#8a6a44'; x.fillRect(c - w2 - 3, y, 3, 2); x.fillRect(c + w2, y, 3, 2); if (cell % 4 === 0) { x.fillStyle = '#b9905a'; x.fillRect(c - w2 - 5, y, 2, 2); x.fillRect(c + w2 + 3, y, 2, 2); } if (dd > S.len - 60 && dd < S.len + 150) { x.fillStyle = `rgb(${12 + dawn * 60 | 0},${16 + dawn * 40 | 0},${36 + dawn * 50 | 0})`; x.fillRect(0, y, W, 2); } continue; }
+          x.fillStyle = (cell % 2) ? '#4a3626' : '#523c2a'; x.fillRect(c - w2, y, w2 * 2, 2); if (Math.floor(dd / 8) % 2 === 0) { x.fillStyle = '#3a2a1e'; x.fillRect(c - w2, y, w2 * 2, 1); } x.fillStyle = '#8a6a44'; x.fillRect(c - w2 - 3, y, 3, 2); x.fillRect(c + w2, y, 3, 2); if (cell % 4 === 0) { x.fillStyle = '#b9905a'; x.fillRect(c - w2 - 5, y, 2, 2); x.fillRect(c + w2 + 3, y, 2, 2); } if (dd > S.len - BRIDGE_END && dd < S.len + 150) { x.fillStyle = `rgb(${12 + dawn * 60 | 0},${16 + dawn * 40 | 0},${36 + dawn * 50 | 0})`; x.fillRect(0, y, W, 2); } continue; }
         x.fillStyle = S.road; x.fillRect(c - w2, y, w2 * 2, 2);
         x.fillStyle = S.edge; x.fillRect(c - w2, y, 2, 2); x.fillRect(c + w2 - 2, y, 2, 2);
         if (Math.floor(dd / 22) % 2 === 0) { x.fillStyle = '#6a5a52'; x.fillRect(c - 1, y, 2, 2); }
@@ -499,7 +520,7 @@ export function runChase(ch, startSec = 0, onSection = null, onCut = null) {
         else if (e.k === 'chain') { const c = cxAt(e.d), w2 = S.hw(e.d), on = e.tt > 0.9; if (!on && Math.floor(G.t * 12) % 2 === 0) continue; if (!on) { P(c - w2, sy - 2, Math.max(0, e.gap - 22 - (c - w2)), 5, 'rgba(255,60,40,0.5)'); P(e.gap + 22, sy - 2, Math.max(0, c + w2 - e.gap - 22), 5, 'rgba(255,60,40,0.5)'); P(e.gap - 4, sy - 7, 8, 14, '#7fbf7a'); P(e.gap - 1, sy - 4, 2, 6, '#12080c'); P(e.gap - 3, sy - 1, 6, 2, '#12080c'); }
           else { for (const [a0, a1] of [[c - w2, e.gap - 22], [e.gap + 22, c + w2]]) { for (let lx = a0; lx < a1 - 4; lx += 6) { P(lx, sy - 3, 6, 6, '#12080c'); P(lx + 1, sy - 2, 4, 4, (Math.floor(lx / 6) % 2) ? '#b9b9c4' : '#8a8a96'); P(lx + 2, sy - 1, 2, 2, '#12080c'); } } P(e.gap - 26, sy - 5, 5, 10, '#d8d8e0'); P(e.gap + 21, sy - 5, 5, 10, '#d8d8e0'); } }
       }
-      if (S.id === 'truck') { const T = G.truck, ty = T.pass ? 46 + T.pass * 260 : 46 + (T.dy || 0); if (ty < H + 60) car(T.x, ty, 'truck', 0, 1, 0, T.slam > 0 && T.slam < 0.8 && Math.floor(G.t * 14) % 2 === 0); }
+      if (S.id === 'truck') { const T = G.truck, ty = 46 + (T.dy || 0) + (T.pass ? T.pass * 300 : 0)      /* ötəndə geri sürüşür (əvvəl bir kadrda ekrandan yox olurdu) */; if (ty < H + 60) car(T.x, ty, 'truck', 0, 1, 0, T.slam > 0 && T.slam < 0.8 && Math.floor(G.t * 14) % 2 === 0); }
       if (S.id === 'bridge' && G.hook) {
         // qopma zolağı və növbəti basılacaq istiqamət — maşının üstündə
         const bx = Math.round(G.x) - 20, by = Math.round(G.y) - 44, want = G.steerSign > 0 ? -1 : 1, blink = Math.floor(G.t * 6) % 2;

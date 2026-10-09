@@ -36,7 +36,7 @@ function tick() {
 }
 
 export const music = {
-  play(name) { ensure(); if (want === name) return; want = name; if (!cur || el.paused) start(); },
+  play(name) { ensure(); if (want === name) return; want = name; if (!cur || el.paused || cur === name) start(); },      // cur === name: stop()-dan dərhal sonra eyni trek — sönmə geri qaytarılır (əvvəl səssiz qalırdı)
   stop() { want = null; target = 0; },
   get track() { return want; },
   get state() { return { want, cur, level: +level.toFixed(2), vol: el ? +el.volume.toFixed(3) : 0, paused: el ? el.paused : true, pending: pendingGesture }; },

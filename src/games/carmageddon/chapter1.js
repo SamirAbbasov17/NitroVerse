@@ -150,7 +150,10 @@ export class Chapter1 {
     // sıfırlanır və düymə yalnız səhnə oynanarkən işləyir.
     this._skip = false; this._playing = true;
     for (const st of scene) {
-      if (this.dead || this._skip) break;
+      if (this.dead) break;
+      // "Keç": səhnənin qalan hissəsi göstərilmir, amma MUSİQİ addımları icra olunur — əks halda səhnənin sonunda
+      // dəyişməli olan mahnı dəyişmir və növbəti hissə köhnə mahnı ilə gedirdi
+      if (this._skip && !('music' in st)) continue;
       if ('music' in st) { if (st.music) music.play(st.music); else music.stop(); continue; }
       if (st.art) { await this._fade(0); this._bg(st.art); await this._fade(1); continue; }
       if (st.intro) { await this._intro(st.intro, T(st.title)); continue; }

@@ -189,6 +189,13 @@ test('qaçış: beş hissənin kadrları', async ({ page }) => {
     const ok = await page.evaluate(() => { const a = window.__cgStory.art; return !!(a.cars && a.props && a['ground-camp'] && a['ground-canyon'] && a['ground-fog'] && a['ground-truck']); });
     expect(ok, 'maşın, obyekt və yer şəkilləri yüklənib').toBe(true);
   }
+  // tullanış: maşın havadadır, əkizlər körpünün ucunda qalıb; Butcher ötüləndə geri sürüşür
+  await page.evaluate(() => { const c = window.__cgStory._chase; c.start(4); c.G.ents.length = 0; c.G.hooks.length = 0; c.G.d = c.S.len - 200; c.G.boost = 1.6; });
+  await page.waitForFunction(() => { const G = window.__cgStory._chase.G; return G.jump > 0 && G.jump < 0.85; }, null, { timeout: 6000 });
+  await page.screenshot({ path: path.join(DIR, 'chase-jump-twins.png') });
+  await page.evaluate(() => { const c = window.__cgStory._chase; c.start(3); c.G.ents.length = 0; c.G.d = c.S.len - 170; c.G.x = c.G.truck.x + (c.G.truck.x > 240 ? -60 : 60); c.G.boost = 1.4; });
+  await page.waitForFunction(() => window.__cgStory._chase.G.truck?.pass > 0.3, null, { timeout: 6000 });
+  await page.screenshot({ path: path.join(DIR, 'chase-truck-pass.png') });
   expect(errs).toEqual([]);
 });
 
@@ -311,8 +318,17 @@ test('qaçış: nömrəsiz başlıq, təqibçi özü partlamır, əkizlər körp
     for (const side of [-1, 1]) { const t1 = performance.now(); while (performance.now() - t1 < 1500) { const S = c.S, G = c.G, rc = cxAt(S, G.d + (200 - G.y)), hw = S.hw(G.d); G.x = rc + side * (hw - 12); for (const b of G.bikes) { n++; if (Math.abs(b.x - rc) > hw - 4) outside++; } await wait(25); } }
     out.bikes = { n, outside, hw: c.S.hw(100) };
     // 3) tullanış: əkizlər körpüdə qalır (maşından geri düşür, ekrandan çıxır)
-    c.G.ents.length = 0; c.G.d = c.S.len - 90; c.G.boost = 1.4; await wait(350); const off0 = Math.min(...c.G.bikes.map((b) => b.off)); await wait(600);
-    out.jump = { jumping: c.G.jump > 0 || c.G.won > 0, offStart: Math.round(off0), offLater: Math.round(Math.min(...c.G.bikes.map((b) => b.off))) };
+    // 2b) motosiklet bərk cisimdir: maşını onun üstünə sürəndə üst-üstə minmirlər
+    { c.start(4); c.G.ents.length = 0; c.G.hooks.length = 0; await wait(900); let minGap = 99; const t1 = performance.now();
+      while (performance.now() - t1 < 2500) { const G = c.G; G.hp = 100; G.ents.length = 0; G.hooks.length = 0; const b = G.bikes[1]; G.x += Math.sign(b.x - G.x) * 6; await wait(16); for (const k of G.bikes) if (Math.abs(k.off) < 30) minGap = Math.min(minGap, Math.abs(G.x - k.x)); }
+      out.solid = Math.round(minGap); }
+    // 3) tullanış: əkizlər körpüdə qalır — həm uçuşda, həm enişdən sonra (yoldakı yerləri uçurumun qırağından əvvəldir)
+    c.G.ents.length = 0; c.G.d = c.S.len - 130; c.G.boost = 1.4; let far = -1e9, jumped = false, off0 = null; const edge = c.S.len - 60; const t2 = performance.now();
+    while (performance.now() - t2 < 1900 && c.S.id === 'bridge') { const G = c.G; if (G.jump > 0 || G.won > 0) { jumped = true; const pdv = G.d + (200 - G.y); if (off0 == null) off0 = Math.min(...G.bikes.map((b) => b.off)); for (const b of G.bikes) far = Math.max(far, pdv - b.off - edge); out.offLater = Math.round(Math.min(...G.bikes.map((b) => b.off))); } await wait(20); }
+    out.jump = { jumping: jumped, offStart: Math.round(off0), offLater: out.offLater, pastEdge: Math.round(far) };
+    // 3b) Butcher: yanından ötəndə birdən yox olmur — ilk kadrlarda hələ ekranın yuxarısındadır, sonra geri sürüşür
+    c.start(3); await wait(200); c.G.ents.length = 0; c.G.d = c.S.len - 170; c.G.x = c.G.truck.x + (c.G.truck.x > 240 ? -60 : 60); c.G.boost = 1.4;
+    { const t3 = performance.now(); let first = null, last = 0; while (performance.now() - t3 < 650 && c.S.id === 'truck') { const p = c.G.truck.pass; if (p) { if (first == null) first = p; last = p; } await wait(16); } out.truck = { first: +(first ?? -1).toFixed(3), last: +last.toFixed(2) }; c.start(3); }      // ara səhnəyə keçməsin
     return out;
   });
   console.log('2-ci dəst:', JSON.stringify(r));
@@ -322,9 +338,27 @@ test('qaçış: nömrəsiz başlıq, təqibçi özü partlamır, əkizlər körp
   expect(r.bikes.hw, 'körpü enlidir (əvvəl 58)').toBeGreaterThanOrEqual(66);
   expect(r.jump.jumping, 'tullanış başladı').toBe(true);
   expect(r.jump.offLater, 'tullanışda əkizlər maşından geri qalır (körpüdə qalırlar)').toBeGreaterThan(r.jump.offStart + 60);
+  expect(r.jump.pastEdge, 'əkizlər heç vaxt körpünün ucundan o yana keçmir (uçuşda və enişdən sonra)').toBeLessThanOrEqual(0);
+  expect(r.solid, 'maşın motosikletin üstünə çıxa bilmir').toBeGreaterThanOrEqual(16);
+  expect(r.truck.first, 'Butcher ötüldü').toBeGreaterThan(0);
+  expect(r.truck.first, 'Butcher ötülən anda yerindədir (birdən yox olmur)').toBeLessThan(0.15);
+  expect(r.truck.last, 'sonra geri sürüşür').toBeGreaterThan(0.3);
   // 4) ara səhnə: "Keç" bayrağı səhnələr arasında qalsa belə, növbəti ara səhnə oynanır
   await page.waitForFunction(() => !window.__cgStory?._chase || window.__cgStory._chase.G.won === 0, null, { timeout: 8000 }).catch(() => {});
   await page.evaluate(() => { const st = window.__cgStory; st._skip = true; st._chase.start(0); st._chase.skip(); });
   await page.waitForFunction(() => !window.__cgStory.dlg.el.hidden && /Hearth güzgünün/.test(window.__cgStory.dlg.full || ''), null, { timeout: 10_000 });
+  // 5) "Keç": səhnə ötürüləndə onun sonundakı musiqi dəyişikliyi yenə də icra olunur; stop()-dan dərhal sonra eyni
+  //    trek istənəndə musiqi səssiz qalmır
+  const mus = await page.evaluate(async () => {
+    const st = window.__cgStory, M = window.__cgMusic, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    st._skip = true; st.dlg.skip(); const t0 = performance.now(); while (st._playing && performance.now() - t0 < 4000) await wait(30);
+    const p = st._play([{ music: 'hunt' }, { text: { az: 'bir' } }, { text: { az: 'iki' } }, { music: 'bleeding' }]);
+    await wait(300); const mid = M.state.want; st._skip = true; st.dlg.skip(); await p; const after = M.state.want;
+    await wait(1500); M.stop(); await wait(120); M.play('bleeding'); await wait(2500);
+    return { mid, after, level: M.state.level, paused: M.state.paused };
+  });
+  console.log('musiqi:', JSON.stringify(mus));
+  expect([mus.mid, mus.after], 'ötürülən səhnənin son musiqisi qoşulur').toEqual(['hunt', 'bleeding']);
+  expect(mus.level, 'stop → eyni trek: musiqi geri qayıdır').toBeGreaterThan(0.5);
   expect(errs).toEqual([]);
 });
