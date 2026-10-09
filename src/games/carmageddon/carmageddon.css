@@ -222,6 +222,9 @@ body.cg-on #game-canvas, body.cg-on #mute-btn { visibility: hidden; }
 .cgs__journal ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; }
 .cgs__journal li { font-size: clamp(11px, 2vh, 15px); line-height: 1.25; color: var(--cg-bone); }
 .cgs__journal li b { font-weight: 400; color: var(--cg-dim); margin-right: 6px; }
+.cgs__journal li i { display: inline-block; width: 7px; height: 7px; margin-right: 6px; box-shadow: 0 0 0 1px var(--cg-ink); }
+.cgs__journal li.is-new { animation: cgs-rownew 1.6s steps(8) 1; }
+@keyframes cgs-rownew { 0%, 40% { background: rgba(255, 181, 58, 0.35); } 100% { background: transparent; } }
 .cgs__journal li.is-done { color: #7fbf7a; }
 .cgs__journal li.is-done::after { content: ' ✓'; }
 .cgs__hint {
@@ -230,6 +233,26 @@ body.cg-on #game-canvas, body.cg-on #mute-btn { visibility: hidden; }
   transition: opacity 0.8s ease;
 }
 .cgs__hint.is-out { opacity: 0; }
+
+/* ——— Düşərgənin kiçik oyunları (bax minigame.js) ——— */
+.cgm { position: absolute; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; background: rgba(10, 5, 8, 0.55); font-family: var(--cg-caps); }
+.cgm__box { display: flex; flex-direction: column; align-items: center; gap: clamp(8px, 2.4vh, 16px); width: min(86vw, 520px); padding: clamp(12px, 3.4vh, 24px) clamp(14px, 3vw, 28px);
+  background: rgba(18, 8, 12, 0.95); border: 3px solid var(--cg-amber); box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.6); text-align: center; }
+.cgm__box.is-ok { animation: cgm-ok 0.3s steps(4); } .cgm__box.is-bad { animation: cgm-bad 0.3s steps(6); }
+@keyframes cgm-ok { 0% { border-color: #7fbf7a; box-shadow: 0 0 0 4px rgba(127, 191, 122, 0.5); } 100% { border-color: var(--cg-amber); } }
+@keyframes cgm-bad { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+.cgm__title { font-weight: 400; font-size: clamp(16px, 4.6vh, 26px); letter-spacing: 0.14em; text-transform: uppercase; color: var(--cg-amber); }
+.cgm__hint { font-size: clamp(11px, 2.4vh, 15px); letter-spacing: 0.06em; color: var(--cg-dim); }
+.cgm__bar, .cgm__dial { position: relative; width: 100%; height: clamp(26px, 8vh, 44px); background: #1c1018; border: 2px solid #5a2a24; cursor: pointer; touch-action: none; }
+.cgm__zone { position: absolute; top: 0; bottom: 0; background: #3f7a3a; box-shadow: inset 0 0 0 2px #7fbf7a; }
+.cgm__mark, .cgm__needle { position: absolute; top: -5px; bottom: -5px; width: 4px; margin-left: -2px; background: var(--cg-bone); box-shadow: 0 0 0 2px var(--cg-ink); }
+.cgm__pips { display: flex; gap: 8px; } .cgm__pips i { width: 14px; height: 14px; background: #2a1a1e; box-shadow: 0 0 0 2px var(--cg-ink), 0 0 0 3px #5a2a24; } .cgm__pips i.is-on { background: #7fbf7a; }
+.cgm__btn, .cgm__lr button { min-width: 64px; min-height: 48px; font-size: 22px; color: var(--cg-bone); background: #2a1218; border: 2px solid #5a2a24; border-radius: 0; cursor: pointer; touch-action: none; }
+.cgm__lr { display: flex; gap: 14px; } .cgm__lr button.is-on, .cgm__btn:active { border-color: var(--cg-amber); color: var(--cg-amber); }
+.cgm__dial { background: repeating-linear-gradient(90deg, #1c1018 0, #1c1018 9px, #3a2428 9px, #3a2428 10px); }
+.cgm__sig, .cgm__lock { width: 100%; height: 10px; background: #1c1018; border: 2px solid #5a2a24; } .cgm__sig i, .cgm__lock i { display: block; height: 100%; width: 0; }
+.cgm__sig i { background: var(--cg-amber); } .cgm__lock i { background: #7fbf7a; }
+.cgm__box.is-near .cgm__sig i { background: #fff0b0; } .cgm__box.is-near .cgm__needle { background: #7fbf7a; }
 
 /* ——— Portretin hissləri: hərəkət, çalar, işarə (bax dialogue.js EMO) ——— */
 .cgd__face { position: relative; }

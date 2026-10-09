@@ -4,6 +4,7 @@
 import { t } from '../../core/i18n.js';
 import { World } from './world.js';
 import { T } from './tx.js';
+import { timing, tuning } from './minigame.js';
 
 const SAVE = 'cgCh1';
 const load = () => { try { return JSON.parse(localStorage.getItem(SAVE) || 'null'); } catch { return null; } };
@@ -49,13 +50,15 @@ export async function runCamp(ch) {
   const map = ch.art.camp;
   const journal = document.createElement('div'); journal.className = 'cgs__journal'; ch.el.appendChild(journal);
   const hint = document.createElement('div'); hint.className = 'cgs__hint'; hint.textContent = t('cg.moveHint'); ch.el.appendChild(hint);
-  setTimeout(() => hint.classList.add('is-out'), 7000);
+  setTimeout(() => { if (hint.isConnected) hint.textContent = t('cg.questHint'); }, 7000);
+  setTimeout(() => hint.classList.add('is-out'), 16000);
   let finish; const ended = new Promise((r) => { finish = r; });
 
   const world = new World(ch.el, ch.cv, { map, size: 640, solids: SOLIDS, spawn: { x: st.x, y: st.y }, hero: LOOK.ember }, {
     onInteract: (en) => { en.use?.(); },
     onTick: (dt, w) => tick(dt, w),
     onDrawUnder: (x, w) => under(x, w),
+    onDrawOver: (x, w) => drawTargets(x, w),
   });
   ch.world = world;
   const save = () => { st.x = Math.round(world.p.x); st.y = Math.round(world.p.y); store(st); };
@@ -67,15 +70,51 @@ export async function runCamp(ch) {
   };
   const once = (key) => { if (st.seen.includes(key)) return false; st.seen.push(key); return true; };
 
+  // ——— hədəflər: indi hara getməli? Hər tapşırığın öz rəngi var; hədəfin üstündə ox, ekrandan kənardadırsa
+  // ekranın kənarında həmin rəngdə istiqamət oxu. Hələ danışılmamış tapşırıq verənlər «!» ilə göstərilir. ———
+  const QCOL = { seeds: '#7fbf7a', parts: '#7ab8e8', pip: '#f07a1c', radio: '#d98aff', amos: '#ffd166', new: '#ffb53a' };
+  const lastRows = {};
+  function targets() {
+    const out = [], q = st.q, ent = (id, key, bang = false) => { const e = world.get(id); if (e && !e.hidden) out.push({ x: e.x, y: e.y, up: e.kind === 'npc' ? (e.look?.kid ? 44 : 50) : 22, c: QCOL[key], bang }); };
+    if (done() >= 3) { ent('amos', 'amos'); return out; }
+    if (!q.seeds) ent('wren', 'new', true); else if (q.seeds === 1) ['s1', 's2', 's3'].forEach((id) => ent(id, 'seeds')); else if (q.seeds === 2) ent('wren', 'seeds');
+    if (!q.parts) ent('gus', 'new', true); else if (q.parts === 1) ['p1', 'p2', 'p3'].forEach((id) => ent(id, 'parts')); else if (q.parts === 2) ent('gus', 'parts');
+    if (!q.pip) ent('clara', 'new', true); else if (q.pip >= 1 && q.pip <= 3) ent('pip' + (q.pip - 1), 'pip'); else if (q.pip === 4) ent('clara', 'pip');
+    if (!q.radio) ent('ray', 'new', true); else if (q.radio === 1) ent('gus', 'radio'); else if (q.radio === 2) ent('mast', 'radio'); else if (q.radio === 3) ent('ray', 'radio');
+    return out;
+  }
+  function drawTargets(c, w) {
+    if (w.busy) return;
+    const ink = '#12080c', bob = Math.round(Math.sin(w.t * 5) * 2);
+    for (const tg of targets()) {
+      const sx = tg.x - w.camX, sy = tg.y - tg.up - w.camY;
+      if (sx > 10 && sx < 470 && sy > 6 && sy < 262) {
+        // hədəfin üstündə: aşağı baxan ox (tapşırıq verəndə «!»)
+        const x0 = Math.round(tg.x), y0 = Math.round(tg.y - tg.up) + bob;
+        if (tg.bang) { c.fillStyle = ink; c.fillRect(x0 - 4, y0 - 10, 9, 12); c.fillStyle = tg.c; c.fillRect(x0 - 3, y0 - 9, 7, 10); c.fillStyle = ink; c.fillRect(x0 - 1, y0 - 8, 3, 5); c.fillRect(x0 - 1, y0 - 2, 3, 2); }
+        else { c.fillStyle = ink; c.fillRect(x0 - 5, y0 - 8, 11, 5); c.fillRect(x0 - 3, y0 - 3, 7, 2); c.fillRect(x0 - 1, y0 - 1, 3, 2); c.fillStyle = tg.c; c.fillRect(x0 - 4, y0 - 7, 9, 3); c.fillRect(x0 - 2, y0 - 4, 5, 2); c.fillRect(x0, y0 - 2, 1, 2); }
+      } else {
+        // ekrandan kənarda: kənarda istiqamət oxu
+        const px = w.p.x - w.camX, py = w.p.y - 16 - w.camY, a = Math.atan2(sy - py, sx - px);
+        const k = Math.min((sx > px ? 466 - px : px - 14) / Math.max(1e-3, Math.abs(Math.cos(a))), (sy > py ? 256 - py : py - 14) / Math.max(1e-3, Math.abs(Math.sin(a))));
+        const ex = w.camX + px + Math.cos(a) * k, ey = w.camY + py + Math.sin(a) * k, pulse = 1 + Math.round(Math.abs(Math.sin(w.t * 4)) * 1);
+        c.save(); c.translate(Math.round(ex), Math.round(ey)); c.rotate(a);
+        c.fillStyle = ink; c.beginPath(); c.moveTo(8 + pulse, 0); c.lineTo(-5, -8); c.lineTo(-5, 8); c.closePath(); c.fill();
+        c.fillStyle = tg.c; c.beginPath(); c.moveTo(5 + pulse, 0); c.lineTo(-3, -5); c.lineTo(-3, 5); c.closePath(); c.fill();
+        c.restore();
+      }
+    }
+  }
+
   // ——— jurnal ———
   function refresh() {
     const rows = [];
-    const row = (name, txt, ok) => rows.push(`<li class="${ok ? 'is-done' : ''}"><b>${name}</b>${txt}</li>`);
-    if (st.q.seeds) row('Granny Wren', st.q.seeds === 9 ? T('Toxumlar tapıldı') : st.q.seeds === 2 ? T('Toxumları Granny Wren-ə apar') : T('Toxum kisələri: {n}/3', { n: st.got.filter((g) => g[0] === 's').length }), st.q.seeds === 9);
-    if (st.q.parts) row('Old Gus', st.q.parts === 9 ? T('Baqqi yığıldı') : st.q.parts === 2 ? T('Hissələri Old Gus-a apar') : T('Baqqi hissələri: {n}/3', { n: st.got.filter((g) => g[0] === 'p').length }), st.q.parts === 9);
-    if (st.q.pip) row('Miss Clara', st.q.pip === 9 ? T('Pip tapıldı') : st.q.pip === 4 ? T('Miss Clara-ya xəbər ver') : T('Pip-i tap ({n}/3 gizlənmə yeri)', { n: st.q.pip - 1 }), st.q.pip === 9);
-    if (st.q.radio) row('Radio Ray', st.q.radio === 9 ? T('Antena düzəldi') : st.q.radio === 1 ? T('Old Gus-dan mis naqil al') : st.q.radio === 2 ? T('Naqili radio dirəyinə bağla') : T('Radio Ray-ə qayıt'), st.q.radio === 9);
-    if (done() >= 3) row('Elder Amos', st.amos ? T('Axşam ocağına get') : T('Elder Amos səni axtarır'), false);
+    const row = (name, txt, ok, key) => { const fresh = lastRows[key] !== undefined && lastRows[key] !== txt; lastRows[key] = txt; rows.push(`<li class="${ok ? 'is-done' : ''}${fresh ? ' is-new' : ''}"><i style="background:${QCOL[key]}"></i><b>${name}</b>${txt}</li>`); };
+    if (st.q.seeds) row('Granny Wren', st.q.seeds === 9 ? T('Toxumlar tapıldı') : st.q.seeds === 2 ? T('Toxumları Granny Wren-ə apar') : T('Toxum kisələri: {n}/3', { n: st.got.filter((g) => g[0] === 's').length }), st.q.seeds === 9, 'seeds');
+    if (st.q.parts) row('Old Gus', st.q.parts === 9 ? T('Baqqi yığıldı') : st.q.parts === 2 ? T('Hissələri Old Gus-a apar') : T('Baqqi hissələri: {n}/3', { n: st.got.filter((g) => g[0] === 'p').length }), st.q.parts === 9, 'parts');
+    if (st.q.pip) row('Miss Clara', st.q.pip === 9 ? T('Pip tapıldı') : st.q.pip === 4 ? T('Miss Clara-ya xəbər ver') : T('Pip-i tap ({n}/3 gizlənmə yeri)', { n: st.q.pip - 1 }), st.q.pip === 9, 'pip');
+    if (st.q.radio) row('Radio Ray', st.q.radio === 9 ? T('Antena düzəldi') : st.q.radio === 1 ? T('Old Gus-dan mis naqil al') : st.q.radio === 2 ? T('Naqili radio dirəyinə bağla') : T('Radio Ray-ə qayıt'), st.q.radio === 9, 'radio');
+    if (done() >= 3) row('Elder Amos', st.amos ? T('Axşam ocağına get') : T('Elder Amos səni axtarır'), false, 'amos');
     journal.innerHTML = rows.length ? `<h4>${t('cg.journal')}</h4><ul>${rows.join('')}</ul>` : '';
     // varlıqların görünməsi vəziyyətə bağlıdır
     for (const en of world.ents) if (en.when) en.hidden = !en.when();
@@ -133,9 +172,12 @@ export async function runCamp(ch) {
     } else if (st.q.parts === 1) {
       await talk([L('gus', 'neutral', 'Üç hissə. Parıldayan nə görsən, götür. Parıldamayanı da götür — bizdə parıldayan şey qalmayıb.')]);
     } else if (st.q.parts === 2) {
-      st.q.parts = 9;
+      await talk([L('gus', 'think', 'Hə, budur. Ver bura… Tut bunu. Yox, o biri əlinlə.')]);
+      world.busy = true;
+      await timing(ch, { title: t('cg.mg.bolt'), hint: t('cg.mg.boltH'), rounds: 3 });
+      if (ch.dead) return;
+      st.q.parts = 9;                                // oyun bitəndən sonra sayılır (yarıda çıxan təkrar edir)
       await talk([
-        L('gus', 'think', 'Hə, budur. Ver bura… Tut bunu. Yox, o biri əlinlə.'),
         L(null, null, 'Old Gus susur. Əlləri nə edəcəyini özü bilir: bir vint, bir zəncir, bir ovuc yağ. Sonra açarı çevirir — motor bir öskürür, bir də öskürür və birdən, nəfəsi açılıbmış kimi, oxumağa başlayır.'),
         L('gus', 'proud', 'Eşidirsən? Qırx il əvvəl bu səs hər küçədə vardı. Heç kim qulaq asmırdı.'),
         L('gus', 'sad', 'Mən usta deyildim, bilirsən. Mühasib idim. Rəqəm sayırdım. Dünya bitəndə rəqəmlər də bitdi, əllərim qaldı.'),
@@ -310,12 +352,15 @@ export async function runCamp(ch) {
   item('p3', 96, 602, () => st.q.parts === 1, part, [L(null, null, 'Dişli çarx. Bir anlıq sənə elə gəlir ki, bir dişi çatışmır. Sayırsan, bir də sayırsan — hamısı yerindədir.'), L('ember', 'neutral', 'Üçüncü.')]);
 
   // ——— baxıla bilən yerlər ———
-  const spot = (id, x, y, lines, when = null) => world.add({ id, x, y, kind: 'spot', r: 6, when, use: () => talk(typeof lines === 'function' ? lines() : lines) });
-  spot('mast', 536, 458, () => {
+  const spot = (id, x, y, lines, when = null) => world.add({ id, x, y, kind: 'spot', r: 6, when, use: async () => { const ls = typeof lines === 'function' ? await lines() : lines; if (!ch.dead) await talk(ls); } });
+  spot('mast', 536, 458, async () => {
     if (st.q.radio === 2) {
+      await talk([L(null, null, 'Naqili sıxıb bağlayırsan. Dirək boyu yuxarı bir cızıltı qaçır və qulaqcıq dirilir.')]);
+      world.busy = true;
+      await tuning(ch, { title: t('cg.mg.tune'), hint: t('cg.mg.tuneH') });
+      if (ch.dead) return [];
       st.q.radio = 3;
       return [
-        L(null, null, 'Naqili sıxıb bağlayırsan. Dirək boyu yuxarı bir cızıltı qaçır və qulaqcıq dirilir.'),
         L(null, null, 'Əvvəl yalnız xışıltı gəlir — uzaq bir dənizin səsinə oxşayır. Sonra onun içindən yavaş, səbirli bir tıqqıltı seçilir. Bir. İki. Üç… Düz yeddi dəfə.'),
         L(null, null, 'Sonra efir elə susur ki, sanki xəttin o başında kimsə nəfəsini içinə çəkib.'),
         L('ember', 'fear', '…Yəqin külək idi.'),

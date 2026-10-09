@@ -268,6 +268,7 @@ export class Chapter1 {
     document.removeEventListener('visibilitychange', this._onHide);
     this.world?.dispose();
     this._duel?.stop();
+    this._mini?.stop();
     this._chase?.stop();
     this._finale?.stop();
     this.dlg.dispose();

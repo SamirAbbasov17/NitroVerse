@@ -15,8 +15,26 @@ const toCamp = async (page) => {
   await page.locator('.cgs__skip').click();                               // səhər söhbəti
   await page.waitForFunction(() => !!window.__cgStory.world, null, { timeout: 15_000 });
 };
-// açıq dialoqu sona qədər keç
-const skipTalk = async (page) => { for (let i = 0; i < 60; i++) { if (!(await page.evaluate(() => window.__cgStory.world?.busy && !window.__cgStory.dlg.el.hidden))) break; await page.keyboard.press('Enter'); await page.waitForTimeout(35); } await page.waitForTimeout(300); };
+// açıq dialoqu sona qədər keç; kiçik oyun (motoru yığ / dalğanı tut) açılsa onu da oyna
+const skipTalk = async (page) => {
+  const t0 = Date.now();
+  while (Date.now() - t0 < 45_000) {
+    const st = await page.evaluate(() => {
+      const ch = window.__cgStory, m = ch._mini;
+      if (m) {
+        const s = m.state;
+        if (s.kind === 'timing') { if (s.pos > s.z0 + 0.02 && s.pos < s.z0 + s.zw - 0.02) m.hit(); }
+        else { m.keys.clear(); const d = s.target - s.pos; if (Math.abs(d) > 0.02) m.keys.add(Math.sign(d)); }
+        return 'mini';
+      }
+      return ch.world?.busy && !ch.dlg.el.hidden ? 'talk' : 'idle';
+    });
+    if (st === 'idle') break;
+    if (st === 'talk') await page.keyboard.press('Enter');
+    await page.waitForTimeout(st === 'mini' ? 25 : 35);
+  }
+  await page.waitForTimeout(300);
+};
 // varlığın yanına qoy və danış / götür
 const use = async (page, id) => {
   const ok = await page.evaluate((k) => { const w = window.__cgStory.world, en = w.get(k); if (!en || en.hidden) return false; w.p.x = en.x; w.p.y = en.y + (en.kind === 'npc' ? 14 : 6); w.coolUntil = 0; w.interact(en); return true; }, id);
@@ -165,5 +183,75 @@ test('düşərgə: toqquşma konturları — hər şeyə çatmaq olur, obyektin 
   expect(r.unreachable, 'çatılmayan varlıqlar').toEqual([]);
   expect(r.inside, 'obyektin içində açıq qalan nöqtələr').toEqual([]);
   expect(r.open, 'açıq qumda bağlı qalan nöqtələr').toEqual([]);
+  expect(errs).toEqual([]);
+});
+
+// başlıq ekranına çıxıb yaddaşdan yenidən gir (köhnə hekayə obyekti ilə qarışmasın deyə yenisini gözlə)
+const reopen = async (page) => {
+  await page.evaluate(() => { window.__cgOld = window.__cgStory; });
+  await page.keyboard.press('Escape'); await page.locator('[data-cgp="title"]').click();
+  await page.locator('[data-cg="story"]').click();
+  await page.waitForFunction(() => window.__cgStory !== window.__cgOld && !!window.__cgStory?.world && !window.__cgStory.world.dead, null, { timeout: 20_000 });
+};
+
+// Hədəf oxları və kiçik oyunlar: oyunçu NƏ etməli və HARA getməli olduğunu görür; tapşırıq yalnız "get-gətir" deyil.
+test('düşərgə: hədəf oxları, motoru yığ və dalğanı tut (klaviatura + telefon ölçüsü)', async ({ page }) => {
+  test.setTimeout(150_000);
+  const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+  await boot(page);
+  // 1) təzə başlayanda dörd tapşırıq verən «!» ilə göstərilir; Granny Wren-dən sonra üç toxum hədəf olur
+  await toCamp(page);
+  await skipTalk(page);
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(DIR, 'camp-targets-start.png') });
+  await use(page, 'wren');
+  expect(await page.evaluate(() => { const w = window.__cgStory.world; return ['s1', 's2', 's3'].map((id) => !w.get(id).hidden); }), 'toxumlar görünür').toEqual([true, true, true]);
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(DIR, 'camp-targets-seeds.png') });
+  await expect(page.locator('.cgs__journal li i')).toHaveCount(1);
+  // 2) motoru yığ: səhv vaxtda basış sayılmır, düz vaxtda sayılır (E düyməsi)
+  await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('cgCh1')); s.q.parts = 2; s.got = ['p1', 'p2', 'p3']; localStorage.setItem('cgCh1', JSON.stringify(s)); });
+  await reopen(page);
+  await page.evaluate(() => { const w = window.__cgStory.world, en = w.get('gus'); w.p.x = en.x; w.p.y = en.y + 14; w.coolUntil = 0; w.interact(en); });
+  for (let i = 0; i < 40 && !(await page.evaluate(() => !!window.__cgStory._mini)); i++) { await page.keyboard.press('Enter'); await page.waitForTimeout(60); }
+  await expect(page.locator('.cgm--timing')).toBeVisible();
+  await page.screenshot({ path: path.join(DIR, 'mini-timing.png') });
+  // zonadan kənarda bas → irəliləmir
+  await page.waitForFunction(() => { const s = window.__cgStory._mini.state; return s.pos < s.z0 - 0.05 || s.pos > s.z0 + s.zw + 0.05; }, null, { polling: 16 });
+  await page.keyboard.press('KeyE');
+  expect(await page.evaluate(() => window.__cgStory._mini.state.n), 'səhv basış sayılmır').toBe(0);
+  for (let k = 0; k < 3; k++) {
+    await page.waitForTimeout(350);
+    await page.waitForFunction(() => { const s = window.__cgStory._mini?.state; return !s || (s.pos > s.z0 + 0.04 && s.pos < s.z0 + s.zw - 0.04); }, null, { polling: 'raf', timeout: 15_000 });
+    await page.evaluate(() => window.__cgStory._mini?.hit());
+  }
+  await expect(page.locator('.cgm')).toHaveCount(0, { timeout: 5000 });
+  await skipTalk(page);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('cgCh1')).q.parts), 'baqqi yığıldı').toBe(9);
+  // 3) dalğanı tut: ox düymələri ilə əqrəb çevrilir, dalğa iki dəfə tutulur
+  await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('cgCh1')); s.q.radio = 2; localStorage.setItem('cgCh1', JSON.stringify(s)); });
+  await reopen(page);
+  await page.evaluate(() => { const w = window.__cgStory.world, en = w.get('mast'); w.p.x = en.x; w.p.y = en.y + 8; w.coolUntil = 0; w.interact(en); });
+  for (let i = 0; i < 40 && !(await page.evaluate(() => !!window.__cgStory._mini)); i++) { await page.keyboard.press('Enter'); await page.waitForTimeout(60); }
+  await expect(page.locator('.cgm--tuning')).toBeVisible();
+  const p0 = await page.evaluate(() => window.__cgStory._mini.state.pos);
+  await page.keyboard.down('ArrowRight'); await page.waitForTimeout(400); await page.keyboard.up('ArrowRight');
+  expect(await page.evaluate(() => window.__cgStory._mini.state.pos), 'ox düyməsi əqrəbi çevirir').toBeGreaterThan(p0 + 0.08);
+  await page.screenshot({ path: path.join(DIR, 'mini-tuning.png') });
+  await skipTalk(page);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('cgCh1')).q.radio), 'dalğa tutuldu').toBe(3);
+  // 4) telefon ölçüsü: hər iki oyunun qutusu ekrana sığır, düymələr iridir
+  await page.setViewportSize({ width: 667, height: 375 });
+  const fit = await page.evaluate(async () => {
+    const { timing, tuning } = await import('/src/games/carmageddon/minigame.js'); const ch = window.__cgStory, out = [];
+    for (const [fn, o] of [[timing, { title: 'Motoru yığ', hint: 'Göstərici yaşıl zonaya girəndə bas — E və ya toxun', rounds: 3 }], [tuning, { title: 'Поймай волну', hint: 'Крути стрелку ◀ ▶; держи там, где сигнал сильнее' }]]) {
+      fn(ch, o); await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const b = document.querySelector('.cgm__box').getBoundingClientRect();
+      out.push(b.left >= 0 && b.top >= 0 && b.right <= innerWidth && b.bottom <= innerHeight && [...document.querySelectorAll('.cgm button')].every((x) => x.getBoundingClientRect().height >= 44));
+      ch._mini.stop();
+    }
+    return out;
+  });
+  expect(fit, 'telefonda sığır').toEqual([true, true]);
   expect(errs).toEqual([]);
 });
