@@ -5,6 +5,7 @@ import { t, getLang } from '../../core/i18n.js';
 import { assetBase } from '../../net/apiBase.js';
 import { Dialogue } from './dialogue.js';
 import { CAST, PROLOGUE, MORNING, tx } from './script.js';
+import { runCamp, hasCampSave, clearSave } from './camp.js';
 
 const W = 480, H = 270;
 const loadImg = (src) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = assetBase() + src; });
@@ -31,15 +32,18 @@ export class Chapter1 {
     this.dlg = new Dialogue(el, { cast: CAST, faces: (who, emo) => this._face(who, emo) });
     this.art = {}; this.faceCache = {};
     this._skip = false;
-    el.querySelector('.cgs__skip').onclick = (e) => { e.stopPropagation(); this._skip = true; this.dlg.advance(); this.dlg.advance(); };
+    // "Keç": gedən səhnənin qalan sətirləri ötürülür (kadr dəyişməsi zamanı basılsa da işləyir)
+    el.querySelector('.cgs__skip').onclick = (e) => { e.stopPropagation(); this._skip = true; this.dlg.skip(); };
     this._onKey = (e) => { if (e.code === 'Escape') { e.stopImmediatePropagation(); this.end(); } };
     addEventListener('keydown', this._onKey, true);
-    this.run();
+    this.run().catch((e) => { console.error('Carmageddon Fəsil 1:', e); this.end(); });   // xəta olsa başlıq ekranına qayıt, ilişib qalma
   }
 
   async _load() {
-    const names = ['p1', 'p2', 'p3', 'p4', 'p5', 'tent', 'milo-neutral', 'milo-happy', 'milo-pout'];
-    const imgs = await Promise.all(names.map((n) => loadImg(`carmageddon/ch1/${n}.png`)));
+    const names = ['p1', 'p2', 'p3', 'p4', 'p5', 'tent', 'camp.webp', 'milo-neutral', 'milo-happy', 'milo-pout',
+      'wren-neutral', 'gus-neutral', 'clara-neutral', 'ray-neutral', 'amos-neutral', 'pip-neutral'];
+    const imgs = await Promise.all(names.map((n) => loadImg(`carmageddon/ch1/${n.includes('.') ? n : n + '.png'}`)));
+    names.forEach((n, i) => { names[i] = n.replace(/\.\w+$/, ''); });
     names.forEach((n, i) => { this.art[n] = imgs[i]; });
   }
 
@@ -91,25 +95,37 @@ export class Chapter1 {
     await this._load();
     if (this.dead) return;
     this.el.classList.add('is-ready');
+    // yarımçıq qalmış oyun düşərgədən davam edir (proloq və səhər söhbəti təkrarlanmır)
+    const resume = hasCampSave();
+    if (!resume) clearSave();
     // PROLOQ
     let cur = null;
-    for (const s of PROLOGUE) {
+    for (const s of resume ? [] : PROLOGUE) {
       if (this.dead || this._skip) break;
       if (s.art !== cur) { await this._fade(0); this._bg(s.art); cur = s.art; await this._fade(1); }
+      if (this.dead || this._skip) break;
       await this.dlg.say({ text: tx(s.text, this.lang) });
     }
     if (this.dead) return;
     this._skip = false;
     await this._fade(0);
-    await this._card(t('cg.ch1'), 'HEARTH', 2600);
+    await this._card(t('cg.ch1'), 'HEARTH', resume ? 1400 : 2600);
     if (this.dead) return;
     // SƏHƏR
-    this._bg('tent'); await this._fade(1);
-    for (const l of MORNING) {
+    if (!resume) { this._bg('tent'); await this._fade(1); }
+    for (const l of resume ? [] : MORNING) {
       if (this.dead || this._skip) break;
       await this.dlg.say({ who: l.who, emo: l.emo, text: tx(l.text, this.lang) });
     }
     if (this.dead) return;
+    // HEARTH: gəzinti və tapşırıqlar
+    this._skip = false;
+    await this._fade(0);
+    this.el.classList.add('is-world');
+    this.cv.style.opacity = 1;
+    await runCamp(this);
+    if (this.dead) return;
+    this.el.classList.remove('is-world');
     await this._fade(0);
     await this._card(t('cg.ch1'), t('cg.ch1More'), 4200);
     this.end();
@@ -119,6 +135,7 @@ export class Chapter1 {
     if (this.dead) return;
     this.dead = true;
     removeEventListener('keydown', this._onKey, true);
+    this.world?.dispose();
     this.dlg.dispose();
     this.el.remove();
     this.onEnd?.();

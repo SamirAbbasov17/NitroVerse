@@ -119,6 +119,13 @@ export class Dialogue {
     r?.();
   }
 
+  // gözləyən sətri dərhal bağla (səhnəni ötürmək üçün)
+  skip() {
+    cancelAnimationFrame(this.raf); this.typing = false;
+    const r = this._res; this._res = null;
+    r?.();
+  }
+
   dispose() {
     cancelAnimationFrame(this.raf);
     removeEventListener('keydown', this._onAct);

@@ -7,6 +7,12 @@ export const tx = (text, lang) => (typeof text === 'string' ? text : (text[lang]
 export const CAST = {
   ember: { name: 'Ember', color: '#ff7a3a', pitch: 392, wave: 'triangle' },
   milo: { name: 'Milo', color: '#ffd166', pitch: 587, wave: 'square' },
+  wren: { name: 'Granny Wren', color: '#d98a7a', pitch: 330, wave: 'sine' },
+  gus: { name: 'Old Gus', color: '#c9a98a', pitch: 196, wave: 'sawtooth' },
+  clara: { name: 'Miss Clara', color: '#8fb4e0', pitch: 440, wave: 'sine' },
+  ray: { name: 'Radio Ray', color: '#f2d23a', pitch: 523, wave: 'square' },
+  amos: { name: 'Elder Amos', color: '#e8dcc0', pitch: 165, wave: 'triangle' },
+  pip: { name: 'Pip', color: '#f07a1c', pitch: 784, wave: 'square' },
 };
 
 // PROLOQ: hər kadr = fon (art: prologue-N) + mətn

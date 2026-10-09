@@ -1,13 +1,13 @@
 // CARMAGEDDON Fəsil 1 (demo): proloq + dialoq. Yoxlanır: mətn hərf-hərf yazılır; klik yazını DƏRHAL
-// tamamlayır, növbəti klik keçir; portret və ad danışana görə dəyişir; "Keç" səhnəni ötürür; sonda
-// başlıq ekranı qayıdır; telefonda dialoq qutusu ekrana sığır.
+// tamamlayır, növbəti klik keçir; portret və ad danışana görə dəyişir; "Keç" səhnəni ötürür; Esc
+// başlıq ekranına qaytarır; telefonda dialoq qutusu ekrana sığır.
 import { test, expect } from '@playwright/test';
 import path from 'path';
 import { boot, OUT, ensureDir } from './helpers.js';
 
 const DIR = ensureDir(path.join(OUT, 'carmageddon'));
 const open = async (page) => {
-  await page.evaluate(() => window.__menu.onOpenGame('carmageddon'));
+  await page.evaluate(() => { localStorage.removeItem('cgCh1'); window.__menu.onOpenGame('carmageddon'); });
   await page.waitForSelector('.cg.is-ready', { timeout: 30_000 });
   await page.locator('[data-cg="story"]').click();
   await page.waitForSelector('.cgs.is-ready', { timeout: 20_000 });
@@ -51,10 +51,10 @@ test('hekayə: yazı, kliklə tamamlama və keçid, portret, sonda başlıq ekra
   await page.keyboard.press('Space');
   await page.waitForTimeout(200);
   await page.screenshot({ path: path.join(DIR, 'story-ember.png') });
-  // 5) bütün dialoqu kliklə keç → son kart → başlıq ekranı
-  for (let i = 0; i < 80 && (await page.locator('.cgd:not([hidden])').count()); i++) { await page.keyboard.press('Enter'); await page.waitForTimeout(40); }
-  await page.waitForSelector('.cgs__card:not([hidden])', { timeout: 10_000 });
-  await page.locator('.cgs__card').click();
+  // 5) bütün dialoqu kliklə keç → düşərgə açılır (ətraflı: carmageddon-camp.spec.js); Esc → başlıq ekranı
+  for (let i = 0; i < 80 && !(await page.evaluate(() => !!window.__cgStory?.world)); i++) { await page.keyboard.press('Enter'); await page.waitForTimeout(40); }
+  await page.waitForFunction(() => !!window.__cgStory?.world, null, { timeout: 10_000 });
+  await page.keyboard.press('Escape');
   await expect(page.locator('.cgs')).toHaveCount(0, { timeout: 8000 });
   await expect(page.locator('.cg__btn.is-selected')).toBeVisible();
   expect(errs).toEqual([]);

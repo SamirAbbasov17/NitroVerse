@@ -189,3 +189,25 @@ body.cg-on #game-canvas, body.cg-on #mute-btn { visibility: hidden; }
 .cgd__box.is-done .cgd__next { opacity: 1; animation: cg-bob 0.7s steps(2) infinite; }
 @keyframes cg-bob { 50% { transform: translateY(3px); } }
 @media (prefers-reduced-motion: reduce) { .cgd__box.is-done .cgd__next { animation: none; } }
+
+/* Düşərgə (top-down): alt qaralma yoxdur, "Keç" gizlidir; tapşırıq jurnalı solda yuxarıda */
+.cgs.is-world .cgs__shade { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.1) 0, rgba(0, 0, 0, 0.1) 1px, transparent 1px, transparent 3px); }
+.cgs.is-world .cgs__skip { display: none; }
+.cgs__journal {
+  position: absolute; left: max(10px, env(safe-area-inset-left)); top: max(10px, env(safe-area-inset-top)); z-index: 1; pointer-events: none;
+  max-width: min(46vw, 300px); padding: 7px 10px; background: rgba(18, 8, 12, 0.78); border: 2px solid #5a2a24;
+  font-family: var(--cg-caps); color: var(--cg-bone);
+}
+.cgs__journal:empty { display: none; }
+.cgs__journal h4 { margin: 0 0 4px; font-weight: 400; font-size: clamp(11px, 1.9vh, 14px); letter-spacing: 0.16em; text-transform: uppercase; color: var(--cg-amber); }
+.cgs__journal ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.cgs__journal li { font-size: clamp(11px, 2vh, 15px); line-height: 1.25; color: var(--cg-bone); }
+.cgs__journal li b { font-weight: 400; color: var(--cg-dim); margin-right: 6px; }
+.cgs__journal li.is-done { color: #7fbf7a; }
+.cgs__journal li.is-done::after { content: ' ✓'; }
+.cgs__hint {
+  position: absolute; left: 50%; bottom: max(12px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 1; pointer-events: none; white-space: nowrap;
+  padding: 5px 10px; background: rgba(18, 8, 12, 0.7); font-family: var(--cg-caps); font-size: clamp(11px, 2vh, 14px); letter-spacing: 0.08em; color: var(--cg-dim);
+  transition: opacity 0.8s ease;
+}
+.cgs__hint.is-out { opacity: 0; }
