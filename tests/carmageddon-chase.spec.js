@@ -165,7 +165,11 @@ test('qaçış: beş hissənin kadrları', async ({ page }) => {
   await page.evaluate(BOT);
   for (let i = 0; i < 5; i++) {
     const id = await page.evaluate((k) => { const c = window.__cgStory._chase; c.start(k); c.G.d = 600; return c.S.id; }, i);
-    await page.waitForTimeout(2500);
+    // kadr vaxtı: 2 s ərzində çəkilən kadrların sayı və ən uzun kadr
+    const ft = await page.evaluate(() => new Promise((res) => { let n = 0, worst = 0, last = performance.now(); const t0 = last; const f = (now) => { n++; worst = Math.max(worst, now - last); last = now; if (now - t0 < 2000) requestAnimationFrame(f); else res({ fps: Math.round(n / 2), worst: Math.round(worst) }); }; requestAnimationFrame(f); }));
+    console.log(`${id}: ${ft.fps} kadr/s, ən uzun kadr ${ft.worst} ms`);
+    expect(ft.fps, `${id}: kadr sürəti`).toBeGreaterThan(45);
+    await page.waitForTimeout(500);
     await page.screenshot({ path: path.join(DIR, `chase-look-${id}.png`) });
     const ok = await page.evaluate(() => { const a = window.__cgStory.art; return !!(a.cars && a.props && a['ground-camp'] && a['ground-canyon'] && a['ground-fog'] && a['ground-truck']); });
     expect(ok, 'maşın, obyekt və yer şəkilləri yüklənib').toBe(true);
