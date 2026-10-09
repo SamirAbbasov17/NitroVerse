@@ -5,14 +5,14 @@ import { t } from '../../core/i18n.js';
 import { World } from './world.js';
 import { T } from './tx.js';
 import { timing, tuning, pattern, shuffle } from './minigame.js';
+import { loadSave, storeSave, clearSave } from './save.js';
 
-const SAVE = 'cgCh1';
-const load = () => { try { return JSON.parse(localStorage.getItem(SAVE) || 'null'); } catch { return null; } };
-const store = (s) => { try { localStorage.setItem(SAVE, JSON.stringify(s)); } catch { /* gizli rejim */ } };
+// yaddaş: hesab varsa serverdə, qonaqdırsa brauzerdə (bax save.js)
+const load = loadSave, store = storeSave;
 export const savedStage = () => { const st = load()?.stage; return ['camp', 'evening', 'night', 'found', 'chase'].includes(st) ? st : null; };
 export const setStage = (stage, extra = {}) => store({ ...(load() || {}), stage, ...extra });
 export const savedSec = () => load()?.sec | 0;
-export const clearSave = () => { try { localStorage.removeItem(SAVE); } catch { /* boş */ } };
+export { clearSave };
 
 const LOOK = {
   ember: { art: 'ember', hair: '#e8301a', skin: '#f4c9a0', top: '#7a4a26', legs: '#2a2230', long: true, feat: ['goggles', 'scarf', 'jacket'] },

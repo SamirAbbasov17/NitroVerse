@@ -312,7 +312,6 @@ export default {
   "Yolun qırağında köhnə bir yanacaq stansiyası qaralırdı. Lövhəsinin hərfləri çoxdan tökülmüşdü; kimsə divara əl ilə iki söz cızmışdı: LAST STOP.": "Yolun kenarında eski bir benzin istasyonu kararıyordu. Tabelasının harfleri çoktan dökülmüştü; biri duvara elle iki kelime kazımıştı: LAST STOP.",
   "Ember maşından düşdü. Bir əli böyründə idi, o biri hələ də açar halqasını sıxırdı — elə bərk ki, barmaqlarını aça bilmirdi.": "Ember arabadan indi. Bir eli böğründeydi, öbürü hâlâ anahtarlığı sıkıyordu — öyle sıkı ki parmaklarını açamıyordu.",
   "Ayaqları onu kolonkaya qədər apardı. Orada dizləri daha onun sözünə baxmadı.": "Bacakları onu pompaya kadar taşıdı. Orada dizleri artık onu dinlemedi.",
-  "Beton soyuq idi. Ember yanı üstə uzandı, maskanı yanına qoydu və göyün kənarının necə ağardığına baxdı: Hearth-siz ilk səhər.": "Beton soğuktu. Ember yan yattı, maskeyi yanına koydu ve göğün kenarının ağarışını izledi: Hearth'siz ilk sabah.",
   "Taparam.": "Bulurum.",
   "Pip.": "Pip.",
   "Oxuyacaqlar.": "Okuyacaklar.",
@@ -333,4 +332,5 @@ export default {
   "— Tullandı. — Tullandı. — Mərci kim uddu? — Heç kim. İkimiz də \"keçməyəcək\" demişdik.": "— Atladı. — Atladı. — Bahsi kim kazandı? — Hiç kimse. İkimiz de \"geçemez\" demiştik.",
   "— Hush-a nə deyəcəyik? — Həqiqəti: Jackal-ın maskası yola çıxıb. — Bəs onu kimin daşıdığını? — Bunu hələ özü də bilmir.": "— Hush'a ne diyeceğiz? — Gerçeği: Jackal'ın maskesi yola çıktı. — Peki onu kimin taşıdığını? — Bunu henüz kendisi de bilmiyor.",
   "Ember onları eşitmədi. O, yalnız qabağa baxırdı: yol düz idi, boş idi və bu gecə ilk dəfə arxasınca heç kim gəlmirdi.": "Ember onları duymadı. Yalnızca ileri bakıyordu: yol düzdü, boştu ve bu gece ilk kez arkasından kimse gelmiyordu.",
+  "Beton soyuq idi. Ember arxası üstə yerə sərildi; əli hələ də böyründə idi və barmaqlarının arasından isti bir şey süzülürdü. Maska yanına düşdü. O, göyün kənarının necə ağardığına baxdı: Hearth-siz ilk səhər.": "Beton soğuktu. Ember sırtüstü yere serildi; eli hâlâ böğründeydi ve parmaklarının arasından ılık bir şey sızıyordu. Maske yanına düştü. Göğün kenarının ağarışını izledi: Hearth'siz ilk sabah.",
 };

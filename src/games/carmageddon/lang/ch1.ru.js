@@ -312,7 +312,6 @@ export default {
   "Yolun qırağında köhnə bir yanacaq stansiyası qaralırdı. Lövhəsinin hərfləri çoxdan tökülmüşdü; kimsə divara əl ilə iki söz cızmışdı: LAST STOP.": "У обочины темнела старая заправка. Буквы с её вывески давно осыпались; кто-то от руки нацарапал на стене два слова: LAST STOP.",
   "Ember maşından düşdü. Bir əli böyründə idi, o biri hələ də açar halqasını sıxırdı — elə bərk ki, barmaqlarını aça bilmirdi.": "Ember вышла из машины. Одна рука прижата к боку, другая всё ещё сжимала брелок — так крепко, что пальцы не разжимались.",
   "Ayaqları onu kolonkaya qədər apardı. Orada dizləri daha onun sözünə baxmadı.": "Ноги донесли её до колонки. Там колени перестали её слушаться.",
-  "Beton soyuq idi. Ember yanı üstə uzandı, maskanı yanına qoydu və göyün kənarının necə ağardığına baxdı: Hearth-siz ilk səhər.": "Бетон был холодным. Ember легла на бок, положила маску рядом и смотрела, как светлеет край неба: первое утро без Hearth.",
   "Taparam.": "Найду.",
   "Pip.": "Pip.",
   "Oxuyacaqlar.": "Прочтут.",
@@ -333,4 +332,5 @@ export default {
   "— Tullandı. — Tullandı. — Mərci kim uddu? — Heç kim. İkimiz də \"keçməyəcək\" demişdik.": "— Прыгнула. — Прыгнула. — Кто выиграл спор? — Никто. Мы оба сказали «не переедет».",
   "— Hush-a nə deyəcəyik? — Həqiqəti: Jackal-ın maskası yola çıxıb. — Bəs onu kimin daşıdığını? — Bunu hələ özü də bilmir.": "— Что скажем Hush? — Правду: маска Jackal вышла на дорогу. — А кто её везёт? — Этого она пока и сама не знает.",
   "Ember onları eşitmədi. O, yalnız qabağa baxırdı: yol düz idi, boş idi və bu gecə ilk dəfə arxasınca heç kim gəlmirdi.": "Ember их не слышала. Она смотрела только вперёд: дорога была прямой, пустой, и впервые за эту ночь за ней никто не гнался.",
+  "Beton soyuq idi. Ember arxası üstə yerə sərildi; əli hələ də böyründə idi və barmaqlarının arasından isti bir şey süzülürdü. Maska yanına düşdü. O, göyün kənarının necə ağardığına baxdı: Hearth-siz ilk səhər.": "Бетон был холодным. Ember рухнула на спину; рука всё ещё прижималась к боку, и между пальцами сочилось что-то тёплое. Маска упала рядом. Она смотрела, как светлеет край неба: первое утро без Hearth.",
 };

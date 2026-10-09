@@ -312,7 +312,6 @@ export default {
   "Yolun qırağında köhnə bir yanacaq stansiyası qaralırdı. Lövhəsinin hərfləri çoxdan tökülmüşdü; kimsə divara əl ilə iki söz cızmışdı: LAST STOP.": "By the roadside stood the dark shape of an old gas station. The letters of its sign had fallen off long ago; someone had scratched two words on the wall by hand: LAST STOP.",
   "Ember maşından düşdü. Bir əli böyründə idi, o biri hələ də açar halqasını sıxırdı — elə bərk ki, barmaqlarını aça bilmirdi.": "Ember got out of the car. One hand was pressed to her side; the other still gripped the keyring — so tightly she could not open her fingers.",
   "Ayaqları onu kolonkaya qədər apardı. Orada dizləri daha onun sözünə baxmadı.": "Her legs carried her as far as the pump. There her knees stopped listening to her.",
-  "Beton soyuq idi. Ember yanı üstə uzandı, maskanı yanına qoydu və göyün kənarının necə ağardığına baxdı: Hearth-siz ilk səhər.": "The concrete was cold. Ember lay down on her side, set the mask beside her and watched the edge of the sky turn pale: the first morning without Hearth.",
   "Taparam.": "I'll find them.",
   "Pip.": "Pip.",
   "Oxuyacaqlar.": "They will.",
@@ -333,4 +332,5 @@ export default {
   "— Tullandı. — Tullandı. — Mərci kim uddu? — Heç kim. İkimiz də \"keçməyəcək\" demişdik.": "— She jumped. — She jumped. — Who won the bet? — Nobody. We both said she wouldn't make it.",
   "— Hush-a nə deyəcəyik? — Həqiqəti: Jackal-ın maskası yola çıxıb. — Bəs onu kimin daşıdığını? — Bunu hələ özü də bilmir.": "— What do we tell Hush? — The truth: Jackal's mask is on the road. — And who is carrying it? — She doesn't know that herself yet.",
   "Ember onları eşitmədi. O, yalnız qabağa baxırdı: yol düz idi, boş idi və bu gecə ilk dəfə arxasınca heç kim gəlmirdi.": "Ember did not hear them. She was looking only ahead: the road was straight, it was empty, and for the first time that night nobody was coming after her.",
+  "Beton soyuq idi. Ember arxası üstə yerə sərildi; əli hələ də böyründə idi və barmaqlarının arasından isti bir şey süzülürdü. Maska yanına düşdü. O, göyün kənarının necə ağardığına baxdı: Hearth-siz ilk səhər.": "The concrete was cold. Ember fell onto her back; her hand was still pressed to her side, and something warm was seeping between her fingers. The mask dropped beside her. She watched the edge of the sky turn pale: the first morning without Hearth.",
 };

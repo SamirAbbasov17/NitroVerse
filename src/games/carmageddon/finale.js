@@ -35,7 +35,7 @@ const SHOTS = {
   g2: { from: [1.0, 0.5, 0.5], to: [1.24, 0.38, 0.46], fx: 'limp' },         // Ember axsaya-axsaya kolonkalara gedir
   g3: { from: [1.1, 0.55, 0.5], to: [1.22, 0.52, 0.52], fx: 'tremor' },      // açar halqasını sıxan əl
   g4: { from: [1.16, 0.44, 0.4], to: [1.04, 0.45, 0.56], fx: 'drop' },       // dizləri üstə çökür
-  g5: { from: [1.55, 0.45, 0.5], to: [1.0, 0.5, 0.5], fx: 'pulse' },          // yerdə uzanıb — kamera qalxmağa başlayır
+  g5: { from: [1.9, 0.5, 0.34], to: [1.0, 0.5, 0.5], fx: 'pulse' },          // yerdə uzanıb — kamera qalxmağa başlayır
   g6: { from: [1.75, 0.5, 0.7], to: [1.0, 0.5, 0.5], fx: null },             // yuxarıdan: stansiya, maşın, balaca fiqur
   g7: { from: [1.8, 0.72, 0.62], to: [1.0, 0.5, 0.5], fx: 'sun' },            // sonsuz çöl, yol, doğan günəş
 };

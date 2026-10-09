@@ -11,6 +11,7 @@ import { audio } from '../../core/AudioManager.js';
 import { t, getLang, setLangQuiet, LANGS } from '../../core/i18n.js';
 import { assetBase } from '../../net/apiBase.js';
 import { music } from './music.js';
+import { loadSave, clearSave, syncSave, flushSave } from './save.js';
 
 const W = 480, H = 270;                 // kətanın daxili ölçüsü (piksel toru)
 const HERO = { w: 160, h: 213, x: 300, y: 62 };          // qəhrəmanın kətandakı yeri
@@ -78,6 +79,8 @@ class TitleScreen {
     this.cx = this.cv.getContext('2d');
     this.cx.imageSmoothingEnabled = false;
     this._syncSave();
+    // hesabın yaddaşı serverdən gəlir (hesab yoxdursa — brauzerdəki); gələndə "Davam et" yenilənir
+    syncSave().then((how) => { this.saveFrom = how; if (!this.dead && !this.story && this.el.isConnected) this._syncSave(); });
     // Dil: sağ yuxarı küncdə dörd düymə. Başlıq ekranı yerindəcə yeni dildə yazılır; hekayə növbəti açılışda həmin
     // dildə gedir. NitroVerse-in qalan ekranları köhnə dildə qaldığı üçün çıxışda səhifə yenilənir (bax _exit).
     el.querySelectorAll('[data-cg-lang]').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); this._setLang(b.dataset.cgLang); }; });
@@ -238,7 +241,7 @@ class TitleScreen {
     audio.sfx('click');
     if (id === 'exit') { this._exit(); return; }
     if (id === 'story') { this._startStory(); return; }
-    if (id === 'new') { try { localStorage.removeItem('cgCh1'); } catch { /* gizli rejim */ } this._startStory(); return; }
+    if (id === 'new') { clearSave(); this._startStory(); return; }
     this.note.textContent = t('cg.heroNote');
     this.note.classList.remove('is-on'); void this.note.offsetWidth; this.note.classList.add('is-on');
     if (id === 'hero') this._pokeHero();
@@ -255,8 +258,7 @@ class TitleScreen {
   }
 
   _syncSave() {
-    let has = false;
-    try { has = !!JSON.parse(localStorage.getItem('cgCh1') || 'null')?.stage; } catch { /* boş */ }
+    const has = !!loadSave()?.stage;
     this.el.querySelector('[data-cg-story]').textContent = t(has ? 'cg.continue' : 'cg.story');
     this.el.querySelector('[data-cg="new"]').hidden = !has;
     if (this.btns) { this.btns = [...this.el.querySelectorAll('.cg__btn:not([hidden])')]; this.btns.forEach((b, i) => { b.onmouseenter = () => this._select(i); b.onclick = () => { this._select(i); this._activate(); }; }); this._select(Math.min(this.sel ?? 0, this.btns.length - 1)); this._fit?.(); }
@@ -271,7 +273,7 @@ class TitleScreen {
     this._storyLoading = false;
     if (!this.el.isConnected) return;
     this.el.classList.add('is-story');
-    this.story = new Chapter1(this.el, { hero: this.hero, eyes: this.eyes, onEnd: () => { this.story = null; this.el.classList.remove('is-story'); this._syncSave(); music.play('scavenger'); } });
+    this.story = new Chapter1(this.el, { hero: this.hero, eyes: this.eyes, onEnd: () => { this.story = null; this.el.classList.remove('is-story'); this._syncSave(); flushSave(); music.play('scavenger'); } });
     if (import.meta.env.DEV) window.__cgStory = this.story;
   }
 
@@ -398,7 +400,9 @@ class TitleScreen {
   }
 
   dispose() {
+    this.dead = true;
     this.story?.end();
+    flushSave();                                   // gözləyən yaddaş yazısı serverə getsin
     music.dispose();
     cancelAnimationFrame(this.raf);
     clearTimeout(this._qt);

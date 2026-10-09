@@ -236,7 +236,7 @@ export const ENDING = [
   { art: 'g4' },
   N('Ayaqları onu kolonkaya qədər apardı. Orada dizləri daha onun sözünə baxmadı.'),
   { art: 'g5' },
-  N('Beton soyuq idi. Ember yanı üstə uzandı, maskanı yanına qoydu və göyün kənarının necə ağardığına baxdı: Hearth-siz ilk səhər.'),
+  N('Beton soyuq idi. Ember arxası üstə yerə sərildi; əli hələ də böyründə idi və barmaqlarının arasından isti bir şey süzülürdü. Maska yanına düşdü. O, göyün kənarının necə ağardığına baxdı: Hearth-siz ilk səhər.'),
   S('ember', 'sad', '…Otuz yeddi. Otuz səkkiz.'),
   { art: 'g6' },
   N('O, saymağa başladı. Milo kimi. Yüzə çatanda ayağa qalxacaqdı.'),

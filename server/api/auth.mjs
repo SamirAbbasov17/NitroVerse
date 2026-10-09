@@ -313,6 +313,20 @@ export function makeAuth(getStore, env = process.env) {
 
     if (action === 'me') return json({ profile: pubProfile(user) });
 
+    // ————— CARMAGEDDON yaddaşı (hekayə irəliləyişi) — hesaba bağlıdır, cihazdan cihaza keçir —————
+    // Forma oyunun özündədir (src/games/carmageddon/save.js); server yalnız ölçünü və mərhələni yoxlayır.
+    if (action === 'cgGet') return json({ save: user.cg || null });
+    if (action === 'cgSet') {
+      const sv = b.save;
+      if (sv == null) { delete user.cg; await store.setJSON(session.nick, user); return json({ ok: true }); }
+      if (typeof sv !== 'object' || Array.isArray(sv)) return json({ error: 'save' }, 400);
+      if (!['camp', 'evening', 'night', 'found', 'chase'].includes(sv.stage)) return json({ error: 'save' }, 400);
+      if (JSON.stringify(sv).length > 4000) return json({ error: 'save-big' }, 400);
+      user.cg = sv;
+      await store.setJSON(session.nick, user);
+      return json({ ok: true });
+    }
+
     // Parolu dəyiş (köhnə parol tələb olunur)
     if (action === 'changePass') {
       const yeni = String(b.pass || '');

@@ -45,6 +45,7 @@ npm run test:carmageddon # Carmageddon başlıq ekranı: açılır, qəhrəman c
 npm run test:coach   # ilk yarış ipucları: görünür, itir, təkrarlanmır
 npm run test:results # nəticə ekranı: dövrə vaxtları, şəxsi rekord, telefonda sığır
 npm run test:settings # ayarlar ekranı: seçimlər tətbiq olunur, telefonda sığır
+npm run test:cg-save # Carmageddon yaddaşı hesaba bağlıdır: köçmə, ikinci cihaz, başqası görmür (öz backend-i qaldırır)
 npm run test:session # bir hesab — bir cihaz: yeni giriş köhnə cihazı çıxarır (öz backend-i müvəqqəti qaldırır)
 npm run test:feel-arena # arena/futbol sürüş rəqəmləri və bot davranışı (köhnə ↔ v2) — ~5 dəq
 npm run test:feel    # sürüş modelinin rəqəmləri → tests/out/feel.json (fizika dəyişəndə əvvəl/sonra)
