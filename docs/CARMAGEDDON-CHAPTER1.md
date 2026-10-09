@@ -4,6 +4,8 @@ Status: **fəsil başdan-sona oynanılır** (2026-10-09; kod: `src/games/carmage
 
 Əlavələr (2026-10-09, tester keçidi): **fasilə menyusu** (Esc və ya sağ yuxarı künc düyməsi — "Davam et" / "Başlıq ekranı"; oynanışda tab gizlənəndə özü açılır); yaddaş mərhələləri `camp → evening → night → found → chase(sec)`; qaçışda can, yanacaq və nitro **hissədən hissəyə daşınır** (alt hədd: can 60, yanacaq 58, nitro 1); maşınlar, yol obyektləri və yer toxumaları piksel art vərəqlərindəndir (`cars.png`, `props.png`, `ground-*.webp`); mətnlər dörd dildə (`lang/ch1.*.js`).
 
+Qaçışın genişlənməsi (2026-10-09): hər hissə ~2 dəfə uzundur (5200–6200 px, cəmi ≈ 3 dəq), üç mərhələlidir və ortasında yaddaş nöqtəsi var. Yeni təhlükələr: yanan ləkələr və alov "ilanı" (düşərgə), daş uçqunu və darboğaz (kanyon), göydən düşən qaz balonları (duman), yanan yanacaq izi və Butcher-in qəfil əyləci (yük maşını), deşiklər və beş qarmaq (körpü). Yeni mexanikalar: yaxın keçid nitro yığır, nitro ilə sipər və təqibçi dağıdılır.
+
 İstifadəçi rəyindən sonra (2026-10-09): qaçışda maşın dörd istiqamətdə hərəkət edir (əyləc yoxdur), hissələr arasında dörd **ara səhnə** (`script.js: CHASE_CUTS`, kadrlar `c1…c5`); düşərgədə toqquşma **çoxbucaqlı konturlarla** (`camp.js: SOLIDS`), **hədəf oxları** və dörd kiçik oyun (`minigame.js`: motoru yığ — vaxtında basış, dalğanı tut — əqrəb, toxumları ək — yaddaş, Pip haradadır — qarışan çəlləklər); xəritə fiqurları `chars.png` vərəqindəndir (`sprites.js: artSheet`).
 mexanikalar təsdiq gözləyir. Üslub: `docs/CARMAGEDDON-STYLE.md` (piksel art, 480×270 kətan).
 

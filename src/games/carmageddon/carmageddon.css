@@ -374,6 +374,9 @@ body.cg-on #game-canvas, body.cg-on #mute-btn { visibility: hidden; }
 .cgc__pad--r [data-k="up"] { grid-column: 1; grid-row: 1; } .cgc__pad--r [data-k="down"] { grid-column: 1; grid-row: 2; } .cgc__pad--r .cgc__nitrobtn { grid-column: 2; grid-row: 1 / span 2; }
 .cgc__banner em { display: block; margin-top: 8px; font-style: normal; font-size: clamp(11px, 2.4vh, 15px); letter-spacing: 0.1em; color: var(--cg-dim); text-shadow: 2px 2px 0 #000; }
 @media (pointer: coarse) { .cgc__banner em { display: none; } }
+.cgc__banner small { display: block; margin-top: 6px; font-size: clamp(10px, 2.2vh, 14px); letter-spacing: 0.06em; color: #9ad0ff; text-shadow: 2px 2px 0 #000; }
+.cgc__banner:not(.is-first) em, .cgc__banner:not(.is-first) small { display: none; }
+.cgc__nm { width: 46%; height: 5px; background: rgba(18, 8, 12, 0.8); border: 2px solid #23405a; } .cgc__nm i { display: block; height: 100%; width: 0; background: #5ab4ff; transition: width 0.12s linear; }
 @keyframes cgc-banner { 0% { opacity: 0; transform: translateY(-8px); } 8%, 78% { opacity: 1; transform: none; } 100% { opacity: 0; } }
 
 /* ============ FİNAL: yekun yazıları ============ */
@@ -400,3 +403,6 @@ body.cg-on #game-canvas, body.cg-on #mute-btn { visibility: hidden; }
 .cgf__thanks span { font-size: clamp(12px, 3vh, 21px); letter-spacing: 0.1em; color: var(--cg-dim); }
 .cgf__thanks i { font-style: normal; margin-top: clamp(10px, 4vh, 34px); font-size: clamp(11px, 2.4vh, 16px); letter-spacing: 0.34em; text-transform: uppercase; color: var(--cg-amber); }
 @keyframes cgf-roll { from { transform: translateY(0); } to { transform: translateY(calc(-100% - 100vh)); } }
+
+/* başlıq ekranı: təsvir mətni açıq fonun (bina, ay) üstünə düşəndə də oxunsun */
+.cg__pitch { text-shadow: 1px 1px 0 #12080c, -1px 1px 0 #12080c, 1px -1px 0 #12080c, -1px -1px 0 #12080c, 0 2px 0 #12080c; }

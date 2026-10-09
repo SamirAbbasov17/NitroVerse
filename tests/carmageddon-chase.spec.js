@@ -33,13 +33,15 @@ const BOT = () => {
       const x = cxAt(S, G.d + 50) + k * (hw - 14); let sc = -Math.abs(x - G.x) * 0.25 - Math.abs(k) * 6;
       for (const e of G.ents) {
         const ahead = e.d - G.d; if (ahead < -20 || ahead > 150) continue;
-        if (e.k === 'rock' || e.k === 'barrel') { const dx = Math.abs(e.x - x); if (dx < 24) sc -= (24 - dx) * (160 - ahead) * 0.12; }
+        if (e.k === 'rock' || e.k === 'barrel' || (e.k === 'fall' && e.on)) { const dx = Math.abs(e.x - x); if (dx < 26) sc -= (26 - dx) * (160 - ahead) * 0.12; }
+        else if (e.k === 'patch') { const dx = Math.abs(e.x - x); if (dx < e.r + 16) sc -= (e.r + 16 - dx) * 5; }
         else if (e.k === 'cloud') { const dx = Math.abs(e.x - x); if (dx < 42) sc -= (42 - dx) * 3; }
         else if (e.k === 'pole' && e.x0 !== undefined) { if (x > e.x0 - 10 && x < e.x1 + 10) sc -= 400; }
         else if (e.k === 'chain') { sc -= Math.abs(e.gap - x) * 4; }
         else if (e.k === 'chaser' && e.st !== 'sleep' && Math.abs(ahead) < 40) { const dx = Math.abs(e.x - x); if (dx < 30) sc -= (30 - dx) * 2; }
         else if ((e.k === 'fuel' || e.k === 'nitro' || e.k === 'fix') && ahead > 10) { const dx = Math.abs(e.x - x); if (dx < 16) sc += e.k === 'fuel' ? (G.fuel < 70 ? 60 : 15) : 30; }
       }
+      if (G.truck?.slam && Math.abs(G.truck.x - x) < 46) sc -= 500;                      // Butcher əyləcə basır — arxasında qalma
       if (sc > score) { score = sc; best = x; }
     }
     c.keys.delete('left'); c.keys.delete('right'); c.keys.delete('down'); c.keys.delete('up');
@@ -112,7 +114,7 @@ test('qaçış: mexanikalar və yaddaş nöqtəsi', async ({ page }) => {
 });
 
 test('qaçış: beş hissənin hamısı keçilə bilir (avtopilot düymələrlə sürür)', async ({ page }) => {
-  test.setTimeout(600_000);
+  test.setTimeout(900_000);
   const errs = []; page.on('pageerror', (e) => errs.push(e.message));
   await boot(page);
   await openChase(page, 0);
@@ -121,7 +123,7 @@ test('qaçış: beş hissənin hamısı keçilə bilir (avtopilot düymələrlə
   const t0 = Date.now();
   let done = false;
   let cuts = 0; const cutLines = [];
-  while (Date.now() - t0 < 520_000) {
+  while (Date.now() - t0 < 820_000) {
     // hissələr arası ara səhnə: ilk sətri yadda saxla, sonra "Keç"
     if (await page.locator('.cgs__skip').isVisible()) { await page.waitForTimeout(700); cutLines.push(await page.evaluate(() => window.__cgStory.dlg.full || '')); cuts++; await page.locator('.cgs__skip').click().catch(() => {}); await page.waitForTimeout(900); continue; }
     const s = await page.evaluate(() => { const c = window.__cgStory?._chase; return c ? { si: c.si, d: Math.round(c.G.d), len: c.S.len, id: c.S.id } : null; });
@@ -179,6 +181,63 @@ test('qaçış: beş hissənin kadrları', async ({ page }) => {
     await page.screenshot({ path: path.join(DIR, `chase-look-${id}.png`) });
     const ok = await page.evaluate(() => { const a = window.__cgStory.art; return !!(a.cars && a.props && a['ground-camp'] && a['ground-canyon'] && a['ground-fog'] && a['ground-truck']); });
     expect(ok, 'maşın, obyekt və yer şəkilləri yüklənib').toBe(true);
+  }
+  expect(errs).toEqual([]);
+});
+
+// Genişlənmiş qaçış: hər hissədə üç mərhələ və ortada yaddaş nöqtəsi; yeni mexanikalar ölçülür, mərhələlərin kadrı çəkilir.
+test('qaçış: yeni mexanikalar — yaxın keçid, nitro ilə dağıtma, uçqun, alov, deşik, əyləc, orta yaddaş nöqtəsi', async ({ page }) => {
+  test.setTimeout(240_000);
+  const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+  await boot(page);
+  await openChase(page, 0);
+  const r = await page.evaluate(async () => {
+    const c = window.__cgStory._chase, out = {}; const frames = (n) => new Promise((res) => { let i = 0; const f = () => (++i >= n ? res() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+    const clear = () => { c.G.ents.length = 0; c.G.y = 200; c.G.vy = 0; c.G.boost = 0; };
+    out.lens = c.SECTIONS.map((s) => s.len);
+    // 1) yaxın keçid: maneənin yanından (toxunmadan) üç dəfə keç → +1 nitro
+    c.start(0); clear(); c.G.nitro = 1; await frames(5);
+    for (let i = 0; i < 3; i++) { c.G.ents.push({ k: 'rock', d: c.G.d + 40, x: c.G.x + 28, r: 9 }); await frames(34); }
+    out.near = { nitro: c.G.nitro, hp: c.G.hp };
+    // 2) nitro ilə sipəri dağıtmaq zədələmir; nitrosuz zədələyir
+    clear(); let d0 = Math.ceil(c.G.d / 3) * 3 + 60; c.G.boost = 1.4; const hpA = c.G.hp; c.G.ents.push({ k: 'rock', d: d0, x: c.G.x, r: 9 }); await frames(40); out.smashDmg = Math.round(hpA - c.G.hp);
+    clear(); d0 = Math.ceil(c.G.d / 3) * 3 + 62; const hpB = c.G.hp; c.G.ents.push({ k: 'rock', d: d0, x: c.G.x, r: 9, hard: true }); c.G.boost = 1.4; await frames(40); out.hardDmg = Math.round(hpB - c.G.hp);
+    // 3) uçqun: kölgə → düşür → yolda qaya qalır
+    c.start(1); clear(); await frames(3); c.G.ents.push({ k: 'fall', d: c.G.d + 200, x: c.G.x + 50, r: 11, into: 'rock' }); await frames(20);
+    out.fallOn = c.G.ents.some((e) => e.k === 'fall' && e.on); await frames(60);
+    out.fallGone = !c.G.ents.some((e) => e.k === 'fall');
+    // 4) yanan ləkə içində can azalır
+    clear(); const hpC = c.G.hp; c.G.ents.push({ k: 'patch', d: c.G.d + 30, x: c.G.x, r: 22 }); await frames(30); out.patchDmg = +(hpC - c.G.hp).toFixed(1);
+    // 5) orta yaddaş nöqtəsi: ortanı keç, sonra qəza → ortadan başla
+    clear(); c.G.d = c.S.len * 0.5 - 20; c.G.hp = 80; await frames(20); out.cp = c.G.cp;
+    clear(); c.G.hp = 4; c.G.ents.push({ k: 'rock', d: c.G.d + 20, x: c.G.x, r: 9, hard: true }); await frames(30);
+    await new Promise((res) => setTimeout(res, 1800));
+    out.midRestart = { si: c.si, from: c.G.d >= c.S.len * 0.5 && c.G.d < c.S.len * 0.5 + 400, hp: c.G.hp >= 55 };
+    // 6) körpü: deşik zədələyir, amma yox olmur
+    c.start(4); clear(); c.G.hooks.length = 0; await frames(3); const hpD = c.G.hp; c.G.ents.push({ k: 'rock', d: c.G.d + 30, x: c.G.x, r: 10, hole: true }); await frames(26); out.holeDmg = Math.round(hpD - c.G.hp);
+    // 7) Butcher-in qəfil əyləci: arxasında qalan zədələnir
+    c.start(3); clear(); await frames(3); c.G.d = 3900; c.G.truck.slamIn = 0.05; c.G.truck.next = 99; const hpE = c.G.hp;
+    for (let i = 0; i < 110; i++) { c.G.x = c.G.truck.x; c.G.y = 150; c.G.ents.length = 0; await frames(1); }
+    out.slamDmg = Math.round(hpE - c.G.hp);
+    return out;
+  });
+  console.log('yeni mexanikalar:', JSON.stringify(r));
+  expect(Math.min(...r.lens), 'hər hissə ən azı 5000 px-dir').toBeGreaterThanOrEqual(5000);
+  expect(r.near, 'üç yaxın keçid: +1 nitro, zədəsiz').toEqual({ nitro: 2, hp: 100 });
+  expect(r.smashDmg, 'nitro ilə sipər zədəsiz dağılır').toBe(0);
+  expect(r.hardDmg, 'qaya nitro ilə də zədələyir').toBeGreaterThanOrEqual(15);
+  expect([r.fallOn, r.fallGone], 'uçqun: kölgə, sonra düşür').toEqual([true, true]);
+  expect(r.patchDmg, 'alov yandırır').toBeGreaterThan(5);
+  expect(r.cp, 'orta yaddaş nöqtəsi alındı').toBe(true);
+  expect(r.midRestart, 'qəzadan sonra ortadan').toEqual({ si: 1, from: true, hp: true });
+  expect(r.holeDmg, 'deşik zədələyir').toBeGreaterThanOrEqual(10);
+  expect(r.slamDmg, 'qəfil əyləc arxadakını əzir').toBeGreaterThanOrEqual(18);
+  // mərhələlərin kadrları: B və C
+  await page.evaluate(BOT);
+  for (const [i, d, name] of [[0, 3900, 'camp-c'], [1, 2500, 'canyon-b'], [2, 2300, 'fog-b'], [3, 2400, 'truck-b'], [3, 4100, 'truck-c'], [4, 2400, 'bridge-b']]) {
+    await page.evaluate(([k, dd]) => { const c = window.__cgStory._chase; c.start(k); c.G.d = dd; if (c.G.truck) c.G.truck.slamIn = 1.2; }, [i, d]);
+    await page.waitForTimeout(2600);
+    await page.screenshot({ path: path.join(DIR, `chase-phase-${name}.png`) });
   }
   expect(errs).toEqual([]);
 });
