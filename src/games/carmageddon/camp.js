@@ -24,16 +24,20 @@ const LOOK = {
   pip: { hair: '#7a4a2a', skin: '#f6d2b0', top: '#f07a1c', legs: '#4a3a34', hat: '#a8602c', feat: ['knit', 'freckles'], blink: 1.3, kid: true },
 };
 
+// Maneələr xəritədəki obyektlərin GÖRÜNƏN konturu ilə çəkilib (izometrik çadır romb şəklindədir — düzbucaqlı
+// ya boş quma dirənirdi, ya da çadırın içinə buraxırdı). Önbaxış: scratchpad tools/solids.py; test: carmageddon-camp.
 export const SOLIDS = [
-  { x: 62, y: 60, w: 170, h: 150 }, { cx: 240, cy: 38, r: 14 }, { cx: 242, cy: 148, r: 20 },      // ağsaqqal çadırı, quyular
-  { x: 22, y: 186, w: 142, h: 196 },                                                              // bostan
-  { cx: 320, cy: 315, r: 22 },                                                                    // ocaq
-  ...[0, 30, 60, 120, 150, 180, 210, 240, 300, 330].map((a) => ({ cx: 320 + Math.cos((a * Math.PI) / 180) * 72, cy: 315 + Math.sin((a * Math.PI) / 180) * 62, r: 13 })),   // oturacaq halqası (şimal və cənubdan keçid)
-  { x: 408, y: 50, w: 196, h: 160 },                                                              // emalatxana
-  { x: 512, y: 288, w: 92, h: 160 },                                                              // radio dirəyi və köşk
-  { x: 66, y: 436, w: 180, h: 128 }, { x: 408, y: 436, w: 176, h: 124 },                          // məktəb çadırı, ev
-  { x: 258, y: 556, w: 50, h: 30 }, { x: 20, y: 570, w: 50, h: 45 }, { x: 572, y: 445, w: 40, h: 60 }, { x: 545, y: 556, w: 55, h: 28 },
-  { cx: 592, cy: 45, r: 20 }, { cx: 55, cy: 35, r: 16 },
+  { poly: [[60, 125], [142, 42], [235, 112], [220, 170], [165, 220], [55, 165]] },                                              // ağsaqqal çadırı
+  { poly: [[22, 172], [165, 255], [165, 345], [95, 395], [20, 325]] },                                                          // bostan
+  { poly: [[390, 125], [415, 55], [522, 58], [585, 115], [625, 215], [585, 238], [515, 202], [500, 176], [470, 180], [435, 182], [395, 165]] },   // emalatxana
+  { poly: [[538, 280], [570, 292], [602, 325], [600, 350], [575, 362], [582, 415], [550, 442], [515, 418], [540, 320]] },      // radio dirəyi və köşk
+  { poly: [[59, 492], [80, 475], [175, 405], [246, 456], [246, 515], [265, 522], [262, 552], [235, 555], [200, 540], [192, 600], [155, 602], [150, 575], [108, 570], [100, 550], [60, 545]] },   // məktəb çadırı
+  { poly: [[408, 465], [485, 400], [570, 462], [575, 445], [605, 448], [614, 500], [582, 505], [580, 522], [520, 560], [522, 588], [492, 590], [488, 568], [450, 558], [402, 538], [390, 510]] }, // ev
+  { cx: 245, cy: 145, r: 14 }, { cx: 238, cy: 42, r: 12 }, { cx: 197, cy: 33, r: 7 }, { cx: 60, cy: 38, r: 12 }, { cx: 598, cy: 48, r: 16 },          // quyular, çəllək, daşlar
+  { cx: 320, cy: 315, r: 18 },                                                                                                                         // ocaq
+  ...[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((a) => ({ cx: 320 + Math.cos((a * Math.PI) / 180) * 78, cy: 318 + Math.sin((a * Math.PI) / 180) * 54, r: 12 })),   // oturacaq halqası (qapalı)
+  { cx: 272, cy: 575, r: 10 }, { cx: 298, cy: 578, r: 9 }, { cx: 38, cy: 592, r: 16 }, { cx: 555, cy: 582, r: 8 }, { cx: 580, cy: 565, r: 8 }, { cx: 592, cy: 553, r: 6 },
+  { cx: 604, cy: 545, r: 10 }, { cx: 535, cy: 600, r: 5 }, { cx: 32, cy: 438, r: 8 },
 ];
 
 // qısa yazılış: [kim, hiss, mətn] — kim null = təhkiyə
@@ -321,7 +325,7 @@ export async function runCamp(ch) {
   });
   spot('well', 244, 174, [L(null, null, 'Quyu. İlk suyu çıxan gün Elder Amos ağladı və bunu hamıdan gizlətməyə çalışdı.'), L('ember', 'laugh', 'Hamı gördü.')]);
   spot('garden', 172, 372, [L(null, null, 'Bostan. Torpaqdan baş qaldırmış on dörd cücərti — Granny Wren-ə inansaq, on altı.'), L('ember', 'neutral', 'Yol boyu heç vaxt bir yerdə yaşıl görməmişdim.')]);
-  spot('fire', 320, 348, [L(null, null, 'Bu ocaq Hearth-in qurulduğu gecə yandırılıb və o vaxtdan bir dəfə də sönməyib. Gecə növbəsinə kim çıxırsa, ilk işi ona odun atmaqdır.'), L('ember', 'neutral', 'Bu axşam hamı burada olacaq.')]);
+  spot('fire', 320, 392, [L(null, null, 'Bu ocaq Hearth-in qurulduğu gecə yandırılıb və o vaxtdan bir dəfə də sönməyib. Gecə növbəsinə kim çıxırsa, ilk işi ona odun atmaqdır.'), L('ember', 'neutral', 'Bu axşam hamı burada olacaq.')]);
   spot('buggy', 428, 216, () => (st.q.parts === 9
     ? [L(null, null, 'Baqqi. Motor hələ ilıqdır.'), L('ember', 'smile', 'Axşam. Səbr et.')]
     : [L(null, null, 'Old Gus-un baqqisi. Motorunun yarısı yerdə, səliqə ilə sərilmiş əskinin üstündədir — cərrahın alətləri kimi.'), L('ember', 'neutral', 'Yığılsa, düşərgədə ən sürətli şey olacaq. Məndən sonra.')]));

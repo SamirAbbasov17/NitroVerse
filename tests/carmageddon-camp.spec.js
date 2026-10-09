@@ -39,7 +39,7 @@ test('düşərgə: gəzinti, toqquşma, tapşırıqlar, jurnal, yaddaş, son', a
   expect(p0.x - p1.x, 'sola yeridi').toBeGreaterThan(25);
   await page.keyboard.down('ArrowUp'); await page.waitForTimeout(1500); await page.keyboard.up('ArrowUp');
   const p2 = await page.evaluate(() => ({ ...window.__cgStory.world.p }));
-  expect(p2.y, 'çadırın içinə girmir').toBeGreaterThan(560);
+  expect(p2.y, 'çadırın içinə girmir (kontur bu x-də y≈552-dir)').toBeGreaterThan(546);
   // 2) tapşırıqlar
   expect(await use(page, 'wren')).toBe(true);
   for (const id of ['s1', 's2', 's3']) expect(await use(page, id), id).toBe(true);
@@ -138,4 +138,32 @@ test('düşərgə telefonda: toxunuşla yeriyir, sakinə toxunanda yanına gedib
   expect(j.l >= 0 && j.t >= 0 && j.r <= j.W && j.b <= j.H, 'jurnal ekrandadır').toBe(true);
   await page.screenshot({ path: path.join(DIR, 'camp-m.png') });
   await ctx.close();
+});
+
+// Toqquşma konturları: (1) başlanğıcdan hər sakinə, əşyaya və baxış nöqtəsinə piyada çatmaq olur (əl məsafəsinə
+// qədər); (2) obyektlərin ortasına girmək olmur; (3) açıq qumun ortası bağlı deyil. Önbaxış kadrı da çəkilir.
+test('düşərgə: toqquşma konturları — hər şeyə çatmaq olur, obyektin içinə girmək olmur', async ({ page }) => {
+  test.setTimeout(120_000);
+  const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+  await boot(page);
+  await toCamp(page);
+  await skipTalk(page);
+  const r = await page.evaluate(() => {
+    const w = window.__cgStory.world, S = 640, G = 2, N = S / G;
+    const wander = w.ents.filter((e) => e.kind === 'npc'); const hid = wander.map((e) => e.hidden); wander.forEach((e) => { e.hidden = true; });   // sakinlər sabit maneə deyil
+    const free = new Uint8Array(N * N); for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) free[j * N + i] = w._blocked(i * G + 1, j * G + 1) ? 0 : 1;
+    const seen = new Uint8Array(N * N), q = [[Math.round(w.p.x / G), Math.round(w.p.y / G)]]; seen[q[0][1] * N + q[0][0]] = 1;
+    while (q.length) { const [i, j] = q.pop(); for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = i + a, y = j + b; if (x < 0 || y < 0 || x >= N || y >= N) continue; const k = y * N + x; if (!seen[k] && free[k]) { seen[k] = 1; q.push([x, y]); } } }
+    wander.forEach((e, i) => { e.hidden = hid[i]; });
+    const reach = (ex, ey, d) => { for (let j = Math.max(0, Math.floor((ey - d) / G)); j <= Math.min(N - 1, Math.ceil((ey + d) / G)); j++) for (let i = Math.max(0, Math.floor((ex - d) / G)); i <= Math.min(N - 1, Math.ceil((ex + d) / G)); i++) if (seen[j * N + i] && Math.hypot(i * G + 1 - ex, j * G + 1 - ey) <= d) return true; return false; };
+    const unreachable = w.ents.filter((e) => (e.use || e.kind === 'npc') && !reach(e.x, e.y, 24 + (e.r || 0))).map((e) => `${e.id}@${e.x},${e.y}`);
+    const inside = [[150, 130], [90, 300], [500, 120], [560, 380], [150, 500], [490, 480], [320, 315], [320, 264]].filter(([x, y]) => !w._blocked(x, y)).map((p) => p.join(','));
+    const open = [[320, 200], [320, 440], [260, 240], [420, 300], [330, 600], [300, 110]].filter(([x, y]) => w._blocked(x, y)).map((p) => p.join(','));
+    return { unreachable, inside, open, share: Math.round((seen.reduce((a, b) => a + b, 0) / (N * N)) * 100) };
+  });
+  console.log('toqquşma:', JSON.stringify(r));
+  expect(r.unreachable, 'çatılmayan varlıqlar').toEqual([]);
+  expect(r.inside, 'obyektin içində açıq qalan nöqtələr').toEqual([]);
+  expect(r.open, 'açıq qumda bağlı qalan nöqtələr').toEqual([]);
+  expect(errs).toEqual([]);
 });
