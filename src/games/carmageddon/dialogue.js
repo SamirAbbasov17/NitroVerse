@@ -24,6 +24,32 @@ function blip(pitch, ch, wave = 'triangle') {
   o.start(t); o.stop(t + 0.08);
 }
 
+// HİSSLƏR: hər hissin portret hərəkəti (anim), üstündə çıxan işarəsi (icon) və çaları (tint) var.
+// Üzün özü (göz/ağız kadrı) personajdan asılıdır — onu `faces(who, emo)` verir; buradakı qat bütün
+// personajlarda eyni işləyir, ona görə hər kəsin bütün hissləri var.
+export const EMO = {
+  neutral: {}, side: {}, smile: { anim: 'nod' },
+  happy: { anim: 'hop', icon: 'spark' }, laugh: { anim: 'hop2', icon: 'note' }, proud: { anim: 'nod', icon: 'spark' },
+  love: { anim: 'hop', icon: 'heart' }, angry: { anim: 'shake', icon: 'anger', tint: 'rgba(255, 60, 40, 0.16)' },
+  pout: { anim: 'shake', icon: 'anger' }, sad: { anim: 'droop', icon: 'tear', tint: 'rgba(60, 90, 170, 0.22)' },
+  shock: { anim: 'flash', icon: 'bang' }, think: { icon: 'dots' }, confused: { icon: 'q' },
+  sweat: { anim: 'nod', icon: 'sweat' }, sleepy: { anim: 'droop', icon: 'zzz' }, fear: { anim: 'shake', icon: 'sweat', tint: 'rgba(60, 90, 170, 0.18)' },
+};
+// 9×9 piksel işarələr: hərf → rəng
+const INK = { k: '#12080c', w: '#ffffff', y: '#ffd166', o: '#ff9a2e', r: '#ff3b2e', b: '#5ab4ff', p: '#ff7ab8' };
+const ICONS = {
+  spark: ['....y....', '....y....', '...ywy...', 'yyywwwyyy', '...ywy...', '....y....', '....y....', '.........', '.........'],
+  heart: ['.........', '.rr...rr.', 'rrrr.rrrr', 'rrrrrrrrr', 'rrrrrrrrr', '.rrrrrrr.', '..rrrrr..', '...rrr...', '....r....'],
+  anger: ['.rr...rr.', '.rr...rr.', 'rrr...rrr', '.........', '.........', '.........', 'rrr...rrr', '.rr...rr.', '.rr...rr.'],
+  tear: ['....b....', '....b....', '...bbb...', '...bwb...', '..bbwbb..', '..bbbbb..', '..bbbbb..', '...bbb...', '.........'],
+  sweat: ['......b..', '.....bb..', '.....bwb.', '....bbwb.', '....bbbb.', '.....bb..', '.........', '.........', '.........'],
+  bang: ['...yyy...', '...yyy...', '...yyy...', '...yyy...', '...yyy...', '....y....', '.........', '...yyy...', '...yyy...'],
+  q: ['..yyyyy..', '.yy...yy.', '......yy.', '.....yy..', '....yy...', '....yy...', '.........', '....yy...', '....yy...'],
+  dots: ['.........', '.........', '.........', '.........', 'ww.ww.ww.', 'ww.ww.ww.', '.........', '.........', '.........'],
+  note: ['....ooooo', '....o...o', '....o...o', '....o...o', '....o...o', '..ooo.ooo', '.oooo.ooo', '.ooo..oo.', '.........'],
+  zzz: ['wwww.....', '..w......', '.w.......', 'wwww.www.', '.......w.', '......w..', '.....www.', '.........', '.........'],
+};
+
 export class Dialogue {
   // root: içinə qoşulacaq element; faces: (who, emo) → portret (canvas/şəkil) və ya null
   constructor(root, { cast, faces }) {
@@ -32,7 +58,7 @@ export class Dialogue {
     el.className = 'cgd';
     el.innerHTML = `
       <div class="cgd__box">
-        <div class="cgd__face"><canvas width="80" height="80"></canvas></div>
+        <div class="cgd__face"><canvas width="80" height="80"></canvas><i class="cgd__tint"></i><canvas class="cgd__emote" width="11" height="11"></canvas></div>
         <div class="cgd__body">
           <div class="cgd__name"></div>
           <p class="cgd__text"><span class="cgd__shown"></span><span class="cgd__rest"></span></p>
@@ -43,6 +69,8 @@ export class Dialogue {
     this.faceBox = el.querySelector('.cgd__face');
     this.faceCx = el.querySelector('canvas').getContext('2d');
     this.faceCx.imageSmoothingEnabled = false;
+    this.tint = el.querySelector('.cgd__tint');
+    this.emote = el.querySelector('.cgd__emote'); this.emoteCx = this.emote.getContext('2d');
     this.nameEl = el.querySelector('.cgd__name');
     this.shown = el.querySelector('.cgd__shown');
     this.rest = el.querySelector('.cgd__rest');
@@ -69,7 +97,7 @@ export class Dialogue {
     this.nameEl.textContent = c?.name || '';
     const face = c ? this.faces(who, emo) : null;
     this.faceBox.hidden = !face;
-    if (face) { this.faceCx.clearRect(0, 0, 80, 80); this.faceCx.drawImage(face, 0, 0, 80, 80); }
+    if (face) { this.faceCx.clearRect(0, 0, 80, 80); this.faceCx.drawImage(face, 0, 0, 80, 80); this._emo(emo); }
     // bütün mətn əvvəlcədən yerləşir (görünməyən hissə şəffafdır) — yazıldıqca sətirlər sürüşmür
     this.full = text; this.n = 0; this.acc = 0; this.hold = 0;
     this.pitch = c?.pitch || 0; this.wave = c?.wave || 'triangle';
@@ -80,6 +108,25 @@ export class Dialogue {
     this.last = performance.now();
     this.raf = requestAnimationFrame(this._tick);
     return new Promise((res) => { this._res = res; });
+  }
+
+  // hissin görünüşü: portret hərəkəti (CSS), çalar və işarə
+  _emo(emo) {
+    const e = EMO[emo] || EMO.neutral;
+    this.faceBox.className = 'cgd__face';
+    void this.faceBox.offsetWidth;                       // eyni hərəkət dalbadal gəlsə yenidən oynasın
+    if (e.anim) this.faceBox.classList.add('cgd-a-' + e.anim);
+    this.tint.style.background = e.tint || 'transparent';
+    const x = this.emoteCx; x.clearRect(0, 0, 11, 11);
+    const ic = e.icon && ICONS[e.icon];
+    this.emote.hidden = !ic;
+    if (!ic) return;
+    // tünd kontur + rəngli piksellər
+    for (let pass = 0; pass < 2; pass++) for (let j = 0; j < 9; j++) for (let i = 0; i < 9; i++) {
+      const ch = ic[j][i]; if (ch === '.') continue;
+      if (pass === 0) { x.fillStyle = INK.k; x.fillRect(i, j, 3, 3); } else { x.fillStyle = INK[ch]; x.fillRect(i + 1, j + 1, 1, 1); }
+    }
+    this.emote.className = 'cgd__emote cgd-e-' + e.icon;
   }
 
   _paint() {

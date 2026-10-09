@@ -9,35 +9,53 @@ const R = 6;                   // oyunçunun toqquşma radiusu
 const REACH = 28;              // danışmaq / götürmək məsafəsi
 const CHAR = 1.6;              // personaj miqyası — xəritədəki çadır və maşınlara uyğun boy (~29 px)
 
-// 12×17 piksellik sadə personaj: baş, saç/papaq, gövdə, iki kadr addım. dir: 0 aşağı, 1 yuxarı, 2 sol, 3 sağ
-export function drawChar(x, cx, cy, look, dir = 0, step = 0, small = false) {
-  const s = (small ? 0.8 : 1) * CHAR, px = (dx, dy, w, h, c) => { x.fillStyle = c; x.fillRect(Math.round(cx + dx * s), Math.round(cy + dy * s), Math.max(1, Math.round(w * s)), Math.max(1, Math.round(h * s))); };
-  const ink = '#1a0f14';
-  // kölgə
-  x.fillStyle = 'rgba(20,8,10,0.28)'; x.fillRect(Math.round(cx - 5 * s), Math.round(cy - 1), Math.round(10 * s), 2);
-  // ayaqlar (addım: biri irəli)
+// Xəritədəki personaj (≈14×22 vahid, CHAR miqyası ilə): baş, saç, gövdə, yellənən qollar, iki kadr
+// addım, göz qırpma və personaja xas detallar (look.feat): eynək, saqqal, bığ, önlük, qulaqcıq və s.
+// dir: 0 aşağı (üzü bizə), 1 yuxarı (arxası), 2 sol, 3 sağ. t — vaxt (qırpma üçün).
+export function drawChar(x, cx, cy, look, dir = 0, step = 0, small = false, t = 0) {
+  const s = (small ? 0.8 : 1) * CHAR;
+  const px = (dx, dy, w, h, c) => { x.fillStyle = c; x.fillRect(Math.round(cx + dx * s), Math.round(cy + dy * s), Math.max(1, Math.round(w * s)), Math.max(1, Math.round(h * s))); };
+  const ink = '#1a0f14', f = new Set(look.feat || []), front = dir === 0, back = dir === 1, side = dir >= 2, sx = dir === 2 ? -1 : 1;
+  const shade = look.shade || 'rgba(0,0,0,0.22)';
+  x.fillStyle = 'rgba(20,8,10,0.3)'; x.fillRect(Math.round(cx - 5 * s), Math.round(cy - 1), Math.round(10 * s), 2);
+  // ayaqlar: addımda biri qalxır
   const a = step ? 1 : 0;
-  px(-3, -4 - a, 2, 4 + a, look.legs); px(1, -4 - (1 - a) * (step ? 0 : 0), 2, 4, look.legs);
-  if (step) { px(-3, -1, 2, 1, ink); } else { px(1, -1, 2, 1, ink); }
-  // gövdə
-  px(-5, -11, 10, 7, ink); px(-4, -10, 8, 6, look.top);
-  if (look.trim) px(-4, -6, 8, 1, look.trim);
-  // qollar
-  px(-5, -10, 1, 5, look.top); px(4, -10, 1, 5, look.top);
+  px(-3, -4, 2, 4 - a, look.legs); px(1, -4, 2, 3 + a, look.legs);
+  px(-3, -1 - a, 2, 1, ink); px(1, -2 + a, 2, 1, ink);
+  // gövdə (ponço enlidir)
+  const wide = f.has('poncho') ? 1 : 0;
+  px(-5 - wide, -11, 10 + wide * 2, 7, ink); px(-4 - wide, -10, 8 + wide * 2, 6, look.top);
+  px(-4 - wide, -6, 8 + wide * 2, 1, shade);
+  if (look.trim) px(-4 - wide, -7, 8 + wide * 2, 1, look.trim);
+  if (f.has('apron') && front) { px(-2, -9, 4, 5, look.trim || '#c9a98a'); px(-2, -10, 1, 1, look.trim || '#c9a98a'); px(1, -10, 1, 1, look.trim || '#c9a98a'); }
+  if (f.has('scarf') && !back) px(-3, -11, 6, 1, '#8a8a84');
+  if (f.has('jacket') && front) px(0, -10, 1, 5, shade);
+  // qollar: yeriyəndə yellənir
+  if (!wide) { px(-6, -10 + a, 2, 5, ink); px(-5, -10 + a, 1, 4, look.top); px(4, -10 + (1 - a) * (step ? 1 : 0), 2, 5, ink); px(4, -10 + (1 - a) * (step ? 1 : 0), 1, 4, look.top); px(-5, -6 + a, 1, 1, look.skin); px(4, -6, 1, 1, look.skin); }
   // baş
-  px(-4, -18, 8, 8, ink); px(-3, -17, 6, 6, look.skin);
-  // saç / papaq
-  if (dir === 1) px(-3, -17, 6, 6, look.hair);                       // arxadan: bütöv saç
+  px(-4, -19, 8, 9, ink); px(-3, -18, 6, 7, look.skin);
+  // saç
+  if (back) { px(-3, -18, 6, 6, look.hair); if (look.long) px(-4, -17, 8, 9, look.hair); }
   else {
-    px(-3, -17, 6, 2, look.hair);
-    if (dir === 2) px(1, -17, 2, 5, look.hair); else if (dir === 3) px(-3, -17, 2, 5, look.hair);
-    else if (look.long) { px(-4, -16, 1, 7, look.hair); px(3, -16, 1, 7, look.hair); }
-    // gözlər
-    if (dir === 0) { px(-2, -14, 1, 1, ink); px(1, -14, 1, 1, ink); }
-    else px(dir === 2 ? -2 : 1, -14, 1, 1, ink);
+    px(-3, -18, 6, 2, look.hair);
+    if (side) px(sx > 0 ? -3 : 1, -18, 2, 5, look.hair);
+    if (look.long) { px(-4, -17, 1, 8, look.hair); px(3, -17, 1, 8, look.hair); if (side) px(sx > 0 ? -4 : 2, -16, 2, 8, look.hair); }
+    if (f.has('afro')) { px(-5, -20, 10, 4, look.hair); px(-5, -17, 2, 4, look.hair); px(3, -17, 2, 4, look.hair); }
+    // gözlər (qırpır)
+    const blink = (t * 0.7 + (look.blink || 0)) % 3.2 < 0.12;
+    if (!blink) { if (front) { px(-2, -15, 1, 1, ink); px(1, -15, 1, 1, ink); } else px(sx > 0 ? 1 : -2, -15, 1, 1, ink); }
+    if (f.has('glasses') && front) { px(-3, -15, 2, 1, '#3a4660'); px(1, -15, 2, 1, '#3a4660'); px(-1, -15, 2, 1, ink); }
+    if (f.has('moustache') && !back) px(front ? -2 : (sx > 0 ? 0 : -2), -13, front ? 4 : 2, 1, '#8a8a8a');
+    if (f.has('beard') && !back) { px(-3, -13, 6, 3, '#f0f0f0'); px(-2, -10, 4, 1, '#f0f0f0'); }
+    if (f.has('freckles') && front) px(-1, -14, 1, 1, '#c98a5a');
   }
-  if (look.hat) { px(-5, -18, 10, 1, look.hat); px(-3, -20, 6, 2, look.hat); }
-  if (look.long && dir === 1) px(-4, -16, 8, 9, look.hair);
+  if (f.has('mohawk')) px(-1, -22, 2, 4, look.hair);
+  if (f.has('goggles') && !back) { px(-3, -17, 6, 1, '#3a3430'); px(-3, -17, 2, 1, '#7ab8c8'); px(1, -17, 2, 1, '#7ab8c8'); }
+  if (f.has('headphones')) { px(-5, -17, 1, 4, '#2a2a30'); px(4, -17, 1, 4, '#2a2a30'); px(-4, -20, 8, 1, '#2a2a30'); }
+  if (f.has('headscarf')) { px(-4, -19, 8, 3, look.hat); px(-4, -17, 1, 5, look.hat); px(3, -17, 1, 5, look.hat); if (!back) px(3, -12, 1, 5, look.hair); }
+  if (f.has('cap')) { px(-4, -20, 8, 3, look.hat); if (!back) px(side ? (sx > 0 ? 2 : -6) : -4, -17, side ? 4 : 8, 1, look.hat); }
+  if (f.has('widehat')) { px(-7, -18, 14, 1, look.hat); px(-3, -21, 6, 3, look.hat); px(-3, -19, 6, 1, shade); }
+  if (f.has('knit')) { px(-4, -20, 8, 3, look.hat); px(-1, -22, 2, 2, look.hat); px(-5, -17, 1, 4, look.hat); px(4, -17, 1, 4, look.hat); px(-6, -15, 1, 3, look.hair); px(5, -15, 1, 3, look.hair); }
 }
 
 export class World {
@@ -153,8 +171,14 @@ export class World {
     const list = [...this.ents.filter((e) => !e.hidden), { you: true, x: p.x, y: p.y }].sort((a, b) => a.y - b.y);
     const near = this.busy ? null : this.near();
     for (const en of list) {
-      if (en.you) { drawChar(x, p.x, p.y, this.def.hero, p.dir, p.walk ? Math.floor(p.walk * 7) % 2 : 0); continue; }
-      if (en.kind === 'npc') { const bob = en.still ? 0 : Math.round(Math.sin(this.t * 2 + en.x) * 0.6); drawChar(x, en.x, en.y + bob, en.look, en.dir || 0, 0, en.small); }
+      if (en.you) { drawChar(x, p.x, p.y, this.def.hero, p.dir, p.walk ? Math.floor(p.walk * 7) % 2 : 0, false, this.t); continue; }
+      if (en.kind === 'npc') {
+        // sakin oyunçu yaxınlaşanda üzünü ona çevirir; uşaqlar yerində hoppanır
+        const dx = p.x - en.x, dy = p.y - en.y, d = Math.hypot(dx, dy);
+        const dir = d < 60 ? (Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : (dy < 0 ? 1 : 0)) : (en.dir || 0);
+        const bob = en.small ? -Math.round(Math.abs(Math.sin(this.t * 5 + en.x)) * 2) : 0;
+        drawChar(x, en.x, en.y + bob, en.look, dir, 0, en.small, this.t + en.x);
+      }
       else en.draw?.(x, en, this.t);
       if (en === near) {      // "danış / bax" işarəsi
         const by = en.y - (en.kind === 'npc' ? (en.small ? 36 : 43) : 20) + Math.round(Math.sin(this.t * 6) * 1.2);

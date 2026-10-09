@@ -58,7 +58,23 @@ test('düşərgə: gəzinti, toqquşma, tapşırıqlar, jurnal, yaddaş, son', a
   await use(page, 'ray'); await use(page, 'gus'); await use(page, 'mast'); await use(page, 'ray');
   expect(await page.evaluate(() => document.querySelectorAll('.cgs__journal li.is-done').length)).toBe(4);
   // baxıla bilən yerlər xəta vermir
-  for (const id of ['well', 'garden', 'fire', 'buggy', 'home', 'school', 'rock', 'barrels', 'milo']) expect(await use(page, id), id).toBe(true);
+  for (const id of ['well', 'garden', 'fire', 'buggy', 'home', 'school', 'rock', 'barrels', 'milo', 'pip', 'carrier', 'lookout', 'kid1', 'kid2']) expect(await use(page, id), id).toBe(true);
+  // hiss qatı: sevinən portret hoppanır və üstündə işarə çıxır
+  const emo = await page.evaluate(async () => {
+    const s = window.__cgStory, w = s.world; w.busy = true;
+    s.dlg.say({ who: 'pip', emo: 'laugh', text: 'Hihihi!' }); s.dlg.advance();
+    await new Promise((r) => setTimeout(r, 120));
+    const out = { anim: s.dlg.faceBox.className, icon: !s.dlg.emote.hidden, cls: s.dlg.emote.className };
+    return out;
+  });
+  expect(emo.anim).toContain('cgd-a-hop2');
+  expect(emo.icon, 'hiss işarəsi görünür').toBe(true);
+  await page.screenshot({ path: path.join(DIR, 'camp-emote.png') });
+  await page.evaluate(() => { const s = window.__cgStory; s.dlg.skip(); s.dlg.hide(); s.world.busy = false; });
+  // xəritədə bir neçə sakin birlikdə (fiqurların detalları üçün kadr)
+  await page.evaluate(() => { const w = window.__cgStory.world; w.p.x = 470; w.p.y = 262; w.p.dir = 0; });
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(DIR, 'camp-sprites.png') });
   // 3) yaddaş: səhifə yenilənəndən sonra düşərgədən davam edir, tapşırıqlar yerindədir
   await page.reload();
   await page.waitForFunction(() => !!window.__menu, null, { timeout: 60_000 });

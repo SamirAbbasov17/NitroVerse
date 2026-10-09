@@ -12,7 +12,9 @@ const loadImg = (src) => new Promise((res) => { const im = new Image(); im.onloa
 
 // Ember-in dialoq portreti başlıq ekranındakı spraytdan kəsilir (eyni personaj, eyni piksellər);
 // hiss — göz kadrı ilə: 0 mərkəz, 1 yana baxış, 3 yarı bağlı (yuxulu).
-const EMBER_EYE = { neutral: 0, smile: 0, side: 1, sleepy: 3 };
+const EMBER_EYE = { neutral: 0, smile: 0, proud: 0, angry: 0, shock: 0, side: 1, think: 1, confused: 1, sweat: 1, sleepy: 3, sad: 3, fear: 3, happy: 4, laugh: 4, love: 4 };
+// Milo-nun üç ağız kadrı var; qalan sakinlərin tək kadrı — hissi portretin hərəkəti və işarəsi verir
+const MILO_FACE = { happy: 'happy', laugh: 'happy', love: 'happy', proud: 'happy', smile: 'happy', pout: 'pout', angry: 'pout', sad: 'pout', fear: 'pout' };
 const CROP = { x: 42, y: 14, s: 80 }, EYES = { x: 60, y: 51, w: 44, h: 13 };
 
 export class Chapter1 {
@@ -57,7 +59,7 @@ export class Chapter1 {
       const f = EMBER_EYE[emo] ?? 0;
       if (this.eyes) x.drawImage(this.eyes, f * EYES.w, 0, EYES.w, EYES.h, EYES.x - CROP.x, EYES.y - CROP.y, EYES.w, EYES.h);
     } else {
-      const im = this.art[`${who}-${emo}`] || this.art[`${who}-neutral`];
+      const im = (who === 'milo' && this.art[`milo-${MILO_FACE[emo]}`]) || this.art[`${who}-${emo}`] || this.art[`${who}-neutral`];
       if (im) x.drawImage(im, 0, 0, 80, 80);
       else { // portret hələ çəkilməyib — tünd siluet
         x.fillStyle = '#2a1a26'; x.fillRect(0, 0, 80, 80);

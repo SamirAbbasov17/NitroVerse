@@ -211,3 +211,27 @@ body.cg-on #game-canvas, body.cg-on #mute-btn { visibility: hidden; }
   transition: opacity 0.8s ease;
 }
 .cgs__hint.is-out { opacity: 0; }
+
+/* ——— Portretin hissləri: hərəkət, çalar, işarə (bax dialogue.js EMO) ——— */
+.cgd__face { position: relative; }
+.cgd__tint { position: absolute; inset: 0; pointer-events: none; transition: background 0.2s; }
+.cgd__emote { position: absolute; right: -14%; top: -16%; width: 38% !important; height: 38% !important; image-rendering: pixelated; pointer-events: none; animation: cgd-pop 0.28s steps(4) both, cgd-bob 0.9s steps(2) 0.28s infinite; }
+.cgd__emote[hidden] { display: none; }
+.cgd__emote.cgd-e-tear, .cgd__emote.cgd-e-sweat { right: auto; left: -10%; animation: cgd-pop 0.28s steps(4) both, cgd-drip 1.1s steps(5) 0.28s infinite; }
+.cgd__emote.cgd-e-dots { animation: cgd-pop 0.28s steps(4) both, cgd-blink 1s steps(3) 0.28s infinite; }
+.cgd-a-hop { animation: cgd-hop 0.42s steps(6) 1; }
+.cgd-a-hop2 { animation: cgd-hop 0.3s steps(5) 3; }
+.cgd-a-nod { animation: cgd-nod 0.36s steps(4) 1; }
+.cgd-a-shake { animation: cgd-shake 0.4s steps(8) 1; }
+.cgd-a-droop { animation: cgd-droop 0.5s steps(5) 1 forwards; }
+.cgd-a-flash { animation: cgd-flash 0.34s steps(4) 1; }
+@keyframes cgd-pop { from { transform: scale(0); } 70% { transform: scale(1.25); } to { transform: scale(1); } }
+@keyframes cgd-bob { 50% { transform: translateY(-8%); } }
+@keyframes cgd-drip { 0% { transform: translateY(-10%); opacity: 1; } 80% { transform: translateY(45%); opacity: 1; } 100% { transform: translateY(60%); opacity: 0; } }
+@keyframes cgd-blink { 0% { clip-path: inset(0 66% 0 0); } 50% { clip-path: inset(0 33% 0 0); } 100% { clip-path: inset(0 0 0 0); } }
+@keyframes cgd-hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-9%); } }
+@keyframes cgd-nod { 50% { transform: translateY(4%); } }
+@keyframes cgd-shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-4%); } 40%, 80% { transform: translateX(4%); } }
+@keyframes cgd-droop { to { transform: translateY(5%) rotate(-2deg); } }
+@keyframes cgd-flash { 0% { filter: brightness(2.4); transform: scale(1.08); } 100% { filter: none; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .cgd__face, .cgd__emote { animation: none !important; } }
