@@ -86,7 +86,7 @@ export function runFinale(ch, scene) {
         ${sec(t('cg.f.created'), ['Samir Abbasov'])}
         ${sec(t('cg.f.dev'), ['Samir Abbasov', 'Claude (Anthropic)'])}
         ${sec(t('cg.f.art'), [t('cg.f.artBy')])}
-        ${sec(t('cg.f.music'), ['«HEÇ KİM BİLMİR»', 'Samir Abbasov'])}
+        ${sec(t('cg.f.music'), ['«HEÇ KİM BİLMİR» — Samir Abbasov', 'Lone Scavenger · Wasteland Caravan · Desert Settlement — vitalezzz', 'The Hunt — Sudocolon', 'EmptyCity — yd', 'Bleeding Out — Brandon Morris'])}
         ${sec(t('cg.f.fonts'), ['Black Ops One · Tiny5', 'SIL Open Font License'])}
         <section class="cgf__mem"><h5>${t('cg.f.memory')}</h5>${HEARTH.map((n) => `<p>${n}</p>`).join('')}<p class="cgf__dim">${t('cg.f.others')}</p></section>
         <section class="cgf__left"><h5>${t('cg.f.remain')}</h5>${BARONS.map((n) => `<p>${n}</p>`).join('')}<p class="cgf__dim">${t('cg.f.silent')}</p></section>

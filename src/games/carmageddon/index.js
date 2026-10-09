@@ -10,6 +10,7 @@ import { game, input } from '../../platform.js';
 import { audio } from '../../core/AudioManager.js';
 import { t } from '../../core/i18n.js';
 import { assetBase } from '../../net/apiBase.js';
+import { music } from './music.js';
 
 const W = 480, H = 270;                 // kətanın daxili ölçüsü (piksel toru)
 const HERO = { w: 160, h: 213, x: 300, y: 62 };          // qəhrəmanın kətandakı yeri
@@ -135,6 +136,8 @@ class TitleScreen {
     this._fit();
     fonts.then(() => { if (this.el.isConnected) { this._drawLogo(); this._fit(); } });   // şrift gec gəlsə loqo yenidən çəkilir
     this.el.classList.add('is-ready');
+    music.play('scavenger');                       // başlıq ekranının musiqisi
+    if (import.meta.env.DEV) window.__cgMusic = music;
     this.raf = requestAnimationFrame(this._loop);
   }
 
@@ -254,7 +257,7 @@ class TitleScreen {
     this._storyLoading = false;
     if (!this.el.isConnected) return;
     this.el.classList.add('is-story');
-    this.story = new Chapter1(this.el, { hero: this.hero, eyes: this.eyes, onEnd: () => { this.story = null; this.el.classList.remove('is-story'); this._syncSave(); } });
+    this.story = new Chapter1(this.el, { hero: this.hero, eyes: this.eyes, onEnd: () => { this.story = null; this.el.classList.remove('is-story'); this._syncSave(); music.play('scavenger'); } });
     if (import.meta.env.DEV) window.__cgStory = this.story;
   }
 
@@ -381,6 +384,7 @@ class TitleScreen {
 
   dispose() {
     this.story?.end();
+    music.dispose();
     cancelAnimationFrame(this.raf);
     clearTimeout(this._qt);
     removeEventListener('resize', this._fit);

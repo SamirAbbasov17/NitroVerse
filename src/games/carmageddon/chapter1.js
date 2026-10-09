@@ -8,6 +8,7 @@ import { CAST, PROLOGUE, MORNING, EVENING, ATTACK, NIGHT_INTRO, FOUND, DUEL, AFT
 import { runCamp, savedStage, savedSec, setStage, clearSave } from './camp.js';
 import { runChase } from './chase.js';
 import { runFinale, preloadSong } from './finale.js';
+import { music } from './music.js';
 import { runSearch } from './night.js';
 import { runDuel } from './duel.js';
 
@@ -105,6 +106,7 @@ export class Chapter1 {
   async _play(scene) {
     for (const st of scene) {
       if (this.dead || this._skip) break;
+      if ('music' in st) { if (st.music) music.play(st.music); else music.stop(); continue; }
       if (st.art) { await this._fade(0); this._bg(st.art); await this._fade(1); continue; }
       if (st.intro) { await this._intro(st.intro, st.title); continue; }
       await this.dlg.say({ who: st.who, emo: st.emo, text: tx(st.text, this.lang) });
@@ -139,17 +141,20 @@ export class Chapter1 {
     const stage = savedStage();
     if (!stage) {
       clearSave();
+      music.play('caravan');
       await this._play(PROLOGUE.map((p, i) => (i && PROLOGUE[i - 1].art === p.art ? [{ text: p.text }] : [{ art: p.art }, { text: p.text }])).flat());
       if (this.dead) return;
       await this._fade(0);
       await this._card(t('cg.ch1'), 'HEARTH', 2600);
       if (this.dead) return;
+      music.play('settlement');
       this._bg('tent'); await this._fade(1);
       await this._play(MORNING);
       if (this.dead) return;
     }
     if (!['evening', 'night', 'chase'].includes(stage)) {
       // HEARTH: gəzinti və tapşırıqlar
+      music.play('settlement');
       await this._fade(0);
       this.el.classList.add('is-world');
       this.cv.style.opacity = 1;
@@ -163,6 +168,7 @@ export class Chapter1 {
     await this._card(t('cg.ch1'), t('cg.evening'), 2400);
     if (this.dead) return;
     if (stage !== 'night') {
+      music.play('settlement');
       await this._play(EVENING);
       if (this.dead) return;
       await this._play(ATTACK);
@@ -170,6 +176,7 @@ export class Chapter1 {
       setStage('night');
     }
     // GECƏ: axtarış (oynanış) → Milo → Hush → Old Gus → Jackal ilə döyüş → maska
+    music.play('emptycity');
     await this._play(NIGHT_INTRO);
     if (this.dead) return;
     this.dlg.hide();
@@ -192,6 +199,7 @@ export class Chapter1 {
     // QAÇIŞ: beş hissə; hər hissənin əvvəli yadda saxlanır
     this.dlg.hide();
     await this._fade(0);
+    music.play('hunt');
     await this._card(t('cg.ch1'), t('cg.chase'), 2200);
     if (this.dead) return;
     this.el.classList.add('is-world', 'is-chase');
@@ -202,6 +210,7 @@ export class Chapter1 {
     this.el.classList.remove('is-world', 'is-chase');
     // FİNAL: son səhnə mahnı ilə, sonra yekun yazıları (bax finale.js)
     clearSave();
+    music.stop();                                    // final mahnısı üçün yer açılır
     await runFinale(this, ENDING);
     if (this.dead) return;
     this.end();
