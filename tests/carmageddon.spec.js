@@ -195,6 +195,8 @@ test('carmageddon: başlıq ekranında dil seçimi (4 dil)', async ({ page }) =>
     if (l === 'ru') await page.screenshot({ path: path.join(DIR, 'title-lang-ru.png') });
   }
   expect(new Set(Object.values(texts).map((x) => x.pitch)).size, 'təsvir dörd dildə fərqlidir').toBe(4);
+  // Azərbaycanca böyük hərflər: i → İ; brend və ingiliscə düymə adı pozulmur (son seçilən dil — az)
+  expect(await page.evaluate(() => [document.documentElement.lang, document.querySelector('.cg__studio').innerText, document.querySelector('[data-cg="exit"] b').innerText, document.querySelector('.cg__wip').innerText.trim()]), 'böyük hərf çevrilməsi').toEqual(['az', 'NITROVERSE TƏQDİM EDİR', 'NITROVERSE-Ə QAYIT', 'HAZIRLANIR']);
   // rusca seç → hekayə rusca açılır
   await page.locator('[data-cg-lang="ru"]').click();
   await page.locator('[data-cg="story"]').click();

@@ -139,7 +139,7 @@ export function runFinale(ch, scene) {
       const ln = phase === 'cine' ? s.lines.find((l) => tc >= l.t0 && tc < l.t1 - 0.45) : null;
       if (ln !== shown) {
         shown = ln || null; sub.classList.remove('is-on');
-        if (ln) { sub.innerHTML = ''; if (ln.who && CAST[ln.who]) { const b = document.createElement('b'); b.textContent = CAST[ln.who].name; b.style.color = CAST[ln.who].color; sub.appendChild(b); } sub.appendChild(document.createTextNode(ln.text)); void sub.offsetWidth; sub.classList.add('is-on'); }
+        if (ln) { sub.innerHTML = ''; if (ln.who && CAST[ln.who]) { const b = document.createElement('b'); b.textContent = CAST[ln.who].name; b.lang = 'en'; b.style.color = CAST[ln.who].color; sub.appendChild(b); } sub.appendChild(document.createTextNode(ln.text)); void sub.offsetWidth; sub.classList.add('is-on'); }
       }
       // ——— qığılcımlar ———
       sx.clearRect(0, 0, 240, 135);
@@ -179,8 +179,7 @@ export function runFinale(ch, scene) {
       const sec = (h, rows) => `<section><h5>${h}</h5>${rows.map((r) => `<p>${r}</p>`).join('')}</section>`;
       roll.innerHTML = `<div class="cgf__in">
         ${sec(t('cg.f.created'), ['Samir Abbasov'])}
-        ${sec(t('cg.f.dev'), ['Samir Abbasov', 'Claude (Anthropic)'])}
-        ${sec(t('cg.f.art'), [t('cg.f.artBy')])}
+        ${sec(t('cg.f.dev'), ['Samir Abbasov'])}
         ${sec(t('cg.f.music'), ['«HEÇ KİM BİLMİR» — Samir Abbasov', 'Lone Scavenger · Wasteland Caravan · Desert Settlement — vitalezzz', 'The Hunt — Sudocolon', 'EmptyCity — yd', 'Bleeding Out — Brandon Morris'])}
         ${sec(t('cg.f.fonts'), ['Black Ops One · Tiny5', 'SIL Open Font License'])}
         <section class="cgf__mem"><h5>${t('cg.f.memory')}</h5>${HEARTH.map((n) => `<p>${n}</p>`).join('')}<p class="cgf__dim">${t('cg.f.others')}</p></section>
@@ -197,7 +196,7 @@ export function runFinale(ch, scene) {
       // 4) təşəkkür — mahnı onunla birlikdə sönür
       phase = 'thanks';
       const th = el.querySelector('.cgf__thanks');
-      th.innerHTML = `<b>${t('cg.f.thanks')}</b><span>${t('cg.f.demoEnd')}</span><i>NitroVerse · 2026</i>`;
+      th.innerHTML = `<b>${t('cg.f.thanks')}</b><span>${t('cg.f.demoEnd')}</span><i>NITROVERSE · 2026</i>`;
       th.classList.add('is-on');
       fadeOut(Math.max(4, Math.min(9, total() - elapsed())));
       await new Promise((r) => { later(r, 11000); later(() => th.addEventListener('click', r, { once: true }), 1500); });

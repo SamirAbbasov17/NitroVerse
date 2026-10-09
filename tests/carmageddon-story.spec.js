@@ -43,6 +43,7 @@ test('hekayə: yazı, kliklə tamamlama və keçid, portret, sonda başlıq ekra
   await page.waitForFunction(() => window.__cgStory.dlg.nameEl.textContent === 'Milo', null, { timeout: 15_000 });
   const m = await state(page);
   expect(m.face, 'dialoqda portret var').toBe(true);
+  expect(await page.evaluate(() => window.__cgStory.dlg.nameEl.innerText), 'ad ingiliscə böyüdülür (MİLO yox)').toBe('MILO');
   await page.keyboard.press('Enter');                 // tamamla
   await page.waitForTimeout(200);
   await page.screenshot({ path: path.join(DIR, 'story-milo.png') });

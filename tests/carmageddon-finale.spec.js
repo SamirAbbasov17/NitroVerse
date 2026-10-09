@@ -65,6 +65,7 @@ test('final: mahnı, özü irəliləyən son səhnə, yekun yazıları, təşək
   console.log('yekun yazıları:', JSON.stringify({ dur: roll.dur, left: Math.round(roll.left) }));
   expect(roll.dur).toBeGreaterThanOrEqual(22); expect(roll.dur).toBeLessThanOrEqual(70);
   expect(Math.abs(roll.dur + 9 - roll.left), 'yazılar mahnının sonuna hesablanıb').toBeLessThan(6);
+  expect(roll.text, 'yekun yazılarında süni intellekt qeydi yoxdur').not.toMatch(/Claude|Anthropic|intellekt|\bAI\b|İllüstrasiya/i);
   for (const s of ['Samir Abbasov', 'HEÇ KİM BİLMİR', 'Hearth-in xatirəsinə', 'Milo', 'Old Gus', 'Altı ad qalır', 'Butcher', 'Ember qayıdacaq']) expect(roll.text).toContain(s);
   await page.waitForTimeout(Math.min(14_000, roll.dur * 300));
   await page.screenshot({ path: path.join(DIR, 'finale-roll.png') });

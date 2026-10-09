@@ -154,7 +154,7 @@ export async function runCamp(ch) {
   const face24 = (who) => { if (f24[who]) return f24[who]; const c = document.createElement('canvas'); c.width = c.height = 24; const g = c.getContext('2d'); g.drawImage(ch._face(who, 'neutral'), 8, 4, 64, 64, 0, 0, 24, 24); return (f24[who] = c.toDataURL()); };
   function refresh() {
     const rows = [];
-    const row = (name, txt, ok, key) => { const fresh = lastRows[key] !== undefined && lastRows[key] !== txt; lastRows[key] = txt; rows.push(`<li class="${ok ? 'is-done' : ''}${fresh ? ' is-new' : ''}"><img alt="" src="${face24(OWNER[key])}" style="border-color:${QCOL[key]}"><span><b>${name}</b>${txt}</span></li>`); };
+    const row = (name, txt, ok, key) => { const fresh = lastRows[key] !== undefined && lastRows[key] !== txt; lastRows[key] = txt; rows.push(`<li class="${ok ? 'is-done' : ''}${fresh ? ' is-new' : ''}"><img alt="" src="${face24(OWNER[key])}" style="border-color:${QCOL[key]}"><span><b lang="en">${name}</b>${txt}</span></li>`); };
     if (st.q.seeds) row('Granny Wren', st.q.seeds === 9 ? T('Toxumlar tapıldı') : st.q.seeds === 2 ? T('Toxumları Granny Wren-ə apar') : T('Toxum kisələri: {n}/3', { n: st.got.filter((g) => g[0] === 's').length }), st.q.seeds === 9, 'seeds');
     if (st.q.parts) row('Old Gus', st.q.parts === 9 ? T('Baqqi yığıldı') : st.q.parts === 2 ? T('Hissələri Old Gus-a apar') : T('Baqqi hissələri: {n}/3', { n: st.got.filter((g) => g[0] === 'p').length }), st.q.parts === 9, 'parts');
     if (st.q.pip) row('Miss Clara', st.q.pip === 9 ? T('Pip tapıldı') : st.q.pip === 4 ? T('Miss Clara-ya xəbər ver') : T('Pip-i tap ({n}/3 gizlənmə yeri)', { n: st.q.pip - 1 }), st.q.pip === 9, 'pip');

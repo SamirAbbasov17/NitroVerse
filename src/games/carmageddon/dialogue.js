@@ -71,7 +71,7 @@ export class Dialogue {
     this.faceCx.imageSmoothingEnabled = false;
     this.tint = el.querySelector('.cgd__tint');
     this.emote = el.querySelector('.cgd__emote'); this.emoteCx = this.emote.getContext('2d');
-    this.nameEl = el.querySelector('.cgd__name');
+    this.nameEl = el.querySelector('.cgd__name'); this.nameEl.lang = 'en';      // xüsusi isimlər ingiliscədir: böyük hərfdə "MILO" qalsın, "MİLO" olmasın
     this.shown = el.querySelector('.cgd__shown');
     this.rest = el.querySelector('.cgd__rest');
     this.box = el.querySelector('.cgd__box');

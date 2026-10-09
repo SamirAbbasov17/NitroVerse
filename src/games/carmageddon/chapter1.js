@@ -138,7 +138,7 @@ export class Chapter1 {
     const el = document.createElement('div');
     el.className = 'cgs__intro';
     el.style.setProperty('--cgd-accent', c.color);
-    el.innerHTML = `<canvas width="80" height="80"></canvas><div><b>${c.name}</b><span>${title}</span></div>`;
+    el.innerHTML = `<canvas width="80" height="80"></canvas><div><b lang="en">${c.name}</b><span>${title}</span></div>`;
     const x = el.querySelector('canvas').getContext('2d'); x.imageSmoothingEnabled = false;
     x.drawImage(this._face(who, 'neutral'), 0, 0);
     this.el.appendChild(el);

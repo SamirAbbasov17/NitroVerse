@@ -26,6 +26,8 @@ test('fasilə: dialoqda və qaçışda dayandırır, davam etdirir, başlıq ekr
   await page.keyboard.press('Escape');
   await expect(page.locator('.cgs__pause')).toBeVisible();
   await page.screenshot({ path: path.join(DIR, 'pause.png') });
+  // böyük hərflər Azərbaycan qaydası ilə: i → İ (əvvəl "FASILƏ" çıxırdı — yarı ingiliscə görünürdü)
+  expect(await page.evaluate(() => [document.documentElement.lang, document.querySelector('.cgs__pause b').innerText]), 'böyük hərf çevrilməsi').toEqual(['az', 'FASİLƏ']);
   await page.keyboard.press('ArrowRight'); await page.keyboard.press('KeyE');
   await page.waitForTimeout(300);
   expect(await page.evaluate(() => window.__cgStory.dlg.full), 'fasilədə dialoq yerində qalır').toBe(line);

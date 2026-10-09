@@ -124,7 +124,7 @@ const D = {
     'cg.nightGoal': 'Emalatxanaya çat. İşıqdan və alovdan uzaq dur.', 'cg.caught': 'Səni gördülər', 'cg.burned': 'Alov', 'cg.duelRetry': 'Jackal səni maşından atdı. Yenidən!',
     'cg.continue': 'Davam et', 'cg.restart': 'Yenidən başla',
     'cg.c.hp': 'MAŞIN', 'cg.c.fuel': 'YANACAQ',
-    'cg.f.end': 'Fəslin sonu', 'cg.f.created': 'Müəllif və rejissor', 'cg.f.dev': 'Ssenari, oyun dizaynı və proqramlaşdırma', 'cg.f.art': 'İllüstrasiyalar', 'cg.f.artBy': 'Süni intellektlə yaradılıb, piksel emalı əl ilə',
+    'cg.f.end': 'Fəslin sonu', 'cg.f.created': 'Müəllif və rejissor', 'cg.f.dev': 'Ssenari, oyun dizaynı və proqramlaşdırma',
     'cg.f.music': 'Musiqi', 'cg.f.fonts': 'Şriftlər', 'cg.f.memory': 'Hearth-in xatirəsinə', 'cg.f.others': 'və adları bir daşa sığmayan daha otuz beş nəfər', 'cg.f.remain': 'Altı ad qalır', 'cg.f.silent': 'Bir də heç vaxt danışmayan biri',
     'cg.f.back': 'Ember qayıdacaq', 'cg.f.ch2': 'Fəsil 2 hazırlanır', 'cg.f.thanks': 'Oynadığınız üçün təşəkkür edirik', 'cg.f.demoEnd': 'Demo burada bitir. Hekayə isə təzə başlayır.',
     'cg.chase': 'Qaçış', 'cg.ch1End': 'Son',
@@ -136,8 +136,8 @@ const D = {
     'cg.evening': 'Axşam',
     'cg.journal': 'Tapşırıqlar', 'cg.moveHint': 'Oxlar / WASD — yeri · Shift — qaç · E — danış · telefonda: toxun',
     'cg.questHint': 'Rəngli oxlar hədəfi göstərir · «!» — səninlə işi olan', 'cg.mg.bolt': 'Motoru yığ', 'cg.mg.boltH': 'Göstərici yaşıl zonaya girəndə bas — E və ya toxun', 'cg.mg.plant': 'Toxumları ək', 'cg.mg.plantH': 'Ləklərin yanma sırasını yadda saxla və təkrarla — oxlar və ya toxun', 'cg.mg.find': 'Pip haradadır?', 'cg.mg.findH': 'Çəlləkləri izlə, sonra Pip-in gizləndiyini seç — ◀ ▶ və E, ya da toxun', 'cg.mg.tune': 'Dalğanı tut', 'cg.mg.tuneH': '◀ ▶ ilə əqrəbi çevir; siqnal güclənən yerdə saxla', 'cg.pause': 'Fasilə', 'cg.toTitle': 'Başlıq ekranı', 'cg.pauseNote': 'Son yaddaş nöqtəsi saxlanılıb', 'cg.skip': 'Keç ▸', 'cg.ch1': 'Fəsil 1', 'cg.ch1More': 'Davamı hazırlanır', 'cg.demo': 'Demo',
-    'cg.exit': 'NitroVerse-ə qayıt', 'cg.storyNote': 'Hekayə hələ yazılır. İlk fəsil hazır olanda burada açılacaq.', 'cg.heroNote': 'Baş qəhrəman — səhranın ən yaxşı sürücülərindən biri. Adı və keçmişi hekayədə açılacaq.', 'cg.q1': 'Mühərrik isti, yol boşdur. Nəyi gözləyirik?', 'cg.q2': 'Əl vurma. Eynək təzədir.',
-    'cg.q3': 'Yanacaq tapsan, mənə də xəbər elə.', 'cg.q4': 'Bu səhrada dayanan uduzur.', 'cg.foot': 'Erkən nümayiş · NitroVerse oyunu',
+    'cg.exit': 'NITROVERSE-ə qayıt', 'cg.storyNote': 'Hekayə hələ yazılır. İlk fəsil hazır olanda burada açılacaq.', 'cg.heroNote': 'Baş qəhrəman — səhranın ən yaxşı sürücülərindən biri. Adı və keçmişi hekayədə açılacaq.', 'cg.q1': 'Mühərrik isti, yol boşdur. Nəyi gözləyirik?', 'cg.q2': 'Əl vurma. Eynək təzədir.',
+    'cg.q3': 'Yanacaq tapsan, mənə də xəbər elə.', 'cg.q4': 'Bu səhrada dayanan uduzur.', 'cg.foot': 'Erkən nümayiş · NITROVERSE oyunu',
     'res.title': 'Yarış bitdi', 'res.leaveRoom': 'Otaqdan çıx',
     'auth.step': 'Hesab', 'auth.titleProfile': 'Profilin', 'auth.titleLogin': 'Daxil ol / Qeydiyyat',
     'auth.titleSignin': 'Daxil ol', 'auth.titleSignup': 'Yeni hesab',
@@ -306,7 +306,7 @@ const D = {
     'cg.nightGoal': 'Reach the workshop. Stay out of the light and the fire.', 'cg.caught': 'They saw you', 'cg.burned': 'Fire', 'cg.duelRetry': 'Jackal threw you off. Again!',
     'cg.continue': 'Continue', 'cg.restart': 'Start over',
     'cg.c.hp': 'CAR', 'cg.c.fuel': 'FUEL',
-    'cg.f.end': 'End of the chapter', 'cg.f.created': 'Created and directed by', 'cg.f.dev': 'Writing, game design and programming', 'cg.f.art': 'Illustrations', 'cg.f.artBy': 'AI-generated, pixel-finished by hand',
+    'cg.f.end': 'End of the chapter', 'cg.f.created': 'Created and directed by', 'cg.f.dev': 'Writing, game design and programming',
     'cg.f.music': 'Music', 'cg.f.fonts': 'Typefaces', 'cg.f.memory': 'In memory of Hearth', 'cg.f.others': 'and thirty-five more whose names one stone could not hold', 'cg.f.remain': 'Six names remain', 'cg.f.silent': 'And one who never speaks',
     'cg.f.back': 'Ember will return', 'cg.f.ch2': 'Chapter 2 is in the making', 'cg.f.thanks': 'Thank you for playing', 'cg.f.demoEnd': 'The demo ends here. The story has only begun.',
     'cg.chase': 'The Escape', 'cg.ch1End': 'The End',
@@ -488,7 +488,7 @@ const D = {
     'cg.nightGoal': 'Доберись до мастерской. Держись подальше от света и огня.', 'cg.caught': 'Тебя заметили', 'cg.burned': 'Огонь', 'cg.duelRetry': 'Jackal сбросил тебя. Ещё раз!',
     'cg.continue': 'Продолжить', 'cg.restart': 'Начать заново',
     'cg.c.hp': 'МАШИНА', 'cg.c.fuel': 'ТОПЛИВО',
-    'cg.f.end': 'Конец главы', 'cg.f.created': 'Автор и режиссёр', 'cg.f.dev': 'Сценарий, геймдизайн и программирование', 'cg.f.art': 'Иллюстрации', 'cg.f.artBy': 'Созданы ИИ, пиксельная доработка вручную',
+    'cg.f.end': 'Конец главы', 'cg.f.created': 'Автор и режиссёр', 'cg.f.dev': 'Сценарий, геймдизайн и программирование',
     'cg.f.music': 'Музыка', 'cg.f.fonts': 'Шрифты', 'cg.f.memory': 'Памяти Hearth', 'cg.f.others': 'и ещё тридцать пять человек, чьи имена не уместились на одном камне', 'cg.f.remain': 'Осталось шесть имён', 'cg.f.silent': 'И тот, кто никогда не говорит',
     'cg.f.back': 'Ember вернётся', 'cg.f.ch2': 'Глава 2 в разработке', 'cg.f.thanks': 'Спасибо, что играли', 'cg.f.demoEnd': 'Демо заканчивается здесь. История только начинается.',
     'cg.chase': 'Побег', 'cg.ch1End': 'Конец',
@@ -670,7 +670,7 @@ const D = {
     'cg.nightGoal': 'Atölyeye ulaş. Işıktan ve ateşten uzak dur.', 'cg.caught': 'Seni gördüler', 'cg.burned': 'Ateş', 'cg.duelRetry': 'Jackal seni arabadan attı. Tekrar!',
     'cg.continue': 'Devam et', 'cg.restart': 'Baştan başla',
     'cg.c.hp': 'ARABA', 'cg.c.fuel': 'YAKIT',
-    'cg.f.end': 'Bölümün sonu', 'cg.f.created': 'Yaratan ve yöneten', 'cg.f.dev': 'Senaryo, oyun tasarımı ve programlama', 'cg.f.art': 'İllüstrasyonlar', 'cg.f.artBy': 'Yapay zekâ ile üretildi, piksel işçiliği elle',
+    'cg.f.end': 'Bölümün sonu', 'cg.f.created': 'Yaratan ve yöneten', 'cg.f.dev': 'Senaryo, oyun tasarımı ve programlama',
     'cg.f.music': 'Müzik', 'cg.f.fonts': 'Yazı tipleri', 'cg.f.memory': 'Hearth’in anısına', 'cg.f.others': 've adları tek bir taşa sığmayan otuz beş kişi daha', 'cg.f.remain': 'Altı isim kaldı', 'cg.f.silent': 'Bir de hiç konuşmayan biri',
     'cg.f.back': 'Ember geri dönecek', 'cg.f.ch2': 'Bölüm 2 hazırlanıyor', 'cg.f.thanks': 'Oynadığınız için teşekkür ederiz', 'cg.f.demoEnd': 'Demo burada bitiyor. Hikâye ise yeni başlıyor.',
     'cg.chase': 'Kaçış', 'cg.ch1End': 'Son',
@@ -682,8 +682,8 @@ const D = {
     'cg.evening': 'Akşam',
     'cg.journal': 'Görevler', 'cg.moveHint': 'Oklar / WASD — yürü · Shift — koş · E — konuş · telefonda: dokun',
     'cg.questHint': 'Renkli oklar hedefi gösterir · «!» — sana işi düşen', 'cg.mg.bolt': 'Motoru topla', 'cg.mg.boltH': 'İbre yeşil bölgeye girince bas — E ya da dokun', 'cg.mg.plant': 'Tohumları ek', 'cg.mg.plantH': 'Yuvaların yanma sırasını aklında tut ve tekrarla — oklar ya da dokun', 'cg.mg.find': 'Pip nerede?', 'cg.mg.findH': 'Varilleri izle, sonra Pip’in saklandığını seç — ◀ ▶ ve E, ya da dokun', 'cg.mg.tune': 'Dalgayı yakala', 'cg.mg.tuneH': 'İbreyi ◀ ▶ ile çevir; sinyalin güçlendiği yerde tut', 'cg.pause': 'Duraklatıldı', 'cg.toTitle': 'Başlık ekranı', 'cg.pauseNote': 'Son kayıt noktasında kaydedildi', 'cg.skip': 'Geç ▸', 'cg.ch1': 'Bölüm 1', 'cg.ch1More': 'Devamı hazırlanıyor', 'cg.demo': 'Demo',
-    'cg.exit': 'NitroVerse’e dön', 'cg.storyNote': 'Hikâye hâlâ yazılıyor. İlk bölüm hazır olduğunda burada açılacak.', 'cg.heroNote': 'Baş kahraman — çorak toprakların en iyi sürücülerinden biri. Adı ve geçmişi hikâyede ortaya çıkacak.', 'cg.q1': 'Motor sıcak, yol boş. Neyi bekliyoruz?', 'cg.q2': 'Elleme. Gözlük yeni.',
-    'cg.q3': 'Yakıt bulursan bana da haber ver.', 'cg.q4': 'Bu çölde duran kaybeder.', 'cg.foot': 'Erken gösterim · bir NitroVerse oyunu',
+    'cg.exit': 'NITROVERSE’e dön', 'cg.storyNote': 'Hikâye hâlâ yazılıyor. İlk bölüm hazır olduğunda burada açılacak.', 'cg.heroNote': 'Baş kahraman — çorak toprakların en iyi sürücülerinden biri. Adı ve geçmişi hikâyede ortaya çıkacak.', 'cg.q1': 'Motor sıcak, yol boş. Neyi bekliyoruz?', 'cg.q2': 'Elleme. Gözlük yeni.',
+    'cg.q3': 'Yakıt bulursan bana da haber ver.', 'cg.q4': 'Bu çölde duran kaybeder.', 'cg.foot': 'Erken gösterim · bir NITROVERSE oyunu',
     'res.title': 'Yarış bitti', 'res.leaveRoom': 'Odadan ayrıl',
     'auth.step': 'Hesap', 'auth.titleProfile': 'Profilin', 'auth.titleLogin': 'Giriş / Kayıt',
     'auth.titleSignin': 'Giriş yap', 'auth.titleSignup': 'Yeni hesap',
@@ -733,6 +733,10 @@ if (!LANGS.includes(cur)) {
   cur = LANGS.includes(b) ? b : 'en';
 }
 
+// Səhifənin dili: brauzer böyük hərfə çevirəndə (CSS text-transform) dilin qaydasını işlətsin — Azərbaycan və türk
+// dillərində i → İ, ı → I. Bu olmayanda "FASİLƏ" əvəzinə "FASILƏ" çıxırdı (yarı ingiliscə görünürdü).
+try { document.documentElement.lang = cur; } catch { /* brauzersiz mühit (test) */ }
+
 export function getLang() { return cur; }
 
 export function setLang(lang) {
@@ -747,6 +751,7 @@ export function setLangQuiet(lang) {
   if (!LANGS.includes(lang) || lang === cur) return false;
   cur = lang;
   try { localStorage.setItem('apexLang', lang); } catch { /* gizli rejim */ }
+  try { document.documentElement.lang = lang; } catch { /* boş */ }
   return true;
 }
 
