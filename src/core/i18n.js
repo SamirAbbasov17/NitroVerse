@@ -741,6 +741,15 @@ export function setLang(lang) {
   location.reload(); // bütün ekranlar yeni dildə qurulsun
 }
 
+// Səhifəni yenidən yükləmədən dili dəyiş (öz ekranını özü yenidən yazan oyunlar üçün — məs. Carmageddon başlıq ekranı).
+// Qalan ekranlar köhnə dildə qalır: çağıran tərəf oradan çıxanda səhifəni yeniləməlidir.
+export function setLangQuiet(lang) {
+  if (!LANGS.includes(lang) || lang === cur) return false;
+  cur = lang;
+  try { localStorage.setItem('apexLang', lang); } catch { /* gizli rejim */ }
+  return true;
+}
+
 export function nextLang() {
   setLang(LANGS[(LANGS.indexOf(cur) + 1) % LANGS.length]);
 }

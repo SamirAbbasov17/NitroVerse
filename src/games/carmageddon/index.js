@@ -8,7 +8,7 @@
 import './carmageddon.css';
 import { game, input } from '../../platform.js';
 import { audio } from '../../core/AudioManager.js';
-import { t } from '../../core/i18n.js';
+import { t, getLang, setLangQuiet, LANGS } from '../../core/i18n.js';
 import { assetBase } from '../../net/apiBase.js';
 import { music } from './music.js';
 
@@ -56,27 +56,31 @@ class TitleScreen {
       <div class="cg__vignette"></div>
       <div class="cg__ui">
         <div class="cg__top">
-          <span class="cg__studio">NITROVERSE ${t('cg.presents')}</span>
-          <span class="cg__wip"><i></i>${t('cg.wip')}</span>
+          <span class="cg__studio">NITROVERSE <span data-t="cg.presents">${t('cg.presents')}</span></span>
+          <span class="cg__wip"><i></i><span data-t="cg.wip">${t('cg.wip')}</span></span>
         </div>
         <canvas class="cg__logo" width="300" height="64" aria-label="Carmageddon"></canvas>
-        <div class="cg__tags"><span>${t('cg.tagStory')}</span><span>${t('cg.tagRace')}</span><span>${t('cg.tagPixel')}</span></div>
-        <p class="cg__pitch">${t('cg.pitch')}</p>
+        <div class="cg__tags"><span data-t="cg.tagStory">${t('cg.tagStory')}</span><span data-t="cg.tagRace">${t('cg.tagRace')}</span><span data-t="cg.tagPixel">${t('cg.tagPixel')}</span></div>
+        <p class="cg__pitch" data-t="cg.pitch">${t('cg.pitch')}</p>
         <nav class="cg__menu">
-          <button class="cg__btn" data-cg="story"><b data-cg-story>${t('cg.story')}</b><em>${t('cg.demo')}</em></button>
-          <button class="cg__btn" data-cg="new" hidden><b>${t('cg.restart')}</b></button>
-          <button class="cg__btn" data-cg="hero"><b>${t('cg.hero')}</b></button>
-          <button class="cg__btn" data-cg="exit"><b>${t('cg.exit')}</b></button>
+          <button class="cg__btn" data-cg="story"><b data-cg-story>${t('cg.story')}</b><em data-t="cg.demo">${t('cg.demo')}</em></button>
+          <button class="cg__btn" data-cg="new" hidden><b data-t="cg.restart">${t('cg.restart')}</b></button>
+          <button class="cg__btn" data-cg="hero"><b data-t="cg.hero">${t('cg.hero')}</b></button>
+          <button class="cg__btn" data-cg="exit"><b data-t="cg.exit">${t('cg.exit')}</b></button>
         </nav>
         <div class="cg__note" data-cg-note></div>
       </div>
       <div class="cg__bubble" data-cg-bubble hidden></div>
-      <div class="cg__foot">${t('cg.foot')}</div>`;
+      <div class="cg__foot" data-t="cg.foot">${t('cg.foot')}</div>
+      <div class="cg__lang" role="group" aria-label="Language">${LANGS.map((l) => `<button type="button" data-cg-lang="${l}" class="${l === getLang() ? 'is-on' : ''}">${l.toUpperCase()}</button>`).join('')}</div>`;
     document.body.appendChild(el);
     this.cv = el.querySelector('.cg__bg');
     this.cx = this.cv.getContext('2d');
     this.cx.imageSmoothingEnabled = false;
     this._syncSave();
+    // Dil: sağ yuxarı küncdə dörd düymə. Başlıq ekranı yerindəcə yeni dildə yazılır; hekayə növbəti açılışda həmin
+    // dildə gedir. NitroVerse-in qalan ekranları köhnə dildə qaldığı üçün çıxışda səhifə yenilənir (bax _exit).
+    el.querySelectorAll('[data-cg-lang]').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); this._setLang(b.dataset.cgLang); }; });
     this.btns = [...el.querySelectorAll('.cg__btn:not([hidden])')];
     this.note = el.querySelector('[data-cg-note]');
     this.bubble = el.querySelector('[data-cg-bubble]');
@@ -100,6 +104,7 @@ class TitleScreen {
       if (e.code === 'ArrowDown' || e.code === 'KeyS') { this._select((this.sel + 1) % this.btns.length); e.preventDefault(); }
       else if (e.code === 'ArrowUp' || e.code === 'KeyW') { this._select((this.sel + this.btns.length - 1) % this.btns.length); e.preventDefault(); }
       else if (e.code === 'Enter' || e.code === 'Space') { this._activate(); e.preventDefault(); }
+      else if (e.code === 'KeyL') this._setLang(LANGS[(LANGS.indexOf(getLang()) + 1) % LANGS.length]);      // L — növbəti dil
       else if (e.code === 'Escape') this._exit();
     };
     addEventListener('pointermove', this._onMove);
@@ -240,6 +245,15 @@ class TitleScreen {
   }
 
   // Yarımçıq oyun varsa: "Hekayəyə başla" → "Davam et" olur və "Yenidən başla" düyməsi görünür
+  _setLang(lang) {
+    if (this.story || !setLangQuiet(lang)) return;
+    this.langChanged = true;
+    this.el.querySelectorAll('[data-t]').forEach((n) => { n.textContent = t(n.dataset.t); });
+    this.el.querySelectorAll('[data-cg-lang]').forEach((b) => b.classList.toggle('is-on', b.dataset.cgLang === lang));
+    this.note.textContent = ''; this.bubble.hidden = true;
+    this._syncSave(); this._fit?.();
+  }
+
   _syncSave() {
     let has = false;
     try { has = !!JSON.parse(localStorage.getItem('cgCh1') || 'null')?.stage; } catch { /* boş */ }
@@ -379,6 +393,7 @@ class TitleScreen {
 
   _exit() {
     this.dispose();
+    if (this.langChanged) { location.reload(); return; }      // dil dəyişib — NitroVerse menyusu yeni dildə qurulsun
     this.onExit?.();
   }
 

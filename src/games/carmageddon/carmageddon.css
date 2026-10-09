@@ -423,3 +423,11 @@ body.cg-on #game-canvas, body.cg-on #mute-btn { visibility: hidden; }
 
 /* başlıq ekranı: təsvir mətni açıq fonun (bina, ay) üstünə düşəndə də oxunsun */
 .cg__pitch { text-shadow: 1px 1px 0 #12080c, -1px 1px 0 #12080c, 1px -1px 0 #12080c, -1px -1px 0 #12080c, 0 2px 0 #12080c; }
+
+/* dil seçimi: başlıq ekranının sağ yuxarı küncü (hekayə açılanda gizlənir) */
+.cg__lang { position: absolute; top: max(12px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); z-index: 4; display: flex; gap: 4px; }
+.cg__lang button { min-width: 38px; min-height: 34px; padding: 4px 6px; cursor: pointer; font-family: var(--cg-caps); font-size: clamp(12px, 2vh, 15px); letter-spacing: 0.1em;
+  color: var(--cg-dim); background: rgba(18, 8, 12, 0.6); border: 2px solid #5a2a24; border-radius: 0; }
+.cg__lang button:hover, .cg__lang button:focus-visible { color: var(--cg-bone); border-color: var(--cg-dim); outline: none; }
+.cg__lang button.is-on { color: var(--cg-ink); background: var(--cg-amber); border-color: var(--cg-amber); }
+.cg.is-story .cg__lang { display: none; }

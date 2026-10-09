@@ -170,3 +170,42 @@ test('carmageddon: telefon (844×390) — dörd dildə sığır, düymələr əl
     await ctx.close();
   }
 });
+
+// Dil seçimi başlıq ekranında: düyməyə basanda bütün yazılar yerindəcə dəyişir, seçim yadda qalır, hekayə həmin
+// dildə açılır; çıxanda NitroVerse menyusu da yeni dildədir. Telefonda düymələr sığır və əlçatandır.
+test('carmageddon: başlıq ekranında dil seçimi (4 dil)', async ({ page }) => {
+  test.setTimeout(120_000);
+  const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+  await page.setViewportSize({ width: 844, height: 390 });
+  await boot(page);
+  await page.evaluate(() => { localStorage.removeItem('cgCh1'); window.__menu.onOpenGame('carmageddon'); });
+  await page.waitForSelector('.cg.is-ready', { timeout: 30_000 });
+  await expect(page.locator('.cg__lang button')).toHaveCount(4);
+  const box = await page.evaluate(() => [...document.querySelectorAll('.cg__lang button')].map((b) => { const r = b.getBoundingClientRect(); return r.width >= 34 && r.height >= 34 && r.left >= 0 && r.right <= innerWidth && r.top >= 0; }));
+  expect(box, 'dil düymələri ekrandadır və iridir').toEqual([true, true, true, true]);
+  const overlap = await page.evaluate(() => { const a = document.querySelector('.cg__lang').getBoundingClientRect(); return [...document.querySelectorAll('.cg__ui *')].some((e) => { const r = e.getBoundingClientRect(); return r.width && r.height && e.children.length === 0 && r.left < a.right && r.right > a.left && r.top < a.bottom && r.bottom > a.top; }); });
+  expect(overlap, 'dil düymələri menyunun üstünə düşmür').toBe(false);
+  const texts = {};
+  for (const [l, word] of [['en', 'Start the story'], ['ru', 'Начать историю'], ['tr', 'Hikâyeye başla'], ['az', 'Hekayəyə başla']]) {
+    await page.locator(`[data-cg-lang="${l}"]`).click();
+    await expect(page.locator(`[data-cg-lang="${l}"]`)).toHaveClass(/is-on/);
+    texts[l] = await page.evaluate(() => ({ story: document.querySelector('[data-cg-story]').textContent, exit: document.querySelector('[data-cg="exit"] b').textContent, pitch: document.querySelector('.cg__pitch').textContent.slice(0, 20), saved: localStorage.getItem('apexLang') }));
+    expect([l, texts[l].saved], 'seçim yadda qalır').toEqual([l, l]);
+    expect(texts[l].story.toLowerCase(), `${l}: düymə mətni`).toContain(word.toLowerCase().slice(0, 6));
+    if (l === 'ru') await page.screenshot({ path: path.join(DIR, 'title-lang-ru.png') });
+  }
+  expect(new Set(Object.values(texts).map((x) => x.pitch)).size, 'təsvir dörd dildə fərqlidir').toBe(4);
+  // rusca seç → hekayə rusca açılır
+  await page.locator('[data-cg-lang="ru"]').click();
+  await page.locator('[data-cg="story"]').click();
+  await page.waitForSelector('.cgd:not([hidden])', { timeout: 20_000 });
+  expect(await page.evaluate(() => window.__cgStory.dlg.full), 'proloq rusca').toMatch(/^Говорят/);
+  await expect(page.locator('.cg__lang')).toBeHidden();
+  await cgLeave(page);
+  // çıxış: dil dəyişdiyi üçün səhifə yenilənir ki, NitroVerse menyusu da yeni dildə qurulsun
+  // (test qoşqusu hər yüklənmədə dili özü təyin edir, ona görə burada yalnız yenilənmənin baş verdiyi yoxlanır)
+  expect(await page.evaluate(() => localStorage.getItem('apexLang')), 'seçim yaddaşdadır').toBe('ru');
+  await Promise.all([page.waitForEvent('load', { timeout: 30_000 }), page.keyboard.press('Escape')]);
+  await page.waitForSelector('.menu-list .mrow', { timeout: 30_000 });
+  expect(errs).toEqual([]);
+});
