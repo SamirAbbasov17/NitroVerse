@@ -43,7 +43,8 @@ test('zen qar biomu: sıx qar yağır, yer qalın örtülüdür, büdcə daxilin
 //  A) qar biomuna keçəndə örtük TAM olur və elə qalır; yol çiyni, təpə və dağlar — əvvəlki biomda qurulmuş hissələr də —
 //     hamısı birlikdə ağarır;
 //  B) dənələr həmişə maşının ətrafındadır (eniş-yoxuşda da) və kameraya nisbətən heç vaxt yuxarı getmir; sayı sabitdir;
-//  C) başqa biomda "qar" seçəndə yer tam ağarır, "açıq" seçəndə tam əriyir — yarımçıq hal qalmır.
+//  C) QAR HAVASI ≠ QARLIQ ƏRAZİ: başqa biomda "qar" seçəndə nazik, sabit çən düşür (tam örtük və buz yoxdur);
+//  D) qarlıq ərazi açıq havada da qarlıq qalır.
 test('zen qar: sabitlik — dənələr aşağı düşür, örtük hər yerdə birlikdə və tam ağarır', async ({ page }) => {
   test.setTimeout(240_000);
   const errs = []; page.on('pageerror', (e) => errs.push(e.message));
@@ -58,7 +59,7 @@ test('zen qar: sabitlik — dənələr aşağı düşür, örtük hər yerdə bi
     // hər materialın rəngi gözlənilən örtük səviyyəsindədirmi (əsas rəng → örtük rəngi)
     const off = mats.filter((m) => { tmp.copy(m.userData.snowBase).lerp(cover, sv * m.userData.snowK); return Math.abs(tmp.r - m.color.r) + Math.abs(tmp.g - m.color.g) + Math.abs(tmp.b - m.color.b) > 0.02; }).length;
     const verge = mats.filter((m) => m.userData.snowK > 0.9), g = s._groundMat.color;
-    return { snow: +s._snow.toFixed(3), rain: +s._weather.rain.toFixed(2), mats: mats.length, off, vergeMin: verge.length ? +Math.min(...verge.map((m) => Math.min(m.color.r, m.color.g, m.color.b))).toFixed(3) : null, ground: +Math.min(g.r, g.g, g.b).toFixed(3), flakes: s._rain.mesh.visible ? s._rain.mesh.count : 0 };
+    return { snow: +s._snow.toFixed(3), rain: +s._weather.rain.toFixed(2), mats: mats.length, off, vergeMin: verge.length ? +Math.min(...verge.map((m) => Math.min(m.color.r, m.color.g, m.color.b))).toFixed(3) : null, ground: +Math.min(g.r, g.g, g.b).toFixed(3), flakes: s._rain.mesh.visible ? s._rain.mesh.count : 0, frost: +(s._frost || 0).toFixed(3), ice: +s.water.material.emissiveIntensity.toFixed(3) };
   });
   const dry = await sample();
   expect([dry.snow, dry.flakes], 'səhrada açıq hava: qar yoxdur').toEqual([0, 0]);
@@ -74,7 +75,8 @@ test('zen qar: sabitlik — dənələr aşağı düşür, örtük hər yerdə bi
   const gs = settled.map((x) => x.ground);
   expect(Math.max(...gs) - Math.min(...gs), 'yerin rəngi oynamır').toBeLessThan(0.03);
   expect(new Set(settled.map((x) => x.flakes)).size, 'dənələrin sayı sabitdir').toBe(1);
-  expect(settled[0].flakes, 'qar sıxdır').toBeGreaterThanOrEqual(1500);
+  expect(settled[0].flakes, 'qarlıq ərazidə qar sıxdır').toBeGreaterThanOrEqual(1500);
+  expect([settled[0].frost, settled[0].ice > 0.3], 'qarlıq ərazidə göl donub').toEqual([1, true]);
   expect(Math.min(...a.slice(32).map((x) => x.rain)), 'qar güclənib qalır (≈14 s-dən sonra), kəsilmir').toBeGreaterThanOrEqual(0.85);
   expect(a.every((x, i) => !i || x.rain >= a[i - 1].rain - 0.02), 'qarın gücü keçid zamanı geri-irəli oynamır').toBe(true);
 
@@ -93,18 +95,28 @@ test('zen qar: sabitlik — dənələr aşağı düşür, örtük hər yerdə bi
   expect(fl.up / fl.total, 'dənə kameraya nisbətən yuxarı getmir').toBeLessThan(0.003);
   expect(fl.far / fl.total, 'dənələr həmişə maşının ətrafındadır').toBeLessThan(0.003);
 
-  // ——— C) başqa biomda əl ilə qar, sonra açıq hava ———
+  // ——— C) QAR HAVASI qarlıq ərazi DEYİL: başqa biomda "qar" seçəndə qar yağır və yerə nazik çən düşür, amma ərazi
+  //        qarlığa çevrilmir (tam örtük yox, göl donmur, qar o qədər sıx deyil); "açıq" seçəndə çən tam əriyir ———
   await page.evaluate(() => { const s = window.__active; s._biomeOverride = 1; s._setWeather('clear'); });
-  let c = null; for (let i = 0; i < 70; i++) { await page.waitForTimeout(500); c = await sample(); if (c.snow === 0) break; }
-  expect(c.snow, 'qar biomundan çıxanda (açıq havada) örtük tam əriyir').toBe(0);
+  let c = null; for (let i = 0; i < 70; i++) { await page.waitForTimeout(500); c = await sample(); if (c.snow === 0 && c.frost === 0) break; }
+  expect([c.snow, c.frost, c.ice], 'qarlıq ərazidən çıxanda (açıq hava) örtük və buz tam gedir').toEqual([0, 0, 0]);
   await page.evaluate(() => window.__active._setWeather('snow'));
-  for (let i = 0; i < 50; i++) { await page.waitForTimeout(500); c = await sample(); if (c.snow === 1) break; }
-  console.log('C alp + qar:', JSON.stringify(c));
-  expect([c.snow, c.off], 'qar seçəndə yer TAM ağarır, bütün materiallar birlikdə').toEqual([1, 0]);
-  expect(c.flakes, 'əl ilə qar da sıxdır').toBeGreaterThanOrEqual(1500);
+  const cs = []; for (let i = 0; i < 44; i++) { await page.waitForTimeout(500); cs.push(await sample()); }
+  c = cs[cs.length - 1];
+  console.log('C alp + qar havası:', JSON.stringify(c));
+  expect([c.snow, c.off, c.frost, c.ice], 'qar havası: nazik çən (0.4), göl donmur, hamısı birlikdə').toEqual([0.4, 0, 0, 0]);
+  expect(Math.max(...cs.map((x) => x.snow)), 'çən heç vaxt tam örtüyə çevrilmir').toBeLessThanOrEqual(0.4);
+  expect(new Set(cs.slice(20).map((x) => x.snow)).size, 'çənin səviyyəsi sabit qalır').toBe(1);
+  expect(c.flakes, 'qar havasında dənələr qarlıq ərazidəkindən seyrəkdir').toBe(560);
   await page.screenshot({ path: path.join(DIR, `snow-${TAG}-alpine.png`) });
   await page.evaluate(() => window.__active._setWeather('clear'));
   for (let i = 0; i < 70; i++) { await page.waitForTimeout(500); c = await sample(); if (c.snow === 0) break; }
-  expect([c.snow, c.off, c.flakes], 'açıq seçəndə tam əriyir').toEqual([0, 0, 0]);
+  expect([c.snow, c.off, c.flakes], 'açıq seçəndə çən tam əriyir, qar kəsilir').toEqual([0, 0, 0]);
+  // ——— D) qarlıq ərazidə havanı "açıq" seçəndə qar yağmır, amma ərazi qarlıq qalır ———
+  await page.evaluate(() => { const s = window.__active; s._biomeOverride = 4; s._setWeather('clear'); });
+  for (let i = 0; i < 40; i++) { await page.waitForTimeout(500); c = await sample(); if (c.snow === 1 && c.frost === 1 && c.flakes === 0) break; }
+  console.log('D qarlıq ərazi + açıq hava:', JSON.stringify(c));
+  expect([c.snow, c.frost, c.flakes], 'qarlıq ərazi açıq havada da qarlıqdır; göydən qar yağmır').toEqual([1, 1, 0]);
+  await page.screenshot({ path: path.join(DIR, `snow-${TAG}-clear.png`) });
   expect(errs).toEqual([]);
 });

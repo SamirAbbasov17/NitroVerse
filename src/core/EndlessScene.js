@@ -121,6 +121,8 @@ const BIOMES = [
 ];
 const _ICE = new THREE.Color(0xa9cfe2), _WHITE = new THREE.Color(0xffffff);   // donmuş gölün rəngi
 const _SNOW_COVER = new THREE.Color(0xe9eff6);   // qar örtüyünün rəngi (yol çiyni, təpə, dağ)
+const SNOW_DUST = 0.4;       // qar havasında (qarlıq ərazidən kənarda) yerə düşən nazik çənin səviyyəsi
+const FLAKES_WEATHER = 560;  // qar havasında dənə sayı; qarlıq ərazidə hamısı (1560) — orada qar qalın və sıxdır
 const BIOME_LEN = 1600;   // hər biomun uzunluğu (m)
 const BLEND_LEN = 280;    // keçid zonası
 const DAY_PERIOD = 320;   // gün dövrü (saniyə)
@@ -1482,12 +1484,18 @@ export class EndlessScene {
     // Yaş: yağış yağdıqca islanır (τ≈8s), kəsiləndə quruyur
     this._wet += (((flakeNow ? 0 : rainNow)) - this._wet) * Math.min(1, dt * 0.12);
     // Qar örtüyü: yağdıqca yığılır (τ≈6s), kəsiləndə yavaş əriyir (τ≈25s)
-    // QAR ÖRTÜYÜ — iki sabit hal, aralıq yoxdur: qar biomunda və ya qar YAĞANDA yer TAM ağarır (≈7 s-də yığılır),
-    // qar kəsiləndə tam əriyir (≈18 s). Əvvəl örtük yağışın gücünə bağlı idi (0.6–1) — yer gah ağ, gah yarı-ağ qalırdı.
+    // QAR ÖRTÜYÜ — QARLIQ ƏRAZİ ilə QAR HAVASI ayrı şeylərdir və qarışmır (istifadəçi rəyi):
+    //   • qarlıq ərazi (qar biomu): yer TAM örtülüdür (1), göl donub, meşə qarlıdır — hava nə olsa da;
+    //   • qar havası başqa biomda: göydən qar yağır və yerə yalnız NAZİK çən düşür (SNOW_DUST) — biomun öz rəngi
+    //     görünür, göl donmur, ərazi qarlığa çevrilmir;
+    //   • nə o, nə bu: örtük yoxdur (0).
+    // Hər hal sabit bir səviyyədir (yağışın gücündən asılı deyil) və ona sabit sürətlə çatılır — aralıqda ilişmir.
     const biomeSnowBase = (k > 0.5 ? nxt : cur).id === 'snow' ? 1 : 0;
-    const snowT = biomeSnowBase || (flakeNow && rainNow > 0.2) ? 1 : 0;
-    // sabit sürətlə (üstəl əyri yox): yığılma ≈7 s, ərimə ≈18 s — sonda dəqiq 1 və ya 0 olur, "demək olar ağ" qalmır
-    this._snow = snowT ? Math.min(1, this._snow + dt * 0.145) : Math.max(0, this._snow - dt * 0.055);
+    const snowT = biomeSnowBase ? 1 : (flakeNow && rainNow > 0.2 ? SNOW_DUST : 0);
+    this._snow = this._snow < snowT ? Math.min(snowT, this._snow + dt * 0.145) : Math.max(snowT, this._snow - dt * 0.055);
+    // "donma" yalnız qarlıq əraziyə aiddir: gölün buzu və qarın sıxlığı bununla dəyişir
+    this._frost = this._frost ?? biomeSnowBase;
+    this._frost = this._frost < biomeSnowBase ? Math.min(1, this._frost + dt * 0.145) : Math.max(biomeSnowBase, this._frost - dt * 0.09);
     // yol çiyni, təpələr və dağlar da eyni örtüklə ağarır — hamısı birlikdə (bax EndlessRoad.snowMats)
     {
       const sm = this.road.snowMats, sv = Math.round(this._snow * 200) / 200;
@@ -1827,11 +1835,11 @@ export class EndlessScene {
     {
       const m = this.water.material.map;
       const T = this._waterTile;
-      this._waterFlow = (this._waterFlow || 0) + dt * 0.012 * (1 - (this._snow || 0) * 0.85);      // donmuş su demək olar axmır
+      this._waterFlow = (this._waterFlow || 0) + dt * 0.012 * (1 - (this._frost || 0) * 0.85);      // donmuş su demək olar axmır
       // qar örtüyü artdıqca göl ağımtıl-mavi buza dönür: toxuma tünd mavidir (rəng vurulur, açılmır), ona görə
       // açıqlıq öz işığı (emissive) ilə verilir — əlavə draw call yoxdur
-      this.water.material.color.copy(this._waterBase).lerp(_WHITE, (this._snow || 0) * 0.9);
-      this.water.material.emissive.copy(_ICE); this.water.material.emissiveIntensity = (this._snow || 0) * 0.62 * Math.max(0.25, this._dayNow?.ground ?? 1);
+      this.water.material.color.copy(this._waterBase).lerp(_WHITE, (this._frost || 0) * 0.9);
+      this.water.material.emissive.copy(_ICE); this.water.material.emissiveIntensity = (this._frost || 0) * 0.62 * Math.max(0.25, this._dayNow?.ground ?? 1);
       m.offset.set(
         this.water.position.x / T,
         -this.water.position.z / T + this._waterFlow
@@ -1914,9 +1922,9 @@ export class EndlessScene {
       const fall = flake ? 4.2 : 30;
       const tt = this._time;
       // Qarda hissəciklərin yalnız bir hissəsi görünsün ki, yağış sıxlığı dəyişməsin
-      // sıxlıq SABİTDİR: yağış 322 dənə, qar 1560 (əvvəl qarın sayı gücə görə dəyişirdi — sıxlıq "üzürdü");
-      // yağışın/qarın güclənib-zəifləməsi yalnız şəffaflıqla verilir
-      const live = flake ? rain.drops.length : 322;
+      // sıxlıq hər halda SABİTDİR (gücdən asılı deyil): yağış 322 dənə; qar havası FLAKES_WEATHER; qarlıq ərazidə
+      // hamısı (qalın, sıx qar). Aradakı keçid yalnız əraziyə girib-çıxanda olur (_frost). Güc — şəffaflıqla.
+      const live = flake ? Math.round(FLAKES_WEATHER + (rain.drops.length - FLAKES_WEATHER) * (this._frost || 0)) : 322;
       rain.mesh.count = live;
       // HÜNDÜRLÜK maşına bağlıdır (yumşaq izləmə). Əvvəl dənələr dünyanın 0…18 m hündürlüyündə idi: hündür yerdə qar
       // heç görünmürdü, eniş-yoxuşda isə dənələr yuxarı gedən kimi görünürdü.
