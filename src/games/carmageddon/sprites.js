@@ -118,9 +118,40 @@ function drawFrame(x, ox, look, dir, ph, up) {
 }
 
 const cache = new Map();
+
+// ——— Çəkilmiş fiqurlar (chars.png): hər personajın üç baxışı var — ön, yan (sola baxır), arxa; xana 30×46,
+// ayaqlar xananın altındadır. `look.art` verilibsə fiqur oradan götürülür, yeriş kadrları baxışdan düzəldilir:
+// gövdə 1 px qalxıb-enir, ayaqlar növbə ilə qalxır (öndən/arxadan) və ya açılıb-yığılır (yandan). ———
+const ATLAS = { img: null, cw: 30, ch: 46, rows: { ember: 0, milo: 1, wren: 2, gus: 3, clara: 4, ray: 5, amos: 6, pip: 7, carrier: 8, lookout: 9, kid1: 10, kid2: 11, raider: 12 } };
+export function setCharAtlas(img) { if (img && img !== ATLAS.img) { ATLAS.img = img; cache.clear(); } }
+function artSheet(look) {
+  const { img, cw, ch } = ATLAS, row = ATLAS.rows[look.art];
+  const cv = document.createElement('canvas'); cv.width = cw * 6; cv.height = ch * 4;
+  const x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
+  const legTop = Math.round(ch * (look.kid ? 0.8 : 0.78)), half = cw / 2;
+  for (let d = 0; d < 4; d++) {
+    const col = d === 0 ? 0 : d === 1 ? 2 : 1, sx = col * cw, sy = row * ch;
+    for (let f = 0; f < 6; f++) {
+      x.save(); x.translate(f * cw, d * ch);
+      if (d === 3) { x.translate(cw, 0); x.scale(-1, 1); }                         // sağa baxış — yanın güzgüsü
+      const blit = (x0, y0, w, h, dx, dy) => x.drawImage(img, sx + x0, sy + y0, w, h, x0 + dx, y0 + dy, w, h);
+      if (f === 0) blit(0, 0, cw, ch, 0, 0);
+      else if (f === 1) { blit(0, legTop - 8, cw, ch - legTop + 8, 0, 0); blit(0, 0, cw, legTop - 8, 0, 1); }   // nəfəs: baş və çiyin 1 px enir
+      else {
+        const ph = f - 2, up = ph % 2 ? -1 : 0;
+        blit(0, 0, cw, legTop, 0, up);
+        if (d < 2) { blit(0, legTop, half, ch - legTop, 0, ph === 1 ? -2 : 0); blit(half, legTop, half, ch - legTop, 0, ph === 3 ? -2 : 0); }
+        else { const o = ph === 1 ? 2 : ph === 3 ? -1 : 0; blit(0, legTop, half, ch - legTop, -o, ph === 1 ? -1 : 0); blit(half, legTop, half, ch - legTop, o, ph === 3 ? -1 : 0); }
+      }
+      x.restore();
+    }
+  }
+  return { cv, fw: cw, fh: ch, art: true };
+}
 // vərəq: sətir = istiqamət (0..3), sütun = kadr (0 dayanma, 1 nəfəs, 2..5 yeriş)
 export function sheetFor(look) {
   let s = cache.get(look);
+  if (!s && look.art && ATLAS.img && ATLAS.rows[look.art] !== undefined) { s = artSheet(look); cache.set(look, s); }
   if (s) return s;
   const cv = document.createElement('canvas'); cv.width = FW * 6; cv.height = FH * 4;
   const x = cv.getContext('2d');
@@ -143,6 +174,7 @@ export function drawSprite(x, cx, cy, look, dir, frame, blink = false) {
   const s = sheetFor(look);
   x.fillStyle = 'rgba(20,8,10,0.3)';
   x.fillRect(Math.round(cx) - 7, Math.round(cy) - 2, 14, 3); x.fillRect(Math.round(cx) - 5, Math.round(cy) - 3, 10, 5);
+  if (s.art) { x.drawImage(s.cv, frame * s.fw, dir * s.fh, s.fw, s.fh, Math.round(cx) - s.fw / 2, Math.round(cy) - s.fh + 2, s.fw, s.fh); return; }
   const px = Math.round(cx) - FW / 2, py = Math.round(cy) - FH + 1;
   x.drawImage(s.cv, frame * FW, dir * FH, FW, FH, px, py, FW, FH);
   if (blink && dir !== 1) {

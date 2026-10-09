@@ -10,6 +10,7 @@ import { runChase } from './chase.js';
 import { runFinale, preloadSong } from './finale.js';
 import { music } from './music.js';
 import { T, loadDict } from './tx.js';
+import { setCharAtlas } from './sprites.js';
 import { runSearch } from './night.js';
 import { runDuel } from './duel.js';
 
@@ -66,10 +67,11 @@ export class Chapter1 {
       'wren-neutral', 'gus-neutral', 'clara-neutral', 'ray-neutral', 'amos-neutral', 'pip-neutral',
       'e1', 'e2', 'a1', 'a2', 'a3', 'a4',
       'judge-neutral', 'crude-neutral', 'butcher-neutral', 'rust-neutral', 'preacher-neutral', 'twins-neutral', 'jackal-neutral',
-      'hush-neutral', 'c1', 'c2', 'c3', 'c4', 'c5', 'cars', 'props', 'ground-camp.webp', 'ground-canyon.webp', 'ground-fog.webp', 'ground-truck.webp', 'b1', 'b2', 'b3', 'b5', 'b6', 'b7', 'z1', 'z2', 'z3'];
+      'hush-neutral', 'chars', 'c1', 'c2', 'c3', 'c4', 'c5', 'cars', 'props', 'ground-camp.webp', 'ground-canyon.webp', 'ground-fog.webp', 'ground-truck.webp', 'b1', 'b2', 'b3', 'b5', 'b6', 'b7', 'z1', 'z2', 'z3'];
     const imgs = await Promise.all(names.map((n) => loadImg(`carmageddon/ch1/${n.includes('.') ? n : n + '.png'}`)));
     names.forEach((n, i) => { names[i] = n.replace(/\.\w+$/, ''); });
     names.forEach((n, i) => { this.art[n] = imgs[i]; });
+    setCharAtlas(this.art.chars);
   }
 
   _face(who, emo) {

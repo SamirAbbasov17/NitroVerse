@@ -23,7 +23,7 @@ async function corpus() {
   const camp = fs.readFileSync(path.join(SRC, 'camp.js'), 'utf8');
   for (const m of camp.matchAll(/'((?:[^'\\\n]|\\.)*)'/g)) {
     const s = m[1].replace(/\\'/g, "'");
-    if (/[əğıöüşçƏĞİÖÜŞÇ]/.test(s) || (/ /.test(s) && /[a-z]{3}/.test(s) && !/^[#.\w-]+$/.test(s) && !/cgs__|rgba|\$\{/.test(s))) add(s);
+    if (/[əğıöüşçƏĞİÖÜŞÇ]/.test(s) || (/ /.test(s) && /[a-z]{3}/.test(s) && !/^[#.\w-]+$/.test(s) && !/cgs__|rgba|\$\{|^ ?is-/.test(s))) add(s);
   }
   return out;
 }

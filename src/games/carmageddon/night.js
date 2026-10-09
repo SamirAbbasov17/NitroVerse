@@ -6,7 +6,7 @@ import { t } from '../../core/i18n.js';
 import { World } from './world.js';
 import { SOLIDS, LOOK } from './camp.js';
 
-const RAIDER = { hair: '#1a1a1e', skin: '#b88a6a', top: '#3a3438', legs: '#1e1c20', hat: '#2a2628', scarf: '#7a1c14', feat: ['cap', 'scarf'], blink: 0.4 };
+const RAIDER = { art: 'raider', hair: '#1a1a1e', skin: '#b88a6a', top: '#3a3438', legs: '#1e1c20', hat: '#2a2628', scarf: '#7a1c14', feat: ['cap', 'scarf'], blink: 0.4 };
 const FIRES = [
   [350, 238, 17], [368, 264, 17], [386, 290, 17], [404, 316, 17], [420, 342, 16],         // ocaqdan emalatxanaya birbaşa yolu kəsən alov divarı
   [250, 250, 18], [282, 232, 16], [316, 222, 16],                                         // şimal
