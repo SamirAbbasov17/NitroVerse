@@ -106,6 +106,8 @@ test('qaçış: mexanikalar və yaddaş nöqtəsi', async ({ page }) => {
   console.log('qapılar:', JSON.stringify(gates));
   expect(gates).toEqual({ truckBack: true, truckHp: true, truckPass: true, bridgeFail: true, bridgeJump: true });
   // 6) qaçış bitəndə final başlayır (ətraflı: carmageddon-finale.spec.js) və yaddaş silinir
+  await page.waitForFunction(() => !window.__cgStory?._chase && !window.__cgStory.dlg.el.hidden, null, { timeout: 15_000 });      // körpüdən sonrakı səhnə
+  await cgSkip(page);
   await page.waitForFunction(() => !!window.__cgStory?._finale, null, { timeout: 15_000 });
   expect(await page.evaluate(() => localStorage.getItem('cgCh1')), 'fəsil bitdi — yaddaş silindi').toBeNull();
   await cgLeave(page);
@@ -135,7 +137,8 @@ test('qaçış: beş hissənin hamısı keçilə bilir (avtopilot düymələrlə
   console.log(`avtopilot: ${done ? 'bitirdi' : 'BİTİRMƏDİ'} · ${Math.round((Date.now() - t0) / 1000)} s · qəzalar hissə üzrə ${JSON.stringify(bot.deaths)}`);
   expect(done, 'bütün hissələr keçildi').toBe(true);
   console.log('ara səhnələr:', cuts, cutLines.map((l) => l.slice(0, 28)));
-  expect(cuts, 'hər iki hissə arasında ara səhnə oynandı').toBe(4);
+  expect(cuts, 'dörd ara səhnə (hissələr arası) + körpüdən sonrakı səhnə (The Twins)').toBe(5);
+  expect(cutLines[4], 'sonuncusu körpüdən tullanış səhnəsidir').toMatch(/təkərlərin altında/);
   expect(cutLines.every((l) => l.length > 40), 'ara səhnənin mətni görünür').toBe(true);
   expect(Math.max(...bot.deaths), 'heç bir hissə avtopilot üçün ümidsiz çətin deyil').toBeLessThan(12);
   expect(errs).toEqual([]);

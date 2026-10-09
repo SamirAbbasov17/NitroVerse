@@ -4,7 +4,7 @@
 // qalan vaxtına görə) və təşəkkür; sonda başlıq ekranı və təmiz yaddaş. Telefonda alt yazı və yazılar sığır.
 import { test, expect } from '@playwright/test';
 import path from 'path';
-import { boot, OUT, ensureDir } from './helpers.js';
+import { boot, OUT, ensureDir, cgSkip } from './helpers.js';
 
 const DIR = ensureDir(path.join(OUT, 'carmageddon'));
 const toFinale = async (page) => {
@@ -15,6 +15,10 @@ const toFinale = async (page) => {
   await page.locator('.cgs__card').click({ timeout: 10_000 }).catch(() => {});
   await page.waitForFunction(() => !!window.__cgStory?._chase?.G, null, { timeout: 15_000 });
   await page.evaluate(() => window.__cgStory._chase.skip());            // son hissəni ötür
+  // körpüdən sonrakı səhnə (The Twins uçurumun qırağında) — onu keç
+  await page.waitForFunction(() => !window.__cgStory?._chase && !window.__cgStory.dlg.el.hidden, null, { timeout: 15_000 });
+  expect(await page.evaluate(() => window.__cgStory.dlg.full), 'qaçışdan sonra körpü səhnəsi oynanır').toMatch(/təkərlərin altında|under the wheels|под колёсами|tekerleklerin altında/);
+  await cgSkip(page);
   await page.waitForFunction(() => !!window.__cgStory?._finale, null, { timeout: 15_000 });
 };
 
@@ -25,21 +29,26 @@ test('final: mahnı, özü irəliləyən son səhnə, yekun yazıları, təşək
   await page.evaluate(() => { localStorage.setItem('apexMuted', '0'); });
   await page.mouse.click(5, 5);                                         // səs kilidi açılsın
   await toFinale(page);
-  // 1) sinematik səhnə özü başlayır; mahnı çalır
+  // 1) sinematik səhnə özü başlayır. Mahnı ilk kadrda YOX — Ember yerə uzanan kadrda (g5) başlayır; ona qədər sakit fon
   await page.waitForSelector('.cgf__cine', { timeout: 12_000 });
   await page.waitForFunction(() => window.__cgStory._finale.state.tc > 2.6, null, { timeout: 15_000 });
-  const song = await page.evaluate(() => { const f = window.__cgStory._finale; return { playing: f.playing, total: Math.round(f.total()), ctx: window.__audio?.ctx?.state, cineEnd: +f.cineEnd.toFixed(1), shots: f.plan.map((x) => x.art).join() }; });
+  const song = await page.evaluate(() => { const f = window.__cgStory._finale; return { playing: f.playing, on: f.songOn, bg: window.__cgMusic.state.want, total: Math.round(f.total()), songAt: +f.songAt.toFixed(1), cineEnd: +f.cineEnd.toFixed(1), shots: f.plan.map((x) => x.art).join(), at: f.plan.find((x) => x.art === 'g5').t0 === f.songAt }; });
   console.log('mahnı və plan:', JSON.stringify(song));
   expect(song.total, 'mahnının uzunluğu').toBe(106);
-  expect(song.playing, 'final mahnısı çalır').toBe(true);
+  expect([song.playing, song.on, song.bg], 'ilk kadrlarda mahnı hələ çalmır, sakit fon gedir').toEqual([false, false, 'bleeding']);
+  expect(song.at, 'mahnı Ember yerə uzanan kadrda başlayır').toBe(true);
   expect(song.shots, 'yeddi kadr sıra ilə').toBe('g1,g2,g3,g4,g5,g6,g7');
-  expect(song.cineEnd + 5.4 + 22 + 9, 'səhnə + başlıq + yazılar + təşəkkür mahnıya sığır').toBeLessThanOrEqual(106);
+  // mahnı başlayandan: qalan səhnə ≈ 30 s (sakit hissə), sonra başlıq, yazılar və təşəkkür mahnıya sığır
+  expect(song.cineEnd - song.songAt, 'mahnının sakit hissəsi (ilk ~30 s) uzanma və uzaqlaşma kadrlarına düşür').toBeGreaterThan(22);
+  expect(song.cineEnd - song.songAt, 'başlıq mahnının dolduğu yerə (30–41 s) düşür').toBeLessThan(40);
+  expect(song.cineEnd - song.songAt + 5.4 + 22 + 9, 'başlıq + yazılar + təşəkkür mahnıya sığır').toBeLessThanOrEqual(106);
   // 2) hər kadr: şəkil yüklənib, kamera hərəkət edir (0.5 s ara ilə iki görüntü fərqlidir), alt yazı görünür
   const grab = () => page.evaluate(() => { const c = document.querySelector('.cgf__cine'), t = document.createElement('canvas'); t.width = 96; t.height = 54; const x = t.getContext('2d'); x.drawImage(c, 0, 0, 96, 54); return Array.from(x.getImageData(0, 0, 96, 54).data); });
-  const seen = [];
+  const seen = []; let songG6 = null;
   for (let guard = 0; guard < 40; guard++) {
     const st = await page.evaluate(() => window.__cgStory._finale.state);
     if (st.phase !== 'cine') break;
+    if (st.shot === 'g6' && !seen.some((x) => x.shot === 'g6')) songG6 = await page.evaluate(() => { const f = window.__cgStory._finale; return [f.songOn, f.playing, window.__cgMusic.state.want]; });
     if (!seen.some((x) => x.shot === st.shot)) {
       await page.waitForTimeout(1500);                                   // əriyib-keçmə bitsin
       const a = await grab(); await page.waitForTimeout(500); const b = await grab();
@@ -53,6 +62,7 @@ test('final: mahnı, özü irəliləyən son səhnə, yekun yazıları, təşək
   }
   console.log('kadrlar:', JSON.stringify(seen));
   expect(seen.map((x) => x.shot).join(), 'bütün kadrlar göründü').toBe('g1,g2,g3,g4,g5,g6,g7');
+  expect(songG6, 'g5-dən sonra mahnı çalır, fon musiqisi dayanıb').toEqual([true, true, null]);
   for (const x of seen) { expect(x.lum, `${x.shot}: kadr boş deyil`).toBeGreaterThan(30); expect(x.moved, `${x.shot}: kamera hərəkət edir`).toBeGreaterThan(40); expect(x.sub, `${x.shot}: alt yazı görünür`).toBe(true); }
   // 3) başlıq — son kadrın üstündə
   await page.waitForSelector('.cgf__title.is-on', { timeout: 15_000 });
@@ -64,7 +74,9 @@ test('final: mahnı, özü irəliləyən son səhnə, yekun yazıları, təşək
   const roll = await page.evaluate(() => { const st = window.__cgStory._finale, r = document.querySelector('.cgf__in'); return { dur: parseFloat(r.style.animationDuration), left: st.total() - st.elapsed(), text: r.textContent }; });
   console.log('yekun yazıları:', JSON.stringify({ dur: roll.dur, left: Math.round(roll.left) }));
   expect(roll.dur).toBeGreaterThanOrEqual(22); expect(roll.dur).toBeLessThanOrEqual(70);
-  expect(Math.abs(roll.dur + 9 - roll.left), 'yazılar mahnının sonuna hesablanıb').toBeLessThan(6);
+  // test alt yazıları tez keçdiyi üçün mahnıdan çox qalır — onda yazılar ən uzun müddətə (70 s) düşür; adi axında
+  // (keçmədən) müddət mahnının qalanına bərabərdir: 106 − (27.6 + 5.4) − 9 ≈ 64 s (yuxarıda plan üzrə yoxlanır)
+  expect(roll.dur === 70 || Math.abs(roll.dur + 9 - roll.left) < 6, 'yazılar mahnının sonuna hesablanıb').toBe(true);
   expect(roll.text, 'yekun yazılarında süni intellekt qeydi yoxdur').not.toMatch(/Claude|Anthropic|intellekt|\bAI\b|İllüstrasiya/i);
   for (const s of ['Samir Abbasov', 'HEÇ KİM BİLMİR', 'Hearth-in xatirəsinə', 'Milo', 'Old Gus', 'Altı ad qalır', 'Butcher', 'Ember qayıdacaq']) expect(roll.text).toContain(s);
   await page.waitForTimeout(Math.min(14_000, roll.dur * 300));
@@ -90,7 +102,7 @@ test('final telefonda: yazılar ekrana sığır (4 dil)', async ({ browser }) =>
     await boot(page, { lang });
     await toFinale(page);
     await page.waitForSelector('.cgf__cine', { timeout: 12_000 });
-    expect([lang, await page.evaluate(() => window.__cgStory._finale.cineEnd + 5.4 + 22 + 9 <= 106)], 'səhnə mahnıya sığır').toEqual([lang, true]);
+    expect([lang, await page.evaluate(() => { const f = window.__cgStory._finale; return f.cineEnd - f.songAt + 5.4 + 22 + 9 <= 106; })], 'mahnıdan sonrakı hissə mahnıya sığır').toEqual([lang, true]);
     // alt yazılar: hər birini göstər (toxunuş növbətiyə keçirir) və ekrana, geniş ekran zolağından yuxarı sığdığını yoxla
     const subs = [];
     for (let i = 0; i < 40 && !(await page.evaluate(() => document.querySelector('.cgf__title').classList.contains('is-on'))); i++) {

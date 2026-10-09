@@ -3,7 +3,11 @@
 // uzaqlaşma, sürüşmə), kadrlar arası əriyib-keçmə, geniş ekran zolaqları, alt yazı (təhkiyə özü irəliləyir) və
 // kadra xas canlılıq: sönən faralar, axsayan addımın yellənməsi, əlin titrəməsi, dizin yerə dəyməsi, nəbz kimi
 // qaralan kənarlar, doğan günəşin parıltısı. Ember yerə uzanandan sonra kamera ondan uzaqlaşır (g5 → g6 → g7).
-// Mahnı ilk kadrla başlayır. Yekun yazılarının müddəti mahnının QALAN vaxtına görə hesablanır ki, "təşəkkür"
+// MAHNI: «HEÇ KİM BİLMİR» sakit başlayır (ilk 3 s demək olar səssiz, 30-cu saniyəyə qədər seyrək), 41-ci saniyədən
+// dolur, 79–90 və 96–103-cü saniyələrdə ən güclüdür. Ona görə mahnı ilk kadrda YOX, Ember yerə uzanan kadrda (g5)
+// başlayır: sakit hissə onun uzanmasına və kameranın uzaqlaşmasına, dolu hissə başlığa və yazılara, son zərbə
+// təşəkkür kartına düşür. Ondan əvvəlki kadrlar (stansiyaya gəliş) sakit fon musiqisi ilə gedir və oyunçu mətni öz
+// sürəti ilə oxuya bilir (klik — növbəti sətir; toxunmasa özü keçir). Yekun yazılarının müddəti mahnının QALAN vaxtına görə hesablanır ki, "təşəkkür"
 // kartı mahnının son saniyələrinə düşsün və səs onunla birlikdə sönsün. Səs oyunun musiqi kanalına gedir; səs
 // açılmayıbsa (və ya fayl yüklənməyibsə) final eyni vaxtlama ilə səssiz gedir.
 import { t } from '../../core/i18n.js';
@@ -11,6 +15,7 @@ import { audio } from '../../core/AudioManager.js';
 import { assetBase } from '../../net/apiBase.js';
 import { T } from './tx.js';
 import { CAST } from './script.js';
+import { music } from './music.js';
 
 const SONG = 'carmageddon/ch1/final.mp3', SONG_LEN = 106;
 let songBuf = null, songLoading = null;
@@ -30,12 +35,13 @@ const SHOTS = {
   g2: { from: [1.0, 0.5, 0.5], to: [1.24, 0.38, 0.46], fx: 'limp' },         // Ember axsaya-axsaya kolonkalara gedir
   g3: { from: [1.1, 0.55, 0.5], to: [1.22, 0.52, 0.52], fx: 'tremor' },      // açar halqasını sıxan əl
   g4: { from: [1.16, 0.44, 0.4], to: [1.04, 0.45, 0.56], fx: 'drop' },       // dizləri üstə çökür
-  g5: { from: [1.5, 0.42, 0.5], to: [1.0, 0.5, 0.5], fx: 'pulse' },          // yerdə uzanıb — kamera qalxmağa başlayır
+  g5: { from: [1.55, 0.45, 0.5], to: [1.0, 0.5, 0.5], fx: 'pulse' },          // yerdə uzanıb — kamera qalxmağa başlayır
   g6: { from: [1.75, 0.5, 0.7], to: [1.0, 0.5, 0.5], fx: null },             // yuxarıdan: stansiya, maşın, balaca fiqur
-  g7: { from: [1.6, 0.5, 0.86], to: [1.0, 0.5, 0.5], fx: 'sun' },            // sonsuz çöl, yol, doğan günəş
+  g7: { from: [1.8, 0.72, 0.62], to: [1.0, 0.5, 0.5], fx: 'sun' },            // sonsuz çöl, yol, doğan günəş
 };
 const ease = (k) => k * k * (3 - 2 * k);
-const lineDur = (s) => Math.max(4, Math.min(8, 2.8 + s.length * 0.036));
+const lineDur = (s) => Math.max(5, Math.min(11, 3.4 + s.length * 0.05));      // oxumağa rahat vaxt; klik gözləmədən keçirir
+const SONG_AT = 'g5';        // mahnının başladığı kadr
 
 export function runFinale(ch, scene) {
   return new Promise((resolve) => {
@@ -51,7 +57,7 @@ export function runFinale(ch, scene) {
       if (!songBuf || !audio.ctx || audio.ctx.state !== 'running') return;
       src = audio.ctx.createBufferSource(); src.buffer = songBuf;
       gain = audio.ctx.createGain(); gain.gain.value = 0.0001;
-      gain.gain.exponentialRampToValueAtTime(0.9, audio.ctx.currentTime + 1.6);
+      gain.gain.exponentialRampToValueAtTime(0.9, audio.ctx.currentTime + 3.2);
       src.connect(gain); gain.connect(audio.musicBus || audio.master || audio.ctx.destination);
       src.start();
     }
@@ -72,11 +78,13 @@ export function runFinale(ch, scene) {
       plan[plan.length - 1].lines.push({ text, who: st.who || null, t0: at, t1: at + d }); at += d;
     }
     plan.forEach((s, i) => { s.t1 = i + 1 < plan.length ? plan[i + 1].t0 : at; });
+    const songAt = (plan.find((s) => s.art === SONG_AT) || plan[0]).t0;      // mahnının başlama anı (kadr zamanı)
+    let songOn = false;
     const cineEnd = at;
 
     const el = document.createElement('div');
     el.className = 'cgf cgf--cine';
-    el.innerHTML = '<canvas class="cgf__cine" width="960" height="540"></canvas><div class="cgf__shade"></div><i class="cgf__bar cgf__bar--t"></i><i class="cgf__bar cgf__bar--b"></i><canvas class="cgf__sparks" width="240" height="135"></canvas><p class="cgf__sub"></p><div class="cgf__title"></div><div class="cgf__roll"></div><div class="cgf__thanks"></div>';
+    el.innerHTML = '<canvas class="cgf__cine" width="960" height="540"></canvas><div class="cgf__shade"></div><i class="cgf__bar cgf__bar--t"></i><i class="cgf__bar cgf__bar--b"></i><canvas class="cgf__sparks" width="240" height="135"></canvas><p class="cgf__sub"></p><span class="cgf__tip"></span><div class="cgf__title"></div><div class="cgf__roll"></div><div class="cgf__thanks"></div>';
     const cine = el.querySelector('.cgf__cine'), cx = cine.getContext('2d'), sub = el.querySelector('.cgf__sub');
     const sparks = el.querySelector('.cgf__sparks'), sx = sparks.getContext('2d');
     const P = Array.from({ length: 46 }, () => ({ x: Math.random() * 240, y: Math.random() * 135, v: 6 + Math.random() * 14, w: Math.random() * 6.28, a: 0.3 + Math.random() * 0.7 }));
@@ -104,7 +112,7 @@ export function runFinale(ch, scene) {
         for (const [hx, hy] of [[0.512, 0.706], [0.629, 0.71]]) { const [ax, ay, zz] = W2S(hx, hy), rr = 70 * zz; const g = cx.createRadialGradient(ax, ay, 0, ax, ay, rr); g.addColorStop(0, `rgba(255,236,170,${(0.55 * fl * alpha).toFixed(3)})`); g.addColorStop(1, 'rgba(255,236,170,0)'); cx.fillStyle = g; cx.fillRect(ax - rr, ay - rr, rr * 2, rr * 2); }
         cx.globalCompositeOperation = 'source-over';
       } else if (def.fx === 'sun') {
-        const [ax, ay, zz] = W2S(0.5, 0.415), grow = 0.5 + 0.5 * Math.min(1, tt / 14), rr = (170 + grow * 190) * zz;
+        const [ax, ay, zz] = W2S(0.53, 0.2), grow = 0.5 + 0.5 * Math.min(1, tt / 14), rr = (170 + grow * 190) * zz;
         cx.globalCompositeOperation = 'lighter';
         const g = cx.createRadialGradient(ax, ay, 0, ax, ay, rr); g.addColorStop(0, `rgba(255,214,140,${(0.5 * grow * alpha).toFixed(3)})`); g.addColorStop(0.4, `rgba(255,150,70,${(0.2 * grow * alpha).toFixed(3)})`); g.addColorStop(1, 'rgba(255,120,40,0)');
         cx.fillStyle = g; cx.fillRect(0, 0, CW, CH);
@@ -122,6 +130,7 @@ export function runFinale(ch, scene) {
       if (dead) return; raf = requestAnimationFrame(tick);
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
       if (!ch.paused) tc += dt;
+      if (!songOn && tc >= songAt - 0.4) { songOn = true; music.stop(); play(); }      // fon musiqisi sönür, mahnı sakit girir
       // ——— kadrlar ———
       let i = plan.findIndex((s) => tc < s.t1); if (i < 0) i = plan.length - 1;
       const s = plan[i], tt = tc - s.t0, dur = s.t1 - s.t0;
@@ -158,8 +167,10 @@ export function runFinale(ch, scene) {
       ch.el.classList.add('is-finale');
       ch.el.appendChild(el);
       el.addEventListener('click', skip);
+      const tip = el.querySelector('.cgf__tip'); tip.textContent = t('cg.f.tip'); later(() => tip.classList.add('is-out'), 7000);
       addEventListener('keydown', onKey);
-      play();
+      music.play('bleeding');                                          // stansiyaya gəliş: sakit fon (mahnı g5-də başlayır)
+      t0 = performance.now();
       last = performance.now();
       raf = requestAnimationFrame(tick);
       // 1) sinematik səhnə
@@ -208,7 +219,7 @@ export function runFinale(ch, scene) {
       if (src) { try { fadeOut(0.4); } catch { /* boş */ } }
       el.remove(); ch.el.classList.remove('is-finale'); ch._finale = null;
     }
-    ch._finale = { stop, elapsed, total, skip, el, plan, cineEnd, get playing() { return !!src; }, get state() { const i = Math.max(0, plan.findIndex((s) => tc < s.t1)); return { phase, tc, shot: phase === 'cine' ? plan[i]?.art : plan[plan.length - 1]?.art, sub: shown?.text || '' }; } };
+    ch._finale = { stop, elapsed, total, skip, el, plan, cineEnd, songAt, get playing() { return !!src; }, get songOn() { return songOn; }, get state() { const i = Math.max(0, plan.findIndex((s) => tc < s.t1)); return { phase, tc, shot: phase === 'cine' ? plan[i]?.art : plan[plan.length - 1]?.art, sub: shown?.text || '' }; } };
     run();
   });
 }

@@ -19,6 +19,7 @@ async function corpus() {
   const add = (s) => { if (typeof s === 'string' && s && !out.includes(s)) out.push(s); };
   for (const k of ['PROLOGUE', 'MORNING', 'EVENING', 'ATTACK', 'NIGHT_INTRO', 'FOUND', 'AFTER_DUEL', 'ENDING']) for (const st of S[k]) { if (st.text) add(st.text.az); if (st.title) add(st.title); }
   for (const sc of S.CHASE_CUTS) for (const st of sc) if (st.text) add(st.text.az);
+  for (const st of S.CHASE_END) if (st.text) add(st.text.az);
   for (const b of S.DUEL) add(b.az);
   const camp = fs.readFileSync(path.join(SRC, 'camp.js'), 'utf8');
   // (a) L(kim, hiss, MƏTN) çağırışlarının üçüncü arqumentindəki BÜTÜN sətirlər — şərtli ifadənin hər qolu, tək sözlük

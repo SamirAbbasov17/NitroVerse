@@ -4,7 +4,7 @@
 import { t, getLang } from '../../core/i18n.js';
 import { assetBase } from '../../net/apiBase.js';
 import { Dialogue } from './dialogue.js';
-import { CAST, PROLOGUE, MORNING, EVENING, ATTACK, NIGHT_INTRO, FOUND, DUEL, AFTER_DUEL, ENDING, CHASE_CUTS, tx } from './script.js';
+import { CAST, PROLOGUE, MORNING, EVENING, ATTACK, NIGHT_INTRO, FOUND, DUEL, AFTER_DUEL, ENDING, CHASE_CUTS, CHASE_END, tx } from './script.js';
 import { runCamp, savedStage, savedSec, setStage, clearSave } from './camp.js';
 import { runChase } from './chase.js';
 import { runFinale, preloadSong } from './finale.js';
@@ -90,7 +90,7 @@ export class Chapter1 {
       'wren-neutral', 'gus-neutral', 'clara-neutral', 'ray-neutral', 'amos-neutral', 'pip-neutral',
       'e1', 'e2', 'a1', 'a2', 'a3', 'a4',
       'judge-neutral', 'crude-neutral', 'butcher-neutral', 'rust-neutral', 'preacher-neutral', 'twins-neutral', 'jackal-neutral',
-      'hush-neutral', 'chars', 'hens', 'c1', 'c2', 'c3', 'c4', 'c5', 'cars', 'props', 'ground-camp.webp', 'ground-canyon.webp', 'ground-fog.webp', 'ground-truck.webp', 'b1', 'b2', 'b3', 'b5', 'b6', 'b7', 'g1.webp', 'g2.webp', 'g3.webp', 'g4.webp', 'g5.webp', 'g6.webp', 'g7.webp'];
+      'hush-neutral', 'chars', 'hens', 'c1', 'c2', 'c3', 'c4', 'c5', 'cars', 'props', 'ground-camp.webp', 'ground-canyon.webp', 'ground-fog.webp', 'ground-truck.webp', 'b1', 'b2', 'b3', 'b4', 'b8', 'j1', 'c6', 'c7', 'b5', 'b6', 'b7', 'g1.webp', 'g2.webp', 'g3.webp', 'g4.webp', 'g5.webp', 'g6.webp', 'g7.webp'];
     const imgs = await Promise.all(names.map((n) => loadImg(`carmageddon/ch1/${n.includes('.') ? n : n + '.png'}`)));
     names.forEach((n, i) => { names[i] = n.replace(/\.\w+$/, ''); });
     names.forEach((n, i) => { this.art[n] = imgs[i]; });
@@ -264,7 +264,13 @@ export class Chapter1 {
     this.el.classList.remove('is-world', 'is-chase');
     // FİNAL: son səhnə mahnı ilə, sonra yekun yazıları (bax finale.js)
     clearSave();
-    music.stop();                                    // final mahnısı üçün yer açılır
+    // körpüdən sonra: The Twins uçurumun qırağında qalır (qaçdığımız bilinsin), sonra final
+    this._bg('black'); this.cv.style.opacity = 1;
+    await this._play(CHASE_END);
+    if (this.dead) return;
+    this.dlg.hide();
+    await this._fade(0);
+    this.cv.style.opacity = 1;
     await runFinale(this, ENDING);
     if (this.dead) return;
     this.end();
