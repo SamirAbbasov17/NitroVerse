@@ -38,6 +38,7 @@ npm run test:pace    # maşınlar arası sürət balansı — ~10 dəq
 npm run test:arena   # arena silahları, mina, lazer, vuruş sayğacı
 npm run test:track-map # trek sxemi + həndəsə (yeni trek/şaxə çəkəndə)
 npm run test:zen-contact # zen: təkərlər yerə, gövdə maneəyə girmir — ~7 dəq
+npm run test:zen-snow # zen qar biomu: sıx qar, qalın örtük, qarlı meşə, draw/üçbucaq
 LIVE_URL=http://… npx playwright test tests/live.spec.js  # canlı saytın tüstü yoxlaması (deploydan sonra)
 npm run test:carmageddon # Carmageddon başlıq ekranı: açılır, qəhrəman canlıdır, telefonda sığır
 npm run test:coach   # ilk yarış ipucları: görünür, itir, təkrarlanmır

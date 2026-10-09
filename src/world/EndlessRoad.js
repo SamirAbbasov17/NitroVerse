@@ -1341,7 +1341,7 @@ export class EndlessRoad {
     // Dekor + təpələr + dağlar — dünya DOLU görünsün
     const box = new THREE.Box3();
     const size = new THREE.Vector3();
-    const decorCount = 16 + Math.floor(Math.random() * 10);
+    const decorCount = Math.round((16 + Math.floor(Math.random() * 10)) * (s.decorMul || 1));      // qar biomunda meşə daha sıxdır
     for (let d = 0; d < decorCount; d++) {
       const i = 2 + Math.floor(Math.random() * (pts.length - 4));
       const side = Math.random() < 0.5 ? -1 : 1;

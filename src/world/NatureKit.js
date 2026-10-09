@@ -37,7 +37,8 @@ export const NATURE_BY_BIOME = {
   // daş" kimi oxunurdu və səhnəyə uyğun gəlmirdi (istifadəçi rəyi ×2)
   coast: ['nk:tree_palmDetailedShort', 'nk:tree_palmTall', 'nk:tree_oak'],
   canyon: ['nk:rock_largeE', 'nk:tree_default_fall', 'nk:tree_thin', 'nk:rock_largeA'],
-  snow: ['nk:tree_pineDefaultA', 'nk:tree_pineDefaultB', 'nk:tree_cone', 'nk:rock_largeA', 'nk:log_stack'],
+  // qarda Kenney-nin YAŞIL şamları işlənmir (qarlı şam, qarlı qaya, buz kristalı — bax EndlessScene BIOMES.snow)
+  snow: [],
 };
 
 // YAXIN PLAN səpini: yolun 13–30 m yaxınlığına düşən XIRDA bitkilər.

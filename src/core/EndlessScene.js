@@ -110,12 +110,16 @@ const BIOMES = [
     weather: { clear: 0.7, fog: 0.25, rain: 0.05 }, flake: 0,
   },
   {
-    id: 'snow', sky: 0xa8c8e2, skyB: 0xe8f3fc, ground: 0xe8eff6, fog: 0xd6e5f0,
-    road: 0x4f5461, curb: 0x3e6fd8, mountain: 0x9fb6c8,
-    decor: ['pine', 'rock', 'pine'], curvMul: 1.05, natureTint: 0xdce8f2,
-    weather: { clear: 0.2, fog: 0.15, rain: 0.65 }, flake: 1, // demək olar həmişə qar
+    // QALIN QAR (istifadəçi istəyi: "Buz Zirvəsi" treki kimi): burada qar HƏMİŞƏ və sıx yağır (snowMin — avto
+    // havada qarın alt həddi; əl ilə seçilən hava bundan üstündür), yer tam örtülüdür, meşə qarlı şamlardan,
+    // qarlı qayalardan və buz kristallarından ibarətdir (yarışdakı eyni modellər) və daha sıxdır (decorMul).
+    id: 'snow', sky: 0xa8c8e2, skyB: 0xe8f3fc, ground: 0xeef3f9, fog: 0xdde9f3,
+    road: 0x4f5461, curb: 0x49c8ff, mountain: 0xd3e0ec,
+    decor: ['snowpine', 'snowpine', 'snowpine', 'snowrock', 'snowpine', 'icecrystal', 'snowpine', 'snowrock'], curvMul: 1.05, natureTint: 0xdce8f2,
+    weather: { clear: 0, fog: 0.15, rain: 0.85 }, flake: 1, snowMin: 0.9, decorMul: 1.45,
   },
 ];
+const _ICE = new THREE.Color(0xa9cfe2), _WHITE = new THREE.Color(0xffffff);   // donmuş gölün rəngi
 const BIOME_LEN = 1600;   // hər biomun uzunluğu (m)
 const BLEND_LEN = 280;    // keçid zonası
 const DAY_PERIOD = 320;   // gün dövrü (saniyə)
@@ -292,6 +296,7 @@ export class EndlessScene {
     // yer sürüşdükcə tekstura sıçrayırdı ("su qəribə hərəkət edir")
     this._waterTile = 52;
     wm.map.repeat.set(GROUND_SIZE / this._waterTile, GROUND_SIZE / this._waterTile);
+    this._waterBase = wm.color.clone();                 // qarda göl buz rənginə keçir (bax update: _snow)
     this.water = new THREE.Mesh(new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE), wm);
     this.water.rotation.x = -Math.PI / 2;
     this.water.position.y = WATER_LEVEL;
@@ -1185,6 +1190,8 @@ export class EndlessScene {
       decor: this._natureReady
         ? [...b.decor, ...(NATURE_BY_BIOME[b.id] || [])]
         : b.decor,
+      decorMul: b.decorMul ?? 1,
+      ground: b.id === 'snow' ? 0xe9eff6 : undefined,      // yol çiyni: qarda ağ (başqa biomlarda torpaq rəngi qalır)
       mountainColor: b.mountain, fog: b.fog, natureTint: b.natureTint ?? 0xffffff,
     });
     // Biom-spesifik yer toxuması (yalnız dəyişəndə — hər kadr yox)
@@ -1384,9 +1391,14 @@ export class EndlessScene {
   }
 
   _buildRain() {
-    const geo = new THREE.BoxGeometry(0.03, 0.85, 0.03);
-    const mat = new THREE.MeshBasicMaterial({ color: 0xcfe0ee, transparent: true, opacity: 0.55 });
-    const n = 520; // qarda daha sıx görünsün
+    // Hər dənə kameraya baxan LÖVHƏDİR (2 üçbucaq; əvvəl qutu idi — 12). Bu, qarı 3 dəfə sıxlaşdırmağa imkan
+    // verir: 1560 dənə = 3120 üçbucaq (əvvəl 520 qutu = 6240). Yumşaq dairəvi toxuma dənəni dəyirmi göstərir.
+    const geo = new THREE.PlaneGeometry(1, 1);
+    const dot = document.createElement('canvas'); dot.width = dot.height = 32;
+    { const g2 = dot.getContext('2d'), gr = g2.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.55, 'rgba(255,255,255,0.85)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g2.fillStyle = gr; g2.fillRect(0, 0, 32, 32); }
+    const tex = new THREE.CanvasTexture(dot);
+    const mat = new THREE.MeshBasicMaterial({ color: 0xcfe0ee, map: tex, transparent: true, opacity: 0.55, depthWrite: false });
+    const n = 1560; // yağışda yalnız 322-si, adi qarda 520-si, güclü qarda hamısı işlənir
     const mesh = new THREE.InstancedMesh(geo, mat, n);
     mesh.visible = false;
     mesh.frustumCulled = false;
@@ -1401,7 +1413,7 @@ export class EndlessScene {
         ph: Math.random() * 6.283, sz: 0.65 + Math.random() * 0.75,
       });
     }
-    return { mesh, drops, m4: new THREE.Matrix4(), s4: new THREE.Matrix4() };
+    return { mesh, drops, tex, m4: new THREE.Matrix4(), v3p: new THREE.Vector3(), v3s: new THREE.Vector3() };
   }
 
   _updateWorld(dt) {
@@ -1470,7 +1482,7 @@ export class EndlessScene {
     // Yaş: yağış yağdıqca islanır (τ≈8s), kəsiləndə quruyur
     this._wet += (((flakeNow ? 0 : rainNow)) - this._wet) * Math.min(1, dt * 0.12);
     // Qar örtüyü: yağdıqca yığılır (τ≈6s), kəsiləndə yavaş əriyir (τ≈25s)
-    const biomeSnowBase = (k > 0.5 ? nxt : cur).id === 'snow' ? 0.75 : 0;
+    const biomeSnowBase = (k > 0.5 ? nxt : cur).id === 'snow' ? 1 : 0;      // qar biomunda örtük tamdır
     const snowT = Math.max(biomeSnowBase, flakeNow ? rainNow : 0);
     this._snow += (snowT - this._snow) * Math.min(1, dt * (snowT > this._snow ? 0.2 : 0.02));
     groundC.multiplyScalar(1 - this._wet * 0.45); // yaş → aydın tündləşmə
@@ -1803,7 +1815,11 @@ export class EndlessScene {
     {
       const m = this.water.material.map;
       const T = this._waterTile;
-      this._waterFlow = (this._waterFlow || 0) + dt * 0.012;
+      this._waterFlow = (this._waterFlow || 0) + dt * 0.012 * (1 - (this._snow || 0) * 0.85);      // donmuş su demək olar axmır
+      // qar örtüyü artdıqca göl ağımtıl-mavi buza dönür: toxuma tünd mavidir (rəng vurulur, açılmır), ona görə
+      // açıqlıq öz işığı (emissive) ilə verilir — əlavə draw call yoxdur
+      this.water.material.color.copy(this._waterBase).lerp(_WHITE, (this._snow || 0) * 0.9);
+      this.water.material.emissive.copy(_ICE); this.water.material.emissiveIntensity = (this._snow || 0) * 0.62 * Math.max(0.25, this._dayNow?.ground ?? 1);
       m.offset.set(
         this.water.position.x / T,
         -this.water.position.z / T + this._waterFlow
@@ -1835,8 +1851,11 @@ export class EndlessScene {
     // Əl ilə seçiləndə isə oyunçu nəticəni dərhal görməlidir (τ≈4 s).
     const wTau = this._manualWeatherT > 0 ? 4 : 22;
     if (this._manualWeatherT > 0) this._manualWeatherT -= dt / 12;
-    this._weather.fogMul += (this._weatherTarget.fogMul - this._weather.fogMul) * Math.min(1, dt / wTau);
-    this._weather.rain += (this._weatherTarget.rain - this._weather.rain) * Math.min(1, dt / wTau);
+    // Qar biomu: avto havada qar heç vaxt kəsilmir və güclüdür (snowMin), hava da bir az tutqundur
+    const snowMin = this._weatherOverride ? 0 : ((k > 0.5 ? nxt : cur).snowMin || 0);
+    const rainGoal = Math.max(this._weatherTarget.rain, snowMin), fogGoal = snowMin ? Math.max(this._weatherTarget.fogMul, 0.5) : this._weatherTarget.fogMul;
+    this._weather.fogMul += (fogGoal - this._weather.fogMul) * Math.min(1, dt / wTau);
+    this._weather.rain += (rainGoal - this._weather.rain) * Math.min(1, dt / (snowMin && rainGoal > this._weather.rain ? 6 : wTau));
 
     // Yağış / qar hissəcikləri
     const rain = this._rain;
@@ -1876,15 +1895,18 @@ export class EndlessScene {
       // QAR seçimi biomdan asılı DEYİL: səhrada "qar" seçəndə yer ağarır, ona görə
       // göydən də qar düşməlidir (əvvəl damcı düşürdü — uyğunsuz görünürdü)
       const flake = flakeNow;
-      rain.mesh.material.opacity = (flake ? 0.62 : 0.5) * rAmount;
+      rain.mesh.material.opacity = (flake ? 0.92 : 0.5) * rAmount;
       rain.mesh.material.color.set(flake ? 0xffffff : 0xcfe0ee);
       const fall = flake ? 4.2 : 30;
       const tt = this._time;
       // Qarda hissəciklərin yalnız bir hissəsi görünsün ki, yağış sıxlığı dəyişməsin
-      const live = flake ? rain.drops.length : Math.round(rain.drops.length * 0.62);
-      for (let i = 0; i < rain.drops.length; i++) {
+      // sıxlıq: yağış 322 dənə (əvvəlki kimi); qar 520-dən başlayır, güclü qarda (≥ 0.85) 1560-a çatır
+      const heavy = Math.max(0, Math.min(1, (rAmount - 0.55) / 0.3));
+      const live = flake ? Math.round(520 + (rain.drops.length - 520) * heavy) : 322;
+      rain.mesh.count = live;
+      const camQ = this.camera.quaternion;
+      for (let i = 0; i < live; i++) {
         const d = rain.drops[i];
-        if (i >= live) { rain.m4.makeScale(0, 0, 0); rain.mesh.setMatrixAt(i, rain.m4); continue; }
         d.y -= (d.v * (fall / 30)) * dt;
         if (flake) {
           // iki fərqli tezlikli dolanma → təbii süzülmə, sinxronluq yoxdur
@@ -1896,12 +1918,14 @@ export class EndlessScene {
           d.x = (Math.random() - 0.5) * 70;
           d.z = (Math.random() - 0.5) * 70;
         }
-        rain.m4.makeTranslation(c.x + d.x, d.y, c.z + d.z);
-        if (flake) {
-          const s = d.sz;
-          rain.s4.makeScale(1.9 * s, 0.13 * s, 1.9 * s);
-          rain.m4.multiply(rain.s4);
-        }
+        // kameraya baxan lövhə: qar dənəsi dəyirmi (ölçüsü fərqli), yağış damcısı nazik şaquli zolaq
+        const fs = flake ? 0.13 * d.sz + 0.05 : 0;
+        rain.v3s.set(flake ? fs : 0.045, flake ? fs : 0.85, 1);
+        // qar maşının ətrafında daha dar həcmdə yağır (±22 m, 18 m hündürlük) — eyni sayda dənə ekranda ~4 dəfə sıx
+        // görünür; kameranın lap burnundakı dənə çəkilmir (ekranı tutan bulanıq ləkə olurdu)
+        if (flake) { rain.v3p.set(c.x + d.x * 0.62, d.y * 0.6, c.z + d.z * 0.62); if (rain.v3p.distanceToSquared(this.camera.position) < 12) rain.v3s.set(0, 0, 0); }
+        else rain.v3p.set(c.x + d.x, d.y, c.z + d.z);
+        rain.m4.compose(rain.v3p, camQ, rain.v3s);
         rain.mesh.setMatrixAt(i, rain.m4);
       }
       rain.mesh.instanceMatrix.needsUpdate = true;
@@ -2282,6 +2306,7 @@ export class EndlessScene {
     this._skyMat.map?.dispose();
     this._rain.mesh.geometry.dispose();
     this._rain.mesh.material.dispose();
+    this._rain.tex.dispose();
     this.scene.clear();
     this.uiRoot.innerHTML = '';
   }
